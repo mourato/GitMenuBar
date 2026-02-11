@@ -1,0 +1,66 @@
+{
+  "" : {
+    "const-values" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitMenuBar-primary.swiftconstvalues",
+    "dependencies" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitMenuBar-primary.d",
+    "diagnostics" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitMenuBar-primary.dia",
+    "emit-module-dependencies" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitMenuBar-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitMenuBar-primary-emit-module.dia",
+    "pch" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitMenuBar-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitMenuBar-primary.swiftdeps"
+  },
+  "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/GitMenuBar/ContentView.swift" : {
+    "index-unit-output-path" : "/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/ContentView.o"
+  },
+  "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/GitMenuBar/CreateRepoView.swift" : {
+    "index-unit-output-path" : "/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/CreateRepoView.o",
+    "llvm-bc" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/CreateRepoView.bc",
+    "object" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/CreateRepoView.o"
+  },
+  "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/GitMenuBar/GitHubAPIClient.swift" : {
+    "index-unit-output-path" : "/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitHubAPIClient.o",
+    "llvm-bc" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitHubAPIClient.bc",
+    "object" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitHubAPIClient.o"
+  },
+  "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/GitMenuBar/GitHubAuthManager.swift" : {
+    "index-unit-output-path" : "/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitHubAuthManager.o",
+    "llvm-bc" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitHubAuthManager.bc",
+    "object" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitHubAuthManager.o"
+  },
+  "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/GitMenuBar/GitManager.swift" : {
+    "index-unit-output-path" : "/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitManager.o",
+    "llvm-bc" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitManager.bc",
+    "object" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitManager.o"
+  },
+  "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/GitMenuBar/GitMenuBarApp.swift" : {
+    "index-unit-output-path" : "/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitMenuBarApp.o",
+    "llvm-bc" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitMenuBarApp.bc",
+    "object" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GitMenuBarApp.o"
+  },
+  "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/GitMenuBar/LoginItemManager.swift" : {
+    "index-unit-output-path" : "/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/LoginItemManager.o",
+    "llvm-bc" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/LoginItemManager.bc",
+    "object" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/LoginItemManager.o"
+  },
+  "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/GitMenuBar/MainMenuView.swift" : {
+    "index-unit-output-path" : "/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/MainMenuView.o",
+    "llvm-bc" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/MainMenuView.bc",
+    "object" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/MainMenuView.o"
+  },
+  "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/GitMenuBar/SettingsView.swift" : {
+    "index-unit-output-path" : "/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/SettingsView.o",
+    "llvm-bc" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/SettingsView.bc",
+    "object" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/SettingsView.o"
+  },
+  "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/GitMenuBar/StatusBarController.swift" : {
+    "index-unit-output-path" : "/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/StatusBarController.o",
+    "llvm-bc" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/StatusBarController.bc",
+    "object" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/StatusBarController.o"
+  },
+  "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Intermediates.noindex/GitMenuBar.build/Release/GitMenuBar.build/Objects-normal/arm64/GeneratedAssetSymbols.o"
+  }
+}

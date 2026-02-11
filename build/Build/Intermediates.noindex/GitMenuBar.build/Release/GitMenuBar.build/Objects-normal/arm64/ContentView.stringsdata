@@ -1,0 +1,16 @@
+{
+  "source": "/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/GitMenuBar/ContentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Hello, world!",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 14
+        }
+      }
+    ]
+  },
+  "version": 1
+}
