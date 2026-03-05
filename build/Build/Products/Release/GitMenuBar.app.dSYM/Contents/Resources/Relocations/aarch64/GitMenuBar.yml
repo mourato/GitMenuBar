@@ -1,5 +1,0 @@
----
-triple:          'arm64-apple-darwin'
-binary-path:     '/Users/chrislapointe/Scripts/Antigravity/GitMenuBar/build/Build/Products/Release/GitMenuBar.app/Contents/MacOS/GitMenuBar'
-relocations:     []
-...
