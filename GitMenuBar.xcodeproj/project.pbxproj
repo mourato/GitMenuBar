@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		1F8681CC2EBCB5B600C300C7 /* GitMenuBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GitMenuBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2A0000012F00000100000001 /* GitMenuBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GitMenuBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -29,10 +30,22 @@
 			path = GitMenuBar;
 			sourceTree = "<group>";
 		};
+		2A0000012F00000100000002 /* GitMenuBarTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = GitMenuBarTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		1F8681C92EBCB5B600C300C7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2A0000012F00000100000003 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -46,6 +59,7 @@
 			isa = PBXGroup;
 			children = (
 				1F8681CE2EBCB5B600C300C7 /* GitMenuBar */,
+				2A0000012F00000100000002 /* GitMenuBarTests */,
 				1F8681CD2EBCB5B600C300C7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +68,7 @@
 			isa = PBXGroup;
 			children = (
 				1F8681CC2EBCB5B600C300C7 /* GitMenuBar.app */,
+				2A0000012F00000100000001 /* GitMenuBarTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -83,6 +98,28 @@
 			productReference = 1F8681CC2EBCB5B600C300C7 /* GitMenuBar.app */;
 			productType = "com.apple.product-type.application";
 		};
+		2A0000012F00000100000006 /* GitMenuBarTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2A0000012F00000100000007 /* Build configuration list for PBXNativeTarget "GitMenuBarTests" */;
+			buildPhases = (
+				2A0000012F00000100000004 /* Sources */,
+				2A0000012F00000100000003 /* Frameworks */,
+				2A0000012F00000100000005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				2A0000012F00000100000002 /* GitMenuBarTests */,
+			);
+			name = GitMenuBarTests;
+			packageProductDependencies = (
+			);
+			productName = GitMenuBarTests;
+			productReference = 2A0000012F00000100000001 /* GitMenuBarTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -94,6 +131,9 @@
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					1F8681CB2EBCB5B600C300C7 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					2A0000012F00000100000006 = {
 						CreatedOnToolsVersion = 16.4;
 					};
 				};
@@ -113,6 +153,7 @@
 			projectRoot = "";
 			targets = (
 				1F8681CB2EBCB5B600C300C7 /* GitMenuBar */,
+				2A0000012F00000100000006 /* GitMenuBarTests */,
 			);
 		};
 /* End PBXProject section */
@@ -125,10 +166,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2A0000012F00000100000005 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		1F8681C82EBCB5B600C300C7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2A0000012F00000100000004 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -308,6 +363,36 @@
 			};
 			name = Release;
 		};
+		2A0000012F00000100000008 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pizzaman.GitMenuBarTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "";
+			};
+			name = Debug;
+		};
+		2A0000012F00000100000009 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pizzaman.GitMenuBarTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -325,6 +410,15 @@
 			buildConfigurations = (
 				1F8681D92EBCB5B700C300C7 /* Debug */,
 				1F8681DA2EBCB5B700C300C7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2A0000012F00000100000007 /* Build configuration list for PBXNativeTarget "GitMenuBarTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2A0000012F00000100000008 /* Debug */,
+				2A0000012F00000100000009 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
