@@ -5,8 +5,8 @@
 
 //
 
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct CreateRepoPath: Identifiable {
     let id = UUID()
@@ -17,22 +17,22 @@ struct MainMenuView: View {
     @State private var commentText = ""
     @State private var showingSettings = false
     @State private var showingHistory = false
-    @State private var createRepoPath: CreateRepoPath? = nil
+    @State private var createRepoPath: CreateRepoPath?
     @State private var showDeleteConfirmation = false
     @State private var isDeleting = false
-    @State private var deleteError: String? = nil
+    @State private var deleteError: String?
     @State private var showWipeConfirmation = false
     @State private var isWiping = false
-    @State private var wipeError: String? = nil
+    @State private var wipeError: String?
     @State private var showRepoOptions = false
     @State private var showVisibilityConfirmation = false
     @State private var isTogglingVisibility = false
-    @State private var toggleVisibilityError: String? = nil
+    @State private var toggleVisibilityError: String?
     @FocusState private var isCommentFieldFocused: Bool
     @EnvironmentObject var gitManager: GitManager
     @EnvironmentObject var loginItemManager: LoginItemManager
     @EnvironmentObject var githubAuthManager: GitHubAuthManager
-    @AppStorage("recentRepoPaths") private var recentRepoPathsData: Data = Data()
+    @AppStorage("recentRepoPaths") private var recentRepoPathsData: Data = .init()
     @AppStorage("showFullPathInRecents") private var showFullPathInRecents = false
     @State private var showBranchSelector = false
     @State private var selectedPushBranch: String = ""
@@ -40,39 +40,34 @@ struct MainMenuView: View {
     @State private var showPullToNewBranch = false
     @State private var pullToNewBranchName = ""
     @State private var useRebase = false
-    @State private var syncError: String? = nil
-    @State private var branchSwitchError: String? = nil
+    @State private var syncError: String?
+    @State private var branchSwitchError: String?
     @State private var showCreateBranch = false
     @State private var newBranchName: String = ""
-    @State private var createBranchError: String? = nil
-    @State private var mergeError: String? = nil
-    @State private var deleteBranchError: String? = nil
-    @State private var pushError: String? = nil
-    
+    @State private var createBranchError: String?
+    @State private var mergeError: String?
+    @State private var deleteBranchError: String?
+    @State private var pushError: String?
+
     // Rename branch states
     @State private var showRenameBranch = false
     @State private var oldBranchName = ""
     @State private var renameBranchNewName = ""
-    @State private var renameBranchError: String? = nil
-    
+    @State private var renameBranchError: String?
+
     // Merge confirmation states
     @State private var showMergeConfirmation = false
     @State private var mergeBranchName = ""
     @State private var mergeTargetBranch = ""
-    
+
     // Switch confirmation states
     @State private var showDirtySwitchConfirmation = false
     @State private var pendingSwitchBranch = ""
-    
+
     // Delete confirmation states
     @State private var showBranchDeleteConfirmation = false
     @State private var branchNameToDelete = ""
-    
 
-    
-
-
-    
     private var recentPaths: [String] {
         guard let decoded = try? JSONDecoder().decode([String].self, from: recentRepoPathsData) else {
             return []
@@ -106,7 +101,7 @@ struct MainMenuView: View {
             }
         }
         .alert("Delete Repository?", isPresented: $showDeleteConfirmation) {
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
                 deleteRepository()
             }
@@ -118,12 +113,12 @@ struct MainMenuView: View {
             get: { deleteError != nil },
             set: { if !$0 { deleteError = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(deleteError ?? "An unknown error occurred.")
         }
         .alert(gitManager.isPrivate ? "Make Repository Public?" : "Make Repository Private?", isPresented: $showVisibilityConfirmation) {
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
             Button(gitManager.isPrivate ? "Make Public" : "Make Private") {
                 toggleRepoVisibility()
             }
@@ -131,7 +126,7 @@ struct MainMenuView: View {
             Text(gitManager.isPrivate ? "Anyone on the internet will be able to see this repository." : "You will choose who can see and commit to this repository.")
         }
         .alert("Wipe Repository History?", isPresented: $showWipeConfirmation) {
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
             Button("Wipe", role: .destructive) {
                 wipeRepository()
             }
@@ -143,7 +138,7 @@ struct MainMenuView: View {
             get: { wipeError != nil },
             set: { if !$0 { wipeError = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(wipeError ?? "An unknown error occurred.")
         }
@@ -160,7 +155,7 @@ struct MainMenuView: View {
                     showDeleteConfirmation = true
                 }
             }
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text(gitManager.isPrivate ? "This repository is currently private." : "This repository is currently public.")
         }
@@ -168,14 +163,13 @@ struct MainMenuView: View {
             get: { toggleVisibilityError != nil },
             set: { if !$0 { toggleVisibilityError = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(toggleVisibilityError ?? "An unknown error occurred.")
         }
         .padding(10)
         .frame(width: 400)
     }
-
 
     var mainView: some View {
         VStack(spacing: 8) {
@@ -184,10 +178,9 @@ struct MainMenuView: View {
                 HStack(spacing: 4) {
                     Text("GitMenuBar")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    if let repoPath = UserDefaults.standard.string(forKey: "gitRepoPath"),
-                       !repoPath.isEmpty {
+                    if let repoPath = UserDefaults.standard.string(forKey: "gitRepoPath"), !repoPath.isEmpty {
                         let projectName = URL(fileURLWithPath: repoPath).lastPathComponent
-                        
+
                         if !gitManager.remoteUrl.isEmpty, let url = URL(string: gitManager.remoteUrl) {
                             Text("- \(projectName)")
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
@@ -267,7 +260,7 @@ struct MainMenuView: View {
                     HStack(spacing: 0) {
                         Text("\(gitManager.currentBranch)")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
-                        
+
                         // Ahead indicator
                         Text(" ▲")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -275,7 +268,7 @@ struct MainMenuView: View {
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .monospacedDigit()
                             .frame(minWidth: 12, alignment: .leading)
-                        
+
                         // Behind indicator
                         if gitManager.isRemoteAhead {
                             Text(" ▼")
@@ -291,10 +284,12 @@ struct MainMenuView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(gitManager.isDetachedHead ? Color.red.opacity(0.3) :
-                                gitManager.isRemoteAhead ? Color.orange.opacity(0.2) : 
-                                gitManager.commitCount > 0 ? Color.orange.opacity(0.2) : 
-                                Color.green.opacity(0.2))
+                    .background(
+                        gitManager.isDetachedHead ? Color.red.opacity(0.3) :
+                            gitManager.isRemoteAhead ? Color.orange.opacity(0.2) :
+                            gitManager.commitCount > 0 ? Color.orange.opacity(0.2) :
+                            Color.green.opacity(0.2)
+                    )
                     .clipShape(Capsule())
                     .animation(nil, value: gitManager.currentBranch)
                     .animation(nil, value: gitManager.commitCount)
@@ -318,12 +313,12 @@ struct MainMenuView: View {
                                     Text("Detached HEAD State")
                                         .font(.system(size: 11, weight: .bold))
                                 }
-                                
+
                                 Text("You aren't on a branch. Edits made here might be hard to find later.")
                                     .font(.system(size: 10))
                                     .foregroundColor(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
-                                
+
                                 Button(action: {
                                     showBranchSelector = false
                                     showCreateBranch = true
@@ -336,20 +331,20 @@ struct MainMenuView: View {
                             }
                             .padding(12)
                             .background(Color.red.opacity(0.05))
-                            
+
                             Divider()
                         }
-                        
+
                         Text("Branches")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.secondary)
                             .padding(.horizontal, 12)
                             .padding(.top, 10)
                             .padding(.bottom, 6)
-                        
+
                         Divider()
                             .padding(.horizontal, 10)
-                        
+
                         // Quick Pull option when remote is ahead
                         if gitManager.isRemoteAhead {
                             Button(action: {
@@ -378,11 +373,11 @@ struct MainMenuView: View {
                             .onHover { inside in
                                 if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
                             }
-                            
+
                             Divider()
                                 .padding(.horizontal, 10)
                         }
-                        
+
                         ScrollView {
                             VStack(spacing: 0) {
                                 ForEach(gitManager.availableBranches, id: \.self) { branch in
@@ -398,7 +393,7 @@ struct MainMenuView: View {
                                                     showDirtySwitchConfirmation = true
                                                 } else {
                                                     gitManager.switchBranch(branchName: branch) { result in
-                                                        if case .failure(let error) = result {
+                                                        if case let .failure(error) = result {
                                                             branchSwitchError = error.localizedDescription
                                                         }
                                                     }
@@ -413,7 +408,7 @@ struct MainMenuView: View {
                                                 showMergeConfirmation = true
                                             } else {
                                                 gitManager.mergeBranch(fromBranch: branch) { result in
-                                                    if case .failure(let error) = result {
+                                                    if case let .failure(error) = result {
                                                         mergeError = error.localizedDescription
                                                     }
                                                 }
@@ -436,10 +431,10 @@ struct MainMenuView: View {
                             .padding(.vertical, 4)
                         }
                         .frame(maxHeight: 200)
-                        
+
                         Divider()
                             .padding(.horizontal, 10)
-                        
+
                         NewBranchButton(onTap: {
                             showBranchSelector = false
                             showCreateBranch = true
@@ -448,8 +443,7 @@ struct MainMenuView: View {
                     .frame(width: 200)
                     .padding(.bottom, 4)
                 }
-                
-                
+
                 Spacer()
             }
 
@@ -464,13 +458,11 @@ struct MainMenuView: View {
                     }
                 }
 
-
-
             // Modified files list - Always render container for reactive updates
             VStack(alignment: .leading, spacing: 6) {
                 Text("Modified Files (\(gitManager.uncommittedFiles.count))")
                     .font(.system(size: 11, weight: .medium))
-                
+
                 if !gitManager.uncommittedFiles.isEmpty {
                     ScrollView {
                         VStack(spacing: 4) {
@@ -498,8 +490,6 @@ struct MainMenuView: View {
             .frame(maxWidth: .infinity, alignment: .leading) // Ensure left alignment even when empty
             .id(gitManager.uncommittedFiles.count) // Force redraw when count changes
 
-
-
             Spacer()
                 .frame(height: 3)
 
@@ -512,7 +502,7 @@ struct MainMenuView: View {
                     .buttonStyle(.borderless)
                     .focusable(false)
                 }
-                
+
                 if gitManager.commitCount > 0 || !gitManager.uncommittedFiles.isEmpty {
                     Button("Reset") {
                         resetToLastCommit()
@@ -549,7 +539,7 @@ struct MainMenuView: View {
             get: { pushError != nil },
             set: { if !$0 { pushError = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(pushError ?? "An unknown error occurred.")
         }
@@ -557,7 +547,7 @@ struct MainMenuView: View {
             get: { syncError != nil },
             set: { if !$0 { syncError = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(syncError ?? "An unknown error occurred.")
         }
@@ -565,7 +555,7 @@ struct MainMenuView: View {
             get: { branchSwitchError != nil },
             set: { if !$0 { branchSwitchError = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(branchSwitchError ?? "An unknown error occurred.")
         }
@@ -573,7 +563,7 @@ struct MainMenuView: View {
             get: { mergeError != nil },
             set: { if !$0 { mergeError = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(mergeError ?? "An unknown error occurred.")
         }
@@ -581,7 +571,7 @@ struct MainMenuView: View {
             get: { deleteBranchError != nil },
             set: { if !$0 { deleteBranchError = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(deleteBranchError ?? "An unknown error occurred.")
         }
@@ -589,14 +579,14 @@ struct MainMenuView: View {
             get: { renameBranchError != nil },
             set: { if !$0 { renameBranchError = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(renameBranchError ?? "An unknown error occurred.")
         }
         .alert("Merge into \(mergeTargetBranch)?", isPresented: $showMergeConfirmation) {
             Button("Merge") {
                 gitManager.mergeBranch(fromBranch: mergeBranchName) { result in
-                    if case .failure(let error) = result {
+                    if case let .failure(error) = result {
                         mergeError = error.localizedDescription
                     }
                 }
@@ -611,7 +601,7 @@ struct MainMenuView: View {
         .alert("Uncommitted Changes", isPresented: $showDirtySwitchConfirmation) {
             Button("Switch & Carry Over") {
                 gitManager.switchBranch(branchName: pendingSwitchBranch) { result in
-                    if case .failure(let error) = result {
+                    if case let .failure(error) = result {
                         branchSwitchError = error.localizedDescription
                     }
                 }
@@ -626,7 +616,7 @@ struct MainMenuView: View {
         .alert("Delete '\(branchNameToDelete)'?", isPresented: $showBranchDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 gitManager.deleteBranch(branchName: branchNameToDelete) { result in
-                    if case .failure(let error) = result {
+                    if case let .failure(error) = result {
                         deleteBranchError = error.localizedDescription
                     }
                 }
@@ -636,21 +626,23 @@ struct MainMenuView: View {
                 branchNameToDelete = ""
             }
         } message: {
-            Text((branchNameToDelete == "main" || branchNameToDelete == "master" || branchNameToDelete == "develop") ?
-                 "WARNING: '\(branchNameToDelete)' is a primary branch. Deleting it may cause serious issues." :
-                 "Are you sure you want to delete this branch? This action cannot be undone.")
+            Text(
+                (branchNameToDelete == "main" || branchNameToDelete == "master" || branchNameToDelete == "develop") ?
+                    "WARNING: '\(branchNameToDelete)' is a primary branch. Deleting it may cause serious issues." :
+                    "Are you sure you want to delete this branch? This action cannot be undone."
+            )
         }
-    
+
         .sheet(isPresented: $showRenameBranch) {
             VStack(spacing: 16) {
                 Text("Rename Branch")
                     .font(.system(size: 14, weight: .semibold))
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("New name for '\(oldBranchName)':")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
-                    
+
                     TextField("new-branch-name", text: $renameBranchNewName)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 12, design: .monospaced))
@@ -658,16 +650,16 @@ struct MainMenuView: View {
                             renameBranch()
                         }
                 }
-                
+
                 HStack(spacing: 12) {
                     Button("Cancel") {
                         showRenameBranch = false
                         renameBranchNewName = ""
                     }
                     .keyboardShortcut(.escape, modifiers: [])
-                    
+
                     Spacer()
-                    
+
                     Button("Rename") {
                         renameBranch()
                     }
@@ -682,11 +674,11 @@ struct MainMenuView: View {
             VStack(spacing: 16) {
                 Text("Sync with Remote")
                     .font(.system(size: 14, weight: .semibold))
-                
+
                 Text("Remote has \(gitManager.behindCount) new commit\(gitManager.behindCount == 1 ? "" : "s")")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
-                
+
                 VStack(alignment: .leading, spacing: 12) {
                     Button(action: {
                         useRebase = false
@@ -707,9 +699,8 @@ struct MainMenuView: View {
                         .cornerRadius(6)
                     }
                     .buttonStyle(.borderless)
-                    
                     .buttonStyle(.borderless)
-                    
+
                     Button(action: {
                         useRebase = true
                         syncWithRemote()
@@ -729,7 +720,7 @@ struct MainMenuView: View {
                         .cornerRadius(6)
                     }
                     .buttonStyle(.borderless)
-                    
+
                     Button(action: {
                         showSyncOptions = false
                         pullToNewBranchName = "\(gitManager.currentBranch)-remote"
@@ -751,7 +742,7 @@ struct MainMenuView: View {
                     }
                     .buttonStyle(.borderless)
                 }
-                
+
                 Button("Cancel") {
                     showSyncOptions = false
                 }
@@ -766,12 +757,12 @@ struct MainMenuView: View {
             VStack(spacing: 16) {
                 Text("Create New Branch")
                     .font(.system(size: 14, weight: .semibold))
-                
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Branch Name")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
-                    
+
                     TextField("feature/new-feature", text: $newBranchName)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 12, design: .monospaced))
@@ -780,18 +771,18 @@ struct MainMenuView: View {
                                 createNewBranch()
                             }
                         }
-                    
+
                     if let error = createBranchError {
                         Text(error)
                             .font(.system(size: 10))
                             .foregroundColor(.red)
                     }
-                    
+
                     Text("Will branch from: \(gitManager.currentBranch)")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }
-                
+
                 HStack {
                     Button("Cancel") {
                         showCreateBranch = false
@@ -800,9 +791,9 @@ struct MainMenuView: View {
                     }
                     .buttonStyle(.borderless)
                     .foregroundColor(.secondary)
-                    
+
                     Spacer()
-                    
+
                     Button("Create") {
                         createNewBranch()
                     }
@@ -817,12 +808,12 @@ struct MainMenuView: View {
             VStack(spacing: 16) {
                 Text("Pull to New Branch")
                     .font(.system(size: 14, weight: .semibold))
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Branch name:")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
-                    
+
                     TextField("branch-name", text: $pullToNewBranchName)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 12, design: .monospaced))
@@ -830,16 +821,16 @@ struct MainMenuView: View {
                             pullToNewBranch()
                         }
                 }
-                
+
                 HStack(spacing: 12) {
                     Button("Cancel") {
                         showPullToNewBranch = false
                         pullToNewBranchName = ""
                     }
                     .keyboardShortcut(.escape, modifiers: [])
-                    
+
                     Spacer()
-                    
+
                     Button("Pull") {
                         pullToNewBranch()
                     }
@@ -861,7 +852,7 @@ struct MainMenuView: View {
         let capitalizedText = trimmedText.prefix(1).uppercased() + trimmedText.dropFirst()
 
         commentText = ""
-        
+
         // Wait for commit to complete, then close popover
         gitManager.commitLocally(capitalizedText) {
             self.closePopover()
@@ -872,7 +863,7 @@ struct MainMenuView: View {
         let message = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         // If there's a commit message, commit first then push
-        if !message.isEmpty && !gitManager.isCommitting {
+        if !message.isEmpty, !gitManager.isCommitting {
             let capitalizedText = message.prefix(1).uppercased() + message.dropFirst()
 
             // Commit the changes AND THEN push (skip UI updates since we're closing on success)
@@ -882,7 +873,7 @@ struct MainMenuView: View {
                     switch result {
                     case .success:
                         self.closePopover()
-                    case .failure(let error):
+                    case let .failure(error):
                         self.pushError = error.localizedDescription
                     }
                 }
@@ -894,13 +885,13 @@ struct MainMenuView: View {
                 switch result {
                 case .success:
                     self.closePopover()
-                case .failure(let error):
+                case let .failure(error):
                     self.pushError = error.localizedDescription
                 }
             }
         }
     }
-    
+
     private func syncWithRemote() {
         showSyncOptions = false
         gitManager.pullFromRemote(rebase: useRebase) { result in
@@ -910,12 +901,12 @@ struct MainMenuView: View {
                 self.gitManager.refresh {
                     self.closePopover()
                 }
-            case .failure(let error):
+            case let .failure(error):
                 self.syncError = error.localizedDescription
             }
         }
     }
-    
+
     private func createNewBranch() {
         createBranchError = nil
         gitManager.createBranch(branchName: newBranchName) { result in
@@ -923,7 +914,7 @@ struct MainMenuView: View {
             case .success:
                 showCreateBranch = false
                 newBranchName = ""
-            case .failure(let error):
+            case let .failure(error):
                 createBranchError = error.localizedDescription
             }
         }
@@ -937,7 +928,7 @@ struct MainMenuView: View {
                 showRenameBranch = false
                 renameBranchNewName = ""
                 oldBranchName = ""
-            case .failure(let error):
+            case let .failure(error):
                 renameBranchError = error.localizedDescription
             }
         }
@@ -946,22 +937,20 @@ struct MainMenuView: View {
     private func pullToNewBranch() {
         let name = pullToNewBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
-        
+
         gitManager.pullToNewBranch(newBranchName: name) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success:
                     showPullToNewBranch = false
                     pullToNewBranchName = ""
-                case .failure(let error):
+                case let .failure(error):
                     syncError = error.localizedDescription
                 }
             }
         }
     }
 
-    
-    
     private func resetToLastCommit() {
         gitManager.resetToLastCommit()
         commentText = ""
@@ -971,18 +960,18 @@ struct MainMenuView: View {
             closePopover()
         }
     }
-    
+
     private func deleteRepository() {
         // Parse owner and repo name from remote URL
         // Supports formats like:
         // https://github.com/owner/repo.git
         // https://github.com/owner/repo
         // git@github.com:owner/repo.git
-        
+
         let remoteUrl = gitManager.remoteUrl
         var owner: String?
         var repoName: String?
-        
+
         if remoteUrl.contains("github.com") {
             // HTTPS format: https://github.com/owner/repo.git
             if let url = URL(string: remoteUrl) {
@@ -1002,19 +991,19 @@ struct MainMenuView: View {
                 }
             }
         }
-        
+
         guard let owner = owner, let repoName = repoName else {
             deleteError = "Could not parse repository owner and name from remote URL"
             return
         }
-        
+
         isDeleting = true
-        
+
         Task {
             do {
                 let apiClient = GitHubAPIClient(authManager: githubAuthManager)
                 try await apiClient.deleteRepository(owner: owner, name: repoName)
-                
+
                 await MainActor.run {
                     isDeleting = false
                     // Clear the remote URL since repo is deleted
@@ -1029,12 +1018,12 @@ struct MainMenuView: View {
             }
         }
     }
-    
+
     private func toggleRepoVisibility() {
         let remoteUrl = gitManager.remoteUrl
         var owner: String?
         var repoName: String?
-        
+
         if remoteUrl.contains("github.com") {
             // HTTPS format: https://github.com/owner/repo.git
             if let url = URL(string: remoteUrl) {
@@ -1054,20 +1043,20 @@ struct MainMenuView: View {
                 }
             }
         }
-        
+
         guard let owner = owner, let repoName = repoName else {
             toggleVisibilityError = "Could not parse repository owner and name from remote URL"
             return
         }
-        
+
         isTogglingVisibility = true
         let newStatus = !gitManager.isPrivate
-        
+
         Task {
             do {
                 let apiClient = GitHubAPIClient(authManager: githubAuthManager)
                 _ = try await apiClient.updateRepositoryVisibility(owner: owner, name: repoName, isPrivate: newStatus)
-                
+
                 await MainActor.run {
                     isTogglingVisibility = false
                     gitManager.checkRepoVisibility()
@@ -1080,10 +1069,10 @@ struct MainMenuView: View {
             }
         }
     }
-    
+
     private func wipeRepository() {
         isWiping = true
-        
+
         gitManager.wipeRepository { result in
             DispatchQueue.main.async {
                 isWiping = false
@@ -1091,7 +1080,7 @@ struct MainMenuView: View {
                 case .success:
                     showingSettings = false
                     UserDefaults.standard.set(false, forKey: "showSettings")
-                case .failure(let error):
+                case let .failure(error):
                     wipeError = error.localizedDescription
                 }
             }
@@ -1173,7 +1162,7 @@ struct MainMenuView: View {
                     Spacer()
                 }
                 .padding(.top, 4)
-                
+
                 // GitHub Connection section
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
@@ -1184,7 +1173,7 @@ struct MainMenuView: View {
                             .font(.system(size: 12, weight: .medium, design: .rounded))
                     }
                     .padding(.top, 4)
-                    
+
                     if githubAuthManager.isAuthenticated {
                         HStack {
                             Text("Connected as @\(githubAuthManager.username)")
@@ -1213,7 +1202,7 @@ struct MainMenuView: View {
                                             .font(.system(size: 20, weight: .semibold, design: .monospaced))
                                             .foregroundColor(.primary)
                                             .kerning(2)
-                                        
+
                                         HStack(spacing: 4) {
                                             Image(systemName: "checkmark.circle.fill")
                                                 .font(.system(size: 10))
@@ -1223,12 +1212,12 @@ struct MainMenuView: View {
                                                 .foregroundColor(.secondary)
                                         }
                                     }
-                                    
+
                                     // Status
                                     Text("Enter this code on GitHub")
                                         .font(.system(size: 11))
                                         .foregroundColor(.secondary)
-                                    
+
                                     // Cancel button
                                     Button("Cancel") {
                                         githubAuthManager.cancelAuthentication()
@@ -1289,7 +1278,6 @@ struct MainMenuView: View {
                     }
                 }
 
-
                 if !recentPaths.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 6) {
@@ -1311,7 +1299,7 @@ struct MainMenuView: View {
                             }
                         }
                         .help("Click to toggle between full path and project name")
-                        
+
                         ForEach(recentPaths.filter { $0 != UserDefaults.standard.string(forKey: "gitRepoPath") }.prefix(5), id: \.self) { path in
                             let abbreviatedPath = (path as NSString).abbreviatingWithTildeInPath
                             let displayName = showFullPathInRecents ? abbreviatedPath : URL(fileURLWithPath: path).lastPathComponent
@@ -1357,9 +1345,9 @@ struct MainMenuView: View {
                 .foregroundColor(.secondary)
                 .disabled(!githubAuthManager.isAuthenticated || gitManager.remoteUrl.isEmpty)
                 .help("Reset repository to a single commit, erasing all history")
-                
+
                 Spacer()
-                
+
                 Button("Quit") {
                     NSApplication.shared.terminate(nil)
                 }
@@ -1371,7 +1359,7 @@ struct MainMenuView: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 6)
     }
-    
+
     func createRepoView(folderPath: String) -> some View {
         VStack(spacing: 12) {
             // Header - matching settings/history style
@@ -1391,10 +1379,10 @@ struct MainMenuView: View {
                 .focusable(false)
             }
             .padding(.top, 4)
-            
+
             Divider()
                 .padding(.top, 4)
-            
+
             // Content
             CreateRepoContentView(
                 folderPath: folderPath,
@@ -1417,7 +1405,7 @@ struct MainMenuView: View {
 
     private func selectDirectory() {
         NSApp.activate(ignoringOtherApps: true)
-        
+
         // Keep popover open while file dialog is shown
         togglePopoverBehavior()
 
@@ -1429,7 +1417,7 @@ struct MainMenuView: View {
         panel.title = "Select Git Repository"
         panel.prompt = "Choose"
         panel.worksWhenModal = false
-        
+
         // Make panel appear on top
         DispatchQueue.main.async {
             panel.makeKeyAndOrderFront(nil)
@@ -1439,10 +1427,10 @@ struct MainMenuView: View {
         panel.begin { result in
             // Restore popover behavior
             self.togglePopoverBehavior()
-            
+
             if result == .OK, let url = panel.url {
                 let path = url.path
-                
+
                 // Check if this is a git repository
                 if !gitManager.isGitRepository(at: path) {
                     // Not a git repo - offer to create one if GitHub is connected
@@ -1466,7 +1454,7 @@ struct MainMenuView: View {
             }
         }
     }
-    
+
     private func addToRecents(_ path: String) {
         var current = recentPaths
         // Remove if exists to move to top
@@ -1477,17 +1465,18 @@ struct MainMenuView: View {
         if current.count > 5 {
             current = Array(current.prefix(5))
         }
-        
+
         if let encoded = try? JSONEncoder().encode(current) {
             recentRepoPathsData = encoded
         }
     }
-    
+
     private func isCommitInFuture(_ commit: Commit) -> Bool {
         // A commit is "future" if it appears before current HEAD in the history list
         // This happens when we've reset backwards
         guard let currentIndex = gitManager.commitHistory.firstIndex(where: { $0.id == gitManager.currentHash }),
-              let commitIndex = gitManager.commitHistory.firstIndex(where: { $0.id == commit.id }) else {
+              let commitIndex = gitManager.commitHistory.firstIndex(where: { $0.id == commit.id })
+        else {
             return false
         }
         return commitIndex < currentIndex
@@ -1529,7 +1518,7 @@ struct MainMenuView: View {
                                 }
                             }
                         )
-                        
+
                         Divider()
                     }
                 }
@@ -1541,15 +1530,15 @@ struct MainMenuView: View {
     }
 }
 
-// Separate view for commit row to handle hover state
+/// Separate view for commit row to handle hover state
 struct CommitRowView: View {
     let commit: Commit
     let isCurrentCommit: Bool
     let isFutureCommit: Bool
     let onTap: () -> Void
-    
+
     @State private var isHovered = false
-    
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 0) {
@@ -1558,9 +1547,9 @@ struct CommitRowView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .foregroundColor(isFutureCommit ? .blue : .primary)
-                
+
                 Spacer(minLength: 0)
-                
+
                 if isFutureCommit {
                     Text("Future")
                         .font(.system(size: 9, weight: .medium))
@@ -1571,7 +1560,7 @@ struct CommitRowView: View {
                         .cornerRadius(4)
                         .fixedSize()
                 }
-                
+
                 Text(commit.date)
                     .font(.system(size: 10))
                     .foregroundColor(isFutureCommit ? .blue.opacity(0.7) : .secondary)
@@ -1585,7 +1574,7 @@ struct CommitRowView: View {
         .focusable(false)
         .background(
             isCurrentCommit ? Color.primary.opacity(0.05) :
-            isHovered ? Color.primary.opacity(0.03) : Color.clear
+                isHovered ? Color.primary.opacity(0.03) : Color.clear
         )
         .cornerRadius(4)
         .onHover { inside in
@@ -1599,7 +1588,7 @@ struct CommitRowView: View {
     }
 }
 
-// Separate view for branch row with custom hover state and context menu
+/// Separate view for branch row with custom hover state and context menu
 struct BranchRowView: View {
     let branchName: String
     let isCurrentBranch: Bool
@@ -1608,9 +1597,9 @@ struct BranchRowView: View {
     let onDelete: (() -> Void)?
     let onRename: (() -> Void)?
     let currentBranchName: String
-    
+
     @State private var isHovered = false
-    
+
     init(branchName: String, isCurrentBranch: Bool, currentBranchName: String = "", onTap: @escaping () -> Void, onMerge: (() -> Void)? = nil, onDelete: (() -> Void)? = nil, onRename: (() -> Void)? = nil) {
         self.branchName = branchName
         self.isCurrentBranch = isCurrentBranch
@@ -1620,7 +1609,7 @@ struct BranchRowView: View {
         self.onDelete = onDelete
         self.onRename = onRename
     }
-    
+
     var body: some View {
         HStack {
             Text(branchName)
@@ -1643,7 +1632,7 @@ struct BranchRowView: View {
             Button("Rename") {
                 onRename?()
             }
-            
+
             if !isCurrentBranch {
                 if let onMerge = onMerge {
                     Button {
@@ -1653,9 +1642,9 @@ struct BranchRowView: View {
                     }
                     .help("Take changes from \(branchName) and bring them into \(currentBranchName)")
                 }
-                
+
                 Divider()
-                
+
                 if let onDelete = onDelete {
                     Button(role: .destructive) {
                         onDelete()
@@ -1680,7 +1669,7 @@ struct BranchRowView: View {
 struct NewBranchButton: View {
     let onTap: () -> Void
     @State private var isHovered = false
-    
+
     var body: some View {
         HStack {
             Image(systemName: "plus.circle.fill")
@@ -1708,14 +1697,14 @@ struct NewBranchButton: View {
     }
 }
 
-// Separate view for recent path row to handle hover state
+/// Separate view for recent path row to handle hover state
 struct RecentPathRowView: View {
     let displayText: String
     let fullPath: String
     let onTap: () -> Void
-    
+
     @State private var isHovered = false
-    
+
     var body: some View {
         Button(action: onTap) {
             HStack {
@@ -1750,7 +1739,7 @@ struct VisualEffectView: NSViewRepresentable {
     let material: NSVisualEffectView.Material
     let blendingMode: NSVisualEffectView.BlendingMode
 
-    func makeNSView(context: Context) -> NSVisualEffectView {
+    func makeNSView(context _: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.material = material
         view.blendingMode = blendingMode
@@ -1758,7 +1747,7 @@ struct VisualEffectView: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+    func updateNSView(_ nsView: NSVisualEffectView, context _: Context) {
         nsView.material = material
         nsView.blendingMode = blendingMode
     }

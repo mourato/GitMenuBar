@@ -5,21 +5,21 @@
 
 import SwiftUI
 
-// Content view for creating a repository - designed to be embedded inline
+/// Content view for creating a repository - designed to be embedded inline
 struct CreateRepoContentView: View {
     @EnvironmentObject var gitManager: GitManager
     @EnvironmentObject var githubAuthManager: GitHubAuthManager
-    
+
     let folderPath: String
     let onDismiss: () -> Void
     let onSuccess: (String) -> Void
-    
+
     @State private var repoName: String
     @State private var isPrivate: Bool = true
     @State private var isCreating: Bool = false
     @State private var errorMessage: String = ""
     @State private var showError: Bool = false
-    
+
     init(folderPath: String, onDismiss: @escaping () -> Void, onSuccess: @escaping (String) -> Void) {
         self.folderPath = folderPath
         self.onDismiss = onDismiss
@@ -28,7 +28,7 @@ struct CreateRepoContentView: View {
         let folderName = URL(fileURLWithPath: folderPath).lastPathComponent
         _repoName = State(initialValue: folderName)
     }
-    
+
     var body: some View {
         VStack(spacing: 12) {
             // Folder info section
@@ -40,7 +40,7 @@ struct CreateRepoContentView: View {
                     Text("Folder")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                 }
-                
+
                 HStack {
                     Image(systemName: "folder.fill")
                         .font(.system(size: 10))
@@ -55,7 +55,7 @@ struct CreateRepoContentView: View {
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(4)
             }
-            
+
             // Repository name section
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
@@ -65,12 +65,12 @@ struct CreateRepoContentView: View {
                     Text("Repository Name")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                 }
-                
+
                 TextField("my-awesome-project", text: $repoName)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 12))
             }
-            
+
             // Visibility section
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
@@ -80,7 +80,7 @@ struct CreateRepoContentView: View {
                     Text("Visibility")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                 }
-                
+
                 HStack(spacing: 0) {
                     Button(action: { isPrivate = false }) {
                         HStack(spacing: 4) {
@@ -96,7 +96,7 @@ struct CreateRepoContentView: View {
                         .foregroundColor(!isPrivate ? .blue : .secondary)
                     }
                     .buttonStyle(.plain)
-                    
+
                     Button(action: { isPrivate = true }) {
                         HStack(spacing: 4) {
                             Image(systemName: "lock")
@@ -118,7 +118,7 @@ struct CreateRepoContentView: View {
                         .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                 )
             }
-            
+
             // Error message
             if showError {
                 HStack {
@@ -135,10 +135,10 @@ struct CreateRepoContentView: View {
                 .background(Color.red.opacity(0.1))
                 .cornerRadius(4)
             }
-            
+
             Spacer()
                 .frame(height: 4)
-            
+
             // Create button - full width, prominent
             Button(action: createRepository) {
                 HStack {
@@ -163,19 +163,19 @@ struct CreateRepoContentView: View {
             .disabled(repoName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCreating)
         }
     }
-    
+
     private func createRepository() {
         let trimmedName = repoName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return }
-        
+
         isCreating = true
         showError = false
-        
+
         Task {
             do {
                 // Create GitHub API client
                 let apiClient = GitHubAPIClient(authManager: githubAuthManager)
-                
+
                 // Step 1: Try to create repository on GitHub, or fetch existing one
                 var repo: GitHubRepository
                 do {
@@ -188,7 +188,7 @@ struct CreateRepoContentView: View {
                     // Repository already exists - fetch it instead
                     repo = try await apiClient.getRepository(name: trimmedName)
                 }
-                
+
                 // Step 2: Initialize local git repository (only if not already initialized)
                 let isGitRepo = gitManager.isGitRepository(at: folderPath)
                 if !isGitRepo {
@@ -196,7 +196,7 @@ struct CreateRepoContentView: View {
                         showErrorMessage("Failed to initialize local git repository")
                         return
                     }
-                    
+
                     // Step 3: Create initial commit (only for newly initialized repos)
                     guard gitManager.createInitialCommit(at: folderPath, message: "Initial commit") else {
                         showErrorMessage("Failed to create initial commit")
@@ -214,7 +214,7 @@ struct CreateRepoContentView: View {
                     }
                     // If no uncommitted changes, we can proceed (there must be at least one commit already)
                 }
-                
+
                 // Step 4: Add or update GitHub remote
                 let hasRemote = gitManager.hasRemoteConfigured(at: folderPath)
                 if hasRemote {
@@ -230,26 +230,26 @@ struct CreateRepoContentView: View {
                         return
                     }
                 }
-                
+
                 // Step 5: Push to GitHub
                 guard gitManager.pushToNewRemote(at: folderPath) else {
                     showErrorMessage("Failed to push to GitHub")
                     return
                 }
-                
+
                 // Success! Refresh git manager to update UI with new remote URL
                 await MainActor.run {
                     gitManager.refresh()
                     onSuccess(folderPath)
                 }
-                
+
             } catch let error as GitHubAPIError {
                 switch error {
                 case .unauthorized:
                     showErrorMessage("GitHub authentication failed. Please reconnect.")
                 case .rateLimitExceeded:
                     showErrorMessage("GitHub rate limit exceeded. Please try again later.")
-                case .networkError(let err):
+                case let .networkError(err):
                     showErrorMessage("Network error: \(err.localizedDescription)")
                 default:
                     showErrorMessage("Failed to create repository: \(error)")
@@ -259,7 +259,7 @@ struct CreateRepoContentView: View {
             }
         }
     }
-    
+
     @MainActor
     private func showErrorMessage(_ message: String) {
         errorMessage = message

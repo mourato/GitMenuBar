@@ -3,14 +3,13 @@
 //  GitMenuBar
 //
 
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct SettingsView: View {
     @State private var repoPath = ""
     @State private var showingFilePicker = false
     @AppStorage("gitRepoPath") private var storedRepoPath = ""
-
 
     var body: some View {
         VStack(spacing: 20) {
@@ -71,10 +70,8 @@ struct SettingsView: View {
             }
         }
     }
-
 }
 
 #Preview {
     SettingsView()
 }
-
