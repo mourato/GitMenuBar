@@ -24,6 +24,7 @@ struct MainMenuView: View {
     @State private var showWipeConfirmation = false
     @State private var isWiping = false
     @State private var wipeError: String?
+    @State private var showProjectSelector = false
     @State private var showRepoOptions = false
     @State private var showVisibilityConfirmation = false
     @State private var isTogglingVisibility = false
@@ -75,6 +76,30 @@ struct MainMenuView: View {
             return []
         }
         return decoded
+    }
+
+    private var currentRepoPath: String {
+        UserDefaults.standard.string(forKey: "gitRepoPath") ?? ""
+    }
+
+    private var currentProjectName: String {
+        guard !currentRepoPath.isEmpty else { return "Select Project" }
+        return URL(fileURLWithPath: currentRepoPath).lastPathComponent
+    }
+
+    private var hasWorkingTreeChanges: Bool {
+        !gitManager.stagedFiles.isEmpty || !gitManager.changedFiles.isEmpty
+    }
+
+    private var canCommit: Bool {
+        !gitManager.stagedFiles.isEmpty &&
+            !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            !gitManager.isCommitting &&
+            !aiCommitCoordinator.isGenerating
+    }
+
+    private var primaryButtonTitle: String {
+        hasWorkingTreeChanges ? "Commit" : "Sync"
     }
 
     let closePopover: () -> Void
@@ -175,61 +200,36 @@ struct MainMenuView: View {
 
     var mainView: some View {
         VStack(spacing: 8) {
-            // Compact header
+            // Header
             HStack {
-                HStack(spacing: 4) {
-                    Text("GitMenuBar")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    if let repoPath = UserDefaults.standard.string(forKey: "gitRepoPath"), !repoPath.isEmpty {
-                        let projectName = URL(fileURLWithPath: repoPath).lastPathComponent
-
-                        if !gitManager.remoteUrl.isEmpty, let url = URL(string: gitManager.remoteUrl) {
-                            Text("- \(projectName)")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                                .onTapGesture {
-                                    if NSEvent.modifierFlags.contains(.command) {
-                                        // Cmd+click: Open folder in Finder
-                                        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repoPath)
-                                    } else {
-                                        // Regular click: Open GitHub URL (branch or commit specific)
-                                        var finalURL = url
-                                        if gitManager.isDetachedHead {
-                                            // Open specific commit if in detached HEAD
-                                            if let commitURL = URL(string: gitManager.remoteUrl + "/commit/" + gitManager.currentHash) {
-                                                finalURL = commitURL
-                                            }
-                                        } else {
-                                            // Open current branch
-                                            if let branchURL = URL(string: gitManager.remoteUrl + "/tree/" + gitManager.currentBranch) {
-                                                finalURL = branchURL
-                                            }
-                                        }
-                                        NSWorkspace.shared.open(finalURL)
-                                    }
-                                }
-                                .onLongPressGesture(minimumDuration: 2.0) {
-                                    showRepoOptions = true
-                                }
-                                .onHover { inside in
-                                    if inside {
-                                        NSCursor.pointingHand.push()
-                                    } else {
-                                        NSCursor.pop()
-                                    }
-                                }
-
-                        } else {
-                            Text("- \(projectName)")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                        }
+                Button(action: { showProjectSelector.toggle() }) {
+                    HStack(spacing: 4) {
+                        Text(currentProjectName)
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .foregroundColor(.primary)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.secondary)
                     }
                 }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .onLongPressGesture(minimumDuration: 2.0) {
+                    showRepoOptions = true
+                }
+                .onHover { inside in
+                    if inside {
+                        NSCursor.pointingHand.push()
+                    } else {
+                        NSCursor.pop()
+                    }
+                }
+                .popover(isPresented: $showProjectSelector) {
+                    projectSelectorView
+                }
+
                 Spacer()
                 HStack(spacing: 12) {
                     Button("History") {
@@ -390,7 +390,7 @@ struct MainMenuView: View {
                                         onTap: {
                                             showBranchSelector = false
                                             if branch != gitManager.currentBranch {
-                                                if !gitManager.uncommittedFiles.isEmpty {
+                                                if hasWorkingTreeChanges {
                                                     pendingSwitchBranch = branch
                                                     showDirtySwitchConfirmation = true
                                                 } else {
@@ -452,26 +452,20 @@ struct MainMenuView: View {
             // Commit message editor with AI generation
             VStack(alignment: .leading, spacing: 6) {
                 ZStack(alignment: .topTrailing) {
-                    ZStack(alignment: .topLeading) {
-                        TextEditor(text: $commentText)
-                            .font(.system(size: 12))
-                            .padding(.trailing, 88)
-                            .frame(minHeight: 96, maxHeight: 160)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
-                            )
-                            .focused($isCommentFieldFocused)
-
-                        if commentText.isEmpty {
-                            Text("Commit message")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                                .padding(.leading, 6)
-                                .padding(.top, 8)
-                                .allowsHitTesting(false)
-                        }
-                    }
+                    TextField("Message", text: $commentText, axis: .vertical)
+                        .font(.system(size: 13))
+                        .lineLimit(1 ... 4)
+                        .textFieldStyle(.plain)
+                        .padding(.leading, 14)
+                        .padding(.trailing, 48)
+                        .padding(.vertical, 10)
+                        .background(Color.black.opacity(0.06))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .focused($isCommentFieldFocused)
 
                     Menu {
                         Button("Generate from Staged") {
@@ -502,8 +496,8 @@ struct MainMenuView: View {
                         }
                     }
                     .menuStyle(.borderlessButton)
-                    .padding(.top, 6)
-                    .padding(.trailing, 6)
+                    .padding(.top, 7)
+                    .padding(.trailing, 8)
                     .disabled(!aiCommitCoordinator.isReadyForGeneration || aiCommitCoordinator.isGenerating)
                     .help(aiCommitCoordinator.isReadyForGeneration ? "Generate conventional commit message from diff" : aiCommitCoordinator.generationDisabledReason)
                 }
@@ -524,52 +518,80 @@ struct MainMenuView: View {
                 }
             }
 
-            // Modified files list - Always render container for reactive updates
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Modified Files (\(gitManager.uncommittedFiles.count))")
-                    .font(.system(size: 11, weight: .medium))
+            Divider()
 
-                if !gitManager.uncommittedFiles.isEmpty {
-                    ScrollView {
-                        VStack(spacing: 4) {
-                            ForEach(gitManager.uncommittedFiles, id: \.self) { file in
-                                HStack {
-                                    Image(systemName: "doc")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
-                                    Text(file)
-                                        .font(.system(size: 11, design: .monospaced))
-                                        .lineLimit(1)
-                                        .truncationMode(.middle)
-                                    Spacer()
+            // Split working tree sections.
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Staged")
+                                .font(.system(size: 14, weight: .semibold))
+                            Spacer()
+                            Text("\(gitManager.stagedFiles.count)")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+
+                        if gitManager.stagedFiles.isEmpty {
+                            Text("No staged files")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                                .padding(.vertical, 2)
+                        } else {
+                            VStack(spacing: 3) {
+                                ForEach(gitManager.stagedFiles) { file in
+                                    WorkingTreeFileRowView(
+                                        file: file,
+                                        actionIcon: "minus.circle",
+                                        actionHelp: "Unstage file",
+                                        onAction: { unstageFile(path: file.path) }
+                                    )
                                 }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
                             }
                         }
                     }
-                    .frame(maxHeight: min(CGFloat(gitManager.uncommittedFiles.count * 26), 200))
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(6)
+
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Changes")
+                                .font(.system(size: 14, weight: .semibold))
+                            Spacer()
+                            Text("\(gitManager.changedFiles.count)")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+
+                        if gitManager.changedFiles.isEmpty {
+                            Text("No changes")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                                .padding(.vertical, 2)
+                        } else {
+                            VStack(spacing: 3) {
+                                ForEach(gitManager.changedFiles) { file in
+                                    WorkingTreeFileRowView(
+                                        file: file,
+                                        actionIcon: "plus.circle",
+                                        actionHelp: "Stage file",
+                                        onAction: { stageFile(path: file.path) }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading) // Ensure left alignment even when empty
-            .id(gitManager.uncommittedFiles.count) // Force redraw when count changes
+            .frame(maxHeight: 210)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .id(gitManager.stagedFiles.count + gitManager.changedFiles.count)
 
             Spacer()
                 .frame(height: 3)
 
             // Action buttons
             HStack {
-                if gitManager.isRemoteAhead {
-                    Button("Sync") {
-                        showSyncOptions = true
-                    }
-                    .buttonStyle(.borderless)
-                    .focusable(false)
-                }
-
-                if gitManager.commitCount > 0 || !gitManager.uncommittedFiles.isEmpty {
+                if gitManager.commitCount > 0 || hasWorkingTreeChanges {
                     Button("Reset") {
                         resetToLastCommit()
                     }
@@ -579,13 +601,12 @@ struct MainMenuView: View {
 
                 Spacer()
 
-                Button("Push to Remote") {
-                    pushToRemote()
+                Button(primaryButtonTitle) {
+                    performPrimaryAction()
                 }
-                .disabled(gitManager.isCommitting || aiCommitCoordinator.isGenerating)
-                .buttonStyle(.borderless)
+                .disabled(hasWorkingTreeChanges ? !canCommit : (gitManager.isCommitting || aiCommitCoordinator.isGenerating))
+                .buttonStyle(.borderedProminent)
                 .focusable(false)
-                .keyboardShortcut("p", modifiers: .command) // Cmd+P
             }
         }
         .padding(.horizontal, 16)
@@ -597,17 +618,9 @@ struct MainMenuView: View {
             VStack(spacing: 0) {
                 // Hidden button to handle Cmd+Enter globally
                 Button("Commit Hidden") {
-                    submitComment()
+                    performPrimaryAction()
                 }
                 .keyboardShortcut(.return, modifiers: .command)
-                .opacity(0)
-                .frame(width: 0, height: 0)
-
-                // Hidden button to handle Cmd+Shift+Enter globally
-                Button("Commit and Push Hidden") {
-                    pushToRemote()
-                }
-                .keyboardShortcut(.return, modifiers: [.command, .shift])
                 .opacity(0)
                 .frame(width: 0, height: 0)
             }
@@ -920,48 +933,81 @@ struct MainMenuView: View {
         }
     }
 
+    private var projectSelectorView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Projects")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+
+            ForEach(recentPaths, id: \.self) { path in
+                Button(action: {
+                    showProjectSelector = false
+                    switchRepository(path: path)
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: path == currentRepoPath ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 10))
+                            .foregroundColor(path == currentRepoPath ? .green : .secondary)
+                        Text(URL(fileURLWithPath: path).lastPathComponent)
+                            .font(.system(size: 12))
+                            .lineLimit(1)
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+
+            Divider()
+
+            Button(action: {
+                showProjectSelector = false
+                selectDirectory()
+            }) {
+                Label("Browse...", systemImage: "folder")
+                    .font(.system(size: 12))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .frame(width: 250)
+    }
+
     private func submitComment() {
         let trimmedText = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return }
         guard !gitManager.isCommitting else { return }
         guard !aiCommitCoordinator.isGenerating else { return }
+        guard !gitManager.stagedFiles.isEmpty else { return }
 
         commentText = ""
 
-        // Wait for commit to complete, then close popover
+        // Commit staged files and keep the popover open so the button can flip to Sync.
         gitManager.commitLocally(trimmedText) {
-            self.closePopover()
+            self.gitManager.refresh()
         }
     }
 
-    private func pushToRemote() {
-        let message = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !aiCommitCoordinator.isGenerating else { return }
+    private func performPrimaryAction() {
+        if hasWorkingTreeChanges {
+            submitComment()
+            return
+        }
+        syncRepository()
+    }
 
-        // If there's a commit message, commit first then push
-        if !message.isEmpty, !gitManager.isCommitting {
-            // Commit the changes AND THEN push (skip UI updates since we're closing on success)
-            gitManager.commitLocally(message, skipUIUpdates: true) {
-                // Once commit is done, push to remote
-                self.gitManager.pushToRemote { result in
-                    switch result {
-                    case .success:
-                        self.closePopover()
-                    case let .failure(error):
-                        self.pushError = error.localizedDescription
-                    }
-                }
-            }
-            commentText = ""
-        } else {
-            // Just push if no commit message
-            gitManager.pushToRemote { result in
-                switch result {
-                case .success:
-                    self.closePopover()
-                case let .failure(error):
-                    self.pushError = error.localizedDescription
-                }
+    private func syncRepository() {
+        guard !aiCommitCoordinator.isGenerating, !gitManager.isCommitting else { return }
+        if gitManager.isRemoteAhead {
+            showSyncOptions = true
+            return
+        }
+
+        gitManager.pushToRemote { result in
+            switch result {
+            case .success:
+                self.gitManager.refresh()
+            case let .failure(error):
+                self.pushError = error.localizedDescription
             }
         }
     }
@@ -984,9 +1030,13 @@ struct MainMenuView: View {
         gitManager.pullFromRemote(rebase: useRebase) { result in
             switch result {
             case .success:
-                // Refresh after successful pull
-                self.gitManager.refresh {
-                    self.closePopover()
+                self.gitManager.pushToRemote { pushResult in
+                    switch pushResult {
+                    case .success:
+                        self.gitManager.refresh()
+                    case let .failure(error):
+                        self.pushError = error.localizedDescription
+                    }
                 }
             case let .failure(error):
                 self.syncError = error.localizedDescription
@@ -1034,6 +1084,37 @@ struct MainMenuView: View {
                 case let .failure(error):
                     syncError = error.localizedDescription
                 }
+            }
+        }
+    }
+
+    private func stageFile(path: String) {
+        gitManager.stageFile(path: path) { result in
+            if case let .failure(error) = result {
+                syncError = error.localizedDescription
+            }
+        }
+    }
+
+    private func unstageFile(path: String) {
+        gitManager.unstageFile(path: path) { result in
+            if case let .failure(error) = result {
+                syncError = error.localizedDescription
+            }
+        }
+    }
+
+    private func switchRepository(path: String, closeSettingsAfterRefresh: Bool = false) {
+        if !gitManager.isGitRepository(at: path), githubAuthManager.isAuthenticated {
+            createRepoPath = CreateRepoPath(path: path)
+            return
+        }
+
+        UserDefaults.standard.set(path, forKey: "gitRepoPath")
+        addToRecents(path)
+        gitManager.refresh {
+            if closeSettingsAfterRefresh {
+                showingSettings = false
             }
         }
     }
@@ -1398,27 +1479,7 @@ struct MainMenuView: View {
                                     displayText: displayName,
                                     fullPath: abbreviatedPath,
                                     onTap: {
-                                        // Check if this is a git repository
-                                        if !gitManager.isGitRepository(at: path) {
-                                            // Not a git repo - offer to create one if GitHub is connected
-                                            if githubAuthManager.isAuthenticated {
-                                                createRepoPath = CreateRepoPath(path: path)
-                                            } else {
-                                                // Just set the path anyway - user can manually init git
-                                                UserDefaults.standard.set(path, forKey: "gitRepoPath")
-                                                addToRecents(path)
-                                                gitManager.refresh {
-                                                    showingSettings = false
-                                                }
-                                            }
-                                        } else {
-                                            // Is a git repo - set it normally
-                                            UserDefaults.standard.set(path, forKey: "gitRepoPath")
-                                            addToRecents(path)
-                                            gitManager.refresh {
-                                                showingSettings = false
-                                            }
-                                        }
+                                        switchRepository(path: path, closeSettingsAfterRefresh: true)
                                     }
                                 )
                             }
@@ -1522,27 +1583,7 @@ struct MainMenuView: View {
 
             if result == .OK, let url = panel.url {
                 let path = url.path
-
-                // Check if this is a git repository
-                if !gitManager.isGitRepository(at: path) {
-                    // Not a git repo - offer to create one if GitHub is connected
-                    if githubAuthManager.isAuthenticated {
-                        // Use main thread for UI updates
-                        DispatchQueue.main.async {
-                            self.createRepoPath = CreateRepoPath(path: path)
-                        }
-                    } else {
-                        // Just set the path anyway - user can manually init git
-                        UserDefaults.standard.set(path, forKey: "gitRepoPath")
-                        addToRecents(path)
-                        gitManager.refresh()
-                    }
-                } else {
-                    // Is a git repo - set it normally
-                    UserDefaults.standard.set(path, forKey: "gitRepoPath")
-                    addToRecents(path)
-                    gitManager.refresh()
-                }
+                switchRepository(path: path)
             }
         }
     }
@@ -1823,6 +1864,50 @@ struct RecentPathRowView: View {
             } else {
                 NSCursor.pop()
             }
+        }
+    }
+}
+
+struct WorkingTreeFileRowView: View {
+    let file: WorkingTreeFile
+    let actionIcon: String
+    let actionHelp: String
+    let onAction: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(file.path)
+                .font(.system(size: 13, weight: .medium))
+                .lineLimit(1)
+                .truncationMode(.middle)
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 4) {
+                Text("+\(file.lineDiff.added)")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(file.lineDiff.added > 0 ? .green : .secondary)
+                Text("-\(file.lineDiff.removed)")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(file.lineDiff.removed > 0 ? .red : .secondary)
+            }
+
+            Button(action: onAction) {
+                Image(systemName: actionIcon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(actionHelp)
+            .opacity(isHovered ? 1 : 0)
+            .frame(width: 16)
+        }
+        .padding(.vertical, 2)
+        .contentShape(Rectangle())
+        .onHover { inside in
+            isHovered = inside
         }
     }
 }

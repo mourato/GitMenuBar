@@ -13,10 +13,31 @@ struct Commit: Identifiable {
     let author: String
 }
 
+struct LineDiffStats: Hashable {
+    let added: Int
+    let removed: Int
+
+    static let zero = LineDiffStats(
+        added: 0,
+        removed: 0
+    )
+}
+
+struct WorkingTreeFile: Identifiable, Hashable {
+    let path: String
+    let lineDiff: LineDiffStats
+
+    var id: String {
+        path
+    }
+}
+
 class GitManager: ObservableObject {
     @Published var commitCount: Int = 0
     @Published var isCommitting: Bool = false
     @Published var uncommittedFiles: [String] = []
+    @Published var stagedFiles: [WorkingTreeFile] = []
+    @Published var changedFiles: [WorkingTreeFile] = []
     @Published var currentBranch: String = "main"
     @Published var isAheadOfRemote: Bool = false
     @Published var remoteUrl: String = ""
@@ -39,19 +60,25 @@ class GitManager: ObservableObject {
 
     /// Path to the askpass helper script
     private var askpassScriptPath: String?
+    private let repositoryPathOverride: String?
 
     private var storedRepoPath: String {
         get {
-            UserDefaults.standard.string(forKey: "gitRepoPath") ?? ""
+            if let repositoryPathOverride {
+                return repositoryPathOverride
+            }
+            return UserDefaults.standard.string(forKey: "gitRepoPath") ?? ""
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "gitRepoPath")
+            if repositoryPathOverride == nil {
+                UserDefaults.standard.set(newValue, forKey: "gitRepoPath")
+            }
         }
     }
 
-    init() {
+    init(repositoryPathOverride: String? = nil) {
+        self.repositoryPathOverride = repositoryPathOverride
         updateLocalCommitCount()
-        updateUncommittedFiles()
         updateUncommittedFiles()
         updateBranchInfo()
         updateRemoteUrl()
@@ -83,18 +110,7 @@ class GitManager: ObservableObject {
         }
 
         DispatchQueue.global(qos: .userInitiated).async {
-            // Add all changes
-            let addResult = self.executeGitCommand(in: self.storedRepoPath, args: ["add", "."])
-            if addResult.failure {
-                print("Error adding files: \(addResult.output)")
-                DispatchQueue.main.async {
-                    self.isCommitting = false
-                    completion?()
-                }
-                return
-            }
-
-            // Create commit locally
+            // Commit only what is already staged.
             let commitResult = self.executeGitCommand(in: self.storedRepoPath, args: ["commit", "--no-gpg-sign", "-m", message])
             if commitResult.failure {
                 print("Error creating commit: \(commitResult.output)")
@@ -426,35 +442,104 @@ class GitManager: ObservableObject {
         guard !storedRepoPath.isEmpty else {
             DispatchQueue.main.async {
                 self.uncommittedFiles = []
+                self.stagedFiles = []
+                self.changedFiles = []
                 completion?()
             }
             return
         }
 
         DispatchQueue.global(qos: .userInitiated).async {
-            // Get list of modified/untracked files
+            // Split working tree into index (staged) and worktree (changes).
             let statusResult = self.executeGitCommand(in: self.storedRepoPath, args: ["status", "--porcelain"])
 
             if statusResult.failure {
                 print("Error getting git status: \(statusResult.output)")
                 DispatchQueue.main.async {
                     self.uncommittedFiles = []
+                    self.stagedFiles = []
+                    self.changedFiles = []
                     completion?()
                 }
                 return
             }
 
-            let files = statusResult.output
-                .components(separatedBy: .newlines)
-                .filter { !$0.isEmpty }
-                .map { line in
-                    // Remove status code and space, return just the filename
-                    String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
-                }
+            let status = self.parsePorcelainStatus(statusResult.output)
+            let stagedDiffs = self.parseNumstat(
+                self.executeGitCommand(in: self.storedRepoPath, args: ["diff", "--cached", "--numstat", "--no-renames"]).output
+            )
+            var changedDiffs = self.parseNumstat(
+                self.executeGitCommand(in: self.storedRepoPath, args: ["diff", "--numstat", "--no-renames"]).output
+            )
+            let untrackedDiffs = self.lineDiffForUntrackedFiles(paths: status.untrackedPaths)
+            for (path, diff) in untrackedDiffs {
+                changedDiffs[path] = diff
+            }
+
+            let stagedEntries = status.stagedPaths
+                .sorted()
+                .map { WorkingTreeFile(path: $0, lineDiff: stagedDiffs[$0] ?? .zero) }
+            let changedEntries = status.changedPaths
+                .sorted()
+                .map { WorkingTreeFile(path: $0, lineDiff: changedDiffs[$0] ?? .zero) }
+            let merged = Array(Set(status.stagedPaths).union(status.changedPaths)).sorted()
 
             DispatchQueue.main.async {
-                self.uncommittedFiles = files
+                self.stagedFiles = stagedEntries
+                self.changedFiles = changedEntries
+                self.uncommittedFiles = merged
                 completion?()
+            }
+        }
+    }
+
+    func stageFile(path: String, completion: ((Result<Void, Error>) -> Void)? = nil) {
+        guard !storedRepoPath.isEmpty else {
+            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["add", "--", path])
+            if result.failure {
+                DispatchQueue.main.async {
+                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to stage '\(path)': \(result.output)"])))
+                }
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.updateUncommittedFiles {
+                    completion?(.success(()))
+                }
+            }
+        }
+    }
+
+    func unstageFile(path: String, completion: ((Result<Void, Error>) -> Void)? = nil) {
+        guard !storedRepoPath.isEmpty else {
+            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            var result = self.executeGitCommand(in: self.storedRepoPath, args: ["restore", "--staged", "--", path])
+            if result.failure {
+                // Fallback for environments where restore is unavailable.
+                result = self.executeGitCommand(in: self.storedRepoPath, args: ["reset", "HEAD", "--", path])
+            }
+
+            if result.failure {
+                DispatchQueue.main.async {
+                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to unstage '\(path)': \(result.output)"])))
+                }
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.updateUncommittedFiles {
+                    completion?(.success(()))
+                }
             }
         }
     }
@@ -517,6 +602,104 @@ class GitManager: ObservableObject {
         }
 
         return sections.joined(separator: "\n\n")
+    }
+
+    private func parsePorcelainStatus(_ output: String) -> (stagedPaths: Set<String>, changedPaths: Set<String>, untrackedPaths: Set<String>) {
+        var stagedPaths = Set<String>()
+        var changedPaths = Set<String>()
+        var untrackedPaths = Set<String>()
+
+        let lines = output.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        for line in lines {
+            guard line.count >= 3, let path = parsePathFromStatusLine(line) else {
+                continue
+            }
+
+            let indexStatus = line[line.startIndex]
+            let worktreeStatus = line[line.index(after: line.startIndex)]
+
+            if indexStatus == "!", worktreeStatus == "!" {
+                continue
+            }
+
+            if indexStatus == "?", worktreeStatus == "?" {
+                untrackedPaths.insert(path)
+                changedPaths.insert(path)
+                continue
+            }
+
+            if indexStatus != " " {
+                stagedPaths.insert(path)
+            }
+
+            if worktreeStatus != " " {
+                changedPaths.insert(path)
+            }
+        }
+
+        return (stagedPaths, changedPaths, untrackedPaths)
+    }
+
+    private func parsePathFromStatusLine(_ line: String) -> String? {
+        guard line.count >= 3 else { return nil }
+        var path = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+        if let arrowRange = path.range(of: " -> ") {
+            path = String(path[arrowRange.upperBound...])
+        }
+
+        if path.hasPrefix("\""), path.hasSuffix("\""), path.count >= 2 {
+            path = String(path.dropFirst().dropLast())
+        }
+
+        return path.isEmpty ? nil : path
+    }
+
+    private func parseNumstat(_ output: String) -> [String: LineDiffStats] {
+        var map: [String: LineDiffStats] = [:]
+
+        let lines = output.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        for line in lines {
+            let parts = line.split(separator: "\t", omittingEmptySubsequences: false)
+            guard parts.count >= 3 else { continue }
+
+            let addedRaw = String(parts[0]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let removedRaw = String(parts[1]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let path = parts.dropFirst(2).joined(separator: "\t").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !path.isEmpty else { continue }
+
+            let added = Int(addedRaw) ?? 0
+            let removed = Int(removedRaw) ?? 0
+            map[path] = LineDiffStats(added: added, removed: removed)
+        }
+
+        return map
+    }
+
+    private func lineDiffForUntrackedFiles(paths: Set<String>) -> [String: LineDiffStats] {
+        var map: [String: LineDiffStats] = [:]
+        for path in paths {
+            let output = executeGitCommand(in: storedRepoPath, args: ["diff", "--no-index", "--numstat", "--", "/dev/null", path]).output
+            if let parsed = parseNumstat(output)[path] {
+                map[path] = parsed
+                continue
+            }
+
+            map[path] = LineDiffStats(added: lineCountForFile(path), removed: 0)
+        }
+        return map
+    }
+
+    private func lineCountForFile(_ path: String) -> Int {
+        let fullPath = (storedRepoPath as NSString).appendingPathComponent(path)
+        guard let content = try? String(contentsOfFile: fullPath, encoding: .utf8), !content.isEmpty else {
+            return 0
+        }
+
+        let components = content.components(separatedBy: "\n")
+        if content.hasSuffix("\n") {
+            return max(components.count - 1, 0)
+        }
+        return components.count
     }
 
     func updateBranchInfo(completion: (() -> Void)? = nil) {

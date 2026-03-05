@@ -11,6 +11,16 @@
 		2A0000012F00000100000001 /* GitMenuBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GitMenuBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXContainerItemProxy section */
+		B00000012F00000100000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1F8681C42EBCB5B600C300C7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1F8681CB2EBCB5B600C300C7;
+			remoteInfo = GitMenuBar;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		1F31AE932EE0AB780020EDD9 /* Exceptions for "GitMenuBar" folder in "GitMenuBar" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -109,6 +119,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				B00000012F00000100000002 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				2A0000012F00000100000002 /* GitMenuBarTests */,
@@ -121,6 +132,14 @@
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXTargetDependency section */
+		B00000012F00000100000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1F8681CB2EBCB5B600C300C7 /* GitMenuBar */;
+			targetProxy = B00000012F00000100000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		1F8681C42EBCB5B600C300C7 /* Project object */ = {
