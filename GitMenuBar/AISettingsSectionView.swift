@@ -343,3 +343,21 @@ private struct AIProviderEditorSheet: View {
         dismiss()
     }
 }
+
+#Preview {
+    let gitManager = GitManager(repositoryPathOverride: "/tmp")
+    let providerStore = AIProviderStore()
+    let keychainStore = AIKeychainStore()
+    let coordinator = AICommitCoordinator(
+        providerStore: providerStore,
+        keychainStore: keychainStore,
+        messageService: AICommitMessageService(),
+        gitManager: gitManager
+    )
+
+    return AISettingsSectionView()
+        .environmentObject(providerStore)
+        .environmentObject(coordinator)
+        .padding()
+        .frame(width: 420)
+}

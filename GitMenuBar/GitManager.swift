@@ -135,6 +135,27 @@ class GitManager: ObservableObject {
         }
     }
 
+    func commitLocallyWithFallback(_ message: String, skipUIUpdates: Bool = false, completion: (() -> Void)? = nil) {
+        updateUncommittedFiles {
+            let shouldAutoStage = self.stagedFiles.isEmpty && !self.changedFiles.isEmpty
+
+            guard shouldAutoStage else {
+                self.commitLocally(message, skipUIUpdates: skipUIUpdates, completion: completion)
+                return
+            }
+
+            self.stageAllChanges { result in
+                switch result {
+                case .success:
+                    self.commitLocally(message, skipUIUpdates: skipUIUpdates, completion: completion)
+                case let .failure(error):
+                    print("Error staging all changes for fallback commit: \(error.localizedDescription)")
+                    completion?()
+                }
+            }
+        }
+    }
+
     // MARK: - Repository Initialization
 
     func isGitRepository(at path: String) -> Bool {
@@ -504,6 +525,29 @@ class GitManager: ObservableObject {
             if result.failure {
                 DispatchQueue.main.async {
                     completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to stage '\(path)': \(result.output)"])))
+                }
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.updateUncommittedFiles {
+                    completion?(.success(()))
+                }
+            }
+        }
+    }
+
+    func stageAllChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
+        guard !storedRepoPath.isEmpty else {
+            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["add", "-A"])
+            if result.failure {
+                DispatchQueue.main.async {
+                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to stage all changes: \(result.output)"])))
                 }
                 return
             }

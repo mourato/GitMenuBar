@@ -102,6 +102,26 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertTrue(unstagedStatus.contains(" M README.md"))
     }
 
+    func testStageAllChangesStagesTrackedAndUntrackedFiles() throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let trackedFile = repoURL.appendingPathComponent("README.md")
+        let untrackedFile = repoURL.appendingPathComponent("NEW.md")
+        try "base\nchanged\n".write(to: trackedFile, atomically: true, encoding: .utf8)
+        try "new file\n".write(to: untrackedFile, atomically: true, encoding: .utf8)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        waitForWorkingTreeUpdate(gitManager)
+        XCTAssertTrue(gitManager.stagedFiles.isEmpty)
+
+        try waitForGitOperation {
+            gitManager.stageAllChanges(completion: $0)
+        }
+
+        let status = try runGit(["status", "--porcelain"], in: repoURL)
+        XCTAssertTrue(status.contains("M  README.md"))
+        XCTAssertTrue(status.contains("A  NEW.md"))
+    }
+
     func testCommitLocallyCommitsOnlyStagedChanges() throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let fileURL = repoURL.appendingPathComponent("README.md")
@@ -126,6 +146,32 @@ final class GitWorkingTreeStateTests: XCTestCase {
 
         let unstagedDiff = try runGit(["diff", "--", "README.md"], in: repoURL)
         XCTAssertTrue(unstagedDiff.contains("+unstaged"))
+    }
+
+    func testCommitLocallyWithFallbackAutoStagesWhenNoStagedFilesExist() throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let trackedFile = repoURL.appendingPathComponent("README.md")
+        let untrackedFile = repoURL.appendingPathComponent("NEW.md")
+        try "base\nchanged\n".write(to: trackedFile, atomically: true, encoding: .utf8)
+        try "new file\n".write(to: untrackedFile, atomically: true, encoding: .utf8)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        waitForWorkingTreeUpdate(gitManager)
+        XCTAssertTrue(gitManager.stagedFiles.isEmpty)
+        XCTAssertFalse(gitManager.changedFiles.isEmpty)
+
+        let expectation = expectation(description: "fallback commit")
+        gitManager.commitLocallyWithFallback("feat: fallback commit") {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 5)
+
+        let headCount = try runGit(["rev-list", "--count", "HEAD"], in: repoURL)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertEqual(headCount, "2")
+
+        let status = try runGit(["status", "--porcelain"], in: repoURL)
+        XCTAssertTrue(status.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
     }
 
     private func waitForWorkingTreeUpdate(_ gitManager: GitManager, timeout: TimeInterval = 3) {
