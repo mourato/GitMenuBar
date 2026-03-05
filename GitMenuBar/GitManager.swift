@@ -459,6 +459,66 @@ class GitManager: ObservableObject {
         }
     }
 
+    func diffStaged() -> String {
+        guard !storedRepoPath.isEmpty else {
+            return ""
+        }
+
+        let result = executeGitCommand(in: storedRepoPath, args: ["diff", "--cached", "--", "."])
+        if result.failure {
+            return ""
+        }
+        return result.output
+    }
+
+    func diffUnstaged() -> String {
+        guard !storedRepoPath.isEmpty else {
+            return ""
+        }
+
+        let trackedResult = executeGitCommand(in: storedRepoPath, args: ["diff", "--", "."])
+        let trackedDiff = trackedResult.failure ? "" : trackedResult.output
+        let untrackedDiff = diffForUntrackedFiles()
+        return [trackedDiff, untrackedDiff]
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .joined(separator: "\n\n")
+    }
+
+    func diffAll() -> String {
+        let stagedDiff = diffStaged()
+        let unstagedDiff = diffUnstaged()
+        return [stagedDiff, unstagedDiff]
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .joined(separator: "\n\n")
+    }
+
+    private func diffForUntrackedFiles() -> String {
+        let untrackedResult = executeGitCommand(in: storedRepoPath, args: ["ls-files", "--others", "--exclude-standard"])
+        if untrackedResult.failure {
+            return ""
+        }
+
+        let files = untrackedResult.output
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        if files.isEmpty {
+            return ""
+        }
+
+        let sections = files.map { file -> String in
+            let diffResult = executeGitCommand(in: storedRepoPath, args: ["diff", "--no-index", "--", "/dev/null", file])
+            let output = diffResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
+            if output.isEmpty {
+                return "diff --git a/\(file) b/\(file)\nnew file mode 100644\n+<unable to render diff>"
+            }
+            return output
+        }
+
+        return sections.joined(separator: "\n\n")
+    }
+
     func updateBranchInfo(completion: (() -> Void)? = nil) {
         guard !storedRepoPath.isEmpty else {
             DispatchQueue.main.async {
