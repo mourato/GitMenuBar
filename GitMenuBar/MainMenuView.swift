@@ -32,6 +32,8 @@ struct MainMenuView: View {
     @EnvironmentObject var gitManager: GitManager
     @EnvironmentObject var loginItemManager: LoginItemManager
     @EnvironmentObject var githubAuthManager: GitHubAuthManager
+    @EnvironmentObject var aiProviderStore: AIProviderStore
+    @EnvironmentObject var aiCommitCoordinator: AICommitCoordinator
     @AppStorage("recentRepoPaths") private var recentRepoPathsData: Data = .init()
     @AppStorage("showFullPathInRecents") private var showFullPathInRecents = false
     @State private var showBranchSelector = false
@@ -447,16 +449,80 @@ struct MainMenuView: View {
                 Spacer()
             }
 
-            // Commit message field
-            TextField("Commit message", text: $commentText, onCommit: submitComment)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 12))
-                .focused($isCommentFieldFocused)
-                .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        isCommentFieldFocused = true
+            // Commit message editor with AI generation
+            VStack(alignment: .leading, spacing: 6) {
+                ZStack(alignment: .topTrailing) {
+                    ZStack(alignment: .topLeading) {
+                        TextEditor(text: $commentText)
+                            .font(.system(size: 12))
+                            .padding(.trailing, 88)
+                            .frame(minHeight: 96, maxHeight: 160)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+                            )
+                            .focused($isCommentFieldFocused)
+
+                        if commentText.isEmpty {
+                            Text("Commit message")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 6)
+                                .padding(.top, 8)
+                                .allowsHitTesting(false)
+                        }
                     }
+
+                    Menu {
+                        Button("Generate from Staged") {
+                            generateCommitMessage(scope: .staged)
+                        }
+                        Button("Generate from Unstaged") {
+                            generateCommitMessage(scope: .unstaged)
+                        }
+                        Button("Generate from All") {
+                            generateCommitMessage(scope: .all)
+                        }
+                    } label: {
+                        if aiCommitCoordinator.isGenerating {
+                            ProgressView()
+                                .controlSize(.small)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.12))
+                                .cornerRadius(6)
+                        } else {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.blue)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.12))
+                                .cornerRadius(6)
+                        }
+                    }
+                    .menuStyle(.borderlessButton)
+                    .padding(.top, 6)
+                    .padding(.trailing, 6)
+                    .disabled(!aiCommitCoordinator.isReadyForGeneration || aiCommitCoordinator.isGenerating)
+                    .help(aiCommitCoordinator.isReadyForGeneration ? "Generate conventional commit message from diff" : aiCommitCoordinator.generationDisabledReason)
                 }
+
+                if !aiCommitCoordinator.isReadyForGeneration {
+                    Text(aiCommitCoordinator.generationDisabledReason)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                } else if let generationError = aiCommitCoordinator.generationError {
+                    Text(generationError)
+                        .font(.system(size: 10))
+                        .foregroundColor(.red)
+                }
+            }
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isCommentFieldFocused = true
+                }
+            }
 
             // Modified files list - Always render container for reactive updates
             VStack(alignment: .leading, spacing: 6) {
@@ -516,7 +582,7 @@ struct MainMenuView: View {
                 Button("Push to Remote") {
                     pushToRemote()
                 }
-                .disabled(gitManager.isCommitting)
+                .disabled(gitManager.isCommitting || aiCommitCoordinator.isGenerating)
                 .buttonStyle(.borderless)
                 .focusable(false)
                 .keyboardShortcut("p", modifiers: .command) // Cmd+P
@@ -528,12 +594,23 @@ struct MainMenuView: View {
             closePopover()
         }
         .background(
-            // Hidden button to handle Cmd+Enter globally (bypassing text field focus)
-            Button("Commit Hidden") {
-                pushToRemote()
+            VStack(spacing: 0) {
+                // Hidden button to handle Cmd+Enter globally
+                Button("Commit Hidden") {
+                    submitComment()
+                }
+                .keyboardShortcut(.return, modifiers: .command)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+
+                // Hidden button to handle Cmd+Shift+Enter globally
+                Button("Commit and Push Hidden") {
+                    pushToRemote()
+                }
+                .keyboardShortcut(.return, modifiers: [.command, .shift])
+                .opacity(0)
+                .frame(width: 0, height: 0)
             }
-            .keyboardShortcut(.return, modifiers: .command)
-            .opacity(0)
         )
         .alert("Push Failed", isPresented: .init(
             get: { pushError != nil },
@@ -844,30 +921,27 @@ struct MainMenuView: View {
     }
 
     private func submitComment() {
-        guard !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        guard !gitManager.isCommitting else { return }
-
-        // Capitalize first letter
         let trimmedText = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let capitalizedText = trimmedText.prefix(1).uppercased() + trimmedText.dropFirst()
+        guard !trimmedText.isEmpty else { return }
+        guard !gitManager.isCommitting else { return }
+        guard !aiCommitCoordinator.isGenerating else { return }
 
         commentText = ""
 
         // Wait for commit to complete, then close popover
-        gitManager.commitLocally(capitalizedText) {
+        gitManager.commitLocally(trimmedText) {
             self.closePopover()
         }
     }
 
     private func pushToRemote() {
         let message = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !aiCommitCoordinator.isGenerating else { return }
 
         // If there's a commit message, commit first then push
         if !message.isEmpty, !gitManager.isCommitting {
-            let capitalizedText = message.prefix(1).uppercased() + message.dropFirst()
-
             // Commit the changes AND THEN push (skip UI updates since we're closing on success)
-            gitManager.commitLocally(capitalizedText, skipUIUpdates: true) {
+            gitManager.commitLocally(message, skipUIUpdates: true) {
                 // Once commit is done, push to remote
                 self.gitManager.pushToRemote { result in
                     switch result {
@@ -888,6 +962,19 @@ struct MainMenuView: View {
                 case let .failure(error):
                     self.pushError = error.localizedDescription
                 }
+            }
+        }
+    }
+
+    private func generateCommitMessage(scope: DiffScope?) {
+        guard !aiCommitCoordinator.isGenerating else { return }
+
+        Task {
+            do {
+                let generated = try await aiCommitCoordinator.generateMessage(scopeOverride: scope)
+                commentText = generated
+            } catch {
+                // The coordinator already publishes a user-facing error string.
             }
         }
     }
@@ -1116,223 +1203,228 @@ struct MainMenuView: View {
                 .padding(.top, 4)
 
             // Settings content
-            VStack(spacing: 12) {
-                // Git Repository Path section
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "folder")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-                        Text("Git Repository Path")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                    }
-                    .padding(.top, 2)
-
-                    TextField("Select repository directory", text: Binding(
-                        get: { ((UserDefaults.standard.string(forKey: "gitRepoPath") ?? "") as NSString).abbreviatingWithTildeInPath },
-                        set: { newValue in
-                            UserDefaults.standard.set((newValue as NSString).expandingTildeInPath, forKey: "gitRepoPath")
-                        }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 12))
-
-                    Button("Browse...") {
-                        selectDirectory()
-                    }
-                    .buttonStyle(.borderless)
-                    .focusable(false)
-                }
-
-                // Open at Login section
-                HStack {
-                    Button(action: {
-                        loginItemManager.isEnabled.toggle()
-                        loginItemManager.setLoginItem(enabled: loginItemManager.isEnabled)
-                    }) {
+            ScrollView {
+                VStack(spacing: 12) {
+                    // Git Repository Path section
+                    VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 6) {
-                            Image(systemName: loginItemManager.isEnabled ? "checkmark.square" : "square")
-                                .font(.system(size: 13))
-                                .foregroundColor(loginItemManager.isEnabled ? .primary.opacity(0.7) : .secondary.opacity(0.5))
-                            Text("Open at Login")
+                            Image(systemName: "folder")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                            Text("Git Repository Path")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
                         }
-                    }
-                    .buttonStyle(.plain)
-                    .focusable(false)
-                    Spacer()
-                }
-                .padding(.top, 4)
+                        .padding(.top, 2)
 
-                // GitHub Connection section
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "globe")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-                        Text("GitHub")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                        TextField("Select repository directory", text: Binding(
+                            get: { ((UserDefaults.standard.string(forKey: "gitRepoPath") ?? "") as NSString).abbreviatingWithTildeInPath },
+                            set: { newValue in
+                                UserDefaults.standard.set((newValue as NSString).expandingTildeInPath, forKey: "gitRepoPath")
+                            }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 12))
+
+                        Button("Browse...") {
+                            selectDirectory()
+                        }
+                        .buttonStyle(.borderless)
+                        .focusable(false)
+                    }
+
+                    // Open at Login section
+                    HStack {
+                        Button(action: {
+                            loginItemManager.isEnabled.toggle()
+                            loginItemManager.setLoginItem(enabled: loginItemManager.isEnabled)
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: loginItemManager.isEnabled ? "checkmark.square" : "square")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(loginItemManager.isEnabled ? .primary.opacity(0.7) : .secondary.opacity(0.5))
+                                Text("Open at Login")
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .focusable(false)
+                        Spacer()
                     }
                     .padding(.top, 4)
 
-                    if githubAuthManager.isAuthenticated {
-                        HStack {
-                            Text("Connected as @\(githubAuthManager.username)")
-                                .font(.system(size: 11))
+                    // GitHub Connection section
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "globe")
+                                .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
-                            Spacer()
-                            Button("Disconnect") {
-                                githubAuthManager.disconnect()
-                            }
-                            .buttonStyle(.borderless)
-                            .focusable(false)
-                            .font(.system(size: 11))
+                            Text("GitHub")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.green.opacity(0.1))
-                        .cornerRadius(4)
-                    } else if githubAuthManager.isAuthenticating {
-                        // Device Flow: Show user code
-                        VStack(spacing: 12) {
-                            if !githubAuthManager.userCode.isEmpty {
-                                VStack(spacing: 8) {
-                                    // Code display - prominent and centered
-                                    VStack(spacing: 4) {
-                                        Text(githubAuthManager.userCode)
-                                            .font(.system(size: 20, weight: .semibold, design: .monospaced))
-                                            .foregroundColor(.primary)
-                                            .kerning(2)
+                        .padding(.top, 4)
 
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .font(.system(size: 10))
-                                                .foregroundColor(.green)
-                                            Text("Copied to clipboard")
-                                                .font(.system(size: 10))
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-
-                                    // Status
-                                    Text("Enter this code on GitHub")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
-
-                                    // Cancel button
-                                    Button("Cancel") {
-                                        githubAuthManager.cancelAuthentication()
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .focusable(false)
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                                }
-                            } else {
-                                HStack(spacing: 8) {
-                                    ProgressView()
-                                        .scaleEffect(0.7)
-                                    Text("Connecting...")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 12)
-                        .background(Color.blue.opacity(0.08))
-                        .cornerRadius(6)
-                    } else {
-                        VStack(alignment: .leading, spacing: 4) {
+                        if githubAuthManager.isAuthenticated {
                             HStack {
-                                Text("Not connected")
+                                Text("Connected as @\(githubAuthManager.username)")
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                Button("Connect") {
-                                    // Keep popover open while browser is in focus
-                                    togglePopoverBehavior()
-                                    githubAuthManager.startDeviceFlow()
+                                Button("Disconnect") {
+                                    githubAuthManager.disconnect()
                                 }
                                 .buttonStyle(.borderless)
                                 .focusable(false)
                                 .font(.system(size: 11))
                             }
-                            if !githubAuthManager.authError.isEmpty {
-                                Text(githubAuthManager.authError)
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.red)
-                            }
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(4)
-                    }
-                }
-                .padding(.top, 4)
-                .onChange(of: githubAuthManager.isAuthenticating) { _, isAuthenticating in
-                    // When authentication ends (success or cancel), revert popover behavior
-                    if !isAuthenticating {
-                        togglePopoverBehavior()
-                    }
-                }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.green.opacity(0.1))
+                            .cornerRadius(4)
+                        } else if githubAuthManager.isAuthenticating {
+                            // Device Flow: Show user code
+                            VStack(spacing: 12) {
+                                if !githubAuthManager.userCode.isEmpty {
+                                    VStack(spacing: 8) {
+                                        // Code display - prominent and centered
+                                        VStack(spacing: 4) {
+                                            Text(githubAuthManager.userCode)
+                                                .font(.system(size: 20, weight: .semibold, design: .monospaced))
+                                                .foregroundColor(.primary)
+                                                .kerning(2)
 
-                if !recentPaths.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 6) {
-                            Text("Recently Used")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundColor(.secondary)
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                showFullPathInRecents.toggle()
-                            }
-                        }
-                        .onHover { inside in
-                            if inside {
-                                NSCursor.pointingHand.push()
-                            } else {
-                                NSCursor.pop()
-                            }
-                        }
-                        .help("Click to toggle between full path and project name")
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .font(.system(size: 10))
+                                                    .foregroundColor(.green)
+                                                Text("Copied to clipboard")
+                                                    .font(.system(size: 10))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
 
-                        ForEach(recentPaths.filter { $0 != UserDefaults.standard.string(forKey: "gitRepoPath") }.prefix(5), id: \.self) { path in
-                            let abbreviatedPath = (path as NSString).abbreviatingWithTildeInPath
-                            let displayName = showFullPathInRecents ? abbreviatedPath : URL(fileURLWithPath: path).lastPathComponent
-                            RecentPathRowView(
-                                displayText: displayName,
-                                fullPath: abbreviatedPath,
-                                onTap: {
-                                    // Check if this is a git repository
-                                    if !gitManager.isGitRepository(at: path) {
-                                        // Not a git repo - offer to create one if GitHub is connected
-                                        if githubAuthManager.isAuthenticated {
-                                            createRepoPath = CreateRepoPath(path: path)
+                                        // Status
+                                        Text("Enter this code on GitHub")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+
+                                        // Cancel button
+                                        Button("Cancel") {
+                                            githubAuthManager.cancelAuthentication()
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .focusable(false)
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                    }
+                                } else {
+                                    HStack(spacing: 8) {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                        Text("Connecting...")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 12)
+                            .background(Color.blue.opacity(0.08))
+                            .cornerRadius(6)
+                        } else {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Not connected")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Button("Connect") {
+                                        // Keep popover open while browser is in focus
+                                        togglePopoverBehavior()
+                                        githubAuthManager.startDeviceFlow()
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .focusable(false)
+                                    .font(.system(size: 11))
+                                }
+                                if !githubAuthManager.authError.isEmpty {
+                                    Text(githubAuthManager.authError)
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.red)
+                                }
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(4)
+                        }
+                    }
+                    .padding(.top, 4)
+                    .onChange(of: githubAuthManager.isAuthenticating) { _, isAuthenticating in
+                        // When authentication ends (success or cancel), revert popover behavior
+                        if !isAuthenticating {
+                            togglePopoverBehavior()
+                        }
+                    }
+
+                    AISettingsSectionView()
+                        .padding(.top, 4)
+
+                    if !recentPaths.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                Text("Recently Used")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showFullPathInRecents.toggle()
+                                }
+                            }
+                            .onHover { inside in
+                                if inside {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.pop()
+                                }
+                            }
+                            .help("Click to toggle between full path and project name")
+
+                            ForEach(recentPaths.filter { $0 != UserDefaults.standard.string(forKey: "gitRepoPath") }.prefix(5), id: \.self) { path in
+                                let abbreviatedPath = (path as NSString).abbreviatingWithTildeInPath
+                                let displayName = showFullPathInRecents ? abbreviatedPath : URL(fileURLWithPath: path).lastPathComponent
+                                RecentPathRowView(
+                                    displayText: displayName,
+                                    fullPath: abbreviatedPath,
+                                    onTap: {
+                                        // Check if this is a git repository
+                                        if !gitManager.isGitRepository(at: path) {
+                                            // Not a git repo - offer to create one if GitHub is connected
+                                            if githubAuthManager.isAuthenticated {
+                                                createRepoPath = CreateRepoPath(path: path)
+                                            } else {
+                                                // Just set the path anyway - user can manually init git
+                                                UserDefaults.standard.set(path, forKey: "gitRepoPath")
+                                                addToRecents(path)
+                                                gitManager.refresh {
+                                                    showingSettings = false
+                                                }
+                                            }
                                         } else {
-                                            // Just set the path anyway - user can manually init git
+                                            // Is a git repo - set it normally
                                             UserDefaults.standard.set(path, forKey: "gitRepoPath")
                                             addToRecents(path)
                                             gitManager.refresh {
                                                 showingSettings = false
                                             }
                                         }
-                                    } else {
-                                        // Is a git repo - set it normally
-                                        UserDefaults.standard.set(path, forKey: "gitRepoPath")
-                                        addToRecents(path)
-                                        gitManager.refresh {
-                                            showingSettings = false
-                                        }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
+                        .padding(.top, 4)
                     }
-                    .padding(.top, 4)
                 }
             }
 

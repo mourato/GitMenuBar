@@ -8,9 +8,7 @@ source "${SCRIPT_DIR}/config/app_identity.sh"
 
 DERIVED_DATA="${PROJECT_ROOT}/.xcode-build-tests"
 LOG_PATH="/tmp/gitmenubar-test.log"
-BUNDLE_PATH="${DERIVED_DATA}/Build/Products/Debug/GitMenuBarTests.xctest"
-
-echo "Running tests (build-for-testing + xctest)..."
+echo "Running tests (build-for-testing + test-without-building)..."
 "${SCRIPT_DIR}/xcodebuild-safe.sh" \
     --project "${PROJECT_ROOT}/${XCODEPROJ_NAME}" \
     --scheme "${APP_SCHEME}" \
@@ -23,12 +21,13 @@ echo "Running tests (build-for-testing + xctest)..."
         exit 1
     }
 
-if [[ ! -d "${BUNDLE_PATH}" ]]; then
-    echo "Test bundle not found at ${BUNDLE_PATH}" >&2
-    exit 1
-fi
-
-xcrun xctest "${BUNDLE_PATH}" >"${LOG_PATH}" 2>&1 || {
+"${SCRIPT_DIR}/xcodebuild-safe.sh" \
+    --project "${PROJECT_ROOT}/${XCODEPROJ_NAME}" \
+    --scheme "${APP_SCHEME}" \
+    --configuration Debug \
+    --derived-data "${DERIVED_DATA}" \
+    --destination "platform=macOS,arch=$(uname -m)" \
+    --action test-without-building >"${LOG_PATH}" 2>&1 || {
     echo "Tests failed. Log: ${LOG_PATH}" >&2
     rg -n "error:|fatal error:|Test Suite|Failing tests|Assertion|failed" "${LOG_PATH}" | head -80 || true
     exit 1

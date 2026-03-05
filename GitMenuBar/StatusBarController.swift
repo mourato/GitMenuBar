@@ -6,12 +6,22 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 class StatusBarController: ObservableObject {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
     let gitManager = GitManager()
     let loginItemManager = LoginItemManager()
     let githubAuthManager: GitHubAuthManager
+    let aiProviderStore = AIProviderStore()
+    let aiKeychainStore = AIKeychainStore()
+    let aiCommitMessageService = AICommitMessageService()
+    lazy var aiCommitCoordinator = AICommitCoordinator(
+        providerStore: aiProviderStore,
+        keychainStore: aiKeychainStore,
+        messageService: aiCommitMessageService,
+        gitManager: gitManager
+    )
 
     init(githubAuthManager: GitHubAuthManager) {
         self.githubAuthManager = githubAuthManager
@@ -71,6 +81,8 @@ class StatusBarController: ObservableObject {
         .environmentObject(gitManager)
         .environmentObject(loginItemManager)
         .environmentObject(githubAuthManager)
+        .environmentObject(aiProviderStore)
+        .environmentObject(aiCommitCoordinator)
 
         popover?.contentViewController = PopoverHostingController(rootView: rootView)
     }
@@ -121,6 +133,8 @@ class StatusBarController: ObservableObject {
         .environmentObject(gitManager)
         .environmentObject(loginItemManager)
         .environmentObject(githubAuthManager)
+        .environmentObject(aiProviderStore)
+        .environmentObject(aiCommitCoordinator)
 
         let hostingController = PopoverHostingController(rootView: rootView)
         popover.contentViewController = hostingController
@@ -152,6 +166,8 @@ class StatusBarController: ObservableObject {
             .environmentObject(self.gitManager)
             .environmentObject(self.loginItemManager)
             .environmentObject(self.githubAuthManager)
+            .environmentObject(self.aiProviderStore)
+            .environmentObject(self.aiCommitCoordinator)
 
             let hostingController = PopoverHostingController(rootView: rootView)
             popover.contentViewController = hostingController
@@ -195,6 +211,8 @@ class StatusBarController: ObservableObject {
             .environmentObject(self.gitManager)
             .environmentObject(self.loginItemManager)
             .environmentObject(self.githubAuthManager)
+            .environmentObject(self.aiProviderStore)
+            .environmentObject(self.aiCommitCoordinator)
 
             let hostingController = PopoverHostingController(rootView: rootView)
             popover.contentViewController = hostingController
@@ -229,6 +247,8 @@ class StatusBarController: ObservableObject {
         .environmentObject(gitManager)
         .environmentObject(loginItemManager)
         .environmentObject(githubAuthManager)
+        .environmentObject(aiProviderStore)
+        .environmentObject(aiCommitCoordinator)
 
         let hostingController = PopoverHostingController(rootView: rootView)
         popover.contentViewController = hostingController

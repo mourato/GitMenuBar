@@ -366,7 +366,7 @@
 		2A0000012F00000100000008 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "";
+				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -374,14 +374,14 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.pizzaman.GitMenuBarTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GitMenuBar.app/Contents/MacOS/GitMenuBar";
 			};
 			name = Debug;
 		};
 		2A0000012F00000100000009 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "";
+				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -389,7 +389,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.pizzaman.GitMenuBarTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GitMenuBar.app/Contents/MacOS/GitMenuBar";
 			};
 			name = Release;
 		};
