@@ -3,8 +3,8 @@
 //  GitMenuBar
 //
 
-import Foundation
 import AppKit
+import Foundation
 
 struct GitHubRelease: Decodable {
     let tagName: String
@@ -73,7 +73,7 @@ final class UpdateChecker {
         let rhsParts = rhs.split(separator: ".").map { Int($0) ?? 0 }
 
         let maxCount = max(lhsParts.count, rhsParts.count)
-        for i in 0..<maxCount {
+        for i in 0 ..< maxCount {
             let lhsValue = i < lhsParts.count ? lhsParts[i] : 0
             let rhsValue = i < rhsParts.count ? rhsParts[i] : 0
 
