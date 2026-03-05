@@ -14,14 +14,12 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
         try "base\nstaged\n".write(to: fileURL, atomically: true, encoding: .utf8)
         try runGit(["add", "README.md"], in: repoURL)
 
-        try withGitRepoPath(repoURL.path) {
-            let gitManager = GitManager()
-            let staged = gitManager.diffStaged()
-            let unstaged = gitManager.diffUnstaged()
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let staged = gitManager.diffStaged()
+        let unstaged = gitManager.diffUnstaged()
 
-            XCTAssertTrue(staged.contains("+staged"))
-            XCTAssertFalse(unstaged.contains("+staged"))
-        }
+        XCTAssertTrue(staged.contains("+staged"))
+        XCTAssertFalse(unstaged.contains("+staged"))
     }
 
     func testDiffScopeUnstagedOnly() throws {
@@ -30,14 +28,12 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
         try "base\nunstaged\n".write(to: fileURL, atomically: true, encoding: .utf8)
 
-        try withGitRepoPath(repoURL.path) {
-            let gitManager = GitManager()
-            let staged = gitManager.diffStaged()
-            let unstaged = gitManager.diffUnstaged()
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let staged = gitManager.diffStaged()
+        let unstaged = gitManager.diffUnstaged()
 
-            XCTAssertTrue(staged.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            XCTAssertTrue(unstaged.contains("+unstaged"))
-        }
+        XCTAssertTrue(staged.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        XCTAssertTrue(unstaged.contains("+unstaged"))
     }
 
     func testDiffScopeMixedAndUntrackedIncludedInAll() throws {
@@ -51,14 +47,12 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
         try "base\nstaged\nunstaged\n".write(to: trackedFile, atomically: true, encoding: .utf8)
         try "untracked content\n".write(to: untrackedFile, atomically: true, encoding: .utf8)
 
-        try withGitRepoPath(repoURL.path) {
-            let gitManager = GitManager()
-            let all = gitManager.diffAll()
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let all = gitManager.diffAll()
 
-            XCTAssertTrue(all.contains("+staged"))
-            XCTAssertTrue(all.contains("+unstaged"))
-            XCTAssertTrue(all.contains("NEW_FILE.md"))
-        }
+        XCTAssertTrue(all.contains("+staged"))
+        XCTAssertTrue(all.contains("+unstaged"))
+        XCTAssertTrue(all.contains("NEW_FILE.md"))
     }
 
     func testServiceFallsBackToAllWhenDefaultScopeIsStagedAndNoStagedDiff() async throws {
@@ -91,17 +85,15 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
             selectedModel: "gpt-4.1"
         )
 
-        let generated = try await withGitRepoPath(repoURL.path) {
-            let gitManager = GitManager()
-            return try await service.generateCommitMessage(
-                provider: provider,
-                apiKey: "test-key",
-                model: "gpt-4.1",
-                preferredScopeMode: .stagedWithFallbackAll,
-                overrideScope: nil,
-                gitManager: gitManager
-            )
-        }
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let generated = try await service.generateCommitMessage(
+            provider: provider,
+            apiKey: "test-key",
+            model: "gpt-4.1",
+            preferredScopeMode: .stagedWithFallbackAll,
+            overrideScope: nil,
+            gitManager: gitManager
+        )
 
         XCTAssertEqual(generated, "feat: generated")
         XCTAssertTrue(capturedPrompt.contains("Diff scope used: All."))
@@ -138,17 +130,15 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
             selectedModel: "gpt-4.1"
         )
 
-        _ = try await withGitRepoPath(repoURL.path) {
-            let gitManager = GitManager()
-            return try await service.generateCommitMessage(
-                provider: provider,
-                apiKey: "test-key",
-                model: "gpt-4.1",
-                preferredScopeMode: .stagedWithFallbackAll,
-                overrideScope: .all,
-                gitManager: gitManager
-            )
-        }
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        _ = try await service.generateCommitMessage(
+            provider: provider,
+            apiKey: "test-key",
+            model: "gpt-4.1",
+            preferredScopeMode: .stagedWithFallbackAll,
+            overrideScope: .all,
+            gitManager: gitManager
+        )
 
         XCTAssertTrue(capturedPrompt.contains("Diff truncated to 100 characters"))
     }
