@@ -267,3 +267,15 @@ struct CreateRepoContentView: View {
         isCreating = false
     }
 }
+
+#Preview {
+    CreateRepoContentView(
+        folderPath: "/tmp/example-project",
+        onDismiss: {},
+        onSuccess: { _ in }
+    )
+    .environmentObject(GitManager(repositoryPathOverride: "/tmp"))
+    .environmentObject(GitHubAuthManager())
+    .padding()
+    .frame(width: 380)
+}

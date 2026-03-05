@@ -92,7 +92,7 @@ struct MainMenuView: View {
     }
 
     private var canCommit: Bool {
-        !gitManager.stagedFiles.isEmpty &&
+        hasWorkingTreeChanges &&
             !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             !gitManager.isCommitting &&
             !aiCommitCoordinator.isGenerating
@@ -467,17 +467,9 @@ struct MainMenuView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         .focused($isCommentFieldFocused)
 
-                    Menu {
-                        Button("Generate from Staged") {
-                            generateCommitMessage(scope: .staged)
-                        }
-                        Button("Generate from Unstaged") {
-                            generateCommitMessage(scope: .unstaged)
-                        }
-                        Button("Generate from All") {
-                            generateCommitMessage(scope: .all)
-                        }
-                    } label: {
+                    Button(action: {
+                        generateCommitMessageFromPriorityScope()
+                    }) {
                         if aiCommitCoordinator.isGenerating {
                             ProgressView()
                                 .controlSize(.small)
@@ -495,12 +487,31 @@ struct MainMenuView: View {
                                 .cornerRadius(6)
                         }
                     }
-                    .menuStyle(.borderlessButton)
+                    .buttonStyle(.plain)
                     .padding(.top, 7)
                     .padding(.trailing, 8)
-                    .disabled(!aiCommitCoordinator.isReadyForGeneration || aiCommitCoordinator.isGenerating)
-                    .help(aiCommitCoordinator.isReadyForGeneration ? "Generate conventional commit message from diff" : aiCommitCoordinator.generationDisabledReason)
+                    .disabled(
+                        !aiCommitCoordinator.isReadyForGeneration ||
+                            aiCommitCoordinator.isGenerating ||
+                            !hasWorkingTreeChanges
+                    )
+                    .help(
+                        aiCommitCoordinator.isReadyForGeneration
+                            ? "Generate commit message from staged files, or changes when nothing is staged."
+                            : aiCommitCoordinator.generationDisabledReason
+                    )
                 }
+
+                Button(primaryButtonTitle) {
+                    performPrimaryAction()
+                }
+                .frame(maxWidth: .infinity)
+                .disabled(
+                    hasWorkingTreeChanges
+                        ? !canCommit
+                        : (gitManager.isCommitting || aiCommitCoordinator.isGenerating)
+                )
+                .buttonStyle(.borderedProminent)
 
                 if !aiCommitCoordinator.isReadyForGeneration {
                     Text(aiCommitCoordinator.generationDisabledReason)
@@ -586,27 +597,9 @@ struct MainMenuView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .id(gitManager.stagedFiles.count + gitManager.changedFiles.count)
 
-            Spacer()
-                .frame(height: 3)
-
-            // Action buttons
             HStack {
-                if gitManager.commitCount > 0 || hasWorkingTreeChanges {
-                    Button("Reset") {
-                        resetToLastCommit()
-                    }
-                    .buttonStyle(.borderless)
-                    .focusable(false)
-                }
-
+                branchPillView
                 Spacer()
-
-                Button(primaryButtonTitle) {
-                    performPrimaryAction()
-                }
-                .disabled(hasWorkingTreeChanges ? !canCommit : (gitManager.isCommitting || aiCommitCoordinator.isGenerating))
-                .buttonStyle(.borderedProminent)
-                .focusable(false)
             }
         }
         .padding(.horizontal, 16)
@@ -972,17 +965,31 @@ struct MainMenuView: View {
         .frame(width: 250)
     }
 
+    private var branchPillView: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "arrow.triangle.branch")
+                .font(.system(size: 11, weight: .medium))
+            Text(gitManager.currentBranch)
+                .font(.system(size: 12, weight: .medium))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 2)
+        .background(Color.black.opacity(0.08))
+        .clipShape(Capsule())
+    }
+
     private func submitComment() {
         let trimmedText = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return }
         guard !gitManager.isCommitting else { return }
         guard !aiCommitCoordinator.isGenerating else { return }
-        guard !gitManager.stagedFiles.isEmpty else { return }
+        guard hasWorkingTreeChanges else { return }
 
         commentText = ""
 
-        // Commit staged files and keep the popover open so the button can flip to Sync.
-        gitManager.commitLocally(trimmedText) {
+        // Commit staged files first, or auto-stage changes when staged is empty.
+        gitManager.commitLocallyWithFallback(trimmedText) {
             self.gitManager.refresh()
         }
     }
@@ -1012,8 +1019,11 @@ struct MainMenuView: View {
         }
     }
 
-    private func generateCommitMessage(scope: DiffScope?) {
+    private func generateCommitMessageFromPriorityScope() {
         guard !aiCommitCoordinator.isGenerating else { return }
+        guard hasWorkingTreeChanges else { return }
+
+        let scope: DiffScope = gitManager.stagedFiles.isEmpty ? .unstaged : .staged
 
         Task {
             do {
@@ -1931,5 +1941,20 @@ struct VisualEffectView: NSViewRepresentable {
 }
 
 #Preview {
-    MainMenuView()
+    let gitManager = GitManager(repositoryPathOverride: "/tmp")
+    let providerStore = AIProviderStore()
+    let keychainStore = AIKeychainStore()
+    let coordinator = AICommitCoordinator(
+        providerStore: providerStore,
+        keychainStore: keychainStore,
+        messageService: AICommitMessageService(),
+        gitManager: gitManager
+    )
+
+    return MainMenuView()
+        .environmentObject(gitManager)
+        .environmentObject(LoginItemManager())
+        .environmentObject(GitHubAuthManager())
+        .environmentObject(providerStore)
+        .environmentObject(coordinator)
 }
