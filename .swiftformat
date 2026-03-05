@@ -1,0 +1,7 @@
+--swiftversion 5.0
+--indent 4
+--linebreaks lf
+--trimwhitespace always
+--commas inline
+--wraparguments before-first
+--wrapcollections before-first
