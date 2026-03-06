@@ -73,7 +73,6 @@ extension MainMenuView {
                     }
                 }
 
-                Divider()
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
@@ -108,8 +107,6 @@ extension MainMenuView {
                                 }
                             }
                         }
-
-                        Divider()
 
                         VStack(alignment: .leading, spacing: 6) {
                             WorkingTreeSectionHeaderView(
@@ -269,33 +266,43 @@ private struct WorkingTreeSectionHeaderView: View {
 
                     Text(title)
                         .font(.system(size: 13, weight: .medium))
-
-                    Text(summary.fileCountText)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.gray)
                 }
             }
             .buttonStyle(.plain)
 
             Spacer(minLength: 8)
 
-            WorkingTreeLineDiffView(
-                addedCount: summary.addedLineCount,
-                removedCount: summary.removedLineCount
-            )
-
-            Button(action: onAction) {
-                Image(systemName: actionIcon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.secondary)
+            ZStack(alignment: .trailing) {
+                WorkingTreeLineDiffView(
+                    addedCount: summary.addedLineCount,
+                    removedCount: summary.removedLineCount
+                )
+                .opacity(isHovered && showsAction ? 0 : 1)
+                
+                Button(action: onAction) {
+                    Image(systemName: actionIcon)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color.primary)
+                        .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(actionHelp)
+                .opacity(isHovered && showsAction ? 1 : 0)
+                .allowsHitTesting(isHovered && showsAction)
             }
-            .buttonStyle(.plain)
-            .help(actionHelp)
-            .opacity(isHovered && showsAction ? 1 : 0)
-            .allowsHitTesting(isHovered && showsAction)
-            .frame(width: WorkingTreeLayoutMetrics.actionWidth)
+            
+            Text(summary.fileCountText)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.gray)
+                .frame(width: 16, height: 16, alignment: .center)
+                .background(.white.opacity(0.08))
+                .clipShape(Circle())
         }
         .padding(.vertical, 2)
+        .padding(.horizontal, 4)
+        .background(isHovered ? Color.primary.opacity(0.08) : Color.clear)
+        .cornerRadius(4)
         .contentShape(Rectangle())
         .onHover { inside in
             isHovered = inside
