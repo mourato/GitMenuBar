@@ -1,5 +1,5 @@
 //
-//  MainMenuView+Preview.swift
+//  MainMenuPreview.swift
 //  GitMenuBar
 //
 

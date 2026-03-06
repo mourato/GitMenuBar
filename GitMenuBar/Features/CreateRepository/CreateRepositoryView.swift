@@ -1,5 +1,5 @@
 //
-//  CreateRepoView.swift
+//  CreateRepositoryView.swift
 //  GitMenuBar
 //
 

@@ -1,5 +1,5 @@
 //
-//  MainMenuView+MainOverlays.swift
+//  MainMenuOverlays.swift
 //  GitMenuBar
 //
 

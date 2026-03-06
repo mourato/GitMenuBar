@@ -45,7 +45,7 @@ struct WorkingTreeFileRowView: View {
 #Preview("Working Tree File Row") {
     WorkingTreeFileRowView(
         file: WorkingTreeFile(
-            path: "GitMenuBar/MainMenuView+MainContent.swift",
+            path: "GitMenuBar/Features/MainMenu/MainMenuContent.swift",
             lineDiff: LineDiffStats(added: 23, removed: 8)
         ),
         actionIcon: "plus.circle",

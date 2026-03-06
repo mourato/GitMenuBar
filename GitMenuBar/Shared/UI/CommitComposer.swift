@@ -54,7 +54,7 @@ struct CommitComposerSectionView: View {
                 .disabled(!isReadyForGeneration || isGenerating || !hasWorkingTreeChanges)
                 .help(
                     isReadyForGeneration
-                        ? "Generate commit message from Staged files, or Untracked when nothing is staged."
+                        ? "Generate commit message from staged changes. If no staged diff is available, fallback may include all changes."
                         : generationDisabledReason
                 )
             }
