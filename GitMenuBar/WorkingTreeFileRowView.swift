@@ -15,8 +15,6 @@ struct WorkingTreeFileRowView: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
 
-            Spacer(minLength: 8)
-
             HStack(spacing: 4) {
                 Text("+\(file.lineDiff.added)")
                     .font(.system(size: 12, weight: .medium))

@@ -33,7 +33,7 @@ struct BranchRowView: View {
     var body: some View {
         HStack {
             Text(branchName)
-                .font(.system(size: 11, design: .monospaced))
+                .font(.system(size: 12))
             Spacer()
             if isCurrentBranch {
                 Image(systemName: "checkmark")
