@@ -79,6 +79,25 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.changedFiles.sectionSummary.removedLineCount, 0)
     }
 
+    func testUntrackedFilesInNewDirectoryAreEnumeratedPerFile() throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let nestedDirectory = repoURL.appendingPathComponent("newtree/sub", isDirectory: true)
+        try FileManager.default.createDirectory(at: nestedDirectory, withIntermediateDirectories: true)
+
+        let firstFileURL = nestedDirectory.appendingPathComponent("f1.txt")
+        let secondFileURL = nestedDirectory.appendingPathComponent("f2.txt")
+        try "one\ntwo\n".write(to: firstFileURL, atomically: true, encoding: .utf8)
+        try "three\n".write(to: secondFileURL, atomically: true, encoding: .utf8)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        waitForWorkingTreeUpdate(gitManager)
+
+        XCTAssertEqual(gitManager.changedFiles.map(\.path), ["newtree/sub/f1.txt", "newtree/sub/f2.txt"])
+        XCTAssertEqual(gitManager.changedFiles.sectionSummary.fileCountText, "2")
+        XCTAssertEqual(gitManager.changedFiles.sectionSummary.addedLineCount, 3)
+        XCTAssertEqual(gitManager.changedFiles.sectionSummary.removedLineCount, 0)
+    }
+
     func testBinaryNumstatMapsToNeutralCounts() throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let fileURL = repoURL.appendingPathComponent("icon.bin")
