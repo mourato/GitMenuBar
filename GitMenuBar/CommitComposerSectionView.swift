@@ -20,8 +20,8 @@ struct CommitComposerSectionView: View {
                     .font(.system(size: 13))
                     .lineLimit(1 ... 4)
                     .textFieldStyle(.plain)
-                    .padding(.leading, 14)
-                    .padding(.trailing, 48)
+                    .padding(.leading, 16)
+//                    .padding(.trailing, 48)
                     .padding(.vertical, 10)
                     .background(Color.black.opacity(0.06))
                     .overlay(
@@ -34,28 +34,27 @@ struct CommitComposerSectionView: View {
                 Button(action: onGenerateMessage) {
                     if isGenerating {
                         ProgressView()
-                            .controlSize(.small)
+                            .controlSize(.mini)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 6)
                             .background(Color.blue.opacity(0.12))
                             .cornerRadius(6)
                     } else {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 12, weight: .semibold))
+                        Image(systemName: "sparkle")
+                            .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.blue)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
+                            .frame(width: 20, height: 20)
                             .background(Color.blue.opacity(0.12))
                             .cornerRadius(6)
                     }
                 }
                 .buttonStyle(.plain)
-                .padding(.top, 7)
+                .padding(.top, 8)
                 .padding(.trailing, 8)
                 .disabled(!isReadyForGeneration || isGenerating || !hasWorkingTreeChanges)
                 .help(
                     isReadyForGeneration
-                        ? "Generate commit message from staged files, or changes when nothing is staged."
+                        ? "Generate commit message from Staged files, or Untracked when nothing is staged."
                         : generationDisabledReason
                 )
             }
@@ -65,7 +64,7 @@ struct CommitComposerSectionView: View {
                     .frame(maxWidth: .infinity)
             }
             .frame(maxWidth: .infinity)
-            .controlSize(.small)
+            .controlSize(.extraLarge)
             .buttonStyle(.borderedProminent)
             .disabled(isPrimaryButtonDisabled)
 
