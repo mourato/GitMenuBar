@@ -59,26 +59,26 @@ struct WorkingTreeFileRowView: View {
     }
 
     private var fileLabel: some View {
-        ZStack(alignment: .trailing) {
-            HStack(spacing: 6) {
-                Text(file.fileName)
-                    .font(.system(size: 12, weight: .medium))
+        HStack(spacing: 6) {
+            Text(file.fileName)
+                .font(.system(size: 12, weight: .medium))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .layoutPriority(1)
+                .strikethrough(file.status.isDeleted, color: .secondary)
+
+            if !file.directoryPath.isEmpty {
+                Text(file.directoryPath)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(.secondary)
                     .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .strikethrough(file.status.isDeleted, color: .secondary)
-
-                if !file.directoryPath.isEmpty {
-                    Text(file.directoryPath)
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    Spacer(minLength: 0)
-                }
+                    .truncationMode(.middle)
+                    .layoutPriority(0)
             }
-
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .clipped()
+        .overlay(alignment: .trailing) {
             Button(action: onAction) {
                 Image(systemName: actionIcon)
                     .font(.system(size: 12, weight: .semibold))
@@ -91,7 +91,6 @@ struct WorkingTreeFileRowView: View {
             .opacity(isHovered ? 1 : 0)
             .allowsHitTesting(isHovered)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
