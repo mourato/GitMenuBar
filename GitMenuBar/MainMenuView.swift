@@ -180,3 +180,9 @@ struct MainMenuView: View {
         .frame(width: 400)
     }
 }
+
+#Preview("Main Menu Root") {
+    MainMenuPreviewHarness {
+        MainMenuView()
+    }
+}
