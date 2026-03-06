@@ -10,11 +10,6 @@
 		A1B2C3D42F11111100ABC001 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D42F11111100ABC003 /* KeyboardShortcuts */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXFileReference section */
-		1F8681CC2EBCB5B600C300C7 /* GitMenuBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GitMenuBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2A0000012F00000100000001 /* GitMenuBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GitMenuBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-/* End PBXFileReference section */
-
 /* Begin PBXContainerItemProxy section */
 		B00000012F00000100000001 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +19,11 @@
 			remoteInfo = GitMenuBar;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		1F8681CC2EBCB5B600C300C7 /* GitMenuBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GitMenuBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2A0000012F00000100000001 /* GitMenuBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GitMenuBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		1F31AE932EE0AB780020EDD9 /* Exceptions for "GitMenuBar" folder in "GitMenuBar" target */ = {
@@ -139,14 +139,6 @@
 		};
 /* End PBXNativeTarget section */
 
-/* Begin PBXTargetDependency section */
-		B00000012F00000100000002 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 1F8681CB2EBCB5B600C300C7 /* GitMenuBar */;
-			targetProxy = B00000012F00000100000001 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
 /* Begin PBXProject section */
 		1F8681C42EBCB5B600C300C7 /* Project object */ = {
 			isa = PBXProject;
@@ -219,6 +211,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B00000012F00000100000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1F8681CB2EBCB5B600C300C7 /* GitMenuBar */;
+			targetProxy = B00000012F00000100000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		1F8681D62EBCB5B700C300C7 /* Debug */ = {
