@@ -9,7 +9,7 @@ import ServiceManagement
 class LoginItemManager: ObservableObject {
     @Published var isEnabled: Bool = false
 
-    private let loginItemIdentifier = "com.pizzaman.GitMenuBar"
+    private let loginItemIdentifier = "com.mourato.GitMenuBar"
 
     init() {
         checkLoginItemStatus()

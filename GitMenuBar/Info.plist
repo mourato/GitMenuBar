@@ -10,7 +10,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>com.pizzaman.GitMenuBar</string>
+			<string>com.mourato.GitMenuBar</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>gitmenubar</string>

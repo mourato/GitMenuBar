@@ -37,7 +37,9 @@ class StatusBarController: ObservableObject {
         if AppExecutionContext.usesEphemeralCredentialStores {
             aiKeychainStore = InMemoryAIAPIKeyStore()
         } else {
-            aiKeychainStore = CachedAIAPIKeyStore(backingStore: AIKeychainStore())
+            let cachedStore = CachedAIAPIKeyStore(backingStore: AIKeychainStore())
+            cachedStore.preloadAllKeys() // Eagerly load all keys to avoid multiple keychain prompts
+            aiKeychainStore = cachedStore
         }
 
         // Wire up token provider for git push operations
