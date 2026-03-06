@@ -81,26 +81,29 @@ extension MainMenuView {
                             WorkingTreeSectionHeaderView(
                                 title: "Staged",
                                 summary: stagedSummary,
+                                isCollapsed: $isStagedSectionCollapsed,
                                 actionIcon: "minus.circle",
                                 actionHelp: "Unstage all files",
                                 showsAction: !gitManager.stagedFiles.isEmpty,
                                 onAction: unstageAllFiles
                             )
 
-                            if gitManager.stagedFiles.isEmpty {
-                                Text("No staged files")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                                    .padding(.vertical, 2)
-                            } else {
-                                VStack(spacing: 3) {
-                                    ForEach(gitManager.stagedFiles) { file in
-                                        WorkingTreeFileRowView(
-                                            file: file,
-                                            actionIcon: "minus.circle",
-                                            actionHelp: "Unstage file",
-                                            onAction: { unstageFile(path: file.path) }
-                                        )
+                            if !isStagedSectionCollapsed {
+                                if gitManager.stagedFiles.isEmpty {
+                                    Text("No staged files")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                        .padding(.vertical, 2)
+                                } else {
+                                    VStack(spacing: 3) {
+                                        ForEach(gitManager.stagedFiles) { file in
+                                            WorkingTreeFileRowView(
+                                                file: file,
+                                                actionIcon: "minus.circle",
+                                                actionHelp: "Unstage file",
+                                                onAction: { unstageFile(path: file.path) }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -112,26 +115,29 @@ extension MainMenuView {
                             WorkingTreeSectionHeaderView(
                                 title: "Unstaged",
                                 summary: unstagedSummary,
+                                isCollapsed: $isUnstagedSectionCollapsed,
                                 actionIcon: "plus.circle",
                                 actionHelp: "Stage all files",
                                 showsAction: !gitManager.changedFiles.isEmpty,
                                 onAction: stageAllFiles
                             )
 
-                            if gitManager.changedFiles.isEmpty {
-                                Text("No unstaged files")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                                    .padding(.vertical, 2)
-                            } else {
-                                VStack(spacing: 3) {
-                                    ForEach(gitManager.changedFiles) { file in
-                                        WorkingTreeFileRowView(
-                                            file: file,
-                                            actionIcon: "plus.circle",
-                                            actionHelp: "Stage file",
-                                            onAction: { stageFile(path: file.path) }
-                                        )
+                            if !isUnstagedSectionCollapsed {
+                                if gitManager.changedFiles.isEmpty {
+                                    Text("No unstaged files")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                        .padding(.vertical, 2)
+                                } else {
+                                    VStack(spacing: 3) {
+                                        ForEach(gitManager.changedFiles) { file in
+                                            WorkingTreeFileRowView(
+                                                file: file,
+                                                actionIcon: "plus.circle",
+                                                actionHelp: "Stage file",
+                                                onAction: { stageFile(path: file.path) }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -243,6 +249,7 @@ extension MainMenuView {
 private struct WorkingTreeSectionHeaderView: View {
     let title: String
     let summary: WorkingTreeSectionSummary
+    @Binding var isCollapsed: Bool
     let actionIcon: String
     let actionHelp: String
     let showsAction: Bool
@@ -252,13 +259,23 @@ private struct WorkingTreeSectionHeaderView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Text(title)
-                    .font(.system(size: 13, weight: .medium))
-                Text(summary.fileCountText)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.gray)
+            Button {
+                isCollapsed.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+
+                    Text(title)
+                        .font(.system(size: 13, weight: .medium))
+
+                    Text(summary.fileCountText)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.gray)
+                }
             }
+            .buttonStyle(.plain)
 
             Spacer(minLength: 8)
 

@@ -23,12 +23,57 @@ struct LineDiffStats: Hashable {
     )
 }
 
+enum WorkingTreeFileStatus: String, Hashable {
+    case modified
+    case deleted
+    case untracked
+
+    var symbol: String {
+        switch self {
+        case .modified:
+            return "M"
+        case .deleted:
+            return "D"
+        case .untracked:
+            return "U"
+        }
+    }
+
+    var foregroundColor: NSColor {
+        switch self {
+        case .modified:
+            return .systemBlue
+        case .deleted:
+            return .systemRed
+        case .untracked:
+            return .systemGreen
+        }
+    }
+
+    var isDeleted: Bool {
+        self == .deleted
+    }
+}
+
 struct WorkingTreeFile: Identifiable, Hashable {
     let path: String
     let lineDiff: LineDiffStats
+    let status: WorkingTreeFileStatus
 
     var id: String {
         path
+    }
+
+    var fileName: String {
+        (path as NSString).lastPathComponent
+    }
+
+    var directoryPath: String {
+        let directory = (path as NSString).deletingLastPathComponent
+        guard directory != ".", directory != path else {
+            return ""
+        }
+        return directory
     }
 }
 
@@ -526,13 +571,25 @@ class GitManager: ObservableObject {
                 changedDiffs[path] = diff
             }
 
-            let stagedEntries = status.stagedPaths
+            let stagedEntries = status.stagedStatuses.keys
                 .sorted()
-                .map { WorkingTreeFile(path: $0, lineDiff: stagedDiffs[$0] ?? .zero) }
-            let changedEntries = status.changedPaths
+                .map { path in
+                    WorkingTreeFile(
+                        path: path,
+                        lineDiff: stagedDiffs[path] ?? .zero,
+                        status: status.stagedStatuses[path] ?? .modified
+                    )
+                }
+            let changedEntries = status.changedStatuses.keys
                 .sorted()
-                .map { WorkingTreeFile(path: $0, lineDiff: changedDiffs[$0] ?? .zero) }
-            let merged = Array(Set(status.stagedPaths).union(status.changedPaths)).sorted()
+                .map { path in
+                    WorkingTreeFile(
+                        path: path,
+                        lineDiff: changedDiffs[path] ?? .zero,
+                        status: status.changedStatuses[path] ?? .modified
+                    )
+                }
+            let merged = Array(Set(status.stagedStatuses.keys).union(status.changedStatuses.keys)).sorted()
 
             DispatchQueue.main.async {
                 self.stagedFiles = stagedEntries
@@ -705,9 +762,13 @@ class GitManager: ObservableObject {
         return sections.joined(separator: "\n\n")
     }
 
-    private func parsePorcelainStatus(_ output: String) -> (stagedPaths: Set<String>, changedPaths: Set<String>, untrackedPaths: Set<String>) {
-        var stagedPaths = Set<String>()
-        var changedPaths = Set<String>()
+    private func parsePorcelainStatus(_ output: String) -> (
+        stagedStatuses: [String: WorkingTreeFileStatus],
+        changedStatuses: [String: WorkingTreeFileStatus],
+        untrackedPaths: Set<String>
+    ) {
+        var stagedStatuses: [String: WorkingTreeFileStatus] = [:]
+        var changedStatuses: [String: WorkingTreeFileStatus] = [:]
         var untrackedPaths = Set<String>()
 
         let lines = output.components(separatedBy: .newlines).filter { !$0.isEmpty }
@@ -725,20 +786,31 @@ class GitManager: ObservableObject {
 
             if indexStatus == "?", worktreeStatus == "?" {
                 untrackedPaths.insert(path)
-                changedPaths.insert(path)
+                changedStatuses[path] = .untracked
                 continue
             }
 
             if indexStatus != " " {
-                stagedPaths.insert(path)
+                stagedStatuses[path] = visualStatus(for: indexStatus)
             }
 
             if worktreeStatus != " " {
-                changedPaths.insert(path)
+                changedStatuses[path] = visualStatus(for: worktreeStatus)
             }
         }
 
-        return (stagedPaths, changedPaths, untrackedPaths)
+        return (stagedStatuses, changedStatuses, untrackedPaths)
+    }
+
+    private func visualStatus(for statusCode: Character) -> WorkingTreeFileStatus {
+        switch statusCode {
+        case "?", "A":
+            return .untracked
+        case "D":
+            return .deleted
+        default:
+            return .modified
+        }
     }
 
     private func parsePathFromStatusLine(_ line: String) -> String? {
