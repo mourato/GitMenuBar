@@ -32,6 +32,33 @@ struct WorkingTreeFile: Identifiable, Hashable {
     }
 }
 
+struct WorkingTreeSectionSummary: Equatable {
+    let fileCount: Int
+    let addedLineCount: Int
+    let removedLineCount: Int
+
+    var fileCountText: String {
+        return "\(fileCount)"
+    }
+}
+
+extension Collection where Element == WorkingTreeFile {
+    var sectionSummary: WorkingTreeSectionSummary {
+        let addedLineCount = reduce(0) { partialResult, file in
+            partialResult + file.lineDiff.added
+        }
+        let removedLineCount = reduce(0) { partialResult, file in
+            partialResult + file.lineDiff.removed
+        }
+
+        return WorkingTreeSectionSummary(
+            fileCount: count,
+            addedLineCount: addedLineCount,
+            removedLineCount: removedLineCount
+        )
+    }
+}
+
 // swiftlint:disable type_body_length file_length
 class GitManager: ObservableObject {
     @Published var commitCount: Int = 0
@@ -549,6 +576,34 @@ class GitManager: ObservableObject {
             if result.failure {
                 DispatchQueue.main.async {
                     completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to stage all changes: \(result.output)"])))
+                }
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.updateUncommittedFiles {
+                    completion?(.success(()))
+                }
+            }
+        }
+    }
+
+    func unstageAllChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
+        guard !storedRepoPath.isEmpty else {
+            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            var result = self.executeGitCommand(in: self.storedRepoPath, args: ["restore", "--staged", "--", "."])
+            if result.failure {
+                // Fallback for environments where restore is unavailable.
+                result = self.executeGitCommand(in: self.storedRepoPath, args: ["reset", "HEAD", "--", "."])
+            }
+
+            if result.failure {
+                DispatchQueue.main.async {
+                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to unstage all changes: \(result.output)"])))
                 }
                 return
             }

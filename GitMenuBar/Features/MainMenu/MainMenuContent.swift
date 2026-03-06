@@ -6,6 +6,14 @@
 import SwiftUI
 
 extension MainMenuView {
+    private var stagedSummary: WorkingTreeSectionSummary {
+        gitManager.stagedFiles.sectionSummary
+    }
+
+    private var unstagedSummary: WorkingTreeSectionSummary {
+        gitManager.changedFiles.sectionSummary
+    }
+
     var mainView: some View {
         applyMainViewOverlays(
             to: VStack(spacing: 8) {
@@ -72,13 +80,14 @@ extension MainMenuView {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
                         VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text("Staged")
-                                    .font(.system(size: 14, weight: .semibold))
-                                Spacer()
-                                Text("\(gitManager.stagedFiles.count)")
-                                    .font(.system(size: 14, weight: .semibold))
-                            }
+                            WorkingTreeSectionHeaderView(
+                                title: "Staged",
+                                summary: stagedSummary,
+                                actionIcon: "minus.circle",
+                                actionHelp: "Unstage all files",
+                                showsAction: !gitManager.stagedFiles.isEmpty,
+                                onAction: unstageAllFiles
+                            )
 
                             if gitManager.stagedFiles.isEmpty {
                                 Text("No staged files")
@@ -102,16 +111,17 @@ extension MainMenuView {
                         Divider()
 
                         VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text("Changes")
-                                    .font(.system(size: 14, weight: .semibold))
-                                Spacer()
-                                Text("\(gitManager.changedFiles.count)")
-                                    .font(.system(size: 14, weight: .semibold))
-                            }
+                            WorkingTreeSectionHeaderView(
+                                title: "Unstaged",
+                                summary: unstagedSummary,
+                                actionIcon: "plus.circle",
+                                actionHelp: "Stage all files",
+                                showsAction: !gitManager.changedFiles.isEmpty,
+                                onAction: stageAllFiles
+                            )
 
                             if gitManager.changedFiles.isEmpty {
-                                Text("No changes")
+                                Text("No unstaged files")
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
                                     .padding(.vertical, 2)
@@ -129,8 +139,9 @@ extension MainMenuView {
                             }
                         }
                     }
+                    .padding(.trailing, WorkingTreeLayoutMetrics.trailingContentPadding)
                 }
-                .frame(maxHeight: 210)
+                .frame(maxHeight: 400)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .id(gitManager.stagedFiles.count + gitManager.changedFiles.count)
 
@@ -211,8 +222,8 @@ extension MainMenuView {
                     Spacer()
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 6)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 16)
             .onExitCommand {
                 closePopover()
             }
@@ -229,6 +240,52 @@ extension MainMenuView {
                 }
             }
         )
+    }
+}
+
+private struct WorkingTreeSectionHeaderView: View {
+    let title: String
+    let summary: WorkingTreeSectionSummary
+    let actionIcon: String
+    let actionHelp: String
+    let showsAction: Bool
+    let onAction: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 6) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                Text(summary.fileCountText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.gray)
+            }
+
+            Spacer(minLength: 8)
+
+            WorkingTreeLineDiffView(
+                addedCount: summary.addedLineCount,
+                removedCount: summary.removedLineCount
+            )
+
+            Button(action: onAction) {
+                Image(systemName: actionIcon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(actionHelp)
+            .opacity(isHovered && showsAction ? 1 : 0)
+            .allowsHitTesting(isHovered && showsAction)
+            .frame(width: WorkingTreeLayoutMetrics.actionWidth)
+        }
+        .padding(.vertical, 2)
+        .contentShape(Rectangle())
+        .onHover { inside in
+            isHovered = inside
+        }
     }
 }
 

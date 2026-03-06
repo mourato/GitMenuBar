@@ -2,8 +2,8 @@
 import XCTest
 
 final class AIKeychainStoreTests: XCTestCase {
-    func testSaveReadUpdateDeleteAPIKey() {
-        let store = AIKeychainStore(service: "AIKeychainStoreTests-\(UUID().uuidString)")
+    func testInMemoryStoreSaveReadUpdateDeleteAPIKey() {
+        let store = InMemoryAIAPIKeyStore()
         let providerId = UUID()
 
         store.saveAPIKey("key-1", for: providerId)

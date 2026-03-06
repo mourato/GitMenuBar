@@ -23,6 +23,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var githubAuthManager: GitHubAuthManager?
 
     func applicationDidFinishLaunching(_: Notification) {
+        guard !AppExecutionContext.isRunningTests else {
+            return
+        }
+
         // Hide the dock icon immediately
         NSApp.setActivationPolicy(.accessory)
 

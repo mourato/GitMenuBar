@@ -5,7 +5,6 @@
 
 import AppKit
 import Foundation
-import Security
 
 class GitHubAuthManager: ObservableObject {
     @Published var isAuthenticated: Bool = false
@@ -18,17 +17,28 @@ class GitHubAuthManager: ObservableObject {
     private let clientID = "178c6fc778ccc68e1d6a"
     private let scope = "repo delete_repo"
 
-    private let keychainService = "com.pizzaman.GitMenuBar"
-    private let keychainAccount = "github-access-token"
+    private let tokenStore: any GitHubTokenStore
 
     // Device flow state
     private var deviceCode: String = ""
     private var pollingInterval: Int = 5
     private var pollingTimer: Timer?
 
-    init() {
+    init(
+        tokenStore: (any GitHubTokenStore)? = nil,
+        preloadStoredToken: Bool? = nil
+    ) {
+        let usesEphemeralStores = AppExecutionContext.usesEphemeralCredentialStores
+        self.tokenStore = tokenStore ?? {
+            if usesEphemeralStores {
+                return InMemoryGitHubTokenStore()
+            }
+            return CachedGitHubTokenStore(backingStore: GitHubKeychainTokenStore())
+        }()
+        let shouldPreloadStoredToken = preloadStoredToken ?? !usesEphemeralStores
+
         // Check if we have a stored token
-        if let _ = getStoredToken() {
+        if shouldPreloadStoredToken, getStoredToken() != nil {
             isAuthenticated = true
             // Fetch username in background
             Task {
@@ -132,7 +142,7 @@ class GitHubAuthManager: ObservableObject {
             switch result {
             case let .success(token):
                 // Store token and update state
-                storeToken(token)
+                tokenStore.saveToken(token)
                 await MainActor.run {
                     self.isAuthenticated = true
                     self.isAuthenticating = false
@@ -224,63 +234,14 @@ class GitHubAuthManager: ObservableObject {
         authError = ""
     }
 
-    // MARK: - Token Storage (Keychain)
-
-    private func storeToken(_ token: String) {
-        let data = token.data(using: .utf8)!
-
-        // Delete existing token first
-        let deleteQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
-
-        // Add new token
-        let addQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
-        ]
-
-        let status = SecItemAdd(addQuery as CFDictionary, nil)
-        if status != errSecSuccess {
-            print("Error storing token in keychain: \(status)")
-        }
-    }
+    // MARK: - Token Storage
 
     func getStoredToken() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess,
-              let data = result as? Data,
-              let token = String(data: data, encoding: .utf8)
-        else {
-            return nil
-        }
-
-        return token
+        tokenStore.storedToken()
     }
 
     private func deleteStoredToken() {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount
-        ]
-        SecItemDelete(query as CFDictionary)
+        tokenStore.deleteStoredToken()
     }
 
     // MARK: - User Info

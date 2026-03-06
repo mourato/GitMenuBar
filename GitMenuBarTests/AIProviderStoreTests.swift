@@ -28,7 +28,7 @@ final class AIProviderStoreTests: XCTestCase {
 
     func testPersistsProvidersAndPreferencesAcrossStoreInstances() {
         let store = AIProviderStore(defaults: defaults)
-        let provider = makeProvider(name: "OpenAI Team")
+        let provider = makeProvider(name: "OpenAI Team", hasStoredAPIKey: true)
 
         store.upsertProvider(provider)
         store.updateDefaultProvider(provider.id)
@@ -38,6 +38,7 @@ final class AIProviderStoreTests: XCTestCase {
 
         XCTAssertEqual(reloadedStore.providers.count, 1)
         XCTAssertEqual(reloadedStore.providers.first?.name, "OpenAI Team")
+        XCTAssertEqual(reloadedStore.providers.first?.hasStoredAPIKey, true)
         XCTAssertEqual(reloadedStore.preferences.defaultProviderId, provider.id)
         XCTAssertEqual(reloadedStore.preferences.defaultModel, "gpt-4.1")
     }
@@ -58,13 +59,42 @@ final class AIProviderStoreTests: XCTestCase {
         XCTAssertEqual(store.preferences.defaultProviderId, firstProvider.id)
     }
 
-    private func makeProvider(name: String, type: AIProviderType = .openAI) -> AIProviderConfig {
+    func testLegacyProviderPayloadDefaultsStoredKeyFlagToFalse() {
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 123_456_789)
+        let payload = """
+        [
+          {
+            "id":"\(UUID().uuidString)",
+            "name":"Legacy Provider",
+            "type":"openai",
+            "endpointURL":"https://api.openai.com",
+            "selectedModel":"gpt-4.1",
+            "availableModels":["gpt-4.1"],
+            "createdAt":\(referenceDate.timeIntervalSinceReferenceDate),
+            "updatedAt":\(referenceDate.timeIntervalSinceReferenceDate)
+          }
+        ]
+        """
+        defaults.set(payload.data(using: .utf8), forKey: "aiProviderConfigs.v1")
+
+        let store = AIProviderStore(defaults: defaults)
+
+        XCTAssertEqual(store.providers.count, 1)
+        XCTAssertEqual(store.providers.first?.hasStoredAPIKey, false)
+    }
+
+    private func makeProvider(
+        name: String,
+        type: AIProviderType = .openAI,
+        hasStoredAPIKey: Bool = false
+    ) -> AIProviderConfig {
         AIProviderConfig(
             name: name,
             type: type,
             endpointURL: type.defaultEndpoint,
             selectedModel: "model-1",
-            availableModels: ["model-1", "model-2"]
+            availableModels: ["model-1", "model-2"],
+            hasStoredAPIKey: hasStoredAPIKey
         )
     }
 }

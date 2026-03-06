@@ -64,8 +64,21 @@ struct AIProviderConfig: Identifiable, Codable, Equatable {
     var endpointURL: String
     var selectedModel: String
     var availableModels: [String]
+    var hasStoredAPIKey: Bool
     let createdAt: Date
     var updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case type
+        case endpointURL
+        case selectedModel
+        case availableModels
+        case hasStoredAPIKey
+        case createdAt
+        case updatedAt
+    }
 
     init(
         id: UUID = UUID(),
@@ -74,6 +87,7 @@ struct AIProviderConfig: Identifiable, Codable, Equatable {
         endpointURL: String,
         selectedModel: String,
         availableModels: [String] = [],
+        hasStoredAPIKey: Bool = false,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -83,8 +97,35 @@ struct AIProviderConfig: Identifiable, Codable, Equatable {
         self.endpointURL = endpointURL
         self.selectedModel = selectedModel
         self.availableModels = availableModels
+        self.hasStoredAPIKey = hasStoredAPIKey
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        type = try container.decode(AIProviderType.self, forKey: .type)
+        endpointURL = try container.decode(String.self, forKey: .endpointURL)
+        selectedModel = try container.decode(String.self, forKey: .selectedModel)
+        availableModels = try container.decode([String].self, forKey: .availableModels)
+        hasStoredAPIKey = try container.decodeIfPresent(Bool.self, forKey: .hasStoredAPIKey) ?? false
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(type, forKey: .type)
+        try container.encode(endpointURL, forKey: .endpointURL)
+        try container.encode(selectedModel, forKey: .selectedModel)
+        try container.encode(availableModels, forKey: .availableModels)
+        try container.encode(hasStoredAPIKey, forKey: .hasStoredAPIKey)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
     }
 }
 
@@ -100,7 +141,7 @@ struct AICommitPreferences: Codable, Equatable {
     )
 }
 
-enum AIError: LocalizedError {
+enum AIError: LocalizedError, Equatable {
     case providerNotConfigured
     case apiKeyMissing
     case modelNotConfigured

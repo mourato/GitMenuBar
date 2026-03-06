@@ -275,7 +275,10 @@ struct CreateRepoContentView: View {
         onSuccess: { _ in }
     )
     .environmentObject(GitManager(repositoryPathOverride: "/tmp"))
-    .environmentObject(GitHubAuthManager())
+    .environmentObject(GitHubAuthManager(
+        tokenStore: InMemoryGitHubTokenStore(),
+        preloadStoredToken: false
+    ))
     .padding()
     .frame(width: 380)
 }

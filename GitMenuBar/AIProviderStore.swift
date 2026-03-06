@@ -71,6 +71,16 @@ final class AIProviderStore: ObservableObject {
         persistPreferences()
     }
 
+    func updateStoredAPIKeyPresence(_ hasStoredAPIKey: Bool, for providerId: UUID) {
+        guard let index = providers.firstIndex(where: { $0.id == providerId }) else {
+            return
+        }
+
+        providers[index].hasStoredAPIKey = hasStoredAPIKey
+        providers[index].updatedAt = Date()
+        persistProviders()
+    }
+
     func updateDefaultScopeMode(_ mode: AICommitDefaultScopeMode) {
         preferences.defaultScopeMode = mode
         persistPreferences()

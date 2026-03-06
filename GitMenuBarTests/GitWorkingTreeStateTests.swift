@@ -16,6 +16,9 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertTrue(gitManager.changedFiles.isEmpty)
         XCTAssertEqual(gitManager.stagedFiles.first?.lineDiff.added, 1)
         XCTAssertEqual(gitManager.stagedFiles.first?.lineDiff.removed, 0)
+        XCTAssertEqual(gitManager.stagedFiles.sectionSummary.fileCountText, "1")
+        XCTAssertEqual(gitManager.stagedFiles.sectionSummary.addedLineCount, 1)
+        XCTAssertEqual(gitManager.stagedFiles.sectionSummary.removedLineCount, 0)
     }
 
     func testUnstagedFileAppearsOnlyInChangesSectionWithLineDiff() throws {
@@ -31,6 +34,9 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["README.md"])
         XCTAssertEqual(gitManager.changedFiles.first?.lineDiff.added, 1)
         XCTAssertEqual(gitManager.changedFiles.first?.lineDiff.removed, 0)
+        XCTAssertEqual(gitManager.changedFiles.sectionSummary.fileCountText, "1")
+        XCTAssertEqual(gitManager.changedFiles.sectionSummary.addedLineCount, 1)
+        XCTAssertEqual(gitManager.changedFiles.sectionSummary.removedLineCount, 0)
     }
 
     func testPartiallyStagedFileAppearsInBothSections() throws {
@@ -48,6 +54,12 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["README.md"])
         XCTAssertEqual(gitManager.stagedFiles.first?.lineDiff.added, 1)
         XCTAssertEqual(gitManager.changedFiles.first?.lineDiff.added, 1)
+        XCTAssertEqual(gitManager.stagedFiles.sectionSummary.fileCountText, "1")
+        XCTAssertEqual(gitManager.stagedFiles.sectionSummary.addedLineCount, 1)
+        XCTAssertEqual(gitManager.stagedFiles.sectionSummary.removedLineCount, 0)
+        XCTAssertEqual(gitManager.changedFiles.sectionSummary.fileCountText, "1")
+        XCTAssertEqual(gitManager.changedFiles.sectionSummary.addedLineCount, 1)
+        XCTAssertEqual(gitManager.changedFiles.sectionSummary.removedLineCount, 0)
     }
 
     func testUntrackedFileReceivesAddedLineCount() throws {
@@ -62,6 +74,9 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["NEW_FILE.md"])
         XCTAssertEqual(gitManager.changedFiles.first?.lineDiff.added, 3)
         XCTAssertEqual(gitManager.changedFiles.first?.lineDiff.removed, 0)
+        XCTAssertEqual(gitManager.changedFiles.sectionSummary.fileCountText, "1")
+        XCTAssertEqual(gitManager.changedFiles.sectionSummary.addedLineCount, 3)
+        XCTAssertEqual(gitManager.changedFiles.sectionSummary.removedLineCount, 0)
     }
 
     func testBinaryNumstatMapsToNeutralCounts() throws {
@@ -77,6 +92,9 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.stagedFiles.map(\.path), ["icon.bin"])
         XCTAssertEqual(gitManager.stagedFiles.first?.lineDiff.added, 0)
         XCTAssertEqual(gitManager.stagedFiles.first?.lineDiff.removed, 0)
+        XCTAssertEqual(gitManager.stagedFiles.sectionSummary.fileCountText, "1")
+        XCTAssertEqual(gitManager.stagedFiles.sectionSummary.addedLineCount, 0)
+        XCTAssertEqual(gitManager.stagedFiles.sectionSummary.removedLineCount, 0)
     }
 
     func testStageAndUnstageFileMovesBetweenSections() throws {
@@ -120,6 +138,28 @@ final class GitWorkingTreeStateTests: XCTestCase {
         let status = try runGit(["status", "--porcelain"], in: repoURL)
         XCTAssertTrue(status.contains("M  README.md"))
         XCTAssertTrue(status.contains("A  NEW.md"))
+    }
+
+    func testUnstageAllChangesMovesFilesBackToUnstagedSection() throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let trackedFile = repoURL.appendingPathComponent("README.md")
+        let untrackedFile = repoURL.appendingPathComponent("NEW.md")
+        try "base\nchanged\n".write(to: trackedFile, atomically: true, encoding: .utf8)
+        try "new file\n".write(to: untrackedFile, atomically: true, encoding: .utf8)
+        try runGit(["add", "-A"], in: repoURL)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        waitForWorkingTreeUpdate(gitManager)
+        XCTAssertEqual(gitManager.stagedFiles.map(\.path), ["NEW.md", "README.md"])
+        XCTAssertTrue(gitManager.changedFiles.isEmpty)
+
+        try waitForGitOperation {
+            gitManager.unstageAllChanges(completion: $0)
+        }
+
+        let status = try runGit(["status", "--porcelain"], in: repoURL)
+        XCTAssertTrue(status.contains(" M README.md"))
+        XCTAssertTrue(status.contains("?? NEW.md"))
     }
 
     func testCommitLocallyCommitsOnlyStagedChanges() throws {

@@ -21,7 +21,7 @@ class StatusBarController: ObservableObject {
     let loginItemManager = LoginItemManager()
     let githubAuthManager: GitHubAuthManager
     let aiProviderStore = AIProviderStore()
-    let aiKeychainStore = AIKeychainStore()
+    let aiKeychainStore: any AIAPIKeyStore
     let aiCommitMessageService = AICommitMessageService()
     let shortcutActionBridge = MainMenuShortcutActionBridge()
 
@@ -34,6 +34,11 @@ class StatusBarController: ObservableObject {
 
     init(githubAuthManager: GitHubAuthManager) {
         self.githubAuthManager = githubAuthManager
+        if AppExecutionContext.usesEphemeralCredentialStores {
+            aiKeychainStore = InMemoryAIAPIKeyStore()
+        } else {
+            aiKeychainStore = CachedAIAPIKeyStore(backingStore: AIKeychainStore())
+        }
 
         // Wire up token provider for git push operations
         gitManager.tokenProvider = { [weak githubAuthManager] in
