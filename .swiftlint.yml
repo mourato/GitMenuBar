@@ -13,12 +13,12 @@ line_length:
   error: 260
 
 type_body_length:
-  warning: 1400
-  error: 2000
+  warning: 500
+  error: 600
 
 file_length:
-  warning: 1800
-  error: 2500
+  warning: 500
+  error: 600
 
 function_body_length:
   warning: 80
