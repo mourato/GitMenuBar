@@ -177,7 +177,7 @@ struct AIProviderEditorSheet: View {
 #Preview("AI Provider Editor") {
     let gitManager = GitManager(repositoryPathOverride: "/tmp")
     let providerStore = AIProviderStore()
-    let keychainStore = AIKeychainStore()
+    let keychainStore = InMemoryAIAPIKeyStore()
     let coordinator = AICommitCoordinator(
         providerStore: providerStore,
         keychainStore: keychainStore,

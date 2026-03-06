@@ -1,5 +1,28 @@
 import SwiftUI
 
+enum WorkingTreeLayoutMetrics {
+    static let actionWidth: CGFloat = 16
+    static let diffColumnWidth: CGFloat = 72
+    static let trailingContentPadding: CGFloat = 12
+}
+
+struct WorkingTreeLineDiffView: View {
+    let addedCount: Int
+    let removedCount: Int
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("+\(addedCount)")
+                .foregroundColor(addedCount > 0 ? .green : .secondary)
+            Text("-\(removedCount)")
+                .foregroundColor(removedCount > 0 ? .red : .secondary)
+        }
+        .font(.system(size: 12, weight: .medium))
+        .monospacedDigit()
+        .frame(width: WorkingTreeLayoutMetrics.diffColumnWidth, alignment: .trailing)
+    }
+}
+
 struct WorkingTreeFileRowView: View {
     let file: WorkingTreeFile
     let actionIcon: String
@@ -11,18 +34,16 @@ struct WorkingTreeFileRowView: View {
     var body: some View {
         HStack(spacing: 8) {
             Text(file.path)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 12, weight: .regular))
                 .lineLimit(1)
                 .truncationMode(.middle)
 
-            HStack(spacing: 4) {
-                Text("+\(file.lineDiff.added)")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(file.lineDiff.added > 0 ? .green : .secondary)
-                Text("-\(file.lineDiff.removed)")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(file.lineDiff.removed > 0 ? .red : .secondary)
-            }
+            Spacer(minLength: 8)
+
+            WorkingTreeLineDiffView(
+                addedCount: file.lineDiff.added,
+                removedCount: file.lineDiff.removed
+            )
 
             Button(action: onAction) {
                 Image(systemName: actionIcon)
@@ -32,7 +53,8 @@ struct WorkingTreeFileRowView: View {
             .buttonStyle(.plain)
             .help(actionHelp)
             .opacity(isHovered ? 1 : 0)
-            .frame(width: 16)
+            .allowsHitTesting(isHovered)
+            .frame(width: WorkingTreeLayoutMetrics.actionWidth)
         }
         .padding(.vertical, 2)
         .contentShape(Rectangle())

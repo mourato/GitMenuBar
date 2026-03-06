@@ -134,8 +134,24 @@ extension MainMenuView {
         }
     }
 
+    func stageAllFiles() {
+        gitManager.stageAllChanges { result in
+            if case let .failure(error) = result {
+                syncError = error.localizedDescription
+            }
+        }
+    }
+
     func unstageFile(path: String) {
         gitManager.unstageFile(path: path) { result in
+            if case let .failure(error) = result {
+                syncError = error.localizedDescription
+            }
+        }
+    }
+
+    func unstageAllFiles() {
+        gitManager.unstageAllChanges { result in
             if case let .failure(error) = result {
                 syncError = error.localizedDescription
             }

@@ -6,13 +6,13 @@ final class AICommitCoordinator: ObservableObject {
     @Published var generationError: String?
 
     private let providerStore: AIProviderStore
-    private let keychainStore: AIKeychainStore
+    private let keychainStore: any AIAPIKeyStore
     private let messageService: AICommitMessageService
     private let gitManager: GitManager
 
     init(
         providerStore: AIProviderStore,
-        keychainStore: AIKeychainStore,
+        keychainStore: any AIAPIKeyStore,
         messageService: AICommitMessageService,
         gitManager: GitManager
     ) {
@@ -29,7 +29,7 @@ final class AICommitCoordinator: ObservableObject {
             throw AIError.providerNotConfigured
         }
 
-        let apiKey = keychainStore.apiKey(for: provider.id)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let apiKey = resolvedAPIKey(for: provider)
         guard !apiKey.isEmpty else {
             throw AIError.apiKeyMissing
         }
@@ -70,20 +70,27 @@ final class AICommitCoordinator: ObservableObject {
     }
 
     func apiKey(for providerId: UUID) -> String {
-        keychainStore.apiKey(for: providerId) ?? ""
+        let apiKey = keychainStore.apiKey(for: providerId) ?? ""
+        if apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            providerStore.updateStoredAPIKeyPresence(false, for: providerId)
+        }
+        return apiKey
     }
 
     func saveAPIKey(_ apiKey: String, for providerId: UUID) {
         let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
             keychainStore.deleteAPIKey(for: providerId)
+            providerStore.updateStoredAPIKeyPresence(false, for: providerId)
         } else {
             keychainStore.saveAPIKey(trimmed, for: providerId)
+            providerStore.updateStoredAPIKeyPresence(true, for: providerId)
         }
     }
 
     func deleteAPIKey(for providerId: UUID) {
         keychainStore.deleteAPIKey(for: providerId)
+        providerStore.updateStoredAPIKeyPresence(false, for: providerId)
     }
 
     var isReadyForGeneration: Bool {
@@ -91,7 +98,7 @@ final class AICommitCoordinator: ObservableObject {
             return false
         }
 
-        let hasAPIKey = !(keychainStore.apiKey(for: provider.id)?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        let hasAPIKey = !resolvedAPIKey(for: provider).isEmpty
         let hasModel = !providerStore.effectiveDefaultModel().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
         return hasAPIKey && hasModel
@@ -102,8 +109,7 @@ final class AICommitCoordinator: ObservableObject {
             return "Configure at least one AI provider in Settings to enable commit generation."
         }
 
-        let hasAPIKey = !(keychainStore.apiKey(for: provider.id)?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
-        if !hasAPIKey {
+        if resolvedAPIKey(for: provider).isEmpty {
             return "Add an API key for the default provider in Settings to enable commit generation."
         }
 
@@ -113,5 +119,16 @@ final class AICommitCoordinator: ObservableObject {
         }
 
         return ""
+    }
+
+    private func resolvedAPIKey(for provider: AIProviderConfig) -> String {
+        let apiKey = keychainStore.apiKey(for: provider.id)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let hasStoredAPIKey = !apiKey.isEmpty
+
+        if provider.hasStoredAPIKey != hasStoredAPIKey {
+            providerStore.updateStoredAPIKeyPresence(hasStoredAPIKey, for: provider.id)
+        }
+
+        return apiKey
     }
 }

@@ -136,7 +136,7 @@ struct AISettingsSectionView: View {
 #Preview {
     let gitManager = GitManager(repositoryPathOverride: "/tmp")
     let providerStore = AIProviderStore()
-    let keychainStore = AIKeychainStore()
+    let keychainStore = InMemoryAIAPIKeyStore()
     let coordinator = AICommitCoordinator(
         providerStore: providerStore,
         keychainStore: keychainStore,
