@@ -500,7 +500,8 @@ class GitManager: ObservableObject {
 
         DispatchQueue.global(qos: .userInitiated).async {
             // Split working tree into index (staged) and worktree (changes).
-            let statusResult = self.executeGitCommand(in: self.storedRepoPath, args: ["status", "--porcelain"])
+            // Use -uall so newly created files inside untracked directories are listed per file.
+            let statusResult = self.executeGitCommand(in: self.storedRepoPath, args: ["status", "--porcelain", "-uall"])
 
             if statusResult.failure {
                 print("Error getting git status: \(statusResult.output)")
