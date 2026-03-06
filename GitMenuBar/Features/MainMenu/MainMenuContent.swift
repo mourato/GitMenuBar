@@ -59,9 +59,7 @@ extension MainMenuView {
                     generationDisabledReason: aiCommitCoordinator.generationDisabledReason,
                     generationError: aiCommitCoordinator.generationError,
                     primaryButtonTitle: primaryButtonTitle,
-                    isPrimaryButtonDisabled: hasWorkingTreeChanges
-                        ? !canCommit
-                        : (gitManager.isCommitting || aiCommitCoordinator.isGenerating),
+                    isPrimaryButtonDisabled: !canCommit,
                     onGenerateMessage: {
                         generateCommitMessageFromPriorityScope()
                     },
@@ -235,8 +233,7 @@ extension MainMenuView {
                     guard hasWorkingTreeChanges else { return }
                     submitComment()
                 case .sync:
-                    guard !hasWorkingTreeChanges else { return }
-                    syncRepository()
+                    return
                 }
             }
         )

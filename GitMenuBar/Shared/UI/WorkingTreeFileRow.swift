@@ -13,13 +13,18 @@ struct WorkingTreeLineDiffView: View {
     var body: some View {
         HStack(spacing: 4) {
             Text("+\(addedCount)")
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .foregroundColor(addedCount > 0 ? .green : .secondary)
             Text("-\(removedCount)")
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .foregroundColor(removedCount > 0 ? .red : .secondary)
         }
         .font(.system(size: 12, weight: .medium))
         .monospacedDigit()
-        .frame(width: WorkingTreeLayoutMetrics.diffColumnWidth, alignment: .trailing)
+        .fixedSize(horizontal: true, vertical: false)
+        .frame(minWidth: WorkingTreeLayoutMetrics.diffColumnWidth, alignment: .trailing)
     }
 }
 
