@@ -64,7 +64,7 @@ struct CommitComposerSectionView: View {
                     .frame(maxWidth: .infinity)
             }
             .frame(maxWidth: .infinity)
-            .controlSize(.extraLarge)
+            .controlSize(.large)
             .buttonStyle(.borderedProminent)
             .disabled(isPrimaryButtonDisabled)
 
