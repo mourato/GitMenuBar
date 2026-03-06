@@ -23,11 +23,8 @@ extension MainMenuView {
     }
 
     func performPrimaryAction() {
-        if hasWorkingTreeChanges {
-            submitComment()
-            return
-        }
-        syncRepository()
+        guard hasWorkingTreeChanges else { return }
+        submitComment()
     }
 
     func syncRepository() {
