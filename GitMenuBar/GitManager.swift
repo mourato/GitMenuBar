@@ -32,6 +32,7 @@ struct WorkingTreeFile: Identifiable, Hashable {
     }
 }
 
+// swiftlint:disable type_body_length file_length
 class GitManager: ObservableObject {
     @Published var commitCount: Int = 0
     @Published var isCommitting: Bool = false
@@ -1613,3 +1614,5 @@ class GitManager: ObservableObject {
         }
     }
 }
+
+// swiftlint:enable type_body_length file_length

@@ -1,5 +1,5 @@
 //
-//  MainMenuView+SettingsHistory.swift
+//  MainMenuSettingsHistory.swift
 //  GitMenuBar
 //
 

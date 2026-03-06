@@ -1,5 +1,5 @@
 //
-//  MainMenuView+Actions.swift
+//  MainMenuActions.swift
 //  GitMenuBar
 //
 
