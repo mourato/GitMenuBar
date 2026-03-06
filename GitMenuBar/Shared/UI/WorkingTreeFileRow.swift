@@ -12,7 +12,7 @@ struct WorkingTreeLineDiffView: View {
     let removedCount: Int
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
             Text("+\(addedCount)")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
@@ -25,7 +25,6 @@ struct WorkingTreeLineDiffView: View {
         .font(.system(size: 12, weight: .medium))
         .monospacedDigit()
         .fixedSize(horizontal: true, vertical: false)
-        .frame(minWidth: WorkingTreeLayoutMetrics.diffColumnWidth, alignment: .trailing)
     }
 }
 
@@ -41,17 +40,16 @@ struct WorkingTreeFileRowView: View {
         HStack(spacing: 8) {
             fileLabel
 
-            WorkingTreeLineDiffView(
-                addedCount: file.lineDiff.added,
-                removedCount: file.lineDiff.removed
-            )
-
             Text(file.status.symbol)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(nsColor: file.status.foregroundColor))
                 .frame(width: WorkingTreeLayoutMetrics.statusColumnWidth, alignment: .trailing)
         }
         .padding(.vertical, 2)
+        .padding(.horizontal, 4)
+        .background(isHovered ? Color.primary.opacity(0.06) : Color.clear)
+        .cornerRadius(4)
+        .padding(.horizontal, -4) // Offset the internal padding so the row maintains its original width while letting the background expand
         .contentShape(Rectangle())
         .onHover { inside in
             isHovered = inside
@@ -59,9 +57,9 @@ struct WorkingTreeFileRowView: View {
     }
 
     private var fileLabel: some View {
-        HStack(spacing: 6) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(file.fileName)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 13, weight: .regular))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .layoutPriority(1)
@@ -69,28 +67,37 @@ struct WorkingTreeFileRowView: View {
 
             if !file.directoryPath.isEmpty {
                 Text(file.directoryPath)
-                    .font(.system(size: 12, weight: .regular))
+                    .font(.system(size: 11, weight: .light))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                    .truncationMode(.tail)
                     .layoutPriority(0)
             }
+
+            ZStack(alignment: .trailing) {
+                WorkingTreeLineDiffView(
+                    addedCount: file.lineDiff.added,
+                    removedCount: file.lineDiff.removed
+                )
+                .opacity(isHovered ? 0 : 1)
+
+                Button(action: onAction) {
+                    Image(systemName: actionIcon)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color.primary)
+                        .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
+                        .contentShape(Rectangle()) // makes the whole frame clickable
+                }
+                .buttonStyle(.plain)
+                .help(actionHelp)
+                .opacity(isHovered ? 1 : 0)
+                .allowsHitTesting(isHovered)
+            }
+            .layoutPriority(2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 10)
         .clipped()
-        .overlay(alignment: .trailing) {
-            Button(action: onAction) {
-                Image(systemName: actionIcon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
-                    .background(Color(NSColor.windowBackgroundColor))
-            }
-            .buttonStyle(.plain)
-            .help(actionHelp)
-            .opacity(isHovered ? 1 : 0)
-            .allowsHitTesting(isHovered)
-        }
     }
 }
 

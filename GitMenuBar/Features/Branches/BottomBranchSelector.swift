@@ -14,11 +14,11 @@ struct BottomBranchSelectorView: View {
             HStack(spacing: 8) {
                 HStack(spacing: 0) {
                     Image(systemName: "arrow.triangle.branch")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .font(.system(size: 9, weight: .medium, design: .rounded))
                         .padding(.trailing, 4)
                     
                     Text(currentBranch)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .font(.system(size: 11, weight: .regular, design: .rounded))
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, 10)
@@ -27,15 +27,6 @@ struct BottomBranchSelectorView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .animation(nil, value: currentBranch)
                 .animation(nil, value: commitCount)
-                .buttonStyle(.plain)
-                .focusable(false)
-                .onHover { inside in
-                    if inside {
-                        NSCursor.pointingHand.push()
-                    } else {
-                        NSCursor.pop()
-                    }
-                }
                 
                 HStack(spacing: 4) {
                     HStack(spacing: 0) {
@@ -60,11 +51,19 @@ struct BottomBranchSelectorView: View {
 
                                 Text("\(behindCount)")
                                     .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .foregroundColor(.orange)
                             }
                         }
                     }
                 }
+            }
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .onHover { inside in
+            if inside {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
             }
         }
     }
