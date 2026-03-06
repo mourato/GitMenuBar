@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A1B2C3D42F11111100ABC001 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D42F11111100ABC003 /* KeyboardShortcuts */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		1F8681CC2EBCB5B600C300C7 /* GitMenuBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GitMenuBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A0000012F00000100000001 /* GitMenuBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GitMenuBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1B2C3D42F11111100ABC001 /* KeyboardShortcuts in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -103,6 +108,7 @@
 			);
 			name = GitMenuBar;
 			packageProductDependencies = (
+				A1B2C3D42F11111100ABC003 /* KeyboardShortcuts */,
 			);
 			productName = GitMenuBar;
 			productReference = 1F8681CC2EBCB5B600C300C7 /* GitMenuBar.app */;
@@ -166,6 +172,9 @@
 			);
 			mainGroup = 1F8681C32EBCB5B600C300C7;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A1B2C3D42F11111100ABC002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1F8681CD2EBCB5B600C300C7 /* Products */;
 			projectDirPath = "";
@@ -443,6 +452,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A1B2C3D42F11111100ABC002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1B2C3D42F11111100ABC003 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1B2C3D42F11111100ABC002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1F8681C42EBCB5B600C300C7 /* Project object */;
 }
