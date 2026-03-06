@@ -11,47 +11,60 @@ struct BottomBranchSelectorView: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 0) {
-                Image(systemName: "arrow.triangle.branch")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .padding(.trailing, 4)
-
-                Text(currentBranch)
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-
-                Text(" ▲")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                Text("\(commitCount)")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .monospacedDigit()
-                    .frame(minWidth: 12, alignment: .leading)
-
-                if isRemoteAhead {
-                    Text(" ▼")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(.orange)
-                    Text("\(behindCount)")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(.orange)
-                        .monospacedDigit()
-                        .frame(minWidth: 12, alignment: .leading)
+            HStack(spacing: 8) {
+                HStack(spacing: 0) {
+                    Image(systemName: "arrow.triangle.branch")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .padding(.trailing, 4)
+                    
+                    Text(currentBranch)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
                 }
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(backgroundColor)
-            .clipShape(Capsule())
-            .animation(nil, value: currentBranch)
-            .animation(nil, value: commitCount)
-        }
-        .buttonStyle(.borderless)
-        .focusable(false)
-        .onHover { inside in
-            if inside {
-                NSCursor.pointingHand.push()
-            } else {
-                NSCursor.pop()
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(backgroundColor)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .animation(nil, value: currentBranch)
+                .animation(nil, value: commitCount)
+                .buttonStyle(.plain)
+                .focusable(false)
+                .onHover { inside in
+                    if inside {
+                        NSCursor.pointingHand.push()
+                    } else {
+                        NSCursor.pop()
+                    }
+                }
+                
+                HStack(spacing: 4) {
+                    HStack(spacing: 0) {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .padding(.trailing, 4)
+
+                        Text("\(commitCount)")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                    }
+                    
+                    if isRemoteAhead {
+                        HStack(spacing:4) {
+                            Divider()
+                                .frame(width: 1, height: 6)
+                                .background(Color.white.opacity(0.1))
+
+                            HStack(spacing:0) {
+                                Image(systemName: "arrow.down")
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .padding(.trailing, 4)
+
+                                Text("\(behindCount)")
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
