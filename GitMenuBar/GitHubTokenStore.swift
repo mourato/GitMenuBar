@@ -12,7 +12,7 @@ final class GitHubKeychainTokenStore: GitHubTokenStore {
     private let account: String
 
     init(
-        service: String = "com.pizzaman.GitMenuBar",
+        service: String = "com.mourato.GitMenuBar",
         account: String = "github-access-token"
     ) {
         self.service = service

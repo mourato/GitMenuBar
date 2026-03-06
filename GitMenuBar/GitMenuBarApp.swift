@@ -27,6 +27,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        // Migrate keychain items to the unified domain if necessary before setting up the app
+        KeychainMigrator.migrateToUnifiedDomain()
+
         // Hide the dock icon immediately
         NSApp.setActivationPolicy(.accessory)
 
