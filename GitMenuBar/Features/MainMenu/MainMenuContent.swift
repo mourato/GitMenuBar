@@ -59,7 +59,7 @@ extension MainMenuView {
                     generationDisabledReason: aiCommitCoordinator.generationDisabledReason,
                     generationError: aiCommitCoordinator.generationError,
                     primaryButtonTitle: primaryButtonTitle,
-                    isPrimaryButtonDisabled: !canCommit,
+                    isPrimaryButtonDisabled: isPrimaryButtonDisabled,
                     onGenerateMessage: {
                         generateCommitMessageFromPriorityScope()
                     },

@@ -23,8 +23,13 @@ extension MainMenuView {
     }
 
     func performPrimaryAction() {
-        guard hasWorkingTreeChanges else { return }
-        submitComment()
+        if showsCommitAction {
+            submitComment()
+            return
+        }
+
+        guard canSync else { return }
+        syncRepository()
     }
 
     func syncRepository() {
