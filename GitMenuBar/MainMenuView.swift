@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import KeyboardShortcuts
 import SwiftUI
 
 struct CreateRepoPath: Identifiable {
@@ -14,6 +15,11 @@ struct CreateRepoPath: Identifiable {
 }
 
 struct MainMenuView: View {
+    enum InitialScreen {
+        case main
+        case settings
+    }
+
     @State private var commentText = ""
     @State private var showingSettings = false
     @State private var showingHistory = false
@@ -35,6 +41,7 @@ struct MainMenuView: View {
     @EnvironmentObject var githubAuthManager: GitHubAuthManager
     @EnvironmentObject var aiProviderStore: AIProviderStore
     @EnvironmentObject var aiCommitCoordinator: AICommitCoordinator
+    @EnvironmentObject var shortcutActionBridge: MainMenuShortcutActionBridge
     @AppStorage("recentRepoPaths") private var recentRepoPathsData: Data = .init()
     @AppStorage("showFullPathInRecents") private var showFullPathInRecents = false
     @State private var showBranchSelector = false
@@ -106,10 +113,16 @@ struct MainMenuView: View {
     let togglePopoverBehavior: () -> Void
     let initialCreateRepoPath: String?
 
-    init(closePopover: @escaping () -> Void = {}, togglePopoverBehavior: @escaping () -> Void = {}, initialCreateRepoPath: String? = nil) {
+    init(
+        closePopover: @escaping () -> Void = {},
+        togglePopoverBehavior: @escaping () -> Void = {},
+        initialScreen: InitialScreen = .main,
+        initialCreateRepoPath: String? = nil
+    ) {
         self.closePopover = closePopover
         self.togglePopoverBehavior = togglePopoverBehavior
         self.initialCreateRepoPath = initialCreateRepoPath
+        _showingSettings = State(initialValue: initialScreen == .settings)
         if let path = initialCreateRepoPath {
             _createRepoPath = State(initialValue: CreateRepoPath(path: path))
         }
@@ -607,17 +620,18 @@ struct MainMenuView: View {
         .onExitCommand {
             closePopover()
         }
-        .background(
-            VStack(spacing: 0) {
-                // Hidden button to handle Cmd+Enter globally
-                Button("Commit Hidden") {
-                    performPrimaryAction()
-                }
-                .keyboardShortcut(.return, modifiers: .command)
-                .opacity(0)
-                .frame(width: 0, height: 0)
+        .onReceive(shortcutActionBridge.actions) { action in
+            guard createRepoPath == nil, !showingSettings, !showingHistory else { return }
+
+            switch action {
+            case .commit:
+                guard hasWorkingTreeChanges else { return }
+                submitComment()
+            case .sync:
+                guard !hasWorkingTreeChanges else { return }
+                syncRepository()
             }
-        )
+        }
         .alert("Push Failed", isPresented: .init(
             get: { pushError != nil },
             set: { if !$0 { pushError = nil } }
@@ -1460,6 +1474,53 @@ struct MainMenuView: View {
                     AISettingsSectionView()
                         .padding(.top, 4)
 
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "keyboard")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                            Text("Keyboard Shortcuts")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                        }
+                        .padding(.top, 4)
+
+                        HStack {
+                            Text("Open Popover")
+                                .font(.system(size: 11))
+                            Spacer()
+                            KeyboardShortcuts.Recorder(for: .togglePopover)
+                                .labelsHidden()
+                        }
+
+                        HStack {
+                            Text("Commit")
+                                .font(.system(size: 11))
+                            Spacer()
+                            KeyboardShortcuts.Recorder(for: .commit)
+                                .labelsHidden()
+                        }
+
+                        HStack {
+                            Text("Sync")
+                                .font(.system(size: 11))
+                            Spacer()
+                            KeyboardShortcuts.Recorder(for: .sync)
+                                .labelsHidden()
+                        }
+
+                        HStack {
+                            Spacer()
+                            Button("Reset to Defaults") {
+                                KeyboardShortcuts.reset(.togglePopover)
+                                KeyboardShortcuts.reset(.commit)
+                                KeyboardShortcuts.reset(.sync)
+                            }
+                            .buttonStyle(.borderless)
+                            .font(.system(size: 11))
+                        }
+                    }
+                    .padding(.top, 4)
+
                     if !recentPaths.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 6) {
@@ -1957,4 +2018,5 @@ struct VisualEffectView: NSViewRepresentable {
         .environmentObject(GitHubAuthManager())
         .environmentObject(providerStore)
         .environmentObject(coordinator)
+        .environmentObject(MainMenuShortcutActionBridge())
 }
