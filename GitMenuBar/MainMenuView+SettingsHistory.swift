@@ -402,3 +402,9 @@ extension MainMenuView {
         .padding(.bottom, 10)
     }
 }
+
+#Preview("Settings & History") {
+    MainMenuPreviewHarness {
+        MainMenuView(initialScreen: .settings)
+    }
+}

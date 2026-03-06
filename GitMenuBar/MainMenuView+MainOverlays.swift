@@ -317,3 +317,9 @@ extension MainMenuView {
             }
     }
 }
+
+#Preview("Main Overlays") {
+    MainMenuPreviewHarness {
+        MainMenuView()
+    }
+}
