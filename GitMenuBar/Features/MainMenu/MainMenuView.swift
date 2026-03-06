@@ -44,6 +44,8 @@ struct MainMenuView: View {
     @EnvironmentObject var shortcutActionBridge: MainMenuShortcutActionBridge
     @AppStorage("recentRepoPaths") var recentRepoPathsData: Data = .init()
     @AppStorage("showFullPathInRecents") var showFullPathInRecents = false
+    @AppStorage("isStagedSectionCollapsed") var isStagedSectionCollapsed = false
+    @AppStorage("isUnstagedSectionCollapsed") var isUnstagedSectionCollapsed = false
     @State var showBranchSelector = false
     @State var selectedPushBranch: String = ""
     @State var showSyncOptions = false

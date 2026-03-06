@@ -16,6 +16,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertTrue(gitManager.changedFiles.isEmpty)
         XCTAssertEqual(gitManager.stagedFiles.first?.lineDiff.added, 1)
         XCTAssertEqual(gitManager.stagedFiles.first?.lineDiff.removed, 0)
+        XCTAssertEqual(gitManager.stagedFiles.first?.status, .modified)
         XCTAssertEqual(gitManager.stagedFiles.sectionSummary.fileCountText, "1")
         XCTAssertEqual(gitManager.stagedFiles.sectionSummary.addedLineCount, 1)
         XCTAssertEqual(gitManager.stagedFiles.sectionSummary.removedLineCount, 0)
@@ -34,6 +35,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["README.md"])
         XCTAssertEqual(gitManager.changedFiles.first?.lineDiff.added, 1)
         XCTAssertEqual(gitManager.changedFiles.first?.lineDiff.removed, 0)
+        XCTAssertEqual(gitManager.changedFiles.first?.status, .modified)
         XCTAssertEqual(gitManager.changedFiles.sectionSummary.fileCountText, "1")
         XCTAssertEqual(gitManager.changedFiles.sectionSummary.addedLineCount, 1)
         XCTAssertEqual(gitManager.changedFiles.sectionSummary.removedLineCount, 0)
@@ -54,6 +56,8 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["README.md"])
         XCTAssertEqual(gitManager.stagedFiles.first?.lineDiff.added, 1)
         XCTAssertEqual(gitManager.changedFiles.first?.lineDiff.added, 1)
+        XCTAssertEqual(gitManager.stagedFiles.first?.status, .modified)
+        XCTAssertEqual(gitManager.changedFiles.first?.status, .modified)
         XCTAssertEqual(gitManager.stagedFiles.sectionSummary.fileCountText, "1")
         XCTAssertEqual(gitManager.stagedFiles.sectionSummary.addedLineCount, 1)
         XCTAssertEqual(gitManager.stagedFiles.sectionSummary.removedLineCount, 0)
@@ -74,9 +78,21 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["NEW_FILE.md"])
         XCTAssertEqual(gitManager.changedFiles.first?.lineDiff.added, 3)
         XCTAssertEqual(gitManager.changedFiles.first?.lineDiff.removed, 0)
+        XCTAssertEqual(gitManager.changedFiles.first?.status, .untracked)
         XCTAssertEqual(gitManager.changedFiles.sectionSummary.fileCountText, "1")
         XCTAssertEqual(gitManager.changedFiles.sectionSummary.addedLineCount, 3)
         XCTAssertEqual(gitManager.changedFiles.sectionSummary.removedLineCount, 0)
+    }
+
+    func testDeletedFileReceivesDeletedStatus() throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try FileManager.default.removeItem(at: repoURL.appendingPathComponent("README.md"))
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        waitForWorkingTreeUpdate(gitManager)
+
+        XCTAssertEqual(gitManager.changedFiles.map(\.path), ["README.md"])
+        XCTAssertEqual(gitManager.changedFiles.first?.status, .deleted)
     }
 
     func testUntrackedFilesInNewDirectoryAreEnumeratedPerFile() throws {
@@ -154,9 +170,15 @@ final class GitWorkingTreeStateTests: XCTestCase {
             gitManager.stageAllChanges(completion: $0)
         }
 
+        waitForWorkingTreeUpdate(gitManager)
+
         let status = try runGit(["status", "--porcelain"], in: repoURL)
         XCTAssertTrue(status.contains("M  README.md"))
         XCTAssertTrue(status.contains("A  NEW.md"))
+        XCTAssertEqual(
+            Dictionary(uniqueKeysWithValues: gitManager.stagedFiles.map { ($0.path, $0.status) }),
+            ["NEW.md": .untracked, "README.md": .modified]
+        )
     }
 
     func testUnstageAllChangesMovesFilesBackToUnstagedSection() throws {
@@ -231,6 +253,28 @@ final class GitWorkingTreeStateTests: XCTestCase {
 
         let status = try runGit(["status", "--porcelain"], in: repoURL)
         XCTAssertTrue(status.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
+    func testWorkingTreeFilePresentationSplitsNameAndDirectoryPath() {
+        let file = WorkingTreeFile(
+            path: "Packages/Core/Sources/Feature/File.swift",
+            lineDiff: .zero,
+            status: .modified
+        )
+
+        XCTAssertEqual(file.fileName, "File.swift")
+        XCTAssertEqual(file.directoryPath, "Packages/Core/Sources/Feature")
+    }
+
+    func testWorkingTreeFilePresentationHandlesRootPath() {
+        let file = WorkingTreeFile(
+            path: "README.md",
+            lineDiff: .zero,
+            status: .modified
+        )
+
+        XCTAssertEqual(file.fileName, "README.md")
+        XCTAssertEqual(file.directoryPath, "")
     }
 
     private func waitForWorkingTreeUpdate(_ gitManager: GitManager, timeout: TimeInterval = 3) {
