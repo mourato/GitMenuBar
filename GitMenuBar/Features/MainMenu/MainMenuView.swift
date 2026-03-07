@@ -80,6 +80,13 @@ struct MainMenuView: View {
     @State var showBranchDeleteConfirmation = false
     @State var branchNameToDelete = ""
 
+    // Discard confirmation states
+    @State var showDiscardConfirmation = false
+    @State var discardFilePath: String?
+    @State var discardFileStatus: WorkingTreeFileStatus?
+    @State var discardError: String?
+    @State var showDiscardAllConfirmation = false
+
     let closePopover: () -> Void
     let togglePopoverBehavior: () -> Void
     let initialCreateRepoPath: String?
@@ -177,6 +184,44 @@ struct MainMenuView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(toggleVisibilityError ?? "An unknown error occurred.")
+        }
+        .alert("Discard Changes?", isPresented: $showDiscardConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Discard", role: .destructive) {
+                if let path = discardFilePath, let status = discardFileStatus {
+                    gitManager.discardFileChanges(path: path, status: status) { result in
+                        if case let .failure(error) = result {
+                            discardError = error.localizedDescription
+                        }
+                    }
+                }
+            }
+        } message: {
+            if let path = discardFilePath {
+                Text("Are you sure you want to discard changes in '\(path)'? This action cannot be undone.")
+            } else {
+                Text("Are you sure you want to discard these changes? This action cannot be undone.")
+            }
+        }
+        .alert("Discard All Unstaged Changes?", isPresented: $showDiscardAllConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Discard All", role: .destructive) {
+                gitManager.discardAllUnstagedChanges { result in
+                    if case let .failure(error) = result {
+                        discardError = error.localizedDescription
+                    }
+                }
+            }
+        } message: {
+            Text("Are you sure you want to discard all unstaged changes? This action cannot be undone.")
+        }
+        .alert("Discard Failed", isPresented: .init(
+            get: { discardError != nil },
+            set: { if !$0 { discardError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(discardError ?? "An unknown error occurred.")
         }
         .padding(10)
         .frame(width: 400)
