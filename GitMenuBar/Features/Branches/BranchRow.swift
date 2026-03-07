@@ -11,7 +11,7 @@ struct BranchRowView: View {
     let currentBranchName: String
 
     @State private var isHovered = false
-
+ 
     init(
         branchName: String,
         isCurrentBranch: Bool,
