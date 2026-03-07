@@ -92,6 +92,8 @@ struct WorkingTreeFileRowView: View {
                     .layoutPriority(0)
             }
 
+            Spacer(minLength: 4)
+
             ZStack(alignment: .trailing) {
                 WorkingTreeLineDiffView(
                     addedCount: file.lineDiff.added,
