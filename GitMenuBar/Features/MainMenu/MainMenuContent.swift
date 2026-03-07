@@ -100,7 +100,14 @@ extension MainMenuView {
                                                 file: file,
                                                 actionIcon: "minus.circle",
                                                 actionHelp: "Unstage file",
-                                                onAction: { unstageFile(path: file.path) }
+                                                onAction: { unstageFile(path: file.path) },
+                                                onOpen: { gitManager.openFile(path: file.path) },
+                                                onDiscard: {
+                                                    discardFilePath = file.path
+                                                    discardFileStatus = file.status
+                                                    showDiscardConfirmation = true
+                                                },
+                                                onReveal: { gitManager.revealInFinder(path: file.path) }
                                             )
                                         }
                                     }
@@ -116,7 +123,10 @@ extension MainMenuView {
                                 actionIcon: "plus.circle",
                                 actionHelp: "Stage all files",
                                 showsAction: !gitManager.changedFiles.isEmpty,
-                                onAction: stageAllFiles
+                                onAction: stageAllFiles,
+                                onDiscardAll: {
+                                    showDiscardAllConfirmation = true
+                                }
                             )
 
                             if !isUnstagedSectionCollapsed {
@@ -132,7 +142,14 @@ extension MainMenuView {
                                                 file: file,
                                                 actionIcon: "plus.circle",
                                                 actionHelp: "Stage file",
-                                                onAction: { stageFile(path: file.path) }
+                                                onAction: { stageFile(path: file.path) },
+                                                onOpen: { gitManager.openFile(path: file.path) },
+                                                onDiscard: {
+                                                    discardFilePath = file.path
+                                                    discardFileStatus = file.status
+                                                    showDiscardConfirmation = true
+                                                },
+                                                onReveal: { gitManager.revealInFinder(path: file.path) }
                                             )
                                         }
                                     }
@@ -251,6 +268,7 @@ private struct WorkingTreeSectionHeaderView: View {
     let actionHelp: String
     let showsAction: Bool
     let onAction: () -> Void
+    var onDiscardAll: (() -> Void)? = nil
 
     @State private var isHovered = false
 
@@ -279,15 +297,29 @@ private struct WorkingTreeSectionHeaderView: View {
                 )
                 .opacity(isHovered && showsAction ? 0 : 1)
                 
-                Button(action: onAction) {
-                    Image(systemName: actionIcon)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Color.primary)
-                        .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
-                        .contentShape(Rectangle())
+                HStack(spacing: 4) {
+                    if let onDiscardAll = onDiscardAll {
+                        Button(action: onDiscardAll) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Color.primary)
+                                .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Discard All")
+                    }
+
+                    Button(action: onAction) {
+                        Image(systemName: actionIcon)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color.primary)
+                            .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(actionHelp)
                 }
-                .buttonStyle(.plain)
-                .help(actionHelp)
                 .opacity(isHovered && showsAction ? 1 : 0)
                 .allowsHitTesting(isHovered && showsAction)
             }

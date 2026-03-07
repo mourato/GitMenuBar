@@ -33,6 +33,9 @@ struct WorkingTreeFileRowView: View {
     let actionIcon: String
     let actionHelp: String
     let onAction: () -> Void
+    var onOpen: (() -> Void)? = nil
+    var onDiscard: (() -> Void)? = nil
+    var onReveal: (() -> Void)? = nil
 
     @State private var isHovered = false
 
@@ -53,6 +56,21 @@ struct WorkingTreeFileRowView: View {
         .contentShape(Rectangle())
         .onHover { inside in
             isHovered = inside
+        }
+        .contextMenu {
+            Button("Open File") {
+                onOpen?()
+            }
+            Button("Discard Changes") {
+                onDiscard?()
+            }
+            Button(actionHelp) {
+                onAction()
+            }
+            Divider()
+            Button("Reveal in Finder") {
+                onReveal?()
+            }
         }
     }
 
@@ -81,15 +99,41 @@ struct WorkingTreeFileRowView: View {
                 )
                 .opacity(isHovered ? 0 : 1)
 
-                Button(action: onAction) {
-                    Image(systemName: actionIcon)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Color.primary)
-                        .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
-                        .contentShape(Rectangle()) // makes the whole frame clickable
+                HStack(spacing: 4) {
+                    if let onOpen = onOpen {
+                        Button(action: onOpen) {
+                            Image(systemName: "doc")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Color.primary)
+                                .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Open File")
+                    }
+
+                    if let onDiscard = onDiscard {
+                        Button(action: onDiscard) {
+                            Image(systemName: "arrow.uturn.backward")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Color.primary)
+                                .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Discard Changes")
+                    }
+
+                    Button(action: onAction) {
+                        Image(systemName: actionIcon)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color.primary)
+                            .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
+                            .contentShape(Rectangle()) // makes the whole frame clickable
+                    }
+                    .buttonStyle(.plain)
+                    .help(actionHelp)
                 }
-                .buttonStyle(.plain)
-                .help(actionHelp)
                 .opacity(isHovered ? 1 : 0)
                 .allowsHitTesting(isHovered)
             }
@@ -110,7 +154,10 @@ struct WorkingTreeFileRowView: View {
         ),
         actionIcon: "plus.circle",
         actionHelp: "Stage file",
-        onAction: {}
+        onAction: {},
+        onOpen: {},
+        onDiscard: {},
+        onReveal: {}
     )
     .padding()
     .frame(width: 380)

@@ -702,6 +702,154 @@ class GitManager: ObservableObject {
         }
     }
 
+    // MARK: - File Operations
+
+    func openFile(path: String) {
+        let fullPath = (storedRepoPath as NSString).appendingPathComponent(path)
+        NSWorkspace.shared.open(URL(fileURLWithPath: fullPath))
+    }
+
+    func revealInFinder(path: String) {
+        let fullPath = (storedRepoPath as NSString).appendingPathComponent(path)
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: fullPath)])
+    }
+
+    func discardFileChanges(path: String, status: WorkingTreeFileStatus, completion: ((Result<Void, Error>) -> Void)? = nil) {
+        guard !storedRepoPath.isEmpty else {
+            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            var result: (output: String, failure: Bool)
+            let fullPath = (self.storedRepoPath as NSString).appendingPathComponent(path)
+
+            if status == .untracked {
+                // Untracked file: just remove it
+                do {
+                    if FileManager.default.fileExists(atPath: fullPath) {
+                        try FileManager.default.removeItem(atPath: fullPath)
+                    }
+                    result = ("", false)
+                } catch {
+                    result = (error.localizedDescription, true)
+                }
+            } else {
+                // If it's staged, we should unstage it and then discard it
+                // Using git checkout -- path or git restore --staged --worktree
+                result = self.executeGitCommand(in: self.storedRepoPath, args: ["restore", "--staged", "--worktree", "--", path])
+                if result.failure {
+                    // Fallback
+                    _ = self.executeGitCommand(in: self.storedRepoPath, args: ["reset", "HEAD", "--", path])
+                    result = self.executeGitCommand(in: self.storedRepoPath, args: ["checkout", "--", path])
+                    
+                    // If it was a newly added file but already tracked in index (A), check if we need to remove it
+                    if FileManager.default.fileExists(atPath: fullPath) {
+                        let lsResult = self.executeGitCommand(in: self.storedRepoPath, args: ["ls-files", "--error-unmatch", path])
+                        if lsResult.failure {
+                            try? FileManager.default.removeItem(atPath: fullPath)
+                            result = ("", false)
+                        }
+                    }
+                }
+            }
+
+            if result.failure {
+                DispatchQueue.main.async {
+                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to discard '\(path)': \(result.output)"])))
+                }
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.updateUncommittedFiles {
+                    completion?(.success(()))
+                }
+            }
+        }
+    }
+
+    func discardAllUnstagedChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
+        guard !storedRepoPath.isEmpty else {
+            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            // Restore tracked files
+            var result = self.executeGitCommand(in: self.storedRepoPath, args: ["restore", "--", "."])
+            if result.failure {
+                result = self.executeGitCommand(in: self.storedRepoPath, args: ["checkout", "--", "."])
+            }
+            
+            // Clean untracked files
+            let cleanResult = self.executeGitCommand(in: self.storedRepoPath, args: ["clean", "-fd"])
+
+            if result.failure || cleanResult.failure {
+                let errorMsg = result.failure ? result.output : cleanResult.output
+                DispatchQueue.main.async {
+                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to discard untracked changes: \(errorMsg)"])))
+                }
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.updateUncommittedFiles {
+                    completion?(.success(()))
+                }
+            }
+        }
+    }
+
+    func discardAllStagedChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
+        guard !storedRepoPath.isEmpty else {
+            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            // First get all staged files
+            let diffResult = self.executeGitCommand(in: self.storedRepoPath, args: ["diff", "--cached", "--name-only"])
+            if diffResult.failure {
+                DispatchQueue.main.async {
+                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to get staged files: \(diffResult.output)"])))
+                }
+                return
+            }
+            
+            let files = diffResult.output.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+            
+            guard !files.isEmpty else {
+                DispatchQueue.main.async {
+                    completion?(.success(()))
+                }
+                return
+            }
+
+            // Restore those files from index and worktree
+            var result = self.executeGitCommand(in: self.storedRepoPath, args: ["restore", "--staged", "--worktree", "--"] + files)
+            if result.failure {
+                _ = self.executeGitCommand(in: self.storedRepoPath, args: ["reset", "HEAD", "--"] + files)
+                result = self.executeGitCommand(in: self.storedRepoPath, args: ["checkout", "--"] + files)
+                
+                // For files that were 'Added' but didn't exist in HEAD, 'checkout' will fail or just complain. We should carefully delete them.
+                for file in files {
+                    let fullPath = (self.storedRepoPath as NSString).appendingPathComponent(file)
+                    let lsResult = self.executeGitCommand(in: self.storedRepoPath, args: ["ls-files", "--error-unmatch", file])
+                    if lsResult.failure && FileManager.default.fileExists(atPath: fullPath) {
+                        try? FileManager.default.removeItem(atPath: fullPath)
+                    }
+                }
+            }
+
+            DispatchQueue.main.async {
+                self.updateUncommittedFiles {
+                    completion?(.success(()))
+                }
+            }
+        }
+    }
+
     func diffStaged() -> String {
         guard !storedRepoPath.isEmpty else {
             return ""
