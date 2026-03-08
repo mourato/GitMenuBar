@@ -114,3 +114,17 @@ struct GitHubConnectionSection: View {
         .cornerRadius(4)
     }
 }
+
+#Preview("GitHub Connection") {
+    let authManager = GitHubAuthManager(
+        tokenStore: InMemoryGitHubTokenStore(),
+        preloadStoredToken: false
+    )
+    authManager.isAuthenticated = true
+    authManager.username = "octocat"
+
+    return GitHubConnectionSection(onTogglePopoverBehavior: {})
+        .environmentObject(authManager)
+        .padding()
+        .frame(width: 360)
+}

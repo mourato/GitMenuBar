@@ -98,3 +98,31 @@ struct SettingsPageView: View {
         loginItemManager.setLoginItem(enabled: loginItemManager.isEnabled)
     }
 }
+
+private struct SettingsPagePreviewContainer: View {
+    @State private var showFullPathInRecents = false
+
+    var body: some View {
+        MainMenuPreviewHarness(width: 420) {
+            SettingsPageView(
+                repositoryPath: NSHomeDirectory(),
+                recentPaths: [
+                    NSHomeDirectory(),
+                    "/Users/usuario/Documents/Projects/gitmenubar",
+                    "/tmp/example-repository"
+                ],
+                showFullPathInRecents: $showFullPathInRecents,
+                onRepositoryPathChanged: { _ in },
+                onBrowse: {},
+                onSelectRecentPath: { _ in },
+                onDone: {},
+                onTogglePopoverBehavior: {},
+                onWipe: {}
+            )
+        }
+    }
+}
+
+#Preview("Settings Page") {
+    SettingsPagePreviewContainer()
+}

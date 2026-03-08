@@ -16,3 +16,20 @@ struct RepositoryPathSection: View {
         }
     }
 }
+
+private struct RepositoryPathSectionPreviewContainer: View {
+    @State private var repositoryPath = "/Users/usuario/Documents/Projects/gitmenubar"
+
+    var body: some View {
+        RepositoryPathSection(
+            repositoryPath: $repositoryPath,
+            onBrowse: {}
+        )
+        .padding()
+        .frame(width: 360)
+    }
+}
+
+#Preview("Repository Path Section") {
+    RepositoryPathSectionPreviewContainer()
+}

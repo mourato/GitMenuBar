@@ -43,3 +43,17 @@ struct RepositoryVisibilityToggle: View {
         .buttonStyle(.plain)
     }
 }
+
+private struct RepoVisibilityPreview: View {
+    @State private var isPrivate = true
+
+    var body: some View {
+        RepositoryVisibilityToggle(isPrivate: $isPrivate)
+            .padding()
+            .frame(width: 320)
+    }
+}
+
+#Preview("Repository Visibility") {
+    RepoVisibilityPreview()
+}

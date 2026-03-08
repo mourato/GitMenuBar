@@ -81,3 +81,30 @@ struct WorkingTreeSectionHeaderView: View {
         }
     }
 }
+
+private struct WorkingTreeSectionHeaderPreviewContainer: View {
+    @State private var isCollapsed = false
+
+    var body: some View {
+        WorkingTreeSectionHeaderView(
+            title: "Staged",
+            summary: WorkingTreeSectionSummary(
+                fileCount: 3,
+                addedLineCount: 42,
+                removedLineCount: 7
+            ),
+            isCollapsed: $isCollapsed,
+            actionIcon: "arrow.up",
+            actionHelp: "Commit staged changes",
+            showsAction: true,
+            onAction: {},
+            onDiscardAll: {}
+        )
+        .padding()
+        .frame(width: 360)
+    }
+}
+
+#Preview("Working Tree Section Header") {
+    WorkingTreeSectionHeaderPreviewContainer()
+}

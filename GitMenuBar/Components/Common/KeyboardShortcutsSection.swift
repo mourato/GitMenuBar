@@ -31,3 +31,9 @@ struct KeyboardShortcutsSection: View {
         }
     }
 }
+
+#Preview("Keyboard Shortcuts") {
+    KeyboardShortcutsSection()
+        .padding()
+        .frame(width: 360)
+}

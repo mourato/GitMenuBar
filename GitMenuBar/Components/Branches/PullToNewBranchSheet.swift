@@ -36,3 +36,19 @@ struct PullToNewBranchSheet: View {
         .frame(width: 320)
     }
 }
+
+private struct PullToNewBranchSheetPreviewContainer: View {
+    @State private var branchName = "feature/sync-improvements"
+
+    var body: some View {
+        PullToNewBranchSheet(
+            branchName: $branchName,
+            onCancel: {},
+            onPull: {}
+        )
+    }
+}
+
+#Preview("Pull To New Branch Sheet") {
+    PullToNewBranchSheetPreviewContainer()
+}

@@ -48,3 +48,26 @@ struct RecentProjectsSection: View {
         }
     }
 }
+
+private struct RecentProjectsSectionPreviewContainer: View {
+    @State private var showFullPathInRecents = false
+
+    var body: some View {
+        RecentProjectsSection(
+            recentPaths: [
+                "/Users/usuario/Documents/Projects/gitmenubar",
+                "/tmp/demo-app",
+                "/tmp/docs-site"
+            ],
+            currentRepoPath: "/Users/usuario/Documents/Projects/gitmenubar",
+            showFullPathInRecents: $showFullPathInRecents,
+            onSelectPath: { _ in }
+        )
+        .padding()
+        .frame(width: 360)
+    }
+}
+
+#Preview("Recent Projects") {
+    RecentProjectsSectionPreviewContainer()
+}

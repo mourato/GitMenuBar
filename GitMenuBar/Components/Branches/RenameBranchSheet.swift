@@ -37,3 +37,20 @@ struct RenameBranchSheet: View {
         .frame(width: 300)
     }
 }
+
+private struct RenameBranchSheetPreviewContainer: View {
+    @State private var branchName = "feature/new-menu"
+
+    var body: some View {
+        RenameBranchSheet(
+            oldBranchName: "feature/menu",
+            newBranchName: $branchName,
+            onCancel: {},
+            onRename: {}
+        )
+    }
+}
+
+#Preview("Rename Branch Sheet") {
+    RenameBranchSheetPreviewContainer()
+}

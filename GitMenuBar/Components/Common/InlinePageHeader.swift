@@ -25,3 +25,14 @@ struct InlinePageHeader: View {
         .padding(.top, 4)
     }
 }
+
+#Preview("Inline Page Header") {
+    InlinePageHeader(
+        title: "Settings",
+        systemImage: "gear",
+        actionTitle: "Done",
+        onAction: {}
+    )
+    .padding()
+    .frame(width: 360)
+}

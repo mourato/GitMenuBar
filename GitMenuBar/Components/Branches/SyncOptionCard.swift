@@ -25,3 +25,14 @@ struct SyncOptionCard: View {
         .buttonStyle(.borderless)
     }
 }
+
+#Preview("Sync Option Card") {
+    SyncOptionCard(
+        title: "Pull and Rebase",
+        subtitle: "Replay local commits on top of origin/main",
+        backgroundColor: Color.blue.opacity(0.12),
+        action: {}
+    )
+    .padding()
+    .frame(width: 320)
+}

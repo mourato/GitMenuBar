@@ -20,3 +20,13 @@ struct SettingsSection<Content: View>: View {
         }
     }
 }
+
+#Preview("Settings Section") {
+    SettingsSection(title: "Preview Section", systemImage: "slider.horizontal.3") {
+        Text("Example content")
+            .font(.system(size: 11))
+            .foregroundColor(.secondary)
+    }
+    .padding()
+    .frame(width: 320)
+}

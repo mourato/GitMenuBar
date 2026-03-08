@@ -27,3 +27,13 @@ struct CreateRepositoryPageView: View {
         .padding(.bottom, 10)
     }
 }
+
+#Preview("Create Repository Page") {
+    MainMenuPreviewHarness(width: 420) {
+        CreateRepositoryPageView(
+            folderPath: "/tmp/example-project",
+            onCancel: {},
+            onSuccess: { _ in }
+        )
+    }
+}

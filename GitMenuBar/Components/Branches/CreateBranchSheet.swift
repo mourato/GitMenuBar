@@ -53,3 +53,21 @@ struct CreateBranchSheet: View {
         .frame(width: 320)
     }
 }
+
+private struct CreateBranchSheetPreviewContainer: View {
+    @State private var branchName = "feature/new-branch"
+
+    var body: some View {
+        CreateBranchSheet(
+            branchName: $branchName,
+            currentBranch: "main",
+            errorMessage: nil,
+            onCancel: {},
+            onCreate: {}
+        )
+    }
+}
+
+#Preview("Create Branch Sheet") {
+    CreateBranchSheetPreviewContainer()
+}
