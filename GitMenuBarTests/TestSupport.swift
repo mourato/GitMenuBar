@@ -1,4 +1,5 @@
 import Foundation
+@testable import GitMenuBar
 import XCTest
 
 final class MockURLProtocol: URLProtocol {
@@ -69,14 +70,14 @@ func withGitRepoPath<T>(_ path: String, execute: () throws -> T) rethrows -> T {
     defer { gitRepoPathLock.unlock() }
 
     let defaults = UserDefaults.standard
-    let previous = defaults.string(forKey: "gitRepoPath")
-    defaults.set(path, forKey: "gitRepoPath")
+    let previous = defaults.string(forKey: AppPreferences.Keys.gitRepoPath)
+    defaults.set(path, forKey: AppPreferences.Keys.gitRepoPath)
 
     defer {
         if let previous {
-            defaults.set(previous, forKey: "gitRepoPath")
+            defaults.set(previous, forKey: AppPreferences.Keys.gitRepoPath)
         } else {
-            defaults.removeObject(forKey: "gitRepoPath")
+            defaults.removeObject(forKey: AppPreferences.Keys.gitRepoPath)
         }
     }
 
@@ -88,14 +89,14 @@ func withGitRepoPath<T>(_ path: String, execute: () async throws -> T) async ret
     defer { gitRepoPathLock.unlock() }
 
     let defaults = UserDefaults.standard
-    let previous = defaults.string(forKey: "gitRepoPath")
-    defaults.set(path, forKey: "gitRepoPath")
+    let previous = defaults.string(forKey: AppPreferences.Keys.gitRepoPath)
+    defaults.set(path, forKey: AppPreferences.Keys.gitRepoPath)
 
     defer {
         if let previous {
-            defaults.set(previous, forKey: "gitRepoPath")
+            defaults.set(previous, forKey: AppPreferences.Keys.gitRepoPath)
         } else {
-            defaults.removeObject(forKey: "gitRepoPath")
+            defaults.removeObject(forKey: AppPreferences.Keys.gitRepoPath)
         }
     }
 

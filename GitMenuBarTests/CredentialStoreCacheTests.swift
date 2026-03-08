@@ -52,6 +52,10 @@ private final class SpyAIAPIKeyBackingStore: AIAPIKeyStore {
         return storage[providerId]
     }
 
+    func fetchAllAPIKeys() -> [UUID: String] {
+        storage
+    }
+
     func deleteAPIKey(for providerId: UUID) {
         storage.removeValue(forKey: providerId)
     }

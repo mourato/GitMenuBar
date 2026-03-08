@@ -182,6 +182,10 @@ private final class SpyAIAPIKeyStore: AIAPIKeyStore {
         return storage[providerId]
     }
 
+    func fetchAllAPIKeys() -> [UUID: String] {
+        storage
+    }
+
     func deleteAPIKey(for providerId: UUID) {
         deleteCount += 1
         storage.removeValue(forKey: providerId)
