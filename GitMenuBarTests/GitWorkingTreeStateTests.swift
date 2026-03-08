@@ -216,7 +216,10 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertTrue(gitManager.diffStaged().contains("+staged"))
 
         let expectation = expectation(description: "commit staged only")
-        gitManager.commitLocally("feat: staged only") {
+        gitManager.commitLocally("feat: staged only") { result in
+            if case let .failure(error) = result {
+                XCTFail("Unexpected commit failure: \(error.localizedDescription)")
+            }
             expectation.fulfill()
         }
         wait(for: [expectation], timeout: 3)
@@ -242,7 +245,10 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertFalse(gitManager.changedFiles.isEmpty)
 
         let expectation = expectation(description: "fallback commit")
-        gitManager.commitLocallyWithFallback("feat: fallback commit") {
+        gitManager.commitLocallyWithFallback("feat: fallback commit") { result in
+            if case let .failure(error) = result {
+                XCTFail("Unexpected fallback commit failure: \(error.localizedDescription)")
+            }
             expectation.fulfill()
         }
         wait(for: [expectation], timeout: 5)

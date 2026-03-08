@@ -6,21 +6,8 @@
 import AppKit
 import SwiftUI
 
-struct CreateRepoPath: Identifiable {
-    let id = UUID()
-    let path: String
-}
-
 struct MainMenuView: View {
-    enum InitialScreen {
-        case main
-        case settings
-    }
-
     @State var commentText = ""
-    @State var showingSettings = false
-    @State var showingHistory = false
-    @State var createRepoPath: CreateRepoPath?
     @State var showDeleteConfirmation = false
     @State var isDeleting = false
     @State var deleteError: String?
@@ -38,13 +25,14 @@ struct MainMenuView: View {
     @EnvironmentObject var githubAuthManager: GitHubAuthManager
     @EnvironmentObject var aiProviderStore: AIProviderStore
     @EnvironmentObject var aiCommitCoordinator: AICommitCoordinator
+    @EnvironmentObject var actionCoordinator: MainMenuActionCoordinator
     @EnvironmentObject var shortcutActionBridge: MainMenuShortcutActionBridge
+    @EnvironmentObject var presentationModel: MainMenuPresentationModel
     @AppStorage(AppPreferences.Keys.showFullPathInRecents) var showFullPathInRecents = false
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isUnstagedSectionCollapsed) var isUnstagedSectionCollapsed = false
     @State var showBranchSelector = false
     @State var selectedPushBranch: String = ""
-    @State var showSyncOptions = false
     @State var showPullToNewBranch = false
     @State var pullToNewBranchName = ""
     @State var useRebase = false
@@ -85,40 +73,35 @@ struct MainMenuView: View {
 
     let closePopover: () -> Void
     let togglePopoverBehavior: () -> Void
-    let initialCreateRepoPath: String?
 
     init(
         closePopover: @escaping () -> Void = {},
-        togglePopoverBehavior: @escaping () -> Void = {},
-        initialScreen: InitialScreen = .main,
-        initialCreateRepoPath: String? = nil
+        togglePopoverBehavior: @escaping () -> Void = {}
     ) {
         self.closePopover = closePopover
         self.togglePopoverBehavior = togglePopoverBehavior
-        self.initialCreateRepoPath = initialCreateRepoPath
-        _showingSettings = State(initialValue: initialScreen == .settings)
-        if let path = initialCreateRepoPath {
-            _createRepoPath = State(initialValue: CreateRepoPath(path: path))
-        }
     }
 
     var body: some View {
         VStack(spacing: 10) {
-            if let repoPath = createRepoPath {
+            switch presentationModel.route {
+            case let .createRepo(path):
                 CreateRepositoryPageView(
-                    folderPath: repoPath.path,
-                    onCancel: { createRepoPath = nil },
+                    folderPath: path,
+                    onCancel: {
+                        presentationModel.showMain(requestCommitFocus: true)
+                    },
                     onSuccess: { path in
                         setCurrentRepositoryPath(path)
                         addToRecents(path)
-                        createRepoPath = nil
+                        presentationModel.showMain(requestCommitFocus: true)
                         gitManager.updateRemoteUrl()
                         gitManager.refresh()
                     }
                 )
                 .environmentObject(gitManager)
                 .environmentObject(githubAuthManager)
-            } else if showingSettings {
+            case .settings:
                 SettingsPageView(
                     repositoryPath: currentRepoPath,
                     recentPaths: recentPaths,
@@ -134,19 +117,21 @@ struct MainMenuView: View {
                         showWipeConfirmation = true
                     }
                 )
-            } else if showingHistory {
+            case .history:
                 HistoryPageView(
                     commitHistory: gitManager.commitHistory,
                     currentHash: gitManager.currentHash,
                     isCommitInFuture: isCommitInFuture,
-                    onDone: { showingHistory = false },
+                    onDone: {
+                        presentationModel.showMain(requestCommitFocus: true)
+                    },
                     onSelectCommit: { commit in
                         if commit.id != gitManager.currentHash {
                             gitManager.resetToCommit(commit.id)
                         }
                     }
                 )
-            } else {
+            case .main:
                 mainView
             }
         }
@@ -173,7 +158,11 @@ struct MainMenuView: View {
                 toggleRepoVisibility()
             }
         } message: {
-            Text(gitManager.isPrivate ? "Anyone on the internet will be able to see this repository." : "You will choose who can see and commit to this repository.")
+            Text(
+                gitManager.isPrivate ?
+                    "Anyone on the internet will be able to see this repository." :
+                    "You will choose who can see and commit to this repository."
+            )
         }
         .alert("Wipe Repository History?", isPresented: $showWipeConfirmation) {
             Button("Cancel", role: .cancel) {}
@@ -182,7 +171,9 @@ struct MainMenuView: View {
             }
             .disabled(isWiping)
         } message: {
-            Text("This will permanently erase all commit history and reset the repository to a single 'Initial commit'. Your current files will be preserved. This action cannot be undone.")
+            Text(
+                "This will permanently erase all commit history and reset the repository to a single 'Initial commit'. Your current files will be preserved. This action cannot be undone."
+            )
         }
         .alert("Wipe Failed", isPresented: .init(
             get: { wipeError != nil },
@@ -264,7 +255,7 @@ struct MainMenuView: View {
             addToRecents(currentRepoPath)
             gitManager.refresh()
         }
-        showingSettings = false
+        presentationModel.showMain(requestCommitFocus: true)
         UserDefaults.standard.set(false, forKey: AppPreferences.Keys.showSettings)
     }
 }

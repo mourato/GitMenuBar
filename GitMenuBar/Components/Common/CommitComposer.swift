@@ -3,72 +3,48 @@ import SwiftUI
 struct CommitComposerSectionView: View {
     @Binding var commentText: String
     let isCommentFieldFocused: FocusState<Bool>.Binding
-    let hasWorkingTreeChanges: Bool
-    let isGenerating: Bool
-    let isReadyForGeneration: Bool
-    let generationDisabledReason: String
+    let primaryButtonSystemImage: String
+    let isPrimaryActionBusy: Bool
+    let generationDisabledReason: String?
     let generationError: String?
     let primaryButtonTitle: String
     let isPrimaryButtonDisabled: Bool
-    let onGenerateMessage: () -> Void
     let onPrimaryAction: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ZStack(alignment: .topTrailing) {
-                TextField("Message", text: $commentText, axis: .vertical)
-                    .font(.system(size: 13))
-                    .lineLimit(1 ... 4)
-                    .textFieldStyle(.plain)
-                    .padding(.leading, 16)
-//                    .padding(.trailing, 48)
-                    .padding(.vertical, 10)
-                    .background(Color.black.opacity(0.06))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .focused(isCommentFieldFocused)
-
-                Button(action: onGenerateMessage) {
-                    if isGenerating {
-                        ProgressView()
-                            .controlSize(.mini)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                            .background(Color.blue.opacity(0.12))
-                            .cornerRadius(6)
-                    } else {
-                        Image(systemName: "sparkle")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(.blue)
-                            .frame(width: 20, height: 20)
-                            .background(Color.blue.opacity(0.12))
-                            .cornerRadius(6)
-                    }
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 8)
-                .padding(.trailing, 8)
-                .disabled(!isReadyForGeneration || isGenerating || !hasWorkingTreeChanges)
-                .help(
-                    isReadyForGeneration
-                        ? "Generate commit message from staged changes. If no staged diff is available, fallback may include all changes."
-                        : generationDisabledReason
+            TextField("Message", text: $commentText, axis: .vertical)
+                .font(.system(size: 13))
+                .lineLimit(1 ... 4)
+                .textFieldStyle(.plain)
+                .padding(.leading, 16)
+                .padding(.vertical, 10)
+                .background(Color.black.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
                 )
-            }
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .focused(isCommentFieldFocused)
 
             Button(action: onPrimaryAction) {
-                Text(primaryButtonTitle)
-                    .frame(maxWidth: .infinity)
+                HStack(spacing: 8) {
+                    if isPrimaryActionBusy {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+
+                    Label(primaryButtonTitle, systemImage: primaryButtonSystemImage)
+                        .labelStyle(.titleAndIcon)
+                }
+                .frame(maxWidth: .infinity)
             }
             .frame(maxWidth: .infinity)
             .controlSize(.large)
             .buttonStyle(.borderedProminent)
             .disabled(isPrimaryButtonDisabled)
 
-            if !isReadyForGeneration {
+            if let generationDisabledReason {
                 Text(generationDisabledReason)
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
@@ -90,14 +66,12 @@ private struct CommitComposerSectionPreviewContainer: View {
         CommitComposerSectionView(
             commentText: $message,
             isCommentFieldFocused: $isFocused,
-            hasWorkingTreeChanges: true,
-            isGenerating: false,
-            isReadyForGeneration: true,
-            generationDisabledReason: "Configure an AI provider in Settings.",
+            primaryButtonSystemImage: "arrow.up",
+            isPrimaryActionBusy: false,
+            generationDisabledReason: nil,
             generationError: nil,
             primaryButtonTitle: "Commit",
             isPrimaryButtonDisabled: false,
-            onGenerateMessage: {},
             onPrimaryAction: {}
         )
         .padding()

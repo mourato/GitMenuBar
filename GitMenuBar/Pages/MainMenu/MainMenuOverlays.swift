@@ -6,9 +6,18 @@
 import SwiftUI
 
 extension MainMenuView {
-    // swiftlint:disable:next function_body_length cyclomatic_complexity
+    // swiftlint:disable:next function_body_length
     func applyMainViewOverlays<Content: View>(to view: Content) -> some View {
         view
+            .alert(item: $actionCoordinator.alert) { alert in
+                Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    dismissButton: .cancel(Text("OK")) {
+                        actionCoordinator.clearAlert()
+                    }
+                )
+            }
             .alert("Push Failed", isPresented: .init(
                 get: { pushError != nil },
                 set: { if !$0 { pushError = nil } }
@@ -118,7 +127,7 @@ extension MainMenuView {
                     onRename: renameBranch
                 )
             }
-            .sheet(isPresented: $showSyncOptions) {
+            .sheet(isPresented: $actionCoordinator.showSyncOptions) {
                 VStack(spacing: 16) {
                     Text("Sync with Remote")
                         .font(.system(size: 14, weight: .semibold))
@@ -151,14 +160,14 @@ extension MainMenuView {
                             subtitle: "Safe: Creates a fresh branch from remote",
                             backgroundColor: Color.green.opacity(0.1)
                         ) {
-                            showSyncOptions = false
+                            actionCoordinator.dismissSyncOptions()
                             pullToNewBranchName = "\(gitManager.currentBranch)-remote"
                             showPullToNewBranch = true
                         }
                     }
 
                     Button("Cancel") {
-                        showSyncOptions = false
+                        actionCoordinator.dismissSyncOptions()
                     }
                     .buttonStyle(.borderless)
                     .foregroundColor(.secondary)

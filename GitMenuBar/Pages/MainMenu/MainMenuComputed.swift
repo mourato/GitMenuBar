@@ -18,17 +18,20 @@ struct MainMenuPrimaryActionState: Equatable {
         showsCommitAction ? "Commit" : "Sync"
     }
 
+    var primaryButtonSystemImage: String {
+        showsCommitAction ? "arrow.up" : "arrow.2.circlepath"
+    }
+
     static func resolve(
         hasWorkingTreeChanges: Bool,
         hasCommitMessage: Bool,
         hasSyncWork: Bool,
-        isCommitting: Bool,
-        isGenerating: Bool
+        canAutoCommit: Bool,
+        isBusy: Bool
     ) -> MainMenuPrimaryActionState {
-        let showsCommitAction = hasWorkingTreeChanges || hasCommitMessage
-        let isBusy = isCommitting || isGenerating
-        let canCommit = hasWorkingTreeChanges && hasCommitMessage && !isBusy
-        let canSync = hasSyncWork && !hasWorkingTreeChanges && !hasCommitMessage && !isBusy
+        let showsCommitAction = hasWorkingTreeChanges
+        let canCommit = hasWorkingTreeChanges && (hasCommitMessage || canAutoCommit) && !isBusy
+        let canSync = hasSyncWork && !hasWorkingTreeChanges && !isBusy
 
         return MainMenuPrimaryActionState(
             showsCommitAction: showsCommitAction,
@@ -48,8 +51,8 @@ extension MainMenuView {
             hasWorkingTreeChanges: hasWorkingTreeChanges,
             hasCommitMessage: hasCommitMessage,
             hasSyncWork: gitManager.isAheadOfRemote || gitManager.isRemoteAhead,
-            isCommitting: gitManager.isCommitting,
-            isGenerating: aiCommitCoordinator.isGenerating
+            canAutoCommit: aiCommitCoordinator.isReadyForGeneration,
+            isBusy: isPrimaryActionBusy
         )
     }
 
@@ -88,5 +91,22 @@ extension MainMenuView {
 
     var primaryButtonTitle: String {
         primaryActionState.primaryButtonTitle
+    }
+
+    var primaryButtonSystemImage: String {
+        primaryActionState.primaryButtonSystemImage
+    }
+
+    var isPrimaryActionBusy: Bool {
+        gitManager.isCommitting || aiCommitCoordinator.isGenerating
+    }
+
+    var shouldShowGenerationHint: Bool {
+        hasWorkingTreeChanges && !hasCommitMessage && !aiCommitCoordinator.isReadyForGeneration
+    }
+
+    var displayedGenerationError: String? {
+        guard hasWorkingTreeChanges, !hasCommitMessage else { return nil }
+        return aiCommitCoordinator.generationError
     }
 }

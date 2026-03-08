@@ -6,7 +6,9 @@ struct MainMenuPreviewHarness<Content: View>: View {
     @StateObject private var githubAuthManager: GitHubAuthManager
     @StateObject private var aiProviderStore: AIProviderStore
     @StateObject private var aiCommitCoordinator: AICommitCoordinator
+    @StateObject private var actionCoordinator: MainMenuActionCoordinator
     @StateObject private var shortcutActionBridge = MainMenuShortcutActionBridge()
+    @StateObject private var presentationModel = MainMenuPresentationModel()
 
     private let width: CGFloat
     private let content: Content
@@ -30,6 +32,12 @@ struct MainMenuPreviewHarness<Content: View>: View {
         _githubAuthManager = StateObject(wrappedValue: previewGitHubAuthManager)
         _aiProviderStore = StateObject(wrappedValue: previewProviderStore)
         _aiCommitCoordinator = StateObject(wrappedValue: previewCoordinator)
+        _actionCoordinator = StateObject(
+            wrappedValue: MainMenuActionCoordinator(
+                gitManager: previewGitManager,
+                aiCommitCoordinator: previewCoordinator
+            )
+        )
 
         self.width = width
         self.content = content()
@@ -42,7 +50,9 @@ struct MainMenuPreviewHarness<Content: View>: View {
             .environmentObject(githubAuthManager)
             .environmentObject(aiProviderStore)
             .environmentObject(aiCommitCoordinator)
+            .environmentObject(actionCoordinator)
             .environmentObject(shortcutActionBridge)
+            .environmentObject(presentationModel)
             .frame(width: width)
     }
 }

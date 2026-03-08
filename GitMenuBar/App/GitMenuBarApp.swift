@@ -93,11 +93,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self.recentProjectsStore.add(path)
 
                 if exists {
-                    // Remote exists - open normally
-                    self.statusBarController?.gitManager.refresh {
-                        DispatchQueue.main.async {
-                            self.statusBarController?.openPopover()
-                        }
+                    DispatchQueue.main.async {
+                        self.statusBarController?.openPopover()
                     }
                 } else {
                     // Remote doesn't exist (either no remote or 404) - show create repo UI
@@ -111,10 +108,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
             recentProjectsStore.add(path)
 
-            statusBarController?.gitManager.refresh {
-                DispatchQueue.main.async {
-                    self.statusBarController?.openPopover()
-                }
+            DispatchQueue.main.async {
+                self.statusBarController?.openPopover()
             }
         } else {
             // Not a git repo at all - show create repo window if GitHub is connected
@@ -130,10 +125,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
                 recentProjectsStore.add(path)
 
-                statusBarController?.gitManager.refresh {
-                    DispatchQueue.main.async {
-                        self.statusBarController?.openPopover()
-                    }
+                DispatchQueue.main.async {
+                    self.statusBarController?.openPopover()
                 }
             }
         }

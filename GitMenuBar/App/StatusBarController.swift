@@ -10,12 +10,21 @@ import SwiftUI
 
 @MainActor
 class StatusBarController: ObservableObject {
+    private struct PopoverOpenTrace {
+        let id: Int
+        let startedAt: CFAbsoluteTime
+        let trigger: String
+    }
+
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
+    private var hostingController: PopoverHostingController<AnyView>?
     private var contextMenu: NSMenu?
     private var badgeRefreshTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
     private var baseStatusImage: NSImage?
+    private var remoteExistenceByPath: [String: RemoteExistenceState] = [:]
+    private var nextPopoverOpenTraceID = 0
 
     let gitManager = GitManager()
     let loginItemManager = LoginItemManager()
@@ -24,12 +33,17 @@ class StatusBarController: ObservableObject {
     let aiKeychainStore: any AIAPIKeyStore
     let aiCommitMessageService = AICommitMessageService()
     let shortcutActionBridge = MainMenuShortcutActionBridge()
+    let presentationModel = MainMenuPresentationModel()
 
     lazy var aiCommitCoordinator = AICommitCoordinator(
         providerStore: aiProviderStore,
         keychainStore: aiKeychainStore,
         messageService: aiCommitMessageService,
         gitManager: gitManager
+    )
+    lazy var actionCoordinator = MainMenuActionCoordinator(
+        gitManager: gitManager,
+        aiCommitCoordinator: aiCommitCoordinator
     )
 
     init(githubAuthManager: GitHubAuthManager) {
@@ -180,48 +194,38 @@ class StatusBarController: ObservableObject {
     }
 
     private func setupContextMenu() {
-        let menu = NSMenu()
-
-        let settingsItem = NSMenuItem(title: "Settings", action: #selector(openSettingsFromContextMenu), keyEquivalent: ",")
-        settingsItem.target = self
-        menu.addItem(settingsItem)
-
-        menu.addItem(NSMenuItem.separator())
-
-        let quitItem = NSMenuItem(title: "Quit", action: #selector(quitFromContextMenu), keyEquivalent: "q")
-        quitItem.target = self
-        menu.addItem(quitItem)
-
-        contextMenu = menu
+        contextMenu = NSMenu()
+        rebuildContextMenu()
     }
 
     private func setupPopover() {
         let popover = NSPopover()
         popover.behavior = .transient
-        popover.contentViewController = PopoverHostingController(rootView: makeRootView())
+        let hostingController = PopoverHostingController(rootView: makeRootView())
+        popover.contentViewController = hostingController
+        self.hostingController = hostingController
         self.popover = popover
     }
 
-    private func makeRootView(
-        initialScreen: MainMenuView.InitialScreen = .main,
-        initialCreateRepoPath: String? = nil
-    ) -> some View {
-        MainMenuView(
+    private func makeRootView() -> AnyView {
+        let rootView = MainMenuView(
             closePopover: { [weak self] in
                 self?.popover?.close()
             },
             togglePopoverBehavior: { [weak self] in
                 self?.togglePopoverBehavior()
-            },
-            initialScreen: initialScreen,
-            initialCreateRepoPath: initialCreateRepoPath
+            }
         )
         .environmentObject(gitManager)
         .environmentObject(loginItemManager)
         .environmentObject(githubAuthManager)
         .environmentObject(aiProviderStore)
         .environmentObject(aiCommitCoordinator)
+        .environmentObject(actionCoordinator)
         .environmentObject(shortcutActionBridge)
+        .environmentObject(presentationModel)
+
+        return AnyView(rootView)
     }
 
     func togglePopoverBehavior() {
@@ -251,9 +255,76 @@ class StatusBarController: ObservableObject {
     private func showContextMenu() {
         guard let contextMenu, let button = statusItem?.button else { return }
 
+        rebuildContextMenu()
         statusItem?.menu = contextMenu
         button.performClick(nil)
         statusItem?.menu = nil
+    }
+
+    private func rebuildContextMenu() {
+        let menu = contextMenu ?? NSMenu()
+        menu.removeAllItems()
+
+        let commitItem = NSMenuItem(title: "Commit", action: #selector(commitFromContextMenu), keyEquivalent: "")
+        commitItem.target = self
+        commitItem.isEnabled = actionCoordinator.canAutoCommit
+        menu.addItem(commitItem)
+
+        let commitAndPushItem = NSMenuItem(title: "Commit & Push", action: #selector(commitAndPushFromContextMenu), keyEquivalent: "")
+        commitAndPushItem.target = self
+        commitAndPushItem.isEnabled = actionCoordinator.canAutoCommit
+        menu.addItem(commitAndPushItem)
+
+        let syncItem = NSMenuItem(title: "Sync", action: #selector(syncFromContextMenu), keyEquivalent: "")
+        syncItem.target = self
+        syncItem.isEnabled = actionCoordinator.canSync
+        menu.addItem(syncItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let settingsItem = NSMenuItem(title: "Settings", action: #selector(openSettingsFromContextMenu), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+
+        let quitItem = NSMenuItem(title: "Quit", action: #selector(quitFromContextMenu), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+
+        contextMenu = menu
+    }
+
+    @objc private func commitFromContextMenu() {
+        Task { @MainActor in
+            let result = await actionCoordinator.performCommit(
+                commentText: "",
+                forceAutomaticMessage: true
+            )
+            if result.shouldOpenPopover {
+                presentMainPopoverForActionFeedback()
+            }
+        }
+    }
+
+    @objc private func commitAndPushFromContextMenu() {
+        Task { @MainActor in
+            let result = await actionCoordinator.performCommit(
+                commentText: "",
+                forceAutomaticMessage: true,
+                shouldPushAfterCommit: true
+            )
+            if result.shouldOpenPopover {
+                presentMainPopoverForActionFeedback()
+            }
+        }
+    }
+
+    @objc private func syncFromContextMenu() {
+        Task { @MainActor in
+            let result = await actionCoordinator.performSync()
+            if result.shouldOpenPopover {
+                presentMainPopoverForActionFeedback()
+            }
+        }
     }
 
     @objc private func openSettingsFromContextMenu() {
@@ -270,64 +341,70 @@ class StatusBarController: ObservableObject {
             return
         }
 
-        // Check if current repo path is set and is a git repo.
-        let currentPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
-        let isGitRepo = !currentPath.isEmpty && gitManager.isGitRepository(at: currentPath)
+        let trace = beginPopoverOpenTrace(trigger: "toggle")
+        let repositoryPath = currentRepositoryPath()
+        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
+        let initialRoute = initialRoute(for: repositoryPath, isGitRepo: isGitRepo)
 
-        if isGitRepo, githubAuthManager.isAuthenticated {
-            // Check if remote exists on GitHub.
-            gitManager.remoteRepositoryExists(at: currentPath) { [weak self] exists in
-                guard let self else { return }
-
-                if exists {
-                    self.showMainView(initialScreen: .main)
-                } else {
-                    self.showCreateRepoView(path: currentPath)
-                }
-            }
-        } else {
-            showMainView(initialScreen: .main)
-        }
+        openPopover(
+            route: initialRoute,
+            repositoryPath: repositoryPath,
+            isGitRepo: isGitRepo,
+            shouldRefreshAfterPresentation: shouldRefreshAfterPresenting(route: initialRoute),
+            trace: trace
+        )
     }
 
-    private func showCreateRepoView(path: String) {
-        presentPopover(initialCreateRepoPath: path)
-    }
-
-    private func showMainView(initialScreen: MainMenuView.InitialScreen) {
-        gitManager.updateUncommittedFiles { [weak self] in
-            guard let self else { return }
-            self.presentPopover(initialScreen: initialScreen)
-            self.gitManager.refresh()
-        }
-    }
-
-    private func presentPopover(
-        initialScreen: MainMenuView.InitialScreen = .main,
-        initialCreateRepoPath: String? = nil
+    private func openPopover(
+        route: MainMenuRoute,
+        repositoryPath: String?,
+        isGitRepo: Bool,
+        shouldRefreshAfterPresentation: Bool,
+        trace: PopoverOpenTrace
     ) {
+        presentationModel.prepareForPresentation(route: route, requestCommitFocus: route == .main)
+        if route != .main {
+            presentationModel.clearCreateRepoSuggestion()
+        }
+
+        logPopoverOpen(trace, message: "route resolved to \(describe(route: route))")
+        presentPopover(trace: trace)
+
+        if shouldRefreshAfterPresentation {
+            refreshPopoverData(trace: trace)
+        } else {
+            presentationModel.finishRefresh()
+        }
+
+        validateRemoteIfNeeded(path: repositoryPath, isGitRepo: isGitRepo, trace: trace)
+    }
+
+    private func presentPopover(trace: PopoverOpenTrace) {
         guard let popover, let button = statusItem?.button else { return }
 
         if popover.isShown {
             popover.close()
         }
 
-        popover.contentViewController = nil
-        let hostingController = PopoverHostingController(
-            rootView: makeRootView(
-                initialScreen: initialScreen,
-                initialCreateRepoPath: initialCreateRepoPath
-            )
-        )
-        popover.contentViewController = hostingController
         popover.contentSize = NSSize(width: 400, height: 500)
 
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        logPopoverOpen(trace, message: "popover shown")
     }
 
     private func openSettingsPopover() {
-        showMainView(initialScreen: .settings)
+        let trace = beginPopoverOpenTrace(trigger: "settings")
+        let repositoryPath = currentRepositoryPath()
+        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
+
+        openPopover(
+            route: .settings,
+            repositoryPath: repositoryPath,
+            isGitRepo: isGitRepo,
+            shouldRefreshAfterPresentation: true,
+            trace: trace
+        )
     }
 
     /// Opens the popover programmatically (used when app is launched with a folder path)
@@ -337,12 +414,159 @@ class StatusBarController: ObservableObject {
             return
         }
 
-        showMainView(initialScreen: .main)
+        let trace = beginPopoverOpenTrace(trigger: "programmatic")
+        let repositoryPath = currentRepositoryPath()
+        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
+        let initialRoute = initialRoute(for: repositoryPath, isGitRepo: isGitRepo)
+
+        openPopover(
+            route: initialRoute,
+            repositoryPath: repositoryPath,
+            isGitRepo: isGitRepo,
+            shouldRefreshAfterPresentation: shouldRefreshAfterPresenting(route: initialRoute),
+            trace: trace
+        )
+    }
+
+    private func presentMainPopoverForActionFeedback() {
+        if popover?.isShown == true {
+            presentationModel.showMain(requestCommitFocus: true)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let trace = beginPopoverOpenTrace(trigger: "context_action")
+        let repositoryPath = currentRepositoryPath()
+        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
+
+        openPopover(
+            route: .main,
+            repositoryPath: repositoryPath,
+            isGitRepo: isGitRepo,
+            shouldRefreshAfterPresentation: true,
+            trace: trace
+        )
     }
 
     /// Opens the popover directly showing the create repo view (used when opening a non-git folder)
     func openPopoverWithCreateRepo(path: String) {
-        presentPopover(initialCreateRepoPath: path)
+        let trace = beginPopoverOpenTrace(trigger: "create_repo")
+        openPopover(
+            route: .createRepo(path: path),
+            repositoryPath: path,
+            isGitRepo: gitManager.isGitRepository(at: path),
+            shouldRefreshAfterPresentation: false,
+            trace: trace
+        )
+    }
+
+    private func currentRepositoryPath() -> String? {
+        let path = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
+        return path.isEmpty ? nil : path
+    }
+
+    private func initialRoute(for repositoryPath: String?, isGitRepo: Bool) -> MainMenuRoute {
+        guard let repositoryPath, isGitRepo, githubAuthManager.isAuthenticated else {
+            return .main
+        }
+
+        switch remoteExistenceByPath[repositoryPath] ?? .unknown {
+        case .missing:
+            return .createRepo(path: repositoryPath)
+        case .unknown, .checking, .exists:
+            return .main
+        }
+    }
+
+    private func shouldRefreshAfterPresenting(route: MainMenuRoute) -> Bool {
+        if case .createRepo = route {
+            return false
+        }
+
+        return true
+    }
+
+    private func refreshPopoverData(trace: PopoverOpenTrace) {
+        presentationModel.startRefresh()
+        logPopoverOpen(trace, message: "refresh started")
+
+        gitManager.updateUncommittedFiles { [weak self] in
+            guard let self else { return }
+
+            self.logPopoverOpen(trace, message: "working tree loaded")
+            self.gitManager.refresh {
+                self.presentationModel.finishRefresh()
+                self.logPopoverOpen(trace, message: "refresh completed")
+            }
+        }
+    }
+
+    private func validateRemoteIfNeeded(path: String?, isGitRepo: Bool, trace: PopoverOpenTrace) {
+        guard let path, isGitRepo, githubAuthManager.isAuthenticated else {
+            presentationModel.clearCreateRepoSuggestion()
+            return
+        }
+
+        let cachedState = remoteExistenceByPath[path] ?? .unknown
+        guard cachedState == .unknown else {
+            if cachedState == .exists {
+                presentationModel.clearCreateRepoSuggestion()
+            } else if cachedState == .missing, presentationModel.route == .main {
+                presentationModel.suggestCreateRepo(path: path)
+            }
+            return
+        }
+
+        remoteExistenceByPath[path] = .checking
+        logPopoverOpen(trace, message: "remote validation started")
+
+        gitManager.remoteRepositoryExists(at: path) { [weak self] exists in
+            guard let self else { return }
+
+            self.remoteExistenceByPath[path] = exists ? .exists : .missing
+            self.logPopoverOpen(trace, message: "remote validation completed (\(exists ? "exists" : "missing"))")
+
+            guard self.currentRepositoryPath() == path else { return }
+
+            if exists {
+                self.presentationModel.clearCreateRepoSuggestion()
+                return
+            }
+
+            if self.presentationModel.route == .main {
+                self.presentationModel.suggestCreateRepo(path: path)
+            }
+        }
+    }
+
+    private func beginPopoverOpenTrace(trigger: String) -> PopoverOpenTrace {
+        nextPopoverOpenTraceID += 1
+        let trace = PopoverOpenTrace(
+            id: nextPopoverOpenTraceID,
+            startedAt: CFAbsoluteTimeGetCurrent(),
+            trigger: trigger
+        )
+
+        print("[PopoverOpen #\(trace.id)] trigger=\(trigger) +0ms")
+        return trace
+    }
+
+    private func logPopoverOpen(_ trace: PopoverOpenTrace, message: String) {
+        let elapsedMilliseconds = Int((CFAbsoluteTimeGetCurrent() - trace.startedAt) * 1000)
+        print("[PopoverOpen #\(trace.id)] trigger=\(trace.trigger) +\(elapsedMilliseconds)ms \(message)")
+    }
+
+    private func describe(route: MainMenuRoute) -> String {
+        switch route {
+        case .main:
+            return "main"
+        case .settings:
+            return "settings"
+        case .history:
+            return "history"
+        case let .createRepo(path):
+            return "createRepo(\(path))"
+        }
     }
 }
 

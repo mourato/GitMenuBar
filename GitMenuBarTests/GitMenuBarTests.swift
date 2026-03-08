@@ -11,8 +11,8 @@ final class GitMenuBarTests: XCTestCase {
             hasWorkingTreeChanges: true,
             hasCommitMessage: true,
             hasSyncWork: true,
-            isCommitting: false,
-            isGenerating: false
+            canAutoCommit: true,
+            isBusy: false
         )
 
         XCTAssertTrue(state.showsCommitAction)
@@ -26,8 +26,8 @@ final class GitMenuBarTests: XCTestCase {
             hasWorkingTreeChanges: true,
             hasCommitMessage: false,
             hasSyncWork: true,
-            isCommitting: false,
-            isGenerating: false
+            canAutoCommit: false,
+            isBusy: false
         )
 
         XCTAssertTrue(state.showsCommitAction)
@@ -37,13 +37,29 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertTrue(state.isPrimaryButtonDisabled)
     }
 
+    func testPrimaryActionEnablesCommitWhenAutoCommitIsAvailable() {
+        let state = MainMenuPrimaryActionState.resolve(
+            hasWorkingTreeChanges: true,
+            hasCommitMessage: false,
+            hasSyncWork: true,
+            canAutoCommit: true,
+            isBusy: false
+        )
+
+        XCTAssertTrue(state.showsCommitAction)
+        XCTAssertTrue(state.canCommit)
+        XCTAssertFalse(state.canSync)
+        XCTAssertEqual(state.primaryButtonTitle, "Commit")
+        XCTAssertFalse(state.isPrimaryButtonDisabled)
+    }
+
     func testPrimaryActionEnablesSyncWhenAheadAndCommitInputsAreIdle() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: false,
             hasCommitMessage: false,
             hasSyncWork: true,
-            isCommitting: false,
-            isGenerating: false
+            canAutoCommit: false,
+            isBusy: false
         )
 
         XCTAssertFalse(state.showsCommitAction)
@@ -53,29 +69,13 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.isPrimaryButtonDisabled)
     }
 
-    func testPrimaryActionDoesNotEnableSyncWhileCommitMessageExists() {
+    func testPrimaryActionIgnoresTypedMessageWhenThereAreNoWorkingTreeChanges() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: false,
             hasCommitMessage: true,
             hasSyncWork: true,
-            isCommitting: false,
-            isGenerating: false
-        )
-
-        XCTAssertTrue(state.showsCommitAction)
-        XCTAssertFalse(state.canCommit)
-        XCTAssertFalse(state.canSync)
-        XCTAssertEqual(state.primaryButtonTitle, "Commit")
-        XCTAssertTrue(state.isPrimaryButtonDisabled)
-    }
-
-    func testPrimaryActionEnablesSyncWhenRemoteIsAheadWithoutLocalCommits() {
-        let state = MainMenuPrimaryActionState.resolve(
-            hasWorkingTreeChanges: false,
-            hasCommitMessage: false,
-            hasSyncWork: true,
-            isCommitting: false,
-            isGenerating: false
+            canAutoCommit: false,
+            isBusy: false
         )
 
         XCTAssertFalse(state.showsCommitAction)

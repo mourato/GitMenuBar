@@ -11,80 +11,31 @@ extension MainMenuView {
         RecentProjectsStore()
     }
 
-    func submitComment() {
-        let trimmedText = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedText.isEmpty else { return }
-        guard !gitManager.isCommitting else { return }
-        guard !aiCommitCoordinator.isGenerating else { return }
-        guard hasWorkingTreeChanges else { return }
-
-        commentText = ""
-
-        // Commit staged files first, or auto-stage changes when staged is empty.
-        gitManager.commitLocallyWithFallback(trimmedText) {
-            self.gitManager.refresh()
+    func submitComment() async {
+        let result = await actionCoordinator.performCommit(commentText: commentText)
+        if result.didCommit {
+            commentText = ""
         }
     }
 
-    func performPrimaryAction() {
+    func performPrimaryAction() async {
         if showsCommitAction {
-            submitComment()
+            await submitComment()
             return
         }
 
-        guard canSync else { return }
-        syncRepository()
+        _ = await actionCoordinator.performSync()
     }
 
     func syncRepository() {
-        guard !aiCommitCoordinator.isGenerating, !gitManager.isCommitting else { return }
-        if gitManager.isRemoteAhead {
-            showSyncOptions = true
-            return
-        }
-
-        gitManager.pushToRemote { result in
-            switch result {
-            case .success:
-                self.gitManager.refresh()
-            case let .failure(error):
-                self.pushError = error.localizedDescription
-            }
-        }
-    }
-
-    func generateCommitMessageFromPriorityScope() {
-        guard !aiCommitCoordinator.isGenerating else { return }
-        guard hasWorkingTreeChanges else { return }
-
-        let scope: DiffScope = gitManager.stagedFiles.isEmpty ? .unstaged : .staged
-
         Task {
-            do {
-                let generated = try await aiCommitCoordinator.generateMessage(scopeOverride: scope)
-                commentText = generated
-            } catch {
-                // The coordinator already publishes a user-facing error string.
-            }
+            _ = await actionCoordinator.performSync()
         }
     }
 
     func syncWithRemote() {
-        showSyncOptions = false
-        gitManager.pullFromRemote(rebase: useRebase) { result in
-            switch result {
-            case .success:
-                self.gitManager.pushToRemote { pushResult in
-                    switch pushResult {
-                    case .success:
-                        self.gitManager.refresh()
-                    case let .failure(error):
-                        self.pushError = error.localizedDescription
-                    }
-                }
-            case let .failure(error):
-                self.syncError = error.localizedDescription
-            }
+        Task {
+            _ = await actionCoordinator.syncWithRemote(rebase: useRebase)
         }
     }
 
@@ -166,7 +117,7 @@ extension MainMenuView {
 
     func switchRepository(path: String, closeSettingsAfterRefresh: Bool = false) {
         if !gitManager.isGitRepository(at: path), githubAuthManager.isAuthenticated {
-            createRepoPath = CreateRepoPath(path: path)
+            presentationModel.showCreateRepo(path: path)
             return
         }
 
@@ -174,7 +125,7 @@ extension MainMenuView {
         addToRecents(path)
         gitManager.refresh {
             if closeSettingsAfterRefresh {
-                showingSettings = false
+                presentationModel.showMain(requestCommitFocus: true)
             }
         }
     }
@@ -201,6 +152,7 @@ extension MainMenuView {
                     isDeleting = false
                     // Clear the remote URL since repo is deleted
                     gitManager.remoteUrl = ""
+                    presentationModel.clearCreateRepoSuggestion()
                     closePopover()
                 }
             } catch {
@@ -245,7 +197,7 @@ extension MainMenuView {
                 isWiping = false
                 switch result {
                 case .success:
-                    showingSettings = false
+                    presentationModel.showMain()
                     UserDefaults.standard.set(false, forKey: AppPreferences.Keys.showSettings)
                 case let .failure(error):
                     wipeError = error.localizedDescription

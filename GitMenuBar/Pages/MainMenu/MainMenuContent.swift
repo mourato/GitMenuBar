@@ -24,11 +24,11 @@ extension MainMenuView {
                         showRepoOptions = true
                     },
                     onHistoryTap: {
-                        showingHistory = true
+                        presentationModel.showHistory()
                         gitManager.fetchCommitHistory()
                     },
                     onSettingsTap: {
-                        showingSettings = true
+                        presentationModel.showSettings()
                         UserDefaults.standard.set(true, forKey: AppPreferences.Keys.showSettings)
                     },
                     projectSelectorContent: {
@@ -53,107 +53,38 @@ extension MainMenuView {
                 CommitComposerSectionView(
                     commentText: $commentText,
                     isCommentFieldFocused: $isCommentFieldFocused,
-                    hasWorkingTreeChanges: hasWorkingTreeChanges,
-                    isGenerating: aiCommitCoordinator.isGenerating,
-                    isReadyForGeneration: aiCommitCoordinator.isReadyForGeneration,
-                    generationDisabledReason: aiCommitCoordinator.generationDisabledReason,
-                    generationError: aiCommitCoordinator.generationError,
+                    primaryButtonSystemImage: primaryButtonSystemImage,
+                    isPrimaryActionBusy: isPrimaryActionBusy,
+                    generationDisabledReason: shouldShowGenerationHint ? aiCommitCoordinator.generationDisabledReason : nil,
+                    generationError: displayedGenerationError,
                     primaryButtonTitle: primaryButtonTitle,
                     isPrimaryButtonDisabled: isPrimaryButtonDisabled,
-                    onGenerateMessage: {
-                        generateCommitMessageFromPriorityScope()
-                    },
                     onPrimaryAction: {
-                        performPrimaryAction()
+                        Task {
+                            await performPrimaryAction()
+                        }
                     }
                 )
                 .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        isCommentFieldFocused = true
-                    }
+                    requestCommitFieldFocus()
+                }
+                .onChange(of: presentationModel.focusCommitFieldToken) { _ in
+                    requestCommitFieldFocus()
                 }
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            WorkingTreeSectionHeaderView(
-                                title: "Staged",
-                                summary: stagedSummary,
-                                isCollapsed: $isStagedSectionCollapsed,
-                                actionIcon: "minus.circle",
-                                actionHelp: "Unstage all files",
-                                showsAction: !gitManager.stagedFiles.isEmpty,
-                                onAction: unstageAllFiles
-                            )
-
-                            if !isStagedSectionCollapsed {
-                                if gitManager.stagedFiles.isEmpty {
-                                    Text("No staged files")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
-                                        .padding(.vertical, 2)
-                                } else {
-                                    VStack(spacing: 3) {
-                                        ForEach(gitManager.stagedFiles) { file in
-                                            WorkingTreeFileRowView(
-                                                file: file,
-                                                actionIcon: "minus.circle",
-                                                actionHelp: "Unstage file",
-                                                onAction: { unstageFile(path: file.path) },
-                                                onOpen: { gitManager.openFile(path: file.path) },
-                                                onDiscard: {
-                                                    discardFilePath = file.path
-                                                    discardFileStatus = file.status
-                                                    showDiscardConfirmation = true
-                                                },
-                                                onReveal: { gitManager.revealInFinder(path: file.path) }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                        if let suggestionPath = presentationModel.createRepoSuggestionPath,
+                           suggestionPath == currentRepoPath
+                        {
+                            createRepoSuggestionBanner(path: suggestionPath)
                         }
 
-                        VStack(alignment: .leading, spacing: 6) {
-                            WorkingTreeSectionHeaderView(
-                                title: "Unstaged",
-                                summary: unstagedSummary,
-                                isCollapsed: $isUnstagedSectionCollapsed,
-                                actionIcon: "plus.circle",
-                                actionHelp: "Stage all files",
-                                showsAction: !gitManager.changedFiles.isEmpty,
-                                onAction: stageAllFiles,
-                                onDiscardAll: {
-                                    showDiscardAllConfirmation = true
-                                }
-                            )
-
-                            if !isUnstagedSectionCollapsed {
-                                if gitManager.changedFiles.isEmpty {
-                                    Text("No unstaged files")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
-                                        .padding(.vertical, 2)
-                                } else {
-                                    VStack(spacing: 3) {
-                                        ForEach(gitManager.changedFiles) { file in
-                                            WorkingTreeFileRowView(
-                                                file: file,
-                                                actionIcon: "plus.circle",
-                                                actionHelp: "Stage file",
-                                                onAction: { stageFile(path: file.path) },
-                                                onOpen: { gitManager.openFile(path: file.path) },
-                                                onDiscard: {
-                                                    discardFilePath = file.path
-                                                    discardFileStatus = file.status
-                                                    showDiscardConfirmation = true
-                                                },
-                                                onReveal: { gitManager.revealInFinder(path: file.path) }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                        if presentationModel.refreshState.isRefreshing && !hasWorkingTreeChanges {
+                            loadingStateView
+                        } else {
+                            stagedSection
+                            unstagedSection
                         }
                     }
                     .padding(.trailing, WorkingTreeLayoutMetrics.trailingContentPadding)
@@ -245,17 +176,146 @@ extension MainMenuView {
                 closePopover()
             }
             .onReceive(shortcutActionBridge.actions) { action in
-                guard createRepoPath == nil, !showingSettings, !showingHistory else { return }
+                guard presentationModel.route == .main else { return }
 
                 switch action {
                 case .commit:
                     guard hasWorkingTreeChanges else { return }
-                    submitComment()
+                    Task {
+                        await submitComment()
+                    }
                 case .sync:
-                    return
+                    Task {
+                        await actionCoordinator.performSync()
+                    }
                 }
             }
         )
+    }
+
+    private var stagedSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            WorkingTreeSectionHeaderView(
+                title: "Staged",
+                summary: stagedSummary,
+                isCollapsed: $isStagedSectionCollapsed,
+                actionIcon: "minus.circle",
+                actionHelp: "Unstage all files",
+                showsAction: !gitManager.stagedFiles.isEmpty,
+                onAction: unstageAllFiles
+            )
+
+            if !isStagedSectionCollapsed {
+                if gitManager.stagedFiles.isEmpty {
+                    Text("No staged files")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .padding(.vertical, 2)
+                } else {
+                    VStack(spacing: 3) {
+                        ForEach(gitManager.stagedFiles) { file in
+                            WorkingTreeFileRowView(
+                                file: file,
+                                actionIcon: "minus.circle",
+                                actionHelp: "Unstage file",
+                                onAction: { unstageFile(path: file.path) },
+                                onOpen: { gitManager.openFile(path: file.path) },
+                                onDiscard: {
+                                    discardFilePath = file.path
+                                    discardFileStatus = file.status
+                                    showDiscardConfirmation = true
+                                },
+                                onReveal: { gitManager.revealInFinder(path: file.path) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var unstagedSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            WorkingTreeSectionHeaderView(
+                title: "Unstaged",
+                summary: unstagedSummary,
+                isCollapsed: $isUnstagedSectionCollapsed,
+                actionIcon: "plus.circle",
+                actionHelp: "Stage all files",
+                showsAction: !gitManager.changedFiles.isEmpty,
+                onAction: stageAllFiles,
+                onDiscardAll: {
+                    showDiscardAllConfirmation = true
+                }
+            )
+
+            if !isUnstagedSectionCollapsed {
+                if gitManager.changedFiles.isEmpty {
+                    Text("No unstaged files")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .padding(.vertical, 2)
+                } else {
+                    VStack(spacing: 3) {
+                        ForEach(gitManager.changedFiles) { file in
+                            WorkingTreeFileRowView(
+                                file: file,
+                                actionIcon: "plus.circle",
+                                actionHelp: "Stage file",
+                                onAction: { stageFile(path: file.path) },
+                                onOpen: { gitManager.openFile(path: file.path) },
+                                onDiscard: {
+                                    discardFilePath = file.path
+                                    discardFileStatus = file.status
+                                    showDiscardConfirmation = true
+                                },
+                                onReveal: { gitManager.revealInFinder(path: file.path) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var loadingStateView: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.small)
+
+            Text("Loading working tree…")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func createRepoSuggestionBanner(path: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(.orange)
+
+            Text("GitHub remote not found for this repository.")
+                .font(.system(size: 11))
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            Button("Create Repo") {
+                presentationModel.showCreateRepo(path: path)
+            }
+            .buttonStyle(.link)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.orange.opacity(0.12))
+        .cornerRadius(8)
+    }
+
+    private func requestCommitFieldFocus() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            isCommentFieldFocused = true
+        }
     }
 }
 

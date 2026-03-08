@@ -72,12 +72,20 @@ class GitManager: ObservableObject {
         }
     }
 
-    func commitLocally(_ message: String, skipUIUpdates: Bool = false, completion: (() -> Void)? = nil) {
+    func commitLocally(
+        _ message: String,
+        skipUIUpdates: Bool = false,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
         isCommitting = true
         guard !storedRepoPath.isEmpty else {
-            print("Error: No repository path configured in settings")
             isCommitting = false
-            completion?()
+            let error = NSError(
+                domain: "GitManager",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "No repository path configured"]
+            )
+            completion?(.failure(error))
             return
         }
 
@@ -85,10 +93,14 @@ class GitManager: ObservableObject {
             // Commit only what is already staged.
             let commitResult = self.executeGitCommand(in: self.storedRepoPath, args: ["commit", "--no-gpg-sign", "-m", message])
             if commitResult.failure {
-                print("Error creating commit: \(commitResult.output)")
                 DispatchQueue.main.async {
                     self.isCommitting = false
-                    completion?()
+                    let error = NSError(
+                        domain: "GitManager",
+                        code: 2,
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to create commit: \(commitResult.output)"]
+                    )
+                    completion?(.failure(error))
                 }
                 return
             }
@@ -102,12 +114,16 @@ class GitManager: ObservableObject {
                     self.updateBranchInfo()
                 }
                 print("Created local commit: \(message)")
-                completion?()
+                completion?(.success(()))
             }
         }
     }
 
-    func commitLocallyWithFallback(_ message: String, skipUIUpdates: Bool = false, completion: (() -> Void)? = nil) {
+    func commitLocallyWithFallback(
+        _ message: String,
+        skipUIUpdates: Bool = false,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
         updateUncommittedFiles {
             let shouldAutoStage = self.stagedFiles.isEmpty && !self.changedFiles.isEmpty
 
@@ -122,7 +138,7 @@ class GitManager: ObservableObject {
                     self.commitLocally(message, skipUIUpdates: skipUIUpdates, completion: completion)
                 case let .failure(error):
                     print("Error staging all changes for fallback commit: \(error.localizedDescription)")
-                    completion?()
+                    completion?(.failure(error))
                 }
             }
         }
@@ -142,47 +158,52 @@ class GitManager: ObservableObject {
 
     /// Check if the remote repository actually exists on GitHub
     func remoteRepositoryExists(at path: String, completion: @escaping (Bool) -> Void) {
-        // First check if remote is configured
-        guard hasRemoteConfigured(at: path) else {
-            completion(false)
-            return
-        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            // First check if remote is configured.
+            let remoteConfigResult = self.executeGitCommand(in: path, args: ["config", "--get", "remote.origin.url"])
+            guard !remoteConfigResult.failure else {
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+                return
+            }
 
-        // Get the remote URL
-        let result = executeGitCommand(in: path, args: ["config", "--get", "remote.origin.url"])
-        guard !result.failure else {
-            completion(false)
-            return
-        }
+            let remoteURL = remoteConfigResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !remoteURL.isEmpty else {
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+                return
+            }
 
-        let remoteURL = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Parse owner and repo from URL.
+            // Supports formats like:
+            // - https://github.com/owner/repo
+            // - https://github.com/owner/repo.git
+            // - git@github.com:owner/repo.git
+            guard let reference = GitHubRemoteURLParser.parse(remoteURL) else {
+                DispatchQueue.main.async {
+                    completion(true)
+                }
+                return
+            }
 
-        // Parse owner and repo from URL
-        // Supports formats like:
-        // - https://github.com/owner/repo
-        // - https://github.com/owner/repo.git
-        // - git@github.com:owner/repo.git
+            // Check if repo exists using GitHub API.
+            guard let apiClient = self.githubAPIClient else {
+                DispatchQueue.main.async {
+                    completion(true)
+                }
+                return
+            }
 
-        guard let reference = GitHubRemoteURLParser.parse(remoteURL) else {
-            // Not a GitHub URL, assume it exists
-            completion(true)
-            return
-        }
-
-        // Check if repo exists using GitHub API
-        guard let apiClient = githubAPIClient else {
-            // No API client available, assume exists
-            completion(true)
-            return
-        }
-
-        Task {
-            let exists = await apiClient.checkRepositoryURLExists(
-                owner: reference.owner,
-                repo: reference.repository
-            )
-            DispatchQueue.main.async {
-                completion(exists)
+            Task {
+                let exists = await apiClient.checkRepositoryURLExists(
+                    owner: reference.owner,
+                    repo: reference.repository
+                )
+                DispatchQueue.main.async {
+                    completion(exists)
+                }
             }
         }
     }
