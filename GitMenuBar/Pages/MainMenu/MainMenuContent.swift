@@ -87,10 +87,10 @@ extension MainMenuView {
                             unstagedSection
                         }
                     }
-                    .padding(.trailing, WorkingTreeLayoutMetrics.trailingContentPadding)
+                    .padding(.horizontal, 10)
                 }
                 .frame(maxHeight: 400)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(width: 380, alignment: .leading)
                 .id(gitManager.stagedFiles.count + gitManager.changedFiles.count)
 
                 HStack {
