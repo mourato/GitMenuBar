@@ -1,0 +1,182 @@
+@testable import GitMenuBar
+import XCTest
+
+final class CommitHistoryParserTests: XCTestCase {
+    private let parser = CommitHistoryParser(runner: GitCommandRunner())
+
+    private struct CommitRecord {
+        let hash: String
+        let shortHash: String
+        let timestamp: TimeInterval
+        let authorName: String
+        let authorEmail: String
+        let subject: String
+        let body: String
+        let stats: [String]
+    }
+
+    func testParseReturnsCommitWithBodyAndStats() {
+        let output = makeRecord(
+            CommitRecord(
+                hash: "abcdef1234567890",
+                shortHash: "abcdef1",
+                timestamp: 1_709_856_000,
+                authorName: "Renato",
+                authorEmail: "renato@example.com",
+                subject: "feat(history): show commit details",
+                body: """
+                - Add delayed hover card
+                - Render commit stats in footer
+                """,
+                stats: [
+                    "12\t3\tGitMenuBar/Components/History/HistoryTimelineSectionView.swift",
+                    "4\t0\tGitMenuBar/Services/Git/CommitHistoryParser.swift"
+                ]
+            )
+        )
+
+        let commits = parser.parse(output)
+
+        XCTAssertEqual(commits.count, 1)
+        XCTAssertEqual(commits.first?.id, "abcdef1234567890")
+        XCTAssertEqual(commits.first?.shortHash, "abcdef1")
+        XCTAssertEqual(commits.first?.subject, "feat(history): show commit details")
+        XCTAssertEqual(commits.first?.body, "- Add delayed hover card\n- Render commit stats in footer")
+        XCTAssertEqual(commits.first?.authorName, "Renato")
+        XCTAssertEqual(commits.first?.authorEmail, "renato@example.com")
+        XCTAssertEqual(commits.first?.stats, CommitStats(filesChanged: 2, insertions: 16, deletions: 3))
+        XCTAssertEqual(commits.first?.committedAt.timeIntervalSince1970, 1_709_856_000)
+    }
+
+    func testParseHandlesEmptyBodyAndBinaryNumstat() {
+        let output = makeRecord(
+            CommitRecord(
+                hash: "1234567890abcdef",
+                shortHash: "1234567",
+                timestamp: 1_709_942_400,
+                authorName: "Renato",
+                authorEmail: "renato@example.com",
+                subject: "fix(parser): support binary files",
+                body: "",
+                stats: [
+                    "-\t-\tImages/icon.png"
+                ]
+            )
+        )
+
+        let commits = parser.parse(output)
+
+        XCTAssertEqual(commits.count, 1)
+        XCTAssertEqual(commits.first?.body, "")
+        XCTAssertEqual(commits.first?.stats, CommitStats(filesChanged: 1, insertions: 0, deletions: 0))
+    }
+
+    func testParseDeduplicatesHashesFromReflog() {
+        let output = [
+            makeRecord(
+                CommitRecord(
+                    hash: "duplicatehash",
+                    shortHash: "dup1234",
+                    timestamp: 1_709_942_400,
+                    authorName: "Renato",
+                    authorEmail: "renato@example.com",
+                    subject: "feat: latest version",
+                    body: "",
+                    stats: ["1\t0\tREADME.md"]
+                )
+            ),
+            makeRecord(
+                CommitRecord(
+                    hash: "duplicatehash",
+                    shortHash: "dup1234",
+                    timestamp: 1_709_856_000,
+                    authorName: "Renato",
+                    authorEmail: "renato@example.com",
+                    subject: "feat: older duplicate",
+                    body: "ignored",
+                    stats: ["9\t9\tREADME.md"]
+                )
+            ),
+            makeRecord(
+                CommitRecord(
+                    hash: "uniquehash",
+                    shortHash: "uniq123",
+                    timestamp: 1_709_769_600,
+                    authorName: "Renato",
+                    authorEmail: "renato@example.com",
+                    subject: "chore: previous commit",
+                    body: "",
+                    stats: ["2\t1\tSources/App.swift"]
+                )
+            )
+        ].joined()
+
+        let commits = parser.parse(output)
+
+        XCTAssertEqual(commits.count, 2)
+        XCTAssertEqual(commits.map(\.id), ["duplicatehash", "uniquehash"])
+        XCTAssertEqual(commits.first?.subject, "feat: latest version")
+        XCTAssertEqual(commits.first?.stats, CommitStats(filesChanged: 1, insertions: 1, deletions: 0))
+    }
+
+    func testParseFiltersCheckpointRefs() {
+        let output = [
+            makeRecord(
+                CommitRecord(
+                    hash: "checkpointhash",
+                    shortHash: "check12",
+                    timestamp: 1_709_942_400,
+                    authorName: "Automation",
+                    authorEmail: "bot@example.com",
+                    subject: "t3 checkpoint ref=refs/t3/checkpoints/example/turn/1",
+                    body: "",
+                    stats: ["1\t0\tREADME.md"]
+                )
+            ),
+            makeRecord(
+                CommitRecord(
+                    hash: "visiblehash",
+                    shortHash: "visible",
+                    timestamp: 1_709_856_000,
+                    authorName: "Renato",
+                    authorEmail: "renato@example.com",
+                    subject: "feat(history): keep visible commits only",
+                    body: "",
+                    stats: ["3\t1\tGitMenuBar/Services/Git/CommitHistoryParser.swift"]
+                )
+            )
+        ].joined()
+
+        let commits = parser.parse(output)
+
+        XCTAssertEqual(commits.map(\.id), ["visiblehash"])
+        XCTAssertEqual(commits.first?.subject, "feat(history): keep visible commits only")
+    }
+
+    private func makeRecord(_ record: CommitRecord) -> String {
+        let recordSeparator = "\u{1e}"
+        let fieldSeparator = "\u{1f}"
+        let groupSeparator = "\u{1d}"
+
+        return [
+            recordSeparator,
+            record.hash,
+            fieldSeparator,
+            record.shortHash,
+            fieldSeparator,
+            String(Int(record.timestamp)),
+            fieldSeparator,
+            record.authorName,
+            fieldSeparator,
+            record.authorEmail,
+            fieldSeparator,
+            record.subject,
+            fieldSeparator,
+            record.body,
+            groupSeparator,
+            "\n",
+            record.stats.joined(separator: "\n"),
+            "\n"
+        ].joined()
+    }
+}
