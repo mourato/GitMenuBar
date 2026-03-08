@@ -82,24 +82,55 @@ struct WorkingTreeSectionHeaderView: View {
 
 private struct WorkingTreeSectionHeaderPreviewContainer: View {
     @State private var isCollapsed = false
+    private let previewFiles = [
+        WorkingTreeFile(
+            path: "GitMenuBar/Pages/MainMenu/MainMenuContent.swift",
+            lineDiff: LineDiffStats(added: 23, removed: 8),
+            status: .modified
+        ),
+        WorkingTreeFile(
+            path: "GitMenuBar/Services/Git/GitManager.swift",
+            lineDiff: LineDiffStats(added: 19, removed: 4),
+            status: .modified
+        ),
+        WorkingTreeFile(
+            path: "GitMenuBar/Resources/PreviewSeed.json",
+            lineDiff: LineDiffStats(added: 0, removed: 0),
+            status: .untracked
+        )
+    ]
 
     var body: some View {
-        WorkingTreeSectionHeaderView(
-            title: "Staged",
-            summary: WorkingTreeSectionSummary(
-                fileCount: 3,
-                addedLineCount: 42,
-                removedLineCount: 7
-            ),
-            isCollapsed: $isCollapsed,
-            actionIcon: "arrow.up",
-            actionHelp: "Commit staged changes",
-            showsAction: true,
-            onAction: {},
-            onDiscardAll: {}
-        )
+        VStack(alignment: .leading, spacing: 6) {
+            WorkingTreeSectionHeaderView(
+                title: "Staged",
+                summary: previewFiles.sectionSummary,
+                isCollapsed: $isCollapsed,
+                actionIcon: "minus.circle",
+                actionHelp: "Unstage all files",
+                showsAction: true,
+                onAction: {},
+                onDiscardAll: {}
+            )
+
+            if !isCollapsed {
+                VStack(spacing: 3) {
+                    ForEach(previewFiles) { file in
+                        WorkingTreeFileRowView(
+                            file: file,
+                            actionIcon: "minus.circle",
+                            actionHelp: "Unstage file",
+                            onAction: {},
+                            onOpen: {},
+                            onDiscard: {},
+                            onReveal: {}
+                        )
+                    }
+                }
+            }
+        }
         .padding()
-        .frame(width: .infinity)
+        .frame(width: 380, alignment: .leading)
     }
 }
 
