@@ -35,6 +35,7 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.canSync)
         XCTAssertEqual(state.primaryButtonTitle, "Commit")
         XCTAssertTrue(state.isPrimaryButtonDisabled)
+        XCTAssertFalse(state.showsIdleCommitState)
     }
 
     func testPrimaryActionEnablesCommitWhenAutoCommitIsAvailable() {
@@ -97,8 +98,9 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertTrue(state.showsCommitAction)
         XCTAssertFalse(state.canCommit)
         XCTAssertFalse(state.canSync)
-        XCTAssertEqual(state.primaryButtonTitle, "Commit")
+        XCTAssertEqual(state.primaryButtonTitle, "Nothing to commit")
         XCTAssertTrue(state.isPrimaryButtonDisabled)
+        XCTAssertTrue(state.showsIdleCommitState)
     }
 
     func testContextMenuHidesCommitActionsWhenThereIsNothingToCommit() {

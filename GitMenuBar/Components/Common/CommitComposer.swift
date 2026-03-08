@@ -42,6 +42,7 @@ struct CommitComposerSectionView: View {
             .frame(maxWidth: .infinity)
             .controlSize(.large)
             .buttonStyle(.borderedProminent)
+            .tint(isPrimaryButtonDisabled ? .gray.opacity(0.75) : nil)
             .disabled(isPrimaryButtonDisabled)
 
             if let generationDisabledReason {
