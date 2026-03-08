@@ -65,7 +65,7 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.showsCommitAction)
         XCTAssertFalse(state.canCommit)
         XCTAssertTrue(state.canSync)
-        XCTAssertEqual(state.primaryButtonTitle, "Sync")
+        XCTAssertEqual(state.primaryButtonTitle, "Sync Changes")
         XCTAssertFalse(state.isPrimaryButtonDisabled)
     }
 
@@ -81,7 +81,50 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.showsCommitAction)
         XCTAssertFalse(state.canCommit)
         XCTAssertTrue(state.canSync)
-        XCTAssertEqual(state.primaryButtonTitle, "Sync")
+        XCTAssertEqual(state.primaryButtonTitle, "Sync Changes")
         XCTAssertFalse(state.isPrimaryButtonDisabled)
+    }
+
+    func testPrimaryActionFallsBackToDisabledCommitWhenNothingNeedsAction() {
+        let state = MainMenuPrimaryActionState.resolve(
+            hasWorkingTreeChanges: false,
+            hasCommitMessage: false,
+            hasSyncWork: false,
+            canAutoCommit: false,
+            isBusy: false
+        )
+
+        XCTAssertTrue(state.showsCommitAction)
+        XCTAssertFalse(state.canCommit)
+        XCTAssertFalse(state.canSync)
+        XCTAssertEqual(state.primaryButtonTitle, "Commit")
+        XCTAssertTrue(state.isPrimaryButtonDisabled)
+    }
+
+    func testContextMenuHidesCommitActionsWhenThereIsNothingToCommit() {
+        let state = StatusBarContextMenuActionState.resolve(
+            hasCommitWork: false,
+            hasSyncWork: true,
+            canAutoCommit: false,
+            canSync: true
+        )
+
+        XCTAssertFalse(state.showsCommit)
+        XCTAssertFalse(state.showsCommitAndPush)
+        XCTAssertTrue(state.showsSync)
+        XCTAssertTrue(state.canSync)
+    }
+
+    func testContextMenuHidesSyncWhenThereIsNothingToSynchronize() {
+        let state = StatusBarContextMenuActionState.resolve(
+            hasCommitWork: true,
+            hasSyncWork: false,
+            canAutoCommit: true,
+            canSync: false
+        )
+
+        XCTAssertTrue(state.showsCommit)
+        XCTAssertTrue(state.showsCommitAndPush)
+        XCTAssertFalse(state.showsSync)
     }
 }

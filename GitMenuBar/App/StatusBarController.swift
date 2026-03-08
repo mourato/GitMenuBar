@@ -25,7 +25,6 @@ class StatusBarController: ObservableObject {
     private var baseStatusImage: NSImage?
     private var remoteExistenceByPath: [String: RemoteExistenceState] = [:]
     private var nextPopoverOpenTraceID = 0
-
     let gitManager = GitManager()
     let loginItemManager = LoginItemManager()
     let githubAuthManager: GitHubAuthManager
@@ -265,22 +264,45 @@ class StatusBarController: ObservableObject {
         let menu = contextMenu ?? NSMenu()
         menu.removeAllItems()
 
-        let commitItem = NSMenuItem(title: "Commit", action: #selector(commitFromContextMenu), keyEquivalent: "")
-        commitItem.target = self
-        commitItem.isEnabled = actionCoordinator.canAutoCommit
-        menu.addItem(commitItem)
+        let actionState = StatusBarContextMenuActionState.resolve(
+            hasCommitWork: actionCoordinator.hasWorkingTreeChanges,
+            hasSyncWork: actionCoordinator.hasSyncWork,
+            canAutoCommit: actionCoordinator.canAutoCommit,
+            canSync: actionCoordinator.canSync
+        )
 
-        let commitAndPushItem = NSMenuItem(title: "Commit & Push", action: #selector(commitAndPushFromContextMenu), keyEquivalent: "")
-        commitAndPushItem.target = self
-        commitAndPushItem.isEnabled = actionCoordinator.canAutoCommit
-        menu.addItem(commitAndPushItem)
+        if actionState.showsCommit {
+            let commitItem = NSMenuItem(title: "Commit", action: #selector(commitFromContextMenu), keyEquivalent: "")
+            commitItem.target = self
+            commitItem.isEnabled = actionState.canCommit
+            menu.addItem(commitItem)
+        }
 
-        let syncItem = NSMenuItem(title: "Sync", action: #selector(syncFromContextMenu), keyEquivalent: "")
-        syncItem.target = self
-        syncItem.isEnabled = actionCoordinator.canSync
-        menu.addItem(syncItem)
+        if actionState.showsCommitAndPush {
+            let commitAndPushItem = NSMenuItem(
+                title: "Commit & Push",
+                action: #selector(commitAndPushFromContextMenu),
+                keyEquivalent: ""
+            )
+            commitAndPushItem.target = self
+            commitAndPushItem.isEnabled = actionState.canCommitAndPush
+            menu.addItem(commitAndPushItem)
+        }
 
-        menu.addItem(NSMenuItem.separator())
+        if actionState.showsSync {
+            let syncItem = NSMenuItem(
+                title: "Sync Changes",
+                action: #selector(syncFromContextMenu),
+                keyEquivalent: ""
+            )
+            syncItem.target = self
+            syncItem.isEnabled = actionState.canSync
+            menu.addItem(syncItem)
+        }
+
+        if actionState.hasVisibleActions {
+            menu.addItem(NSMenuItem.separator())
+        }
 
         let settingsItem = NSMenuItem(title: "Settings", action: #selector(openSettingsFromContextMenu), keyEquivalent: ",")
         settingsItem.target = self

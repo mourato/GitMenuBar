@@ -15,7 +15,7 @@ struct MainMenuPrimaryActionState: Equatable {
     }
 
     var primaryButtonTitle: String {
-        showsCommitAction ? "Commit" : "Sync"
+        showsCommitAction ? "Commit" : "Sync Changes"
     }
 
     var primaryButtonSystemImage: String {
@@ -29,7 +29,7 @@ struct MainMenuPrimaryActionState: Equatable {
         canAutoCommit: Bool,
         isBusy: Bool
     ) -> MainMenuPrimaryActionState {
-        let showsCommitAction = hasWorkingTreeChanges
+        let showsCommitAction = hasWorkingTreeChanges || !hasSyncWork
         let canCommit = hasWorkingTreeChanges && (hasCommitMessage || canAutoCommit) && !isBusy
         let canSync = hasSyncWork && !hasWorkingTreeChanges && !isBusy
 

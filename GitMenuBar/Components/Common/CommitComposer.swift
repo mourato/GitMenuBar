@@ -13,7 +13,7 @@ struct CommitComposerSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Message", text: $commentText, axis: .vertical)
+            TextField("Commit message (optional)", text: $commentText, axis: .vertical)
                 .font(.system(size: 13))
                 .lineLimit(1 ... 4)
                 .textFieldStyle(.plain)
