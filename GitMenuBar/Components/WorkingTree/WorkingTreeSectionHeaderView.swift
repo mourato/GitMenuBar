@@ -40,7 +40,7 @@ struct WorkingTreeSectionHeaderView: View {
                 HStack(spacing: 4) {
                     if let onDiscardAll {
                         Button(action: onDiscardAll) {
-                            Image(systemName: "trash")
+                            Image(systemName: "arrow.uturn.backward")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(.primary)
                                 .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
@@ -67,9 +67,7 @@ struct WorkingTreeSectionHeaderView: View {
             Text(summary.fileCountText)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.gray)
-                .frame(width: 16, height: 16, alignment: .center)
                 .background(.white.opacity(0.08))
-                .clipShape(Circle())
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 4)
@@ -101,7 +99,7 @@ private struct WorkingTreeSectionHeaderPreviewContainer: View {
             onDiscardAll: {}
         )
         .padding()
-        .frame(width: 360)
+        .frame(width: .infinity)
     }
 }
 
