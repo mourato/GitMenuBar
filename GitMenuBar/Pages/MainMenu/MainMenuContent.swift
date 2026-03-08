@@ -23,10 +23,6 @@ extension MainMenuView {
                     onProjectLongPress: {
                         showRepoOptions = true
                     },
-                    onHistoryTap: {
-                        presentationModel.showHistory()
-                        gitManager.fetchCommitHistory()
-                    },
                     onSettingsTap: {
                         presentationModel.showSettings()
                         UserDefaults.standard.set(true, forKey: AppPreferences.Keys.showSettings)
@@ -82,14 +78,17 @@ extension MainMenuView {
 
                         if presentationModel.refreshState.isRefreshing && !hasWorkingTreeChanges {
                             loadingStateView
-                        } else {
-                            stagedSection
-                            unstagedSection
                         }
+
+                        stagedSection
+                        unstagedSection
+                        Divider()
+                            .padding(.top, 2)
+                        historySection
                     }
                     .padding(.horizontal, 10)
                 }
-                .frame(maxHeight: 400)
+                .frame(maxHeight: 520)
                 .frame(width: 380, alignment: .leading)
                 .id(gitManager.stagedFiles.count + gitManager.changedFiles.count)
 
@@ -288,6 +287,22 @@ extension MainMenuView {
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
+    }
+
+    private var historySection: some View {
+        HistoryTimelineSectionView(
+            commits: gitManager.commitHistory,
+            currentHash: gitManager.currentHash,
+            remoteUrl: gitManager.remoteUrl,
+            isLoading: presentationModel.refreshState.isRefreshing,
+            showsHeader: true,
+            isCommitInFuture: isCommitInFuture,
+            onRestoreCommit: { commit in
+                guard commit.id != gitManager.currentHash else { return }
+                gitManager.resetToCommit(commit.id)
+            }
+        )
+        .padding(.top, 2)
     }
 
     private func createRepoSuggestionBanner(path: String) -> some View {

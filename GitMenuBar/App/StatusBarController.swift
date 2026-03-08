@@ -584,8 +584,6 @@ class StatusBarController: ObservableObject {
             return "main"
         case .settings:
             return "settings"
-        case .history:
-            return "history"
         case let .createRepo(path):
             return "createRepo(\(path))"
         }

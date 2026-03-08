@@ -3,7 +3,6 @@ import Foundation
 enum MainMenuRoute: Equatable {
     case main
     case settings
-    case history
     case createRepo(path: String)
 }
 
@@ -57,10 +56,6 @@ final class MainMenuPresentationModel: ObservableObject {
 
     func showSettings() {
         route = .settings
-    }
-
-    func showHistory() {
-        route = .history
     }
 
     func showCreateRepo(path: String) {

@@ -117,22 +117,6 @@ struct MainMenuView: View {
                         showWipeConfirmation = true
                     }
                 )
-            case .history:
-                HistoryPageView(
-                    commitHistory: gitManager.commitHistory,
-                    currentHash: gitManager.currentHash,
-                    remoteUrl: gitManager.remoteUrl,
-                    isLoading: false,
-                    isCommitInFuture: isCommitInFuture,
-                    onDone: {
-                        presentationModel.showMain(requestCommitFocus: true)
-                    },
-                    onRestoreCommit: { commit in
-                        if commit.id != gitManager.currentHash {
-                            gitManager.resetToCommit(commit.id)
-                        }
-                    }
-                )
             case .main:
                 mainView
             }

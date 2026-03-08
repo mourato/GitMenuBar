@@ -5,7 +5,6 @@ struct MainMenuHeaderView<ProjectSelectorContent: View>: View {
     let currentProjectName: String
     @Binding var showProjectSelector: Bool
     let onProjectLongPress: () -> Void
-    let onHistoryTap: () -> Void
     let onSettingsTap: () -> Void
     let projectSelectorContent: () -> ProjectSelectorContent
 
@@ -39,19 +38,9 @@ struct MainMenuHeaderView<ProjectSelectorContent: View>: View {
 
             Spacer()
 
-            HStack(spacing: 12) {
-                Button("History", action: onHistoryTap)
-                    .buttonStyle(.borderless)
-                    .focusable(false)
-
-                Text("|")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary.opacity(0.5))
-
-                Button("Settings", action: onSettingsTap)
-                    .buttonStyle(.borderless)
-                    .focusable(false)
-            }
+            Button("Settings", action: onSettingsTap)
+                .buttonStyle(.borderless)
+                .focusable(false)
         }
         .padding(.top, 4)
     }
@@ -62,7 +51,6 @@ struct MainMenuHeaderView<ProjectSelectorContent: View>: View {
         currentProjectName: "gitmenubar",
         showProjectSelector: .constant(false),
         onProjectLongPress: {},
-        onHistoryTap: {},
         onSettingsTap: {},
         projectSelectorContent: {
             Text("Projects")
