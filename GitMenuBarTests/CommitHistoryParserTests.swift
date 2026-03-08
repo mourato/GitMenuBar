@@ -45,6 +45,19 @@ final class CommitHistoryParserTests: XCTestCase {
         XCTAssertEqual(commits.first?.authorName, "Renato")
         XCTAssertEqual(commits.first?.authorEmail, "renato@example.com")
         XCTAssertEqual(commits.first?.stats, CommitStats(filesChanged: 2, insertions: 16, deletions: 3))
+        XCTAssertEqual(
+            commits.first?.changedFiles,
+            [
+                CommitFileChange(
+                    path: "GitMenuBar/Components/History/HistoryTimelineSectionView.swift",
+                    lineDiff: LineDiffStats(added: 12, removed: 3)
+                ),
+                CommitFileChange(
+                    path: "GitMenuBar/Services/Git/CommitHistoryParser.swift",
+                    lineDiff: LineDiffStats(added: 4, removed: 0)
+                )
+            ]
+        )
         XCTAssertEqual(commits.first?.committedAt.timeIntervalSince1970, 1_709_856_000)
     }
 
@@ -69,6 +82,15 @@ final class CommitHistoryParserTests: XCTestCase {
         XCTAssertEqual(commits.count, 1)
         XCTAssertEqual(commits.first?.body, "")
         XCTAssertEqual(commits.first?.stats, CommitStats(filesChanged: 1, insertions: 0, deletions: 0))
+        XCTAssertEqual(
+            commits.first?.changedFiles,
+            [
+                CommitFileChange(
+                    path: "Images/icon.png",
+                    lineDiff: LineDiffStats(added: 0, removed: 0)
+                )
+            ]
+        )
     }
 
     func testParseDeduplicatesHashesFromReflog() {

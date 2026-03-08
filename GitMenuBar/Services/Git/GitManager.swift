@@ -39,11 +39,13 @@ class GitManager: ObservableObject {
 
     private let repositoryContext: GitRepositoryContext
     private let commandRunner: GitCommandRunner
+    private let commitHistoryParser: CommitHistoryParser
     private let workingTreeParser: WorkingTreeParser
 
     init(repositoryPathOverride: String? = nil) {
         repositoryContext = GitRepositoryContext(overridePath: repositoryPathOverride)
         commandRunner = GitCommandRunner()
+        commitHistoryParser = CommitHistoryParser(runner: commandRunner)
         workingTreeParser = WorkingTreeParser(runner: commandRunner)
         updateLocalCommitCount()
         updateUncommittedFiles()
@@ -882,58 +884,11 @@ class GitManager: ObservableObject {
         }
 
         DispatchQueue.global(qos: .userInitiated).async {
-            // Get all commits including "future" ones from reflog
-            // This shows commits even if we've reset backwards
-            // Use Unix timestamp (%at) for unambiguous time parsing
-            let args = ["log", "--all", "--reflog", "--pretty=format:%H|%s|%at|%an", "-n", "100"]
+            let commits = self.commitHistoryParser.fetchCommitHistory(in: self.storedRepoPath)
 
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: args)
-
-            if !result.failure {
-                var seenHashes = Set<String>()
-                let commits = result.output.components(separatedBy: .newlines).compactMap { line -> Commit? in
-                    let parts = line.components(separatedBy: "|")
-                    guard parts.count >= 4 else { return nil }
-                    let hash = parts[0]
-                    // Skip duplicate commits (reflog can show same commit multiple times)
-                    guard !seenHashes.contains(hash) else { return nil }
-                    seenHashes.insert(hash)
-
-                    // Parse timestamp
-                    guard let timestamp = TimeInterval(parts[2]) else { return nil }
-                    let startOfDate = Date(timeIntervalSince1970: timestamp)
-
-                    // Format date
-                    let formattedDate = self.formatCommitDate(startOfDate)
-
-                    return Commit(id: hash, message: parts[1], date: formattedDate, author: parts[3])
-                }
-
-                DispatchQueue.main.async {
-                    self.commitHistory = commits
-                }
-            } else {
-                DispatchQueue.main.async {
-                    self.commitHistory = []
-                }
+            DispatchQueue.main.async {
+                self.commitHistory = commits
             }
-        }
-    }
-
-    private func formatCommitDate(_ date: Date) -> String {
-        let calendar = Calendar.current
-
-        if calendar.isDateInToday(date) {
-            // Show time for today's commits - respects system 12/24h setting
-            let timeFormatter = DateFormatter()
-            timeFormatter.timeStyle = .short
-            timeFormatter.dateStyle = .none
-            return timeFormatter.string(from: date)
-        } else {
-            // Show date for older commits - respects locale order
-            let dateFormatter = DateFormatter()
-            dateFormatter.setLocalizedDateFormatFromTemplate("MMMd")
-            return dateFormatter.string(from: date)
         }
     }
 

@@ -22,9 +22,11 @@ struct HistoryTimelineSectionView: View {
     let currentHash: String
     let remoteUrl: String
     let isLoading: Bool
+    let showsHeader: Bool
     let isCommitInFuture: (Commit) -> Bool
-    let onSelectCommit: (Commit) -> Void
+    let onRestoreCommit: (Commit) -> Void
 
+    @State private var expandedCommitIDs: Set<Commit.ID> = []
     @State private var hoveredCommitID: Commit.ID?
     @State private var activeCommitID: Commit.ID?
     @State private var isCardHovered = false
@@ -41,7 +43,9 @@ struct HistoryTimelineSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            header
+            if showsHeader {
+                header
+            }
 
             if commits.isEmpty {
                 placeholderView
@@ -87,16 +91,21 @@ struct HistoryTimelineSectionView: View {
     }
 
     private var timelineList: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 6) {
             ForEach(Array(commits.enumerated()), id: \.element.id) { index, commit in
                 HistoryTimelineRowView(
                     commit: commit,
+                    commitURL: commitURL(for: commit),
                     isCurrentCommit: commit.id == currentHash,
                     isFutureCommit: isCommitInFuture(commit),
+                    isExpanded: expandedCommitIDs.contains(commit.id),
                     showsTopConnector: index > 0,
                     showsBottomConnector: index < commits.count - 1,
                     onTap: {
-                        onSelectCommit(commit)
+                        toggleExpansion(for: commit.id)
+                    },
+                    onRestoreCommit: {
+                        onRestoreCommit(commit)
                     },
                     onHoverChanged: { isHovered in
                         handleRowHover(commitID: commit.id, isHovered: isHovered)
@@ -136,6 +145,22 @@ struct HistoryTimelineSectionView: View {
                 }
             }
         }
+    }
+
+    private func toggleExpansion(for commitID: Commit.ID) {
+        if expandedCommitIDs.contains(commitID) {
+            expandedCommitIDs.remove(commitID)
+        } else {
+            expandedCommitIDs.insert(commitID)
+        }
+    }
+
+    private func commitURL(for commit: Commit) -> URL? {
+        guard let reference = GitHubRemoteURLParser.parse(remoteUrl) else {
+            return nil
+        }
+
+        return URL(string: "https://github.com/\(reference.owner)/\(reference.repository)/commit/\(commit.id)")
     }
 
     private func handleRowHover(commitID: Commit.ID, isHovered: Bool) {
@@ -211,65 +236,107 @@ struct HistoryTimelineSectionView: View {
 
 private struct HistoryTimelineRowView: View {
     let commit: Commit
+    let commitURL: URL?
     let isCurrentCommit: Bool
     let isFutureCommit: Bool
+    let isExpanded: Bool
     let showsTopConnector: Bool
     let showsBottomConnector: Bool
     let onTap: () -> Void
+    let onRestoreCommit: () -> Void
     let onHoverChanged: (Bool) -> Void
 
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(alignment: .center, spacing: 10) {
-                timelineGutter
+        VStack(spacing: 0) {
+            Button(action: onTap) {
+                HStack(alignment: .center, spacing: 10) {
+                    timelineGutter
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text(commit.subject)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(titleColor)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(commit.subject)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(titleColor)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
 
-                        if isFutureCommit {
-                            Text("Future")
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundColor(.blue)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(Color.blue.opacity(0.12))
-                                .clipShape(Capsule())
+                            if isFutureCommit {
+                                Text("Future")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundColor(.blue)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(Color.blue.opacity(0.12))
+                                    .clipShape(Capsule())
+                            }
+
+                            Spacer(minLength: 0)
+
+                            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.secondary)
                         }
 
-                        Spacer(minLength: 0)
+                        HStack(spacing: 4) {
+                            Text(commit.authorName)
+                            Text("•")
+                            Text(HistoryTimelineDateFormatter.rowTimestamp(for: commit.committedAt))
+                            Text("•")
+                            Text("\(commit.stats.filesChanged) file\(commit.stats.filesChanged == 1 ? "" : "s")")
+                        }
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
                     }
-
-                    HStack(spacing: 4) {
-                        Text(commit.authorName)
-                        Text("•")
-                        Text(HistoryTimelineDateFormatter.rowTimestamp(for: commit.committedAt))
-                    }
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(RoundedRectangle(cornerRadius: 8))
             }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(backgroundColor)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(borderColor, lineWidth: borderLineWidth)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .contentShape(RoundedRectangle(cornerRadius: 8))
+            .buttonStyle(.plain)
+            .focusable(false)
+
+            if isExpanded {
+                Divider()
+                    .padding(.leading, HistoryTimelineMetrics.gutterWidth + 18)
+
+                expandedFilesView
+            }
         }
-        .buttonStyle(.plain)
-        .focusable(false)
+        .background(backgroundColor)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(borderColor, lineWidth: borderLineWidth)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .contentShape(RoundedRectangle(cornerRadius: 8))
+        .contextMenu {
+            Button("Open on GitHub") {
+                if let commitURL {
+                    NSWorkspace.shared.open(commitURL)
+                }
+            }
+            .disabled(commitURL == nil)
+
+            Button("Copy Commit ID") {
+                copyToPasteboard(commit.id)
+            }
+
+            Button("Copy Commit Message") {
+                copyToPasteboard(commit.subject)
+            }
+
+            Divider()
+
+            Button("Reset to Here") {
+                onRestoreCommit()
+            }
+            .disabled(isCurrentCommit)
+        }
         .onHover { isHovered in
             self.isHovered = isHovered
             onHoverChanged(isHovered)
@@ -280,6 +347,33 @@ private struct HistoryTimelineRowView: View {
                 NSCursor.pop()
             }
         }
+    }
+
+    private var expandedFilesView: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Spacer()
+                .frame(width: HistoryTimelineMetrics.gutterWidth)
+
+            VStack(alignment: .leading, spacing: 8) {
+                if commit.changedFiles.isEmpty {
+                    Text("No file list available for this commit.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(commit.changedFiles) { file in
+                        CommitChangedFileRowView(file: file)
+                    }
+                }
+            }
+            .padding(.top, 10)
+            .padding(.bottom, 10)
+            .padding(.trailing, 8)
+        }
+    }
+
+    private func copyToPasteboard(_ value: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
     }
 
     private var timelineGutter: some View {
@@ -320,6 +414,10 @@ private struct HistoryTimelineRowView: View {
             return Color.accentColor.opacity(0.08)
         }
 
+        if isExpanded {
+            return Color.primary.opacity(0.04)
+        }
+
         if isHovered {
             return Color.primary.opacity(0.05)
         }
@@ -332,6 +430,10 @@ private struct HistoryTimelineRowView: View {
             return Color.accentColor.opacity(0.35)
         }
 
+        if isExpanded {
+            return Color.primary.opacity(0.12)
+        }
+
         if isHovered {
             return Color.primary.opacity(0.08)
         }
@@ -340,7 +442,7 @@ private struct HistoryTimelineRowView: View {
     }
 
     private var borderLineWidth: CGFloat {
-        if isCurrentCommit || isHovered {
+        if isCurrentCommit || isHovered || isExpanded {
             return 1
         }
 
@@ -376,6 +478,49 @@ private struct HistoryTimelineRowView: View {
     }
 }
 
+private struct CommitChangedFileRowView: View {
+    let file: CommitFileChange
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "doc.text")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+                .frame(width: 14, alignment: .center)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(file.fileName)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+
+                if !file.directoryPath.isEmpty {
+                    Text(file.directoryPath)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 6) {
+                if file.lineDiff.added > 0 {
+                    Text("+\(file.lineDiff.added)")
+                        .foregroundColor(.green)
+                }
+
+                if file.lineDiff.removed > 0 {
+                    Text("-\(file.lineDiff.removed)")
+                        .foregroundColor(.red)
+                }
+            }
+            .font(.system(size: 10, weight: .medium))
+        }
+    }
+}
+
 #Preview("History Timeline Row") {
     HistoryTimelineRowView(
         commit: Commit(
@@ -386,13 +531,20 @@ private struct HistoryTimelineRowView: View {
             authorName: "Renato",
             authorEmail: "renato@example.com",
             committedAt: .now.addingTimeInterval(-5400),
-            stats: CommitStats(filesChanged: 2, insertions: 8, deletions: 3)
+            stats: CommitStats(filesChanged: 2, insertions: 8, deletions: 3),
+            changedFiles: [
+                CommitFileChange(path: "GitMenuBar/Components/History/HistoryTimelineSectionView.swift", lineDiff: LineDiffStats(added: 7, removed: 2)),
+                CommitFileChange(path: "GitMenuBar/Pages/History/HistoryPage.swift", lineDiff: LineDiffStats(added: 1, removed: 1))
+            ]
         ),
+        commitURL: URL(string: "https://github.com/example/repo/commit/1234567890abcdef"),
         isCurrentCommit: false,
         isFutureCommit: true,
+        isExpanded: true,
         showsTopConnector: true,
         showsBottomConnector: true,
         onTap: {},
+        onRestoreCommit: {},
         onHoverChanged: { _ in }
     )
     .padding()
@@ -413,7 +565,11 @@ private struct HistoryTimelineRowView: View {
                 authorName: "Renato",
                 authorEmail: "renato@example.com",
                 committedAt: .now.addingTimeInterval(-3600),
-                stats: CommitStats(filesChanged: 5, insertions: 114, deletions: 19)
+                stats: CommitStats(filesChanged: 5, insertions: 114, deletions: 19),
+                changedFiles: [
+                    CommitFileChange(path: "GitMenuBar/App/StatusBarController.swift", lineDiff: LineDiffStats(added: 72, removed: 12)),
+                    CommitFileChange(path: "GitMenuBar/Services/Git/GitManager.swift", lineDiff: LineDiffStats(added: 24, removed: 4))
+                ]
             ),
             Commit(
                 id: "abcdef1234567890",
@@ -423,14 +579,18 @@ private struct HistoryTimelineRowView: View {
                 authorName: "Renato",
                 authorEmail: "renato@example.com",
                 committedAt: .now.addingTimeInterval(-86400),
-                stats: CommitStats(filesChanged: 2, insertions: 8, deletions: 3)
+                stats: CommitStats(filesChanged: 2, insertions: 8, deletions: 3),
+                changedFiles: [
+                    CommitFileChange(path: "GitMenuBar/Components/History/HistoryTimelineSectionView.swift", lineDiff: LineDiffStats(added: 6, removed: 2))
+                ]
             )
         ],
         currentHash: "abcdef1234567890",
         remoteUrl: "https://github.com/example/repo",
         isLoading: false,
+        showsHeader: true,
         isCommitInFuture: { $0.id == "1234567890abcdef" },
-        onSelectCommit: { _ in }
+        onRestoreCommit: { _ in }
     )
     .padding()
     .frame(width: 380)

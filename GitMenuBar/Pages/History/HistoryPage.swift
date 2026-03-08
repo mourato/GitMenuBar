@@ -3,9 +3,11 @@ import SwiftUI
 struct HistoryPageView: View {
     let commitHistory: [Commit]
     let currentHash: String
+    let remoteUrl: String
+    let isLoading: Bool
     let isCommitInFuture: (Commit) -> Bool
     let onDone: () -> Void
-    let onSelectCommit: (Commit) -> Void
+    let onRestoreCommit: (Commit) -> Void
 
     var body: some View {
         VStack(spacing: 12) {
@@ -20,22 +22,17 @@ struct HistoryPageView: View {
                 .padding(.top, 4)
 
             ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(commitHistory) { commit in
-                        CommitRowView(
-                            commit: commit,
-                            isCurrentCommit: commit.id == currentHash,
-                            isFutureCommit: isCommitInFuture(commit),
-                            onTap: {
-                                onSelectCommit(commit)
-                            }
-                        )
-
-                        Divider()
-                    }
-                }
+                HistoryTimelineSectionView(
+                    commits: commitHistory,
+                    currentHash: currentHash,
+                    remoteUrl: remoteUrl,
+                    isLoading: isLoading,
+                    showsHeader: false,
+                    isCommitInFuture: isCommitInFuture,
+                    onRestoreCommit: onRestoreCommit
+                )
             }
-            .frame(height: 200)
+            .frame(height: 280)
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 10)
@@ -46,28 +43,39 @@ struct HistoryPageView: View {
     HistoryPageView(
         commitHistory: [
             Commit(
-                id: "abc1234",
-                message: "feat(menu): add branch switcher",
-                date: "2026-03-08",
-                author: "octocat"
+                id: "abc1234def5678",
+                shortHash: "abc1234",
+                subject: "feat(menu): add branch switcher",
+                body: "",
+                authorName: "octocat",
+                authorEmail: "octocat@example.com",
+                committedAt: .now.addingTimeInterval(-1200),
+                stats: CommitStats(filesChanged: 2, insertions: 24, deletions: 6),
+                changedFiles: [
+                    CommitFileChange(path: "GitMenuBar/Components/Branches/BranchSelectorPopover.swift", lineDiff: LineDiffStats(added: 20, removed: 4)),
+                    CommitFileChange(path: "GitMenuBar/Pages/MainMenu/MainMenuView.swift", lineDiff: LineDiffStats(added: 4, removed: 2))
+                ]
             ),
             Commit(
-                id: "def5678",
-                message: "fix(history): highlight current commit",
-                date: "2026-03-07",
-                author: "octocat"
-            ),
-            Commit(
-                id: "ghi9012",
-                message: "chore: tidy preview coverage",
-                date: "2026-03-06",
-                author: "octocat"
+                id: "def5678abc1234",
+                shortHash: "def5678",
+                subject: "fix(history): highlight current commit",
+                body: "",
+                authorName: "octocat",
+                authorEmail: "octocat@example.com",
+                committedAt: .now.addingTimeInterval(-86400),
+                stats: CommitStats(filesChanged: 1, insertions: 8, deletions: 3),
+                changedFiles: [
+                    CommitFileChange(path: "GitMenuBar/Components/History/HistoryTimelineSectionView.swift", lineDiff: LineDiffStats(added: 8, removed: 3))
+                ]
             )
         ],
-        currentHash: "def5678",
-        isCommitInFuture: { $0.id == "abc1234" },
+        currentHash: "def5678abc1234",
+        remoteUrl: "https://github.com/example/gitmenubar",
+        isLoading: false,
+        isCommitInFuture: { $0.id == "abc1234def5678" },
         onDone: {},
-        onSelectCommit: { _ in }
+        onRestoreCommit: { _ in }
     )
     .frame(width: 420)
     .padding()

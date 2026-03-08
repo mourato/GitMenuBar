@@ -121,11 +121,13 @@ struct MainMenuView: View {
                 HistoryPageView(
                     commitHistory: gitManager.commitHistory,
                     currentHash: gitManager.currentHash,
+                    remoteUrl: gitManager.remoteUrl,
+                    isLoading: false,
                     isCommitInFuture: isCommitInFuture,
                     onDone: {
                         presentationModel.showMain(requestCommitFocus: true)
                     },
-                    onSelectCommit: { commit in
+                    onRestoreCommit: { commit in
                         if commit.id != gitManager.currentHash {
                             gitManager.resetToCommit(commit.id)
                         }

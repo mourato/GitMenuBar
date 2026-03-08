@@ -18,6 +18,7 @@ final class CommitHistoryParser {
             "--date-order",
             "--pretty=format:\(format)",
             "--numstat",
+            "--no-renames",
             "HEAD",
             "-n",
             String(limit)
@@ -62,6 +63,8 @@ final class CommitHistoryParser {
             }
 
             seenHashes.insert(hash)
+            let (stats, changedFiles) = parseStats(String(sections[1]))
+
             commits.append(
                 Commit(
                     id: hash,
@@ -71,7 +74,8 @@ final class CommitHistoryParser {
                     authorName: String(fields[3]).trimmingCharacters(in: .whitespacesAndNewlines),
                     authorEmail: String(fields[4]).trimmingCharacters(in: .whitespacesAndNewlines),
                     committedAt: Date(timeIntervalSince1970: timestamp),
-                    stats: parseStats(String(sections[1]))
+                    stats: stats,
+                    changedFiles: changedFiles
                 )
             )
         }
@@ -79,10 +83,11 @@ final class CommitHistoryParser {
         return commits
     }
 
-    private func parseStats(_ rawStats: String) -> CommitStats {
+    private func parseStats(_ rawStats: String) -> (CommitStats, [CommitFileChange]) {
         var filesChanged = 0
         var insertions = 0
         var deletions = 0
+        var changedFiles: [CommitFileChange] = []
 
         for line in rawStats.components(separatedBy: .newlines) {
             let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -96,11 +101,22 @@ final class CommitHistoryParser {
             }
 
             filesChanged += 1
-            insertions += Int(components[0]) ?? 0
-            deletions += Int(components[1]) ?? 0
+            let added = Int(components[0]) ?? 0
+            let removed = Int(components[1]) ?? 0
+            insertions += added
+            deletions += removed
+            changedFiles.append(
+                CommitFileChange(
+                    path: String(components[2]),
+                    lineDiff: LineDiffStats(added: added, removed: removed)
+                )
+            )
         }
 
-        return CommitStats(filesChanged: filesChanged, insertions: insertions, deletions: deletions)
+        return (
+            CommitStats(filesChanged: filesChanged, insertions: insertions, deletions: deletions),
+            changedFiles
+        )
     }
 
     private func shouldIncludeCommit(subject: String) -> Bool {

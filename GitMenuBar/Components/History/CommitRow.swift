@@ -12,7 +12,7 @@ struct CommitRowView: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 0) {
-                Text(commit.message)
+                Text(commit.subject)
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -31,7 +31,7 @@ struct CommitRowView: View {
                         .fixedSize()
                 }
 
-                Text(commit.date)
+                Text(HistoryTimelineDateFormatter.rowTimestamp(for: commit.committedAt))
                     .font(.system(size: 10))
                     .foregroundColor(isFutureCommit ? .blue.opacity(0.7) : .secondary)
                     .fixedSize()
@@ -62,9 +62,16 @@ struct CommitRowView: View {
     CommitRowView(
         commit: Commit(
             id: "abc123",
-            message: "feat(ui): improve composer spacing",
-            date: "Today",
-            author: "bot"
+            shortHash: "abc123",
+            subject: "feat(ui): improve composer spacing",
+            body: "",
+            authorName: "bot",
+            authorEmail: "bot@example.com",
+            committedAt: .now,
+            stats: CommitStats(filesChanged: 1, insertions: 12, deletions: 1),
+            changedFiles: [
+                CommitFileChange(path: "GitMenuBar/Components/Common/CommitComposer.swift", lineDiff: LineDiffStats(added: 12, removed: 1))
+            ]
         ),
         isCurrentCommit: false,
         isFutureCommit: false,

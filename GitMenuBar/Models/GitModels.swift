@@ -1,11 +1,43 @@
 import AppKit
 import Foundation
 
-struct Commit: Identifiable {
+struct Commit: Identifiable, Equatable {
     let id: String
-    let message: String
-    let date: String
-    let author: String
+    let shortHash: String
+    let subject: String
+    let body: String
+    let authorName: String
+    let authorEmail: String
+    let committedAt: Date
+    let stats: CommitStats
+    let changedFiles: [CommitFileChange]
+}
+
+struct CommitStats: Equatable, Hashable {
+    let filesChanged: Int
+    let insertions: Int
+    let deletions: Int
+}
+
+struct CommitFileChange: Identifiable, Equatable, Hashable {
+    let path: String
+    let lineDiff: LineDiffStats
+
+    var id: String {
+        path
+    }
+
+    var fileName: String {
+        (path as NSString).lastPathComponent
+    }
+
+    var directoryPath: String {
+        let directory = (path as NSString).deletingLastPathComponent
+        guard directory != ".", directory != path else {
+            return ""
+        }
+        return directory
+    }
 }
 
 struct LineDiffStats: Hashable {

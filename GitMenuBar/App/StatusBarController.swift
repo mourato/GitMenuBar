@@ -408,7 +408,7 @@ class StatusBarController: ObservableObject {
             popover.close()
         }
 
-        popover.contentSize = NSSize(width: 400, height: 500)
+        popover.contentSize = NSSize(width: 400, height: 700)
 
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)

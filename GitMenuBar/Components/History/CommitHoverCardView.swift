@@ -182,7 +182,10 @@ enum HistoryTimelineDateFormatter {
             authorName: "Renato Costa",
             authorEmail: "renato@example.com",
             committedAt: .now.addingTimeInterval(-13 * 3600),
-            stats: CommitStats(filesChanged: 5, insertions: 114, deletions: 19)
+            stats: CommitStats(filesChanged: 5, insertions: 114, deletions: 19),
+            changedFiles: [
+                CommitFileChange(path: "GitMenuBar/App/StatusBarController.swift", lineDiff: LineDiffStats(added: 72, removed: 12))
+            ]
         ),
         remoteUrl: "https://github.com/example/gitmenubar"
     )
