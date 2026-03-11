@@ -91,7 +91,7 @@ struct HistoryTimelineSectionView: View {
     }
 
     private var timelineList: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 0) {
             ForEach(Array(commits.enumerated()), id: \.element.id) { index, commit in
                 HistoryTimelineRowView(
                     commit: commit,
@@ -488,18 +488,21 @@ private struct CommitChangedFileRowView: View {
                 .foregroundColor(.secondary)
                 .frame(width: 14, alignment: .center)
 
-            VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(file.fileName)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.primary)
                     .lineLimit(1)
+                    .truncationMode(.tail)
+                    .layoutPriority(1)
 
                 if !file.directoryPath.isEmpty {
                     Text(file.directoryPath)
-                        .font(.system(size: 10))
+                        .font(.system(size: 10, weight: .light))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
-                        .truncationMode(.middle)
+                        .truncationMode(.tail)
+                        .layoutPriority(0)
                 }
             }
 
