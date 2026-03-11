@@ -10,7 +10,7 @@ final class GitMenuBarTests: XCTestCase {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: true,
             hasCommitMessage: true,
-            hasSyncWork: true,
+            syncLabelState: .pushOnly,
             canAutoCommit: true,
             isBusy: false
         )
@@ -25,7 +25,7 @@ final class GitMenuBarTests: XCTestCase {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: true,
             hasCommitMessage: false,
-            hasSyncWork: true,
+            syncLabelState: .pushOnly,
             canAutoCommit: false,
             isBusy: false
         )
@@ -42,7 +42,7 @@ final class GitMenuBarTests: XCTestCase {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: true,
             hasCommitMessage: false,
-            hasSyncWork: true,
+            syncLabelState: .pushOnly,
             canAutoCommit: true,
             isBusy: false
         )
@@ -54,11 +54,27 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.isPrimaryButtonDisabled)
     }
 
-    func testPrimaryActionEnablesSyncWhenAheadAndCommitInputsAreIdle() {
+    func testPrimaryActionShowsPushChangesWhenOnlyLocalCommitsNeedSync() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: false,
             hasCommitMessage: false,
-            hasSyncWork: true,
+            syncLabelState: .pushOnly,
+            canAutoCommit: false,
+            isBusy: false
+        )
+
+        XCTAssertFalse(state.showsCommitAction)
+        XCTAssertFalse(state.canCommit)
+        XCTAssertTrue(state.canSync)
+        XCTAssertEqual(state.primaryButtonTitle, "Push Changes")
+        XCTAssertFalse(state.isPrimaryButtonDisabled)
+    }
+
+    func testPrimaryActionUsesSyncChangesWhenRemoteHasCommitsMissingLocally() {
+        let state = MainMenuPrimaryActionState.resolve(
+            hasWorkingTreeChanges: false,
+            hasCommitMessage: true,
+            syncLabelState: .syncChanges,
             canAutoCommit: false,
             isBusy: false
         )
@@ -70,11 +86,11 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.isPrimaryButtonDisabled)
     }
 
-    func testPrimaryActionIgnoresTypedMessageWhenThereAreNoWorkingTreeChanges() {
+    func testPrimaryActionUsesSyncChangesWhenLocalAndRemoteAreDiverged() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: false,
-            hasCommitMessage: true,
-            hasSyncWork: true,
+            hasCommitMessage: false,
+            syncLabelState: .syncChanges,
             canAutoCommit: false,
             isBusy: false
         )
@@ -90,7 +106,7 @@ final class GitMenuBarTests: XCTestCase {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: false,
             hasCommitMessage: false,
-            hasSyncWork: false,
+            syncLabelState: .none,
             canAutoCommit: false,
             isBusy: false
         )

@@ -68,6 +68,10 @@ final class MainMenuActionCoordinator: ObservableObject {
         gitManager.isAheadOfRemote || gitManager.isRemoteAhead
     }
 
+    var syncActionTitle: String {
+        gitManager.isAheadOfRemote && !gitManager.isRemoteAhead ? "Push Changes" : "Sync Changes"
+    }
+
     var isBusy: Bool {
         gitManager.isCommitting || aiCommitCoordinator.isGenerating
     }

@@ -291,7 +291,7 @@ class StatusBarController: ObservableObject {
 
         if actionState.showsSync {
             let syncItem = NSMenuItem(
-                title: "Sync Changes",
+                title: actionCoordinator.syncActionTitle,
                 action: #selector(syncFromContextMenu),
                 keyEquivalent: ""
             )

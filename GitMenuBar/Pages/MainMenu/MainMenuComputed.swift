@@ -5,11 +5,45 @@
 
 import Foundation
 
+enum MainMenuSyncLabelState: Equatable {
+    case none
+    case pushOnly
+    case syncChanges
+
+    var hasSyncWork: Bool {
+        self != .none
+    }
+
+    var title: String {
+        switch self {
+        case .none:
+            return ""
+        case .pushOnly:
+            return "Push Changes"
+        case .syncChanges:
+            return "Sync Changes"
+        }
+    }
+
+    static func resolve(hasLocalSyncWork: Bool, hasRemoteSyncWork: Bool) -> MainMenuSyncLabelState {
+        if hasLocalSyncWork && !hasRemoteSyncWork {
+            return .pushOnly
+        }
+
+        if hasLocalSyncWork || hasRemoteSyncWork {
+            return .syncChanges
+        }
+
+        return .none
+    }
+}
+
 struct MainMenuPrimaryActionState: Equatable {
     let showsCommitAction: Bool
     let canCommit: Bool
     let canSync: Bool
     let showsIdleCommitState: Bool
+    let syncLabelState: MainMenuSyncLabelState
 
     var isPrimaryButtonDisabled: Bool {
         showsCommitAction ? !canCommit : !canSync
@@ -20,7 +54,11 @@ struct MainMenuPrimaryActionState: Equatable {
             return "Nothing to commit"
         }
 
-        return showsCommitAction ? "Commit" : "Sync Changes"
+        if showsCommitAction {
+            return "Commit"
+        }
+
+        return syncLabelState.title
     }
 
     var primaryButtonSystemImage: String {
@@ -30,10 +68,11 @@ struct MainMenuPrimaryActionState: Equatable {
     static func resolve(
         hasWorkingTreeChanges: Bool,
         hasCommitMessage: Bool,
-        hasSyncWork: Bool,
+        syncLabelState: MainMenuSyncLabelState,
         canAutoCommit: Bool,
         isBusy: Bool
     ) -> MainMenuPrimaryActionState {
+        let hasSyncWork = syncLabelState.hasSyncWork
         let showsIdleCommitState = !hasWorkingTreeChanges && !hasSyncWork
         let showsCommitAction = hasWorkingTreeChanges || !hasSyncWork
         let canCommit = hasWorkingTreeChanges && (hasCommitMessage || canAutoCommit) && !isBusy
@@ -43,7 +82,8 @@ struct MainMenuPrimaryActionState: Equatable {
             showsCommitAction: showsCommitAction,
             canCommit: canCommit,
             canSync: canSync,
-            showsIdleCommitState: showsIdleCommitState
+            showsIdleCommitState: showsIdleCommitState,
+            syncLabelState: syncLabelState
         )
     }
 }
@@ -57,9 +97,16 @@ extension MainMenuView {
         MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: hasWorkingTreeChanges,
             hasCommitMessage: hasCommitMessage,
-            hasSyncWork: gitManager.isAheadOfRemote || gitManager.isRemoteAhead,
+            syncLabelState: syncLabelState,
             canAutoCommit: aiCommitCoordinator.isReadyForGeneration,
             isBusy: isPrimaryActionBusy
+        )
+    }
+
+    var syncLabelState: MainMenuSyncLabelState {
+        MainMenuSyncLabelState.resolve(
+            hasLocalSyncWork: gitManager.isAheadOfRemote,
+            hasRemoteSyncWork: gitManager.isRemoteAhead
         )
     }
 

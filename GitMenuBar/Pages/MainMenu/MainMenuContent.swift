@@ -6,6 +6,18 @@
 import SwiftUI
 
 extension MainMenuView {
+    private var hasStagedFiles: Bool {
+        !gitManager.stagedFiles.isEmpty
+    }
+
+    private var hasUnstagedFiles: Bool {
+        !gitManager.changedFiles.isEmpty
+    }
+
+    private var showsWorkingTreeSections: Bool {
+        hasStagedFiles || hasUnstagedFiles
+    }
+
     private var stagedSummary: WorkingTreeSectionSummary {
         gitManager.stagedFiles.sectionSummary
     }
@@ -70,9 +82,7 @@ extension MainMenuView {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        if let suggestionPath = presentationModel.createRepoSuggestionPath,
-                           suggestionPath == currentRepoPath
-                        {
+                        if let suggestionPath = presentationModel.createRepoSuggestionPath, suggestionPath == currentRepoPath {
                             createRepoSuggestionBanner(path: suggestionPath)
                         }
 
@@ -80,10 +90,16 @@ extension MainMenuView {
                             loadingStateView
                         }
 
-                        stagedSection
-                        unstagedSection
-                        Divider()
-                            .padding(.top, 2)
+                        if showsWorkingTreeSections {
+                            if hasStagedFiles {
+                                stagedSection
+                            }
+                            if hasUnstagedFiles {
+                                unstagedSection
+                            }
+                            Divider()
+                                .padding(.top, 2)
+                        }
                         historySection
                     }
                     .padding(.horizontal, 10)
@@ -205,28 +221,21 @@ extension MainMenuView {
             )
 
             if !isStagedSectionCollapsed {
-                if gitManager.stagedFiles.isEmpty {
-                    Text("No staged files")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .padding(.vertical, 2)
-                } else {
-                    VStack(spacing: 3) {
-                        ForEach(gitManager.stagedFiles) { file in
-                            WorkingTreeFileRowView(
-                                file: file,
-                                actionIcon: "minus.circle",
-                                actionHelp: "Unstage file",
-                                onAction: { unstageFile(path: file.path) },
-                                onOpen: { gitManager.openFile(path: file.path) },
-                                onDiscard: {
-                                    discardFilePath = file.path
-                                    discardFileStatus = file.status
-                                    showDiscardConfirmation = true
-                                },
-                                onReveal: { gitManager.revealInFinder(path: file.path) }
-                            )
-                        }
+                VStack(spacing: 3) {
+                    ForEach(gitManager.stagedFiles) { file in
+                        WorkingTreeFileRowView(
+                            file: file,
+                            actionIcon: "minus.circle",
+                            actionHelp: "Unstage file",
+                            onAction: { unstageFile(path: file.path) },
+                            onOpen: { gitManager.openFile(path: file.path) },
+                            onDiscard: {
+                                discardFilePath = file.path
+                                discardFileStatus = file.status
+                                showDiscardConfirmation = true
+                            },
+                            onReveal: { gitManager.revealInFinder(path: file.path) }
+                        )
                     }
                 }
             }
@@ -249,28 +258,21 @@ extension MainMenuView {
             )
 
             if !isUnstagedSectionCollapsed {
-                if gitManager.changedFiles.isEmpty {
-                    Text("No unstaged files")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .padding(.vertical, 2)
-                } else {
-                    VStack(spacing: 3) {
-                        ForEach(gitManager.changedFiles) { file in
-                            WorkingTreeFileRowView(
-                                file: file,
-                                actionIcon: "plus.circle",
-                                actionHelp: "Stage file",
-                                onAction: { stageFile(path: file.path) },
-                                onOpen: { gitManager.openFile(path: file.path) },
-                                onDiscard: {
-                                    discardFilePath = file.path
-                                    discardFileStatus = file.status
-                                    showDiscardConfirmation = true
-                                },
-                                onReveal: { gitManager.revealInFinder(path: file.path) }
-                            )
-                        }
+                VStack(spacing: 3) {
+                    ForEach(gitManager.changedFiles) { file in
+                        WorkingTreeFileRowView(
+                            file: file,
+                            actionIcon: "plus.circle",
+                            actionHelp: "Stage file",
+                            onAction: { stageFile(path: file.path) },
+                            onOpen: { gitManager.openFile(path: file.path) },
+                            onDiscard: {
+                                discardFilePath = file.path
+                                discardFileStatus = file.status
+                                showDiscardConfirmation = true
+                            },
+                            onReveal: { gitManager.revealInFinder(path: file.path) }
+                        )
                     }
                 }
             }
