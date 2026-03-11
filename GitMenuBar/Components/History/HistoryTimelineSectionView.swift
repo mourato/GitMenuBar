@@ -4,7 +4,7 @@ import SwiftUI
 private enum HistoryTimelineMetrics {
     static let gutterWidth: CGFloat = 18
     static let circleSize: CGFloat = 8
-    static let cardWidth: CGFloat = 308
+    static let cardWidth: CGFloat = 170
 }
 
 struct HistoryTimelineSectionView: View {
@@ -15,7 +15,6 @@ struct HistoryTimelineSectionView: View {
     let showsHeader: Bool
     let isCommitInFuture: (Commit) -> Bool
     let onRestoreCommit: (Commit) -> Void
-    var onHoverCardVisibilityChanged: (Bool) -> Void = { _ in }
 
     @State private var expandedCommitIDs: Set<Commit.ID> = []
     @State private var hoveredCommitID: Commit.ID?
@@ -47,14 +46,6 @@ struct HistoryTimelineSectionView: View {
         .onDisappear {
             showCardTask?.cancel()
             closeCardTask?.cancel()
-            onHoverCardVisibilityChanged(false)
-        }
-        .onChange(of: activeCommitID) { commitID in
-            let isVisible = commitID != nil
-            if !isVisible {
-                isCardHovered = false
-            }
-            onHoverCardVisibilityChanged(isVisible)
         }
     }
 
