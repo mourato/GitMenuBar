@@ -175,6 +175,23 @@ final class CommitHistoryParserTests: XCTestCase {
         XCTAssertEqual(commits.first?.subject, "feat(history): keep visible commits only")
     }
 
+    func testFetchCommitHistoryDefaultsTo50Items() throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let runner = GitCommandRunner()
+        let fetchParser = CommitHistoryParser(runner: runner)
+
+        for index in 1 ... 60 {
+            let fileURL = repoURL.appendingPathComponent("file-\(index).txt")
+            try "value-\(index)\n".write(to: fileURL, atomically: true, encoding: .utf8)
+            try runGit(["add", "."], in: repoURL)
+            try runGit(["commit", "-m", "feat: commit \(index)"], in: repoURL)
+        }
+
+        let commits = fetchParser.fetchCommitHistory(in: repoURL.path)
+
+        XCTAssertEqual(commits.count, 50)
+    }
+
     private func makeRecord(_ record: CommitRecord) -> String {
         let recordSeparator = "\u{1e}"
         let fieldSeparator = "\u{1f}"

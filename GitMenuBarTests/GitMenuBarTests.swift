@@ -18,6 +18,7 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertTrue(state.showsCommitAction)
         XCTAssertTrue(state.canCommit)
         XCTAssertEqual(state.primaryButtonTitle, "Commit")
+        XCTAssertEqual(state.primaryButtonSystemImage, "checkmark")
         XCTAssertFalse(state.isPrimaryButtonDisabled)
     }
 
@@ -34,6 +35,7 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.canCommit)
         XCTAssertFalse(state.canSync)
         XCTAssertEqual(state.primaryButtonTitle, "Commit")
+        XCTAssertEqual(state.primaryButtonSystemImage, "checkmark")
         XCTAssertTrue(state.isPrimaryButtonDisabled)
         XCTAssertFalse(state.showsIdleCommitState)
     }
@@ -51,6 +53,7 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertTrue(state.canCommit)
         XCTAssertFalse(state.canSync)
         XCTAssertEqual(state.primaryButtonTitle, "Commit")
+        XCTAssertEqual(state.primaryButtonSystemImage, "checkmark")
         XCTAssertFalse(state.isPrimaryButtonDisabled)
     }
 
@@ -67,6 +70,7 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.canCommit)
         XCTAssertTrue(state.canSync)
         XCTAssertEqual(state.primaryButtonTitle, "Push Changes")
+        XCTAssertEqual(state.primaryButtonSystemImage, "arrow.up")
         XCTAssertFalse(state.isPrimaryButtonDisabled)
     }
 
@@ -83,6 +87,7 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.canCommit)
         XCTAssertTrue(state.canSync)
         XCTAssertEqual(state.primaryButtonTitle, "Sync Changes")
+        XCTAssertEqual(state.primaryButtonSystemImage, "arrow.2.circlepath")
         XCTAssertFalse(state.isPrimaryButtonDisabled)
     }
 
@@ -99,6 +104,7 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.canCommit)
         XCTAssertTrue(state.canSync)
         XCTAssertEqual(state.primaryButtonTitle, "Sync Changes")
+        XCTAssertEqual(state.primaryButtonSystemImage, "arrow.2.circlepath")
         XCTAssertFalse(state.isPrimaryButtonDisabled)
     }
 
@@ -115,6 +121,7 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.canCommit)
         XCTAssertFalse(state.canSync)
         XCTAssertEqual(state.primaryButtonTitle, "Nothing to commit")
+        XCTAssertNil(state.primaryButtonSystemImage)
         XCTAssertTrue(state.isPrimaryButtonDisabled)
         XCTAssertTrue(state.showsIdleCommitState)
     }

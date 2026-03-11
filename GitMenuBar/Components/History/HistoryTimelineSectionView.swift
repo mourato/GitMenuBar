@@ -5,16 +5,6 @@ private enum HistoryTimelineMetrics {
     static let gutterWidth: CGFloat = 18
     static let circleSize: CGFloat = 8
     static let cardWidth: CGFloat = 308
-    static let cardEstimatedHeight: CGFloat = 220
-    static let cardTrailingInset: CGFloat = 6
-}
-
-private struct HistoryTimelineRowBoundsKey: PreferenceKey {
-    static var defaultValue: [String: Anchor<CGRect>] = [:]
-
-    static func reduce(value: inout [String: Anchor<CGRect>], nextValue: () -> [String: Anchor<CGRect>]) {
-        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
-    }
 }
 
 struct HistoryTimelineSectionView: View {
@@ -25,6 +15,7 @@ struct HistoryTimelineSectionView: View {
     let showsHeader: Bool
     let isCommitInFuture: (Commit) -> Bool
     let onRestoreCommit: (Commit) -> Void
+    var onHoverCardVisibilityChanged: (Bool) -> Void = { _ in }
 
     @State private var expandedCommitIDs: Set<Commit.ID> = []
     @State private var hoveredCommitID: Commit.ID?
@@ -56,6 +47,14 @@ struct HistoryTimelineSectionView: View {
         .onDisappear {
             showCardTask?.cancel()
             closeCardTask?.cancel()
+            onHoverCardVisibilityChanged(false)
+        }
+        .onChange(of: activeCommitID) { commitID in
+            let isVisible = commitID != nil
+            if !isVisible {
+                isCardHovered = false
+            }
+            onHoverCardVisibilityChanged(isVisible)
         }
     }
 
@@ -91,46 +90,38 @@ struct HistoryTimelineSectionView: View {
     }
 
     private var timelineList: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(commits.enumerated()), id: \.element.id) { index, commit in
-                HistoryTimelineRowView(
-                    commit: commit,
-                    commitURL: commitURL(for: commit),
-                    isCurrentCommit: commit.id == currentHash,
-                    isFutureCommit: isCommitInFuture(commit),
-                    isExpanded: expandedCommitIDs.contains(commit.id),
-                    showsTopConnector: index > 0,
-                    showsBottomConnector: index < commits.count - 1,
-                    onTap: {
-                        toggleExpansion(for: commit.id)
-                    },
-                    onRestoreCommit: {
-                        onRestoreCommit(commit)
-                    },
-                    onHoverChanged: { isHovered in
-                        handleRowHover(commitID: commit.id, isHovered: isHovered)
-                    }
-                )
-                .anchorPreference(key: HistoryTimelineRowBoundsKey.self, value: .bounds) {
-                    [commit.id: $0]
+        HStack(alignment: .top, spacing: 10) {
+            VStack(spacing: 0) {
+                ForEach(Array(commits.enumerated()), id: \.element.id) { index, commit in
+                    HistoryTimelineRowView(
+                        commit: commit,
+                        commitURL: commitURL(for: commit),
+                        isCurrentCommit: commit.id == currentHash,
+                        isFutureCommit: isCommitInFuture(commit),
+                        isExpanded: expandedCommitIDs.contains(commit.id),
+                        showsTopConnector: index > 0,
+                        showsBottomConnector: index < commits.count - 1,
+                        onTap: {
+                            toggleExpansion(for: commit.id)
+                        },
+                        onRestoreCommit: {
+                            onRestoreCommit(commit)
+                        },
+                        onHoverChanged: { isHovered in
+                            handleRowHover(commitID: commit.id, isHovered: isHovered)
+                        }
+                    )
                 }
             }
-        }
-        .overlayPreferenceValue(HistoryTimelineRowBoundsKey.self) { preferences in
-            GeometryReader { geometryProxy in
-                if let activeCommit, let anchor = preferences[activeCommit.id] {
-                    let rect = geometryProxy[anchor]
+            .frame(maxWidth: .infinity, alignment: .leading)
 
+            if let activeCommit {
+                VStack(alignment: .leading, spacing: 0) {
                     CommitHoverCardView(
                         commit: activeCommit,
                         remoteUrl: remoteUrl
                     )
                     .frame(width: HistoryTimelineMetrics.cardWidth)
-                    .position(
-                        x: cardCenterX(in: geometryProxy.size.width),
-                        y: cardCenterY(for: rect, containerHeight: geometryProxy.size.height)
-                    )
-                    .zIndex(1)
                     .shadow(color: Color.black.opacity(0.22), radius: 16, x: 0, y: 10)
                     .onHover { isHovered in
                         isCardHovered = isHovered
@@ -143,6 +134,7 @@ struct HistoryTimelineSectionView: View {
                     }
                     .allowsHitTesting(true)
                 }
+                .frame(width: HistoryTimelineMetrics.cardWidth, alignment: .topLeading)
             }
         }
     }
@@ -218,19 +210,6 @@ struct HistoryTimelineSectionView: View {
                 activeCommitID = nil
             }
         }
-    }
-
-    private func cardCenterX(in containerWidth: CGFloat) -> CGFloat {
-        max(
-            HistoryTimelineMetrics.cardWidth / 2,
-            containerWidth - (HistoryTimelineMetrics.cardWidth / 2) - HistoryTimelineMetrics.cardTrailingInset
-        )
-    }
-
-    private func cardCenterY(for rect: CGRect, containerHeight: CGFloat) -> CGFloat {
-        let minY = HistoryTimelineMetrics.cardEstimatedHeight / 2
-        let maxY = max(minY, containerHeight - (HistoryTimelineMetrics.cardEstimatedHeight / 2))
-        return min(max(rect.midY, minY), maxY)
     }
 }
 

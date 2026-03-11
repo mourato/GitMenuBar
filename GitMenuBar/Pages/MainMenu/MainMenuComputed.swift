@@ -61,8 +61,23 @@ struct MainMenuPrimaryActionState: Equatable {
         return syncLabelState.title
     }
 
-    var primaryButtonSystemImage: String {
-        showsCommitAction ? "arrow.up" : "arrow.2.circlepath"
+    var primaryButtonSystemImage: String? {
+        if showsIdleCommitState {
+            return nil
+        }
+
+        if showsCommitAction {
+            return "checkmark"
+        }
+
+        switch syncLabelState {
+        case .pushOnly:
+            return "arrow.up"
+        case .syncChanges:
+            return "arrow.2.circlepath"
+        case .none:
+            return nil
+        }
     }
 
     static func resolve(
@@ -147,7 +162,7 @@ extension MainMenuView {
         primaryActionState.primaryButtonTitle
     }
 
-    var primaryButtonSystemImage: String {
+    var primaryButtonSystemImage: String? {
         primaryActionState.primaryButtonSystemImage
     }
 

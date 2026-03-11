@@ -10,7 +10,7 @@ final class CommitHistoryParser {
         self.runner = runner
     }
 
-    func fetchCommitHistory(in repositoryPath: String, limit: Int = 100) -> [Commit] {
+    func fetchCommitHistory(in repositoryPath: String, limit: Int = 50) -> [Commit] {
         let format = "%x1e%H%x1f%h%x1f%at%x1f%an%x1f%ae%x1f%s%x1f%B%x1d"
         let args = [
             "log",

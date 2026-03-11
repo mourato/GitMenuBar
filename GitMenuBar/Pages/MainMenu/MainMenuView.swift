@@ -70,6 +70,7 @@ struct MainMenuView: View {
     @State var discardFileStatus: WorkingTreeFileStatus?
     @State var discardError: String?
     @State var showDiscardAllConfirmation = false
+    @State var isHistoryDetailsVisible = false
 
     let closePopover: () -> Void
     let togglePopoverBehavior: () -> Void
@@ -233,7 +234,7 @@ struct MainMenuView: View {
             Text(discardError ?? "An unknown error occurred.")
         }
         .padding(10)
-        .frame(width: 400)
+        .frame(width: isHistoryDetailsVisible ? 720 : 400)
     }
 
     private func handleSettingsDone() {

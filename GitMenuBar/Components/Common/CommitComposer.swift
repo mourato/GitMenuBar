@@ -3,7 +3,7 @@ import SwiftUI
 struct CommitComposerSectionView: View {
     @Binding var commentText: String
     let isCommentFieldFocused: FocusState<Bool>.Binding
-    let primaryButtonSystemImage: String
+    let primaryButtonSystemImage: String?
     let isPrimaryActionBusy: Bool
     let generationDisabledReason: String?
     let generationError: String?
@@ -34,8 +34,12 @@ struct CommitComposerSectionView: View {
                             .controlSize(.small)
                     }
 
-                    Label(primaryButtonTitle, systemImage: primaryButtonSystemImage)
-                        .labelStyle(.titleAndIcon)
+                    if let primaryButtonSystemImage {
+                        Label(primaryButtonTitle, systemImage: primaryButtonSystemImage)
+                            .labelStyle(.titleAndIcon)
+                    } else {
+                        Text(primaryButtonTitle)
+                    }
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -67,7 +71,7 @@ private struct CommitComposerSectionPreviewContainer: View {
         CommitComposerSectionView(
             commentText: $message,
             isCommentFieldFocused: $isFocused,
-            primaryButtonSystemImage: "arrow.up",
+            primaryButtonSystemImage: "checkmark",
             isPrimaryActionBusy: false,
             generationDisabledReason: nil,
             generationError: nil,

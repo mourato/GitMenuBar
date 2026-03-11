@@ -105,7 +105,7 @@ extension MainMenuView {
                     .padding(.horizontal, 10)
                 }
                 .frame(maxHeight: 520)
-                .frame(width: 380, alignment: .leading)
+                .frame(width: isHistoryDetailsVisible ? 700 : 380, alignment: .leading)
                 .id(gitManager.stagedFiles.count + gitManager.changedFiles.count)
 
                 HStack {
@@ -302,6 +302,11 @@ extension MainMenuView {
             onRestoreCommit: { commit in
                 guard commit.id != gitManager.currentHash else { return }
                 gitManager.resetToCommit(commit.id)
+            },
+            onHoverCardVisibilityChanged: { isVisible in
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    isHistoryDetailsVisible = isVisible
+                }
             }
         )
         .padding(.top, 2)
