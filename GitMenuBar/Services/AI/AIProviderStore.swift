@@ -1,20 +1,58 @@
 import Foundation
 
+protocol AIProviderStoreDataStore {
+    func data(forKey key: String) -> Data?
+    func set(_ data: Data, forKey key: String)
+}
+
+struct UserDefaultsAIProviderStoreDataStore: AIProviderStoreDataStore {
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
+
+    func data(forKey key: String) -> Data? {
+        defaults.data(forKey: key)
+    }
+
+    func set(_ data: Data, forKey key: String) {
+        defaults.set(data, forKey: key)
+    }
+}
+
+final class InMemoryAIProviderStoreDataStore: AIProviderStoreDataStore {
+    private var values: [String: Data] = [:]
+
+    func data(forKey key: String) -> Data? {
+        values[key]
+    }
+
+    func set(_ data: Data, forKey key: String) {
+        values[key] = data
+    }
+}
+
 final class AIProviderStore: ObservableObject {
     @Published private(set) var providers: [AIProviderConfig] = []
     @Published private(set) var preferences: AICommitPreferences = .default
 
-    private let defaults: UserDefaults
+    private let dataStore: any AIProviderStoreDataStore
     private let providersKey = "aiProviderConfigs.v1"
     private let preferencesKey = "aiCommitPreferences.v1"
 
     init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
+        dataStore = UserDefaultsAIProviderStoreDataStore(defaults: defaults)
+        load()
+    }
+
+    init(dataStore: any AIProviderStoreDataStore) {
+        self.dataStore = dataStore
         load()
     }
 
     func load() {
-        if let providersData = defaults.data(forKey: providersKey),
+        if let providersData = dataStore.data(forKey: providersKey),
            let decodedProviders = try? JSONDecoder().decode([AIProviderConfig].self, from: providersData)
         {
             providers = decodedProviders
@@ -22,7 +60,7 @@ final class AIProviderStore: ObservableObject {
             providers = []
         }
 
-        if let preferencesData = defaults.data(forKey: preferencesKey),
+        if let preferencesData = dataStore.data(forKey: preferencesKey),
            let decodedPreferences = try? JSONDecoder().decode(AICommitPreferences.self, from: preferencesData)
         {
             preferences = decodedPreferences
@@ -129,13 +167,13 @@ final class AIProviderStore: ObservableObject {
 
     private func persistProviders() {
         if let encoded = try? JSONEncoder().encode(providers) {
-            defaults.set(encoded, forKey: providersKey)
+            dataStore.set(encoded, forKey: providersKey)
         }
     }
 
     private func persistPreferences() {
         if let encoded = try? JSONEncoder().encode(preferences) {
-            defaults.set(encoded, forKey: preferencesKey)
+            dataStore.set(encoded, forKey: preferencesKey)
         }
     }
 }

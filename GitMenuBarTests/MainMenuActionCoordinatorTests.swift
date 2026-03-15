@@ -3,21 +3,8 @@ import XCTest
 
 @MainActor
 final class MainMenuActionCoordinatorTests: XCTestCase {
-    private var defaults: UserDefaults!
-    private var suiteName = ""
-
-    override func setUp() {
-        super.setUp()
-        suiteName = "MainMenuActionCoordinatorTests-\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suiteName)
-        defaults.removePersistentDomain(forName: suiteName)
-    }
-
     override func tearDown() {
         MockURLProtocol.requestHandler = nil
-        defaults?.removePersistentDomain(forName: suiteName)
-        defaults = nil
-        suiteName = ""
         super.tearDown()
     }
 
@@ -29,7 +16,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
         await waitForWorkingTreeUpdate(gitManager)
 
-        let providerStore = AIProviderStore(defaults: defaults)
+        let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
         let apiKeyStore = SpyAIAPIKeyStore()
         let actionCoordinator = makeActionCoordinator(
             gitManager: gitManager,
@@ -57,7 +44,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
         await waitForWorkingTreeUpdate(gitManager)
 
-        let providerStore = AIProviderStore(defaults: defaults)
+        let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
         let provider = AIProviderConfig(
             name: "OpenAI",
             type: .openAI,
@@ -104,7 +91,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
 
         let actionCoordinator = makeActionCoordinator(
             gitManager: gitManager,
-            providerStore: AIProviderStore(defaults: defaults),
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
             apiKeyStore: InMemoryAIAPIKeyStore(),
             session: makeMockedURLSession()
         )
@@ -145,7 +132,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         let gitManager = GitManager(repositoryPathOverride: localRepoURL.path)
         await waitForWorkingTreeUpdate(gitManager)
 
-        let providerStore = AIProviderStore(defaults: defaults)
+        let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
         let provider = AIProviderConfig(
             name: "OpenAI",
             type: .openAI,

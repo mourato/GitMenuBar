@@ -3,23 +3,6 @@ import XCTest
 
 @MainActor
 final class AICommitCoordinatorTests: XCTestCase {
-    private var defaults: UserDefaults!
-    private var suiteName = ""
-
-    override func setUp() {
-        super.setUp()
-        suiteName = "AICommitCoordinatorTests-\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suiteName)
-        defaults.removePersistentDomain(forName: suiteName)
-    }
-
-    override func tearDown() {
-        defaults?.removePersistentDomain(forName: suiteName)
-        defaults = nil
-        suiteName = ""
-        super.tearDown()
-    }
-
     func testReadinessUsesStoredAPIKeyAsSourceOfTruth() {
         let providerStore = makeProviderStore()
         let provider = makeProvider(hasStoredAPIKey: false)
@@ -133,7 +116,7 @@ final class AICommitCoordinatorTests: XCTestCase {
     }
 
     private func makeProviderStore() -> AIProviderStore {
-        AIProviderStore(defaults: defaults)
+        AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
     }
 
     private func makeCoordinator(

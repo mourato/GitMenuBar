@@ -2,39 +2,34 @@
 import XCTest
 
 final class AIProviderStoreTests: XCTestCase {
-    private var defaults: UserDefaults!
-    private var suiteName = ""
+    private var dataStore: InMemoryAIProviderStoreDataStore!
 
     override func setUp() {
         super.setUp()
-        suiteName = "AIProviderStoreTests-\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suiteName)
-        defaults.removePersistentDomain(forName: suiteName)
+        dataStore = InMemoryAIProviderStoreDataStore()
     }
 
     override func tearDown() {
-        defaults?.removePersistentDomain(forName: suiteName)
-        defaults = nil
-        suiteName = ""
+        dataStore = nil
         super.tearDown()
     }
 
     func testLoadsEmptyStateWhenNoDataExists() {
-        let store = AIProviderStore(defaults: defaults)
+        let store = AIProviderStore(dataStore: dataStore)
 
         XCTAssertEqual(store.providers, [])
         XCTAssertEqual(store.preferences, .default)
     }
 
     func testPersistsProvidersAndPreferencesAcrossStoreInstances() {
-        let store = AIProviderStore(defaults: defaults)
+        let store = AIProviderStore(dataStore: dataStore)
         let provider = makeProvider(name: "OpenAI Team", hasStoredAPIKey: true)
 
         store.upsertProvider(provider)
         store.updateDefaultProvider(provider.id)
         store.updateDefaultModel("gpt-4.1")
 
-        let reloadedStore = AIProviderStore(defaults: defaults)
+        let reloadedStore = AIProviderStore(dataStore: dataStore)
 
         XCTAssertEqual(reloadedStore.providers.count, 1)
         XCTAssertEqual(reloadedStore.providers.first?.name, "OpenAI Team")
@@ -44,7 +39,7 @@ final class AIProviderStoreTests: XCTestCase {
     }
 
     func testReassignsDefaultProviderWhenCurrentDefaultIsDeleted() {
-        let store = AIProviderStore(defaults: defaults)
+        let store = AIProviderStore(dataStore: dataStore)
         let firstProvider = makeProvider(name: "First", type: .openAI)
         let secondProvider = makeProvider(name: "Second", type: .anthropic)
 
@@ -75,9 +70,12 @@ final class AIProviderStoreTests: XCTestCase {
           }
         ]
         """
-        defaults.set(payload.data(using: .utf8), forKey: "aiProviderConfigs.v1")
+        guard let payloadData = payload.data(using: .utf8) else {
+            return XCTFail("Failed to encode payload as UTF-8 data")
+        }
+        dataStore.set(payloadData, forKey: "aiProviderConfigs.v1")
 
-        let store = AIProviderStore(defaults: defaults)
+        let store = AIProviderStore(dataStore: dataStore)
 
         XCTAssertEqual(store.providers.count, 1)
         XCTAssertEqual(store.providers.first?.hasStoredAPIKey, false)
