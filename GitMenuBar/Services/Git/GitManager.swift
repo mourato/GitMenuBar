@@ -8,6 +8,8 @@ import Foundation
 
 // swiftlint:disable type_body_length file_length
 class GitManager: ObservableObject {
+    private static let defaultCommitHistoryLimit = 25
+
     @Published var commitCount: Int = 0
     @Published var isCommitting: Bool = false
     @Published var uncommittedFiles: [String] = []
@@ -26,6 +28,7 @@ class GitManager: ObservableObject {
     @Published var remoteBranchName: String = ""
     @Published var behindCount: Int = 0
     @Published var isPrivate: Bool = false
+    @Published private(set) var commitHistoryLimit = GitManager.defaultCommitHistoryLimit
 
     /// Token provider for authenticated git operations (push/pull)
     var tokenProvider: (() -> String?)? {
@@ -58,6 +61,10 @@ class GitManager: ObservableObject {
     private var storedRepoPath: String {
         get { repositoryContext.repositoryPath }
         set { repositoryContext.repositoryPath = newValue }
+    }
+
+    var canLoadMoreCommitHistory: Bool {
+        !commitHistory.isEmpty && commitHistory.count >= commitHistoryLimit
     }
 
     func refresh(completion: (() -> Void)? = nil) {
@@ -875,21 +882,30 @@ class GitManager: ObservableObject {
         }
     }
 
-    func fetchCommitHistory() {
+    func fetchCommitHistory(limit: Int? = nil) {
+        let resolvedLimit = max(1, limit ?? commitHistoryLimit)
+
         guard !storedRepoPath.isEmpty else {
             DispatchQueue.main.async {
+                self.commitHistoryLimit = resolvedLimit
                 self.commitHistory = []
             }
             return
         }
 
         DispatchQueue.global(qos: .userInitiated).async {
-            let commits = self.commitHistoryParser.fetchCommitHistory(in: self.storedRepoPath)
+            let commits = self.commitHistoryParser.fetchCommitHistory(in: self.storedRepoPath, limit: resolvedLimit)
 
             DispatchQueue.main.async {
+                self.commitHistoryLimit = resolvedLimit
                 self.commitHistory = commits
             }
         }
+    }
+
+    func loadMoreCommitHistory(batchSize: Int = GitManager.defaultCommitHistoryLimit) {
+        let nextLimit = commitHistoryLimit + max(1, batchSize)
+        fetchCommitHistory(limit: nextLimit)
     }
 
     func resetToCommit(_ hash: String) {

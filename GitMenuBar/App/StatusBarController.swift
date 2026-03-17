@@ -705,6 +705,8 @@ final class StatusBarController: ObservableObject {
             return "settings"
         case let .createRepo(path):
             return "createRepo(\(path))"
+        case let .historyDetail(commitID):
+            return "historyDetail(\(commitID))"
         }
     }
 

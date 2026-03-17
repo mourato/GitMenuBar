@@ -31,6 +31,14 @@ final class MainMenuPresentationModelTests: XCTestCase {
         XCTAssertEqual(model.focusCommitFieldToken, 1)
     }
 
+    func testShowHistoryDetailUpdatesRoute() {
+        let model = MainMenuPresentationModel()
+
+        model.showHistoryDetail(commitID: "abc123")
+
+        XCTAssertEqual(model.route, .historyDetail(commitID: "abc123"))
+    }
+
     func testRefreshStateTransitions() {
         let model = MainMenuPresentationModel()
 

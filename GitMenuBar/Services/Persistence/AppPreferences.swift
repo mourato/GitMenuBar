@@ -8,6 +8,7 @@ enum AppPreferences {
         static let showFullPathInRecents = "showFullPathInRecents"
         static let isStagedSectionCollapsed = "isStagedSectionCollapsed"
         static let isUnstagedSectionCollapsed = "isUnstagedSectionCollapsed"
+        static let isHistorySectionCollapsed = "isHistorySectionCollapsed"
         static let autoHideMainWindowOnBlur = "autoHideMainWindowOnBlur"
         static let hasMigratedKeychainDomain = "hasMigratedKeychainDomain"
     }

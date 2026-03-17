@@ -4,6 +4,7 @@ enum MainMenuRoute: Equatable {
     case main
     case settings
     case createRepo(path: String)
+    case historyDetail(commitID: String)
 }
 
 enum RefreshState: Equatable {
@@ -61,6 +62,10 @@ final class MainMenuPresentationModel: ObservableObject {
     func showCreateRepo(path: String) {
         route = .createRepo(path: path)
         createRepoSuggestionPath = nil
+    }
+
+    func showHistoryDetail(commitID: String) {
+        route = .historyDetail(commitID: commitID)
     }
 
     func startRefresh() {

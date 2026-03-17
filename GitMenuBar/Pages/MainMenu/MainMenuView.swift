@@ -31,6 +31,7 @@ struct MainMenuView: View {
     @AppStorage(AppPreferences.Keys.showFullPathInRecents) var showFullPathInRecents = false
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isUnstagedSectionCollapsed) var isUnstagedSectionCollapsed = false
+    @AppStorage(AppPreferences.Keys.isHistorySectionCollapsed) var isHistorySectionCollapsed = false
     @State var showBranchSelector = false
     @State var selectedPushBranch: String = ""
     @State var showPullToNewBranch = false
@@ -119,6 +120,20 @@ struct MainMenuView: View {
                 )
             case .main:
                 mainView
+            case let .historyDetail(commitID):
+                CommitDetailPageView(
+                    commit: gitManager.commitHistory.first(where: { $0.id == commitID }),
+                    currentHash: gitManager.currentHash,
+                    remoteUrl: gitManager.remoteUrl,
+                    isCommitInFuture: isCommitInFuture,
+                    onBack: {
+                        presentationModel.showMain()
+                    },
+                    onRestoreCommit: { commit in
+                        guard commit.id != gitManager.currentHash else { return }
+                        gitManager.resetToCommit(commit.id)
+                    }
+                )
             }
         }
         .alert("Delete Repository?", isPresented: $showDeleteConfirmation) {

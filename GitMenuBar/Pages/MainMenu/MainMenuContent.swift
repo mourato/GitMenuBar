@@ -292,18 +292,43 @@ extension MainMenuView {
     }
 
     private var historySection: some View {
-        HistoryTimelineSectionView(
-            commits: gitManager.commitHistory,
-            currentHash: gitManager.currentHash,
-            remoteUrl: gitManager.remoteUrl,
-            isLoading: presentationModel.refreshState.isRefreshing,
-            showsHeader: true,
-            isCommitInFuture: isCommitInFuture,
-            onRestoreCommit: { commit in
-                guard commit.id != gitManager.currentHash else { return }
-                gitManager.resetToCommit(commit.id)
+        VStack(alignment: .leading, spacing: 6) {
+            HistorySectionHeaderView(
+                commitCount: gitManager.commitHistory.count,
+                isCollapsed: $isHistorySectionCollapsed
+            )
+
+            if !isHistorySectionCollapsed {
+                HistoryTimelineSectionView(
+                    commits: gitManager.commitHistory,
+                    currentHash: gitManager.currentHash,
+                    remoteUrl: gitManager.remoteUrl,
+                    isLoading: presentationModel.refreshState.isRefreshing,
+                    isCommitInFuture: isCommitInFuture,
+                    onSelectCommit: { commit in
+                        presentationModel.showHistoryDetail(commitID: commit.id)
+                    },
+                    onRestoreCommit: { commit in
+                        guard commit.id != gitManager.currentHash else { return }
+                        gitManager.resetToCommit(commit.id)
+                    }
+                )
+
+                if gitManager.canLoadMoreCommitHistory {
+                    HStack {
+                        Spacer()
+
+                        Button("Load 25 more") {
+                            gitManager.loadMoreCommitHistory(batchSize: 25)
+                        }
+                        .buttonStyle(.link)
+                        .font(.system(size: 11, weight: .medium))
+                        .disabled(presentationModel.refreshState.isRefreshing)
+                    }
+                    .padding(.top, 2)
+                }
             }
-        )
+        }
         .padding(.top, 2)
     }
 
