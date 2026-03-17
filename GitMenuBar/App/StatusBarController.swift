@@ -290,6 +290,9 @@ final class StatusBarController: ObservableObject {
         windowDelegate.onDidResignKey = { [weak self] in
             self?.handleMainWindowDidResignKey()
         }
+        windowDelegate.onDidMoveOrResize = { [weak self] in
+            self?.persistMainWindowFrameIfPossible()
+        }
 
         window.delegate = windowDelegate
 
@@ -557,19 +560,23 @@ final class StatusBarController: ObservableObject {
     private func presentMainWindow(trace: WindowOpenTrace, placementStrategy: WindowPlacementStrategy) {
         guard let mainWindow else { return }
 
-        switch placementStrategy {
-        case .mousePointerMonitor:
-            if let screen = screenContainingMousePointer() {
-                positionMainWindow(on: screen, window: mainWindow)
-                hasPositionedWindowInitially = true
-            } else if !hasPositionedWindowInitially {
-                positionMainWindowRelativeToStatusItem(mainWindow)
-                hasPositionedWindowInitially = true
-            }
-        case .statusItemAnchor:
-            if !hasPositionedWindowInitially {
-                positionMainWindowRelativeToStatusItem(mainWindow)
-                hasPositionedWindowInitially = true
+        if restoreMainWindowFrameIfAvailable(mainWindow) {
+            hasPositionedWindowInitially = true
+        } else {
+            switch placementStrategy {
+            case .mousePointerMonitor:
+                if let screen = screenContainingMousePointer() {
+                    positionMainWindow(on: screen, window: mainWindow)
+                    hasPositionedWindowInitially = true
+                } else if !hasPositionedWindowInitially {
+                    positionMainWindowRelativeToStatusItem(mainWindow)
+                    hasPositionedWindowInitially = true
+                }
+            case .statusItemAnchor:
+                if !hasPositionedWindowInitially {
+                    positionMainWindowRelativeToStatusItem(mainWindow)
+                    hasPositionedWindowInitially = true
+                }
             }
         }
 
@@ -627,7 +634,21 @@ final class StatusBarController: ObservableObject {
 
     private func hideMainWindow() {
         guard let mainWindow, mainWindow.isVisible else { return }
+        persistMainWindowFrame(mainWindow)
         mainWindow.orderOut(nil)
+    }
+
+    private func persistMainWindowFrame(_ window: NSWindow) {
+        window.saveFrame(usingName: Constants.windowAutosaveName)
+    }
+
+    private func persistMainWindowFrameIfPossible() {
+        guard let mainWindow else { return }
+        persistMainWindowFrame(mainWindow)
+    }
+
+    private func restoreMainWindowFrameIfAvailable(_ window: NSWindow) -> Bool {
+        window.setFrameUsingName(Constants.windowAutosaveName, force: false)
     }
 
     private func openSettingsWindow() {
@@ -815,6 +836,7 @@ final class StatusBarController: ObservableObject {
 private final class MainWindowLifecycleDelegate: NSObject, NSWindowDelegate {
     var onShouldClose: (() -> Bool)?
     var onDidResignKey: (() -> Void)?
+    var onDidMoveOrResize: (() -> Void)?
 
     func windowShouldClose(_: NSWindow) -> Bool {
         onShouldClose?() ?? true
@@ -822,6 +844,14 @@ private final class MainWindowLifecycleDelegate: NSObject, NSWindowDelegate {
 
     func windowDidResignKey(_: Notification) {
         onDidResignKey?()
+    }
+
+    func windowDidMove(_: Notification) {
+        onDidMoveOrResize?()
+    }
+
+    func windowDidEndLiveResize(_: Notification) {
+        onDidMoveOrResize?()
     }
 }
 
