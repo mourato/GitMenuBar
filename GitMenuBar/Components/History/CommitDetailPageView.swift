@@ -2,12 +2,16 @@ import AppKit
 import SwiftUI
 
 struct CommitDetailPageView: View {
+    @EnvironmentObject var githubAuthManager: GitHubAuthManager
+
     let commit: Commit?
     let currentHash: String
     let remoteUrl: String
     let isCommitInFuture: (Commit) -> Bool
     let onBack: () -> Void
     let onRestoreCommit: (Commit) -> Void
+    @State private var authorAvatarURL: URL?
+    @State private var loadedAvatarLookupKey: String?
 
     var body: some View {
         VStack(spacing: 16) {
@@ -21,9 +25,9 @@ struct CommitDetailPageView: View {
                         metadataSection(commit: commit)
                         titleSection(commit: commit)
                         statsSection(commit: commit)
-                        
+
                         Divider()
-                        
+
                         changedFilesSection(commit: commit)
                     }
                 }
@@ -35,6 +39,9 @@ struct CommitDetailPageView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 16)
+        .task(id: avatarTaskID) {
+            await loadAuthorAvatarIfNeeded(for: commit)
+        }
     }
 
     private var header: some View {
@@ -67,12 +74,7 @@ struct CommitDetailPageView: View {
     private func metadataSection(commit: Commit) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 10) {
-                Text(authorInitials(for: commit))
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 24, height: 24)
-                    .background(Color.accentColor)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                authorIdentityBadge(for: commit)
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 2) {
@@ -82,12 +84,11 @@ struct CommitDetailPageView: View {
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
-                    
+
                     Text(timestampLine(for: commit))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
-
                 Spacer(minLength: 0)
 
                 if isCommitInFuture(commit) {
@@ -102,7 +103,7 @@ struct CommitDetailPageView: View {
             }
         }
     }
-    
+
     private func titleSection(commit: Commit) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(commit.subject)
@@ -149,10 +150,10 @@ struct CommitDetailPageView: View {
                     copyToPasteboard(commit.subject)
                 }
                 .buttonStyle(.link)
-                
+
                 Text("•")
                     .foregroundColor(.secondary)
-                
+
                 Button("Reset to Here") {
                     onRestoreCommit(commit)
                 }
@@ -202,6 +203,75 @@ struct CommitDetailPageView: View {
     private func copyToPasteboard(_ value: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(value, forType: .string)
+    }
+
+    private var avatarTaskID: String {
+        guard let commit else {
+            return "none"
+        }
+        return avatarLookupKey(for: commit)
+    }
+
+    @ViewBuilder
+    private func authorIdentityBadge(for commit: Commit) -> some View {
+        if let authorAvatarURL {
+            AsyncImage(url: authorAvatarURL) { phase in
+                switch phase {
+                case let .success(image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                default:
+                    initialsBadge(for: commit)
+                }
+            }
+            .frame(width: 24, height: 24)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        } else {
+            initialsBadge(for: commit)
+        }
+    }
+
+    private func initialsBadge(for commit: Commit) -> some View {
+        Text(authorInitials(for: commit))
+            .font(.system(size: 12, weight: .bold))
+            .foregroundColor(.white)
+            .frame(width: 24, height: 24)
+            .background(Color.accentColor)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    @MainActor
+    private func loadAuthorAvatarIfNeeded(for commit: Commit?) async {
+        guard let commit else {
+            loadedAvatarLookupKey = nil
+            authorAvatarURL = nil
+            return
+        }
+
+        let lookupKey = avatarLookupKey(for: commit)
+        guard loadedAvatarLookupKey != lookupKey else {
+            return
+        }
+
+        loadedAvatarLookupKey = lookupKey
+        authorAvatarURL = nil
+
+        guard let reference = GitHubRemoteURLParser.parse(remoteUrl) else {
+            return
+        }
+
+        let client = GitHubAPIClient(authManager: githubAuthManager)
+        authorAvatarURL = await client.fetchCommitAuthorAvatarURL(
+            owner: reference.owner,
+            repo: reference.repository,
+            commitHash: commit.id,
+            authorEmail: commit.authorEmail
+        )
+    }
+
+    private func avatarLookupKey(for commit: Commit) -> String {
+        "\(remoteUrl)|\(commit.id)"
     }
 
     private func authorInitials(for commit: Commit) -> String {
@@ -315,6 +385,12 @@ private enum CommitDetailPagePreviewData {
         onBack: {},
         onRestoreCommit: { _ in }
     )
+    .environmentObject(
+        GitHubAuthManager(
+            tokenStore: InMemoryGitHubTokenStore(),
+            preloadStoredToken: false
+        )
+    )
     .frame(width: 400, height: 580)
 }
 
@@ -326,6 +402,12 @@ private enum CommitDetailPagePreviewData {
         isCommitInFuture: { _ in false },
         onBack: {},
         onRestoreCommit: { _ in }
+    )
+    .environmentObject(
+        GitHubAuthManager(
+            tokenStore: InMemoryGitHubTokenStore(),
+            preloadStoredToken: false
+        )
     )
     .padding()
     .frame(width: 400)

@@ -51,6 +51,7 @@ enum MainMenuSyncExecutionResult: Equatable {
 final class MainMenuActionCoordinator: ObservableObject {
     @Published var alert: MainMenuActionAlert?
     @Published var showSyncOptions = false
+    @Published private(set) var isExecutingPrimaryAction = false
 
     private let gitManager: GitManager
     private let aiCommitCoordinator: AICommitCoordinator
@@ -73,7 +74,7 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     var isBusy: Bool {
-        gitManager.isCommitting || aiCommitCoordinator.isGenerating
+        gitManager.isCommitting || aiCommitCoordinator.isGenerating || isExecutingPrimaryAction
     }
 
     var canAutoCommit: Bool {
@@ -101,64 +102,66 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
 
-        clearAlert()
-        showSyncOptions = false
+        return await executePrimaryAction {
+            clearAlert()
+            showSyncOptions = false
 
-        let trimmedText = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let failureTitle = shouldPushAfterCommit ? "Commit & Push Failed" : "Commit Failed"
-        let message: String
+            let trimmedText = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let failureTitle = shouldPushAfterCommit ? "Commit & Push Failed" : "Commit Failed"
+            let message: String
 
-        do {
-            if forceAutomaticMessage || trimmedText.isEmpty {
-                guard aiCommitCoordinator.isReadyForGeneration else {
-                    throw NSError(
-                        domain: "MainMenuActionCoordinator",
-                        code: 1,
-                        userInfo: [NSLocalizedDescriptionKey: aiCommitCoordinator.generationDisabledReason]
-                    )
+            do {
+                if forceAutomaticMessage || trimmedText.isEmpty {
+                    guard aiCommitCoordinator.isReadyForGeneration else {
+                        throw NSError(
+                            domain: "MainMenuActionCoordinator",
+                            code: 1,
+                            userInfo: [NSLocalizedDescriptionKey: aiCommitCoordinator.generationDisabledReason]
+                        )
+                    }
+
+                    message = try await aiCommitCoordinator.generateMessage(scopeOverride: preferredCommitScope)
+                } else {
+                    aiCommitCoordinator.generationError = nil
+                    message = trimmedText
                 }
-
-                message = try await aiCommitCoordinator.generateMessage(scopeOverride: preferredCommitScope)
-            } else {
-                aiCommitCoordinator.generationError = nil
-                message = trimmedText
-            }
-        } catch {
-            publishAlert(title: failureTitle, message: error.localizedDescription)
-            return .failed
-        }
-
-        let commitResult = await commitLocally(message)
-        guard case .success = commitResult else {
-            if case let .failure(error) = commitResult {
+            } catch {
                 publishAlert(title: failureTitle, message: error.localizedDescription)
+                return .failed
             }
-            return .failed
-        }
 
-        await refreshRepository()
-        await refreshRemoteStatus()
+            let commitResult = await commitLocally(message)
+            guard case .success = commitResult else {
+                if case let .failure(error) = commitResult {
+                    publishAlert(title: failureTitle, message: error.localizedDescription)
+                }
+                return .failed
+            }
 
-        guard shouldPushAfterCommit else {
+            await refreshRepository()
+            await refreshRemoteStatus()
+
+            guard shouldPushAfterCommit else {
+                return .committed
+            }
+
+            if gitManager.isRemoteAhead {
+                showSyncOptions = true
+                return .committedAndNeedsSyncOptions
+            }
+
+            let pushResult = await pushToRemote()
+            guard case .success = pushResult else {
+                if case let .failure(error) = pushResult {
+                    publishAlert(title: failureTitle, message: error.localizedDescription)
+                }
+                return .failed
+            }
+
+            await refreshRepository()
+            await refreshRemoteStatus()
             return .committed
         }
-
-        if gitManager.isRemoteAhead {
-            showSyncOptions = true
-            return .committedAndNeedsSyncOptions
-        }
-
-        let pushResult = await pushToRemote()
-        guard case .success = pushResult else {
-            if case let .failure(error) = pushResult {
-                publishAlert(title: failureTitle, message: error.localizedDescription)
-            }
-            return .failed
-        }
-
-        await refreshRepository()
-        await refreshRemoteStatus()
-        return .committed
     }
 
     func performSync() async -> MainMenuSyncExecutionResult {
@@ -166,25 +169,27 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
 
-        clearAlert()
-        showSyncOptions = false
+        return await executePrimaryAction {
+            clearAlert()
+            showSyncOptions = false
 
-        if gitManager.isRemoteAhead {
-            showSyncOptions = true
-            return .requiresOptions
-        }
-
-        let pushResult = await pushToRemote()
-        guard case .success = pushResult else {
-            if case let .failure(error) = pushResult {
-                publishAlert(title: "Sync Failed", message: error.localizedDescription)
+            if gitManager.isRemoteAhead {
+                showSyncOptions = true
+                return .requiresOptions
             }
-            return .failed
-        }
 
-        await refreshRepository()
-        await refreshRemoteStatus()
-        return .synced
+            let pushResult = await pushToRemote()
+            guard case .success = pushResult else {
+                if case let .failure(error) = pushResult {
+                    publishAlert(title: "Sync Failed", message: error.localizedDescription)
+                }
+                return .failed
+            }
+
+            await refreshRepository()
+            await refreshRemoteStatus()
+            return .synced
+        }
     }
 
     func syncWithRemote(rebase: Bool) async -> MainMenuSyncExecutionResult {
@@ -192,27 +197,29 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
 
-        clearAlert()
-        showSyncOptions = false
+        return await executePrimaryAction {
+            clearAlert()
+            showSyncOptions = false
 
-        let pullResult = await pullFromRemote(rebase: rebase)
-        guard case .success = pullResult else {
-            if case let .failure(error) = pullResult {
-                publishAlert(title: "Sync Failed", message: error.localizedDescription)
+            let pullResult = await pullFromRemote(rebase: rebase)
+            guard case .success = pullResult else {
+                if case let .failure(error) = pullResult {
+                    publishAlert(title: "Sync Failed", message: error.localizedDescription)
+                }
+                return .failed
             }
-            return .failed
-        }
 
-        let pushResult = await pushToRemote()
-        guard case .success = pushResult else {
-            if case let .failure(error) = pushResult {
-                publishAlert(title: "Push Failed", message: error.localizedDescription)
+            let pushResult = await pushToRemote()
+            guard case .success = pushResult else {
+                if case let .failure(error) = pushResult {
+                    publishAlert(title: "Push Failed", message: error.localizedDescription)
+                }
+                return .failed
             }
-            return .failed
-        }
 
-        await refreshRepository()
-        return .synced
+            await refreshRepository()
+            return .synced
+        }
     }
 
     private var preferredCommitScope: DiffScope {
@@ -221,6 +228,14 @@ final class MainMenuActionCoordinator: ObservableObject {
 
     private func publishAlert(title: String, message: String) {
         alert = MainMenuActionAlert(title: title, message: message)
+    }
+
+    private func executePrimaryAction<T>(_ operation: () async -> T) async -> T {
+        isExecutingPrimaryAction = true
+        defer {
+            isExecutingPrimaryAction = false
+        }
+        return await operation()
     }
 
     private func commitLocally(_ message: String) async -> Result<Void, Error> {

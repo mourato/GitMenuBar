@@ -167,7 +167,7 @@ extension MainMenuView {
     }
 
     var isPrimaryActionBusy: Bool {
-        gitManager.isCommitting || aiCommitCoordinator.isGenerating
+        actionCoordinator.isBusy
     }
 
     var shouldShowGenerationHint: Bool {
