@@ -12,10 +12,10 @@ struct RecentPathRowView: View {
         Button(action: onTap) {
             HStack {
                 Image(systemName: "clock")
-                    .font(.system(size: 11))
+                    .font(.system(size: 12))
                     .foregroundColor(.secondary)
                 Text(displayText)
-                    .font(.system(size: 11))
+                    .font(.system(size: 12))
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(fullPath)

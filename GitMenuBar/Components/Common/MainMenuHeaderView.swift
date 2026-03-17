@@ -13,12 +13,12 @@ struct MainMenuHeaderView<ProjectSelectorContent: View>: View {
             Button(action: { showProjectSelector.toggle() }) {
                 HStack(spacing: 4) {
                     Text(currentProjectName)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .semibold))
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .foregroundColor(.primary)
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                 }
             }

@@ -48,7 +48,7 @@ struct HistoryTimelineSectionView: View {
             ForEach(sections) { section in
                 VStack(alignment: .leading, spacing: 6) {
                     Text(section.title)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.secondary)
 
                     VStack(spacing: 4) {
@@ -103,7 +103,7 @@ private struct HistoryTimelineRowView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(commit.subject)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundColor(titleColor)
                             .lineLimit(1)
                             .truncationMode(.tail)
@@ -124,17 +124,6 @@ private struct HistoryTimelineRowView: View {
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.secondary)
                     }
-
-                    HStack(spacing: 4) {
-                        Text(commit.authorName)
-                        Text("•")
-                        Text(HistoryTimelineDateFormatter.rowTimestamp(for: commit.committedAt))
-                        Text("•")
-                        Text("\(commit.stats.filesChanged) file\(commit.stats.filesChanged == 1 ? "" : "s")")
-                    }
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

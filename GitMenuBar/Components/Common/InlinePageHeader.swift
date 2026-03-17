@@ -13,7 +13,7 @@ struct InlinePageHeader: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.blue)
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold))
             }
 
             Spacer()

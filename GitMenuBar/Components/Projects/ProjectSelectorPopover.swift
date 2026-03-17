@@ -16,10 +16,10 @@ struct ProjectSelectorPopoverView: View {
                 Button(action: { onSelectPath(path) }) {
                     HStack(spacing: 6) {
                         Image(systemName: path == currentRepoPath ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 10))
+                            .font(.system(size: 12))
                             .foregroundColor(path == currentRepoPath ? .green : .secondary)
                         Text(URL(fileURLWithPath: path).lastPathComponent)
-                            .font(.system(size: 12))
+                            .font(.system(size: 13))
                             .lineLimit(1)
                         Spacer()
                     }
@@ -31,7 +31,7 @@ struct ProjectSelectorPopoverView: View {
 
             Button(action: onBrowse) {
                 Label("Browse...", systemImage: "folder")
-                    .font(.system(size: 12))
+                    .font(.system(size: 13))
             }
             .buttonStyle(.plain)
         }
