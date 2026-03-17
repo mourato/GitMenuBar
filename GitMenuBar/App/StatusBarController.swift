@@ -24,6 +24,11 @@ final class StatusBarController: ObservableObject {
         let trigger: String
     }
 
+    private enum WindowPlacementStrategy {
+        case statusItemAnchor
+        case mousePointerMonitor
+    }
+
     private var statusItem: NSStatusItem?
     private var mainWindow: NSWindow?
     private var hostingController: NSHostingController<AnyView>?
@@ -200,7 +205,7 @@ final class StatusBarController: ObservableObject {
     private func setupShortcutHandlers() {
         KeyboardShortcuts.onKeyDown(for: .togglePopover) { [weak self] in
             Task { @MainActor in
-                self?.toggleMainWindow(nil)
+                self?.toggleMainWindowFromShortcut()
             }
         }
 
@@ -486,7 +491,20 @@ final class StatusBarController: ObservableObject {
         NSApplication.shared.terminate(nil)
     }
 
+    private func toggleMainWindowFromShortcut() {
+        let placementStrategy: WindowPlacementStrategy = MainWindowPreferences
+            .isToggleShortcutUsingMouseMonitorEnabled()
+            ? .mousePointerMonitor
+            : .statusItemAnchor
+
+        toggleMainWindow(placementStrategy: placementStrategy)
+    }
+
     @objc func toggleMainWindow(_: AnyObject?) {
+        toggleMainWindow(placementStrategy: .statusItemAnchor)
+    }
+
+    private func toggleMainWindow(placementStrategy: WindowPlacementStrategy) {
         if isMainWindowVisible {
             hideMainWindow()
             return
@@ -502,7 +520,8 @@ final class StatusBarController: ObservableObject {
             repositoryPath: repositoryPath,
             isGitRepo: isGitRepo,
             shouldRefreshAfterPresentation: shouldRefreshAfterPresenting(route: initialRoute),
-            trace: trace
+            trace: trace,
+            placementStrategy: placementStrategy
         )
     }
 
@@ -511,7 +530,8 @@ final class StatusBarController: ObservableObject {
         repositoryPath: String?,
         isGitRepo: Bool,
         shouldRefreshAfterPresentation: Bool,
-        trace: WindowOpenTrace
+        trace: WindowOpenTrace,
+        placementStrategy: WindowPlacementStrategy = .statusItemAnchor
     ) {
         presentationModel.prepareForPresentation(route: route, requestCommitFocus: route == .main)
         if route != .main {
@@ -519,7 +539,7 @@ final class StatusBarController: ObservableObject {
         }
 
         logWindowOpen(trace, message: "route resolved to \(describe(route: route))")
-        presentMainWindow(trace: trace)
+        presentMainWindow(trace: trace, placementStrategy: placementStrategy)
 
         if shouldRefreshAfterPresentation {
             refreshMainWindowData(trace: trace)
@@ -531,12 +551,23 @@ final class StatusBarController: ObservableObject {
         validateRemoteIfNeeded(path: repositoryPath, isGitRepo: isGitRepo, trace: trace)
     }
 
-    private func presentMainWindow(trace: WindowOpenTrace) {
+    private func presentMainWindow(trace: WindowOpenTrace, placementStrategy: WindowPlacementStrategy) {
         guard let mainWindow else { return }
 
-        if !hasPositionedWindowInitially {
-            positionMainWindowRelativeToStatusItem(mainWindow)
-            hasPositionedWindowInitially = true
+        switch placementStrategy {
+        case .mousePointerMonitor:
+            if let screen = screenContainingMousePointer() {
+                positionMainWindow(on: screen, window: mainWindow)
+                hasPositionedWindowInitially = true
+            } else if !hasPositionedWindowInitially {
+                positionMainWindowRelativeToStatusItem(mainWindow)
+                hasPositionedWindowInitially = true
+            }
+        case .statusItemAnchor:
+            if !hasPositionedWindowInitially {
+                positionMainWindowRelativeToStatusItem(mainWindow)
+                hasPositionedWindowInitially = true
+            }
         }
 
         NSApp.activate(ignoringOtherApps: true)
@@ -565,6 +596,28 @@ final class StatusBarController: ObservableObject {
         if originY < visibleFrame.minY + 8 {
             originY = visibleFrame.maxY - window.frame.height - 20
         }
+
+        window.setFrameOrigin(NSPoint(x: originX, y: originY))
+    }
+
+    private func screenContainingMousePointer() -> NSScreen? {
+        let mouseLocation = NSEvent.mouseLocation
+        return NSScreen.screens.first { screen in
+            NSMouseInRect(mouseLocation, screen.frame, false)
+        } ?? NSScreen.main
+    }
+
+    private func positionMainWindow(on screen: NSScreen, window: NSWindow) {
+        let visibleFrame = screen.visibleFrame
+        let margin: CGFloat = 12
+
+        let minX = visibleFrame.minX + margin
+        let maxX = visibleFrame.maxX - window.frame.width - margin
+        let minY = visibleFrame.minY + margin
+        let maxY = visibleFrame.maxY - window.frame.height - margin
+
+        let originX = max(minX, maxX)
+        let originY = max(minY, maxY)
 
         window.setFrameOrigin(NSPoint(x: originX, y: originY))
     }

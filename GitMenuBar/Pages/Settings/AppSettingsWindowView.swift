@@ -5,6 +5,9 @@ struct GeneralSettingsPaneView: View {
     @AppStorage(AppPreferences.Keys.showFullPathInRecents) private var showFullPathInRecents = false
     @AppStorage(AppPreferences.Keys.autoHideMainWindowOnBlur) private var autoHideMainWindowOnBlur =
         MainWindowPreferences.defaultAutoHideOnBlur
+    @AppStorage(AppPreferences.Keys.toggleShortcutUsesMouseMonitor)
+    private var toggleShortcutUsesMouseMonitor =
+        MainWindowPreferences.defaultToggleShortcutUsesMouseMonitor
 
     @State private var repositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
     @State private var recentPaths = RecentProjectsStore().recentPaths()
@@ -50,6 +53,13 @@ struct GeneralSettingsPaneView: View {
                     .toggleStyle(.checkbox)
                     .font(.system(size: 11))
                     .padding(.top, 2)
+
+                Toggle(
+                    "On toggle shortcut, show window on monitor with mouse pointer",
+                    isOn: $toggleShortcutUsesMouseMonitor
+                )
+                .toggleStyle(.checkbox)
+                .font(.system(size: 11))
 
                 RecentProjectsSection(
                     recentPaths: recentPaths,

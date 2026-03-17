@@ -12,6 +12,9 @@ struct SettingsPageView: View {
     @Binding var showFullPathInRecents: Bool
     @AppStorage(AppPreferences.Keys.autoHideMainWindowOnBlur) private var autoHideMainWindowOnBlur =
         MainWindowPreferences.defaultAutoHideOnBlur
+    @AppStorage(AppPreferences.Keys.toggleShortcutUsesMouseMonitor)
+    private var toggleShortcutUsesMouseMonitor =
+        MainWindowPreferences.defaultToggleShortcutUsesMouseMonitor
     let onRepositoryPathChanged: (String) -> Void
     let onBrowse: () -> Void
     let onSelectRecentPath: (String) -> Void
@@ -61,6 +64,13 @@ struct SettingsPageView: View {
                         .toggleStyle(.checkbox)
                         .font(.system(size: 11))
                         .padding(.top, 2)
+
+                    Toggle(
+                        "On toggle shortcut, show window on monitor with mouse pointer",
+                        isOn: $toggleShortcutUsesMouseMonitor
+                    )
+                    .toggleStyle(.checkbox)
+                    .font(.system(size: 11))
 
                     GitHubConnectionSection(setAutoHideSuspended: onSetAutoHideSuspended)
 

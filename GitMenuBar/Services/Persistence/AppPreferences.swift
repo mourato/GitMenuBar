@@ -9,6 +9,7 @@ enum AppPreferences {
         static let isUnstagedSectionCollapsed = "isUnstagedSectionCollapsed"
         static let isHistorySectionCollapsed = "isHistorySectionCollapsed"
         static let autoHideMainWindowOnBlur = "autoHideMainWindowOnBlur"
+        static let toggleShortcutUsesMouseMonitor = "toggleShortcutUsesMouseMonitor"
         static let hasMigratedKeychainDomain = "hasMigratedKeychainDomain"
     }
 }

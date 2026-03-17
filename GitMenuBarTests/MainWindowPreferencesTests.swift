@@ -33,4 +33,24 @@ final class MainWindowPreferencesTests: XCTestCase {
         MainWindowPreferences.setAutoHideOnBlurEnabled(false, userDefaults: userDefaults)
         XCTAssertFalse(MainWindowPreferences.isAutoHideOnBlurEnabled(userDefaults: userDefaults))
     }
+
+    func testToggleShortcutMonitorSelectionDefaultsToDisabledWhenPreferenceIsMissing() {
+        let isEnabled = MainWindowPreferences.isToggleShortcutUsingMouseMonitorEnabled(
+            userDefaults: userDefaults
+        )
+
+        XCTAssertFalse(isEnabled)
+    }
+
+    func testToggleShortcutMonitorSelectionPreferenceRoundTrip() {
+        MainWindowPreferences.setToggleShortcutUsingMouseMonitorEnabled(true, userDefaults: userDefaults)
+        XCTAssertTrue(
+            MainWindowPreferences.isToggleShortcutUsingMouseMonitorEnabled(userDefaults: userDefaults)
+        )
+
+        MainWindowPreferences.setToggleShortcutUsingMouseMonitorEnabled(false, userDefaults: userDefaults)
+        XCTAssertFalse(
+            MainWindowPreferences.isToggleShortcutUsingMouseMonitorEnabled(userDefaults: userDefaults)
+        )
+    }
 }
