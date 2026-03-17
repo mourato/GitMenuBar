@@ -57,6 +57,19 @@ final class StatusBarController: ObservableObject {
         gitManager: gitManager,
         aiCommitCoordinator: aiCommitCoordinator
     )
+    private lazy var settingsWindowController = AppSettingsWindowController(
+        gitManager: gitManager,
+        loginItemManager: loginItemManager,
+        githubAuthManager: githubAuthManager,
+        aiProviderStore: aiProviderStore,
+        aiCommitCoordinator: aiCommitCoordinator,
+        onSetAutoHideSuspended: { [weak self] suspended in
+            self?.setAutoHideSuspended(suspended)
+        },
+        onRequestCreateRepo: { [weak self] path in
+            self?.openMainWindowWithCreateRepo(path: path)
+        }
+    )
 
     init(githubAuthManager: GitHubAuthManager) {
         self.githubAuthManager = githubAuthManager
@@ -252,6 +265,9 @@ final class StatusBarController: ObservableObject {
         let rootView = MainMenuView(
             closeWindow: { [weak self] in
                 self?.hideMainWindow()
+            },
+            openSettingsWindow: { [weak self] in
+                self?.openSettingsWindow()
             },
             setAutoHideSuspended: { [weak self] suspended in
                 self?.setAutoHideSuspended(suspended)
@@ -531,17 +547,11 @@ final class StatusBarController: ObservableObject {
     }
 
     private func openSettingsWindow() {
-        let trace = beginWindowOpenTrace(trigger: "settings")
-        let repositoryPath = currentRepositoryPath()
-        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
+        settingsWindowController.show()
+    }
 
-        openMainWindow(
-            route: .settings,
-            repositoryPath: repositoryPath,
-            isGitRepo: isGitRepo,
-            shouldRefreshAfterPresentation: true,
-            trace: trace
-        )
+    func showSettingsWindow() {
+        openSettingsWindow()
     }
 
     /// Opens the main window programmatically (used when app is launched with a folder path)
@@ -701,8 +711,6 @@ final class StatusBarController: ObservableObject {
         switch route {
         case .main:
             return "main"
-        case .settings:
-            return "settings"
         case let .createRepo(path):
             return "createRepo(\(path))"
         case let .historyDetail(commitID):

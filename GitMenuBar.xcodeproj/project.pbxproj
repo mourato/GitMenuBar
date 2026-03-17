@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A1B2C3D42F11111100ABC001 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D42F11111100ABC003 /* KeyboardShortcuts */; };
+		C4D5E6F72F22222200ABC001 /* Settings in Frameworks */ = {isa = PBXBuildFile; productRef = C4D5E6F72F22222200ABC003 /* Settings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1B2C3D42F11111100ABC001 /* KeyboardShortcuts in Frameworks */,
+				C4D5E6F72F22222200ABC001 /* Settings in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -109,6 +111,7 @@
 			name = GitMenuBar;
 			packageProductDependencies = (
 				A1B2C3D42F11111100ABC003 /* KeyboardShortcuts */,
+				C4D5E6F72F22222200ABC003 /* Settings */,
 			);
 			productName = GitMenuBar;
 			productReference = 1F8681CC2EBCB5B600C300C7 /* GitMenuBar.app */;
@@ -166,6 +169,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A1B2C3D42F11111100ABC002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+				C4D5E6F72F22222200ABC002 /* XCRemoteSwiftPackageReference "Settings" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1F8681CD2EBCB5B600C300C7 /* Products */;
@@ -462,6 +466,14 @@
 				minimumVersion = 2.2.0;
 			};
 		};
+		C4D5E6F72F22222200ABC002 /* XCRemoteSwiftPackageReference "Settings" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/Settings";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.1.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -469,6 +481,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A1B2C3D42F11111100ABC002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
 			productName = KeyboardShortcuts;
+		};
+		C4D5E6F72F22222200ABC003 /* Settings */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C4D5E6F72F22222200ABC002 /* XCRemoteSwiftPackageReference "Settings" */;
+			productName = Settings;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

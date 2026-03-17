@@ -6,6 +6,7 @@ struct SettingsPageView: View {
     @EnvironmentObject private var loginItemManager: LoginItemManager
     @EnvironmentObject private var githubAuthManager: GitHubAuthManager
 
+    let headerActionTitle: String
     let repositoryPath: String
     let recentPaths: [String]
     @Binding var showFullPathInRecents: Bool
@@ -23,7 +24,7 @@ struct SettingsPageView: View {
             InlinePageHeader(
                 title: "Settings",
                 systemImage: "gear",
-                actionTitle: "Done",
+                actionTitle: headerActionTitle,
                 onAction: onDone
             )
 
@@ -112,6 +113,7 @@ private struct SettingsPagePreviewContainer: View {
     var body: some View {
         MainMenuPreviewHarness(width: 420) {
             SettingsPageView(
+                headerActionTitle: "Done",
                 repositoryPath: NSHomeDirectory(),
                 recentPaths: [
                     NSHomeDirectory(),

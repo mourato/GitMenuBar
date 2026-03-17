@@ -3,7 +3,6 @@
 //  GitMenuBar
 //
 
-import AppKit
 import Foundation
 
 extension MainMenuView {
@@ -115,7 +114,7 @@ extension MainMenuView {
         }
     }
 
-    func switchRepository(path: String, closeSettingsAfterRefresh: Bool = false) {
+    func switchRepository(path: String) {
         if !gitManager.isGitRepository(at: path), githubAuthManager.isAuthenticated {
             presentationModel.showCreateRepo(path: path)
             return
@@ -123,11 +122,7 @@ extension MainMenuView {
 
         setCurrentRepositoryPath(path)
         addToRecents(path)
-        gitManager.refresh {
-            if closeSettingsAfterRefresh {
-                presentationModel.showMain(requestCommitFocus: true)
-            }
-        }
+        gitManager.refresh()
     }
 
     func resetToLastCommit() {
@@ -184,23 +179,6 @@ extension MainMenuView {
                 await MainActor.run {
                     isTogglingVisibility = false
                     toggleVisibilityError = error.localizedDescription
-                }
-            }
-        }
-    }
-
-    func wipeRepository() {
-        isWiping = true
-
-        gitManager.wipeRepository { result in
-            DispatchQueue.main.async {
-                isWiping = false
-                switch result {
-                case .success:
-                    presentationModel.showMain()
-                    UserDefaults.standard.set(false, forKey: AppPreferences.Keys.showSettings)
-                case let .failure(error):
-                    wipeError = error.localizedDescription
                 }
             }
         }

@@ -15,6 +15,14 @@ struct GitMenuBarApp: App {
         Settings {
             EmptyView()
         }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") {
+                    appDelegate.showSettingsWindow()
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+        }
     }
 }
 
@@ -22,6 +30,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var statusBarController: StatusBarController?
     var githubAuthManager: GitHubAuthManager?
     private let recentProjectsStore = RecentProjectsStore()
+
+    @MainActor
+    func showSettingsWindow() {
+        statusBarController?.showSettingsWindow()
+    }
 
     func applicationDidFinishLaunching(_: Notification) {
         guard !AppExecutionContext.isRunningTests else {
@@ -33,9 +46,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Hide the dock icon immediately
         NSApp.setActivationPolicy(.accessory)
-
-        // Reset user defaults to ensure main page shows
-        UserDefaults.standard.set(false, forKey: AppPreferences.Keys.showSettings)
 
         // Create GitHub auth manager
         githubAuthManager = GitHubAuthManager()
@@ -55,11 +65,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
         statusBarController?.openMainWindow()
         return true
-    }
-
-    func applicationDidResignActive(_: Notification) {
-        // When app becomes inactive, reset to main view
-        UserDefaults.standard.set(false, forKey: AppPreferences.Keys.showSettings)
     }
 
     // MARK: - Handle file/folder URLs opened via "open -a GitMenuBar /path/to/folder"

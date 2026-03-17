@@ -2,7 +2,6 @@ import Foundation
 
 enum MainMenuRoute: Equatable {
     case main
-    case settings
     case createRepo(path: String)
     case historyDetail(commitID: String)
 }
@@ -53,10 +52,6 @@ final class MainMenuPresentationModel: ObservableObject {
         if requestCommitFocus {
             self.requestCommitFocus()
         }
-    }
-
-    func showSettings() {
-        route = .settings
     }
 
     func showCreateRepo(path: String) {

@@ -36,8 +36,7 @@ extension MainMenuView {
                         showRepoOptions = true
                     },
                     onSettingsTap: {
-                        presentationModel.showSettings()
-                        UserDefaults.standard.set(true, forKey: AppPreferences.Keys.showSettings)
+                        openSettingsWindow()
                     },
                     projectSelectorContent: {
                         ProjectSelectorPopoverView(
