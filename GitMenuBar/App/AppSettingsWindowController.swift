@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Settings
 
 private extension Settings.PaneIdentifier {
@@ -9,7 +10,12 @@ private extension Settings.PaneIdentifier {
 
 @MainActor
 final class AppSettingsWindowController {
+    private enum Constants {
+        static let minimumContentSize = NSSize(width: 420, height: 700)
+    }
+
     private let windowController: SettingsWindowController
+    private var cancellables = Set<AnyCancellable>()
 
     init(
         gitManager: GitManager,
@@ -66,11 +72,54 @@ final class AppSettingsWindowController {
             style: .toolbarItems,
             animated: false
         )
+
+        configureWindowSizing()
+        observeAppearancePreferenceChanges()
     }
 
     func show() {
         windowController.show(pane: .gitMenuBarGeneral)
+        applyConfiguredAppearance()
         NSApp.activate(ignoringOtherApps: true)
         windowController.window?.makeKeyAndOrderFront(nil)
+    }
+
+    private func observeAppearancePreferenceChanges() {
+        NotificationCenter.default.publisher(
+            for: UserDefaults.didChangeNotification,
+            object: UserDefaults.standard
+        )
+        .receive(on: RunLoop.main)
+        .sink { [weak self] _ in
+            self?.applyConfiguredAppearance()
+        }
+        .store(in: &cancellables)
+    }
+
+    private func applyConfiguredAppearance() {
+        let appearanceRawValue = UserDefaults.standard.string(forKey: AppPreferences.Keys.appearanceMode)
+            ?? AppPreferences.AppearanceMode.defaultMode.rawValue
+        let appearanceMode = AppPreferences.AppearanceMode.resolve(rawValue: appearanceRawValue)
+        windowController.window?.appearance = appearanceMode.nsAppearance
+    }
+
+    private func configureWindowSizing() {
+        guard let window = windowController.window else { return }
+
+        window.styleMask.insert(.resizable)
+        window.contentMinSize = Constants.minimumContentSize
+    }
+}
+
+private extension AppPreferences.AppearanceMode {
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .systemDefault:
+            return nil
+        case .light:
+            return NSAppearance(named: .aqua)
+        case .dark:
+            return NSAppearance(named: .darkAqua)
+        }
     }
 }
