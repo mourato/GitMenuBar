@@ -30,6 +30,14 @@ If a tradeoff is required, choose **correctness and robustness** over short-term
 - Prefer CLI-first verification and reproducible commands.
 - Keep changes small and validated incrementally.
 - Before merge, run: `make build && make test && make lint`.
+- When UI/logic/assets become unused, sanitize in the same PR: remove orphan files, dead helpers, and stale resources safely.
+- Treat code sanitization as mandatory maintenance, not optional cleanup; include objective evidence (`rg`, target wiring, runtime path) for each removal.
+
+## SwiftUI Preview Policy
+
+- Any new Swift file that renders interface (`View`, `NSViewRepresentable`, `NSViewControllerRepresentable`) must include at least one `#Preview`.
+- Previews can live in the same file or a dedicated `*Preview.swift` companion file, but every UI-rendering file must be covered.
+- Pull requests that introduce UI files without preview coverage are incomplete.
 
 ## Skills
 
