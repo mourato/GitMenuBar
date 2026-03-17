@@ -39,3 +39,20 @@ struct HistorySectionHeaderView: View {
         }
     }
 }
+
+private struct HistorySectionHeaderPreviewContainer: View {
+    @State private var isCollapsed = false
+
+    var body: some View {
+        HistorySectionHeaderView(
+            commitCount: 42,
+            isCollapsed: $isCollapsed
+        )
+        .padding()
+        .frame(width: 360)
+    }
+}
+
+#Preview("History Section Header") {
+    HistorySectionHeaderPreviewContainer()
+}

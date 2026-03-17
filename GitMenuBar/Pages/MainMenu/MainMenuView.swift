@@ -25,6 +25,7 @@ struct MainMenuView: View {
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isUnstagedSectionCollapsed) var isUnstagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isHistorySectionCollapsed) var isHistorySectionCollapsed = false
+    @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
     @State var showBranchSelector = false
     @State var selectedPushBranch: String = ""
     @State var showPullToNewBranch = false
@@ -208,8 +209,22 @@ struct MainMenuView: View {
         } message: {
             Text(discardError ?? "An unknown error occurred.")
         }
+        .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
         .padding(10)
         .frame(width: 400)
+    }
+}
+
+private extension AppPreferences.AppearanceMode {
+    var preferredColorScheme: ColorScheme? {
+        switch self {
+        case .systemDefault:
+            return nil
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        }
     }
 }
 
