@@ -15,6 +15,7 @@ final class StatusBarController: ObservableObject {
         static let statusIconPointSize = NSSize(width: 16, height: 16)
         static let windowInitialSize = NSSize(width: 400, height: 700)
         static let windowMinimumSize = NSSize(width: 360, height: 620)
+        static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
         static let appFocusedShortcutNames: [KeyboardShortcuts.Name] = [.commit, .sync]
     }
 
@@ -276,6 +277,8 @@ final class StatusBarController: ObservableObject {
         window.isReleasedWhenClosed = false
         window.setContentSize(Constants.windowInitialSize)
         window.minSize = Constants.windowMinimumSize
+        window.setFrameAutosaveName(Constants.windowAutosaveName)
+        hasPositionedWindowInitially = window.setFrameUsingName(Constants.windowAutosaveName, force: false)
 
         let hostingController = NSHostingController(rootView: makeRootView())
         window.contentViewController = hostingController
