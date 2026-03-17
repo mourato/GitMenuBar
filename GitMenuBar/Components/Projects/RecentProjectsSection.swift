@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct RecentProjectsSection: View {
@@ -14,21 +13,13 @@ struct RecentProjectsSection: View {
                     Text("Recently Used")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    Toggle("Show full path", isOn: $showFullPathInRecents.animation(.easeInOut(duration: 0.2)))
+                        .toggleStyle(.checkbox)
+                        .font(.system(size: 11))
                 }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showFullPathInRecents.toggle()
-                    }
-                }
-                .onHover { inside in
-                    if inside {
-                        NSCursor.pointingHand.push()
-                    } else {
-                        NSCursor.pop()
-                    }
-                }
-                .help("Click to toggle between full path and project name")
 
                 ForEach(recentPaths.filter { $0 != currentRepoPath }.prefix(5), id: \.self) { path in
                     let abbreviatedPath = PathDisplayFormatter.abbreviatedPath(path)

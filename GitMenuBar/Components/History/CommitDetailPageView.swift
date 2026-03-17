@@ -10,29 +10,30 @@ struct CommitDetailPageView: View {
     let onRestoreCommit: (Commit) -> Void
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 16) {
             header
 
             Divider()
-                .padding(.top, 4)
 
             if let commit {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        titleSection(commit: commit)
                         metadataSection(commit: commit)
+                        titleSection(commit: commit)
                         statsSection(commit: commit)
+                        
+                        Divider()
+                        
                         changedFilesSection(commit: commit)
                     }
-                    .padding(.horizontal, 10)
                 }
                 .frame(maxHeight: 520)
-                .frame(width: 380, alignment: .leading)
+                .frame(width: .infinity, alignment: .leading)
             } else {
                 missingCommitSection
             }
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 16)
         .padding(.vertical, 16)
     }
 
@@ -43,7 +44,7 @@ struct CommitDetailPageView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 10, weight: .semibold))
                     Text("Back")
                         .font(.system(size: 12, weight: .medium))
                 }
@@ -55,26 +56,10 @@ struct CommitDetailPageView: View {
 
             HStack(spacing: 6) {
                 Image(systemName: "clock")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.blue)
                 Text("Commit Details")
-                    .font(.system(size: 14, weight: .semibold))
-            }
-        }
-    }
-
-    private func titleSection(commit: Commit) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(commit.subject)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.primary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if !commit.body.isEmpty {
-                Text(commit.body)
-                    .font(.system(size: 12))
-                    .foregroundColor(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 12, weight: .semibold))
             }
         }
     }
@@ -90,11 +75,14 @@ struct CommitDetailPageView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(commit.authorName)
-                        .font(.system(size: 12, weight: .semibold))
-                    Text(commit.authorEmail)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 2) {
+                        Text(commit.authorName)
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(commit.authorEmail)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    
                     Text(timestampLine(for: commit))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
@@ -112,17 +100,21 @@ struct CommitDetailPageView: View {
                         .clipShape(Capsule())
                 }
             }
+        }
+    }
+    
+    private func titleSection(commit: Commit) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(commit.subject)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.primary)
+                .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 8) {
-                Text(commit.shortHash)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.accentColor)
-
-                Text(commit.id)
-                    .font(.system(size: 10, weight: .regular, design: .monospaced))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+            if !commit.body.isEmpty {
+                Text(commit.body)
+                    .font(.system(size: 12))
+                    .foregroundColor(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -133,7 +125,7 @@ struct CommitDetailPageView: View {
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
 
-            HStack(spacing: 8) {
+            HStack(spacing: 4) {
                 Button("Open on GitHub") {
                     if let commitURL = commitURL(for: commit) {
                         NSWorkspace.shared.open(commitURL)
@@ -157,15 +149,18 @@ struct CommitDetailPageView: View {
                     copyToPasteboard(commit.subject)
                 }
                 .buttonStyle(.link)
+                
+                Text("•")
+                    .foregroundColor(.secondary)
+                
+                Button("Reset to Here") {
+                    onRestoreCommit(commit)
+                }
+                .buttonStyle(.borderless)
+                .focusable(false)
+                .disabled(commit.id == currentHash)
             }
             .font(.system(size: 11, weight: .medium))
-
-            Button("Reset to Here") {
-                onRestoreCommit(commit)
-            }
-            .buttonStyle(.borderless)
-            .focusable(false)
-            .disabled(commit.id == currentHash)
         }
     }
 
@@ -282,4 +277,56 @@ private struct CommitChangedFileRowView: View {
             .font(.system(size: 10, weight: .medium))
         }
     }
+}
+
+private enum CommitDetailPagePreviewData {
+    static let commit = Commit(
+        id: "1234567890abcdef1234567890abcdef12345678",
+        shortHash: "1234567",
+        subject: "feat(history): improve commit detail layout and actions",
+        body: "Refines metadata, changed files presentation, and quick actions for commit inspection.",
+        authorName: "Renato Silva",
+        authorEmail: "renato@example.com",
+        committedAt: .now.addingTimeInterval(-5400),
+        stats: CommitStats(filesChanged: 3, insertions: 48, deletions: 12),
+        changedFiles: [
+            CommitFileChange(
+                path: "GitMenuBar/Components/History/CommitDetailPageView.swift",
+                lineDiff: LineDiffStats(added: 32, removed: 9)
+            ),
+            CommitFileChange(
+                path: "GitMenuBar/Services/Git/GitManager.swift",
+                lineDiff: LineDiffStats(added: 14, removed: 3)
+            ),
+            CommitFileChange(
+                path: "README.md",
+                lineDiff: LineDiffStats(added: 2, removed: 0)
+            )
+        ]
+    )
+}
+
+#Preview("Commit Detail") {
+    CommitDetailPageView(
+        commit: CommitDetailPagePreviewData.commit,
+        currentHash: "abcdef1234567890",
+        remoteUrl: "https://github.com/example/repo.git",
+        isCommitInFuture: { _ in false },
+        onBack: {},
+        onRestoreCommit: { _ in }
+    )
+    .frame(width: 400, height: 580)
+}
+
+#Preview("Commit Detail - Missing Commit") {
+    CommitDetailPageView(
+        commit: nil,
+        currentHash: "abcdef1234567890",
+        remoteUrl: "https://github.com/example/repo.git",
+        isCommitInFuture: { _ in false },
+        onBack: {},
+        onRestoreCommit: { _ in }
+    )
+    .padding()
+    .frame(width: 400)
 }
