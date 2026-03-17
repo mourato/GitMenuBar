@@ -53,6 +53,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_: NSApplication, hasVisibleWindows _: Bool) -> Bool {
         // Reopen the app if clicked while hidden
         NSApp.activate(ignoringOtherApps: true)
+        statusBarController?.openMainWindow()
         return true
     }
 
@@ -94,12 +95,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                 if exists {
                     DispatchQueue.main.async {
-                        self.statusBarController?.openPopover()
+                        self.statusBarController?.openMainWindow()
                     }
                 } else {
                     // Remote doesn't exist (either no remote or 404) - show create repo UI
                     DispatchQueue.main.async {
-                        self.statusBarController?.openPopoverWithCreateRepo(path: path)
+                        self.statusBarController?.openMainWindowWithCreateRepo(path: path)
                     }
                 }
             }
@@ -109,7 +110,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             recentProjectsStore.add(path)
 
             DispatchQueue.main.async {
-                self.statusBarController?.openPopover()
+                self.statusBarController?.openMainWindow()
             }
         } else {
             // Not a git repo at all - show create repo window if GitHub is connected
@@ -118,7 +119,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 recentProjectsStore.add(path)
 
                 DispatchQueue.main.async {
-                    self.statusBarController?.openPopoverWithCreateRepo(path: path)
+                    self.statusBarController?.openMainWindowWithCreateRepo(path: path)
                 }
             } else {
                 // Not connected to GitHub - just open normally
@@ -126,7 +127,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 recentProjectsStore.add(path)
 
                 DispatchQueue.main.async {
-                    self.statusBarController?.openPopover()
+                    self.statusBarController?.openMainWindow()
                 }
             }
         }

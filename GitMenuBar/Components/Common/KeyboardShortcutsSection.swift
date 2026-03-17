@@ -4,7 +4,7 @@ import SwiftUI
 struct KeyboardShortcutsSection: View {
     var body: some View {
         SettingsSection(title: "Keyboard Shortcuts", systemImage: "keyboard") {
-            shortcutRow("Open Popover", name: .togglePopover)
+            shortcutRow("Open Window", name: .togglePopover)
             shortcutRow("Commit", name: .commit)
             shortcutRow("Sync", name: .sync)
 

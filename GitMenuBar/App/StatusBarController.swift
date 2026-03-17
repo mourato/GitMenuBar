@@ -8,23 +8,36 @@ import Combine
 import KeyboardShortcuts
 import SwiftUI
 
+// swiftlint:disable file_length type_body_length
 @MainActor
-class StatusBarController: ObservableObject {
-    private struct PopoverOpenTrace {
+final class StatusBarController: ObservableObject {
+    private enum Constants {
+        static let statusIconPointSize = NSSize(width: 16, height: 16)
+        static let windowInitialSize = NSSize(width: 400, height: 700)
+        static let windowMinimumSize = NSSize(width: 360, height: 620)
+    }
+
+    private struct WindowOpenTrace {
         let id: Int
         let startedAt: CFAbsoluteTime
         let trigger: String
     }
 
     private var statusItem: NSStatusItem?
-    private var popover: NSPopover?
-    private var hostingController: PopoverHostingController<AnyView>?
+    private var mainWindow: NSWindow?
+    private var hostingController: NSHostingController<AnyView>?
     private var contextMenu: NSMenu?
     private var badgeRefreshTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
     private var baseStatusImage: NSImage?
     private var remoteExistenceByPath: [String: RemoteExistenceState] = [:]
-    private var nextPopoverOpenTraceID = 0
+    private var nextWindowOpenTraceID = 0
+    private var hasPositionedWindowInitially = false
+    private var isAutoHideSuspended = false
+    private var shortcutQueue = MainWindowShortcutQueue()
+
+    private let windowDelegate = MainWindowLifecycleDelegate()
+
     let gitManager = GitManager()
     let loginItemManager = LoginItemManager()
     let githubAuthManager: GitHubAuthManager
@@ -65,10 +78,11 @@ class StatusBarController: ObservableObject {
 
         setupStatusItem()
         setupContextMenu()
-        setupPopover()
+        setupMainWindow()
         setupBadgeObservation()
         setupBadgeRefreshTimer()
         setupShortcutHandlers()
+        setupAuthenticationObservation()
 
         gitManager.updateUncommittedFiles()
     }
@@ -79,6 +93,8 @@ class StatusBarController: ObservableObject {
 
         guard let button = statusItem?.button else { return }
         button.image = baseStatusImage
+        button.imageScaling = .scaleProportionallyDown
+        button.imagePosition = .imageOnly
         button.action = #selector(handleStatusItemClick(_:))
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.target = self
@@ -89,7 +105,7 @@ class StatusBarController: ObservableObject {
     private func makeBaseStatusImage() -> NSImage? {
         if let image = NSImage(named: "MenuBarIcon") {
             let resized = image.copy() as? NSImage ?? image
-            resized.size = NSSize(width: 18, height: 18)
+            resized.size = Constants.statusIconPointSize
             resized.isTemplate = true
             return resized
         }
@@ -113,7 +129,7 @@ class StatusBarController: ObservableObject {
     private func makeBadgedImage(count: Int) -> NSImage? {
         guard let baseStatusImage else { return nil }
 
-        let iconSize = NSSize(width: 18, height: 18)
+        let iconSize = Constants.statusIconPointSize
         let image = NSImage(size: iconSize)
 
         image.lockFocus()
@@ -170,26 +186,30 @@ class StatusBarController: ObservableObject {
     private func setupShortcutHandlers() {
         KeyboardShortcuts.onKeyDown(for: .togglePopover) { [weak self] in
             Task { @MainActor in
-                self?.togglePopover(nil)
+                self?.toggleMainWindow(nil)
             }
         }
 
         KeyboardShortcuts.onKeyDown(for: .commit) { [weak self] in
             Task { @MainActor in
-                self?.dispatchShortcutAction(.commit)
+                self?.handleActionShortcut(.commit)
             }
         }
 
         KeyboardShortcuts.onKeyDown(for: .sync) { [weak self] in
             Task { @MainActor in
-                self?.dispatchShortcutAction(.sync)
+                self?.handleActionShortcut(.sync)
             }
         }
     }
 
-    private func dispatchShortcutAction(_ action: MainMenuShortcutAction) {
-        guard popover?.isShown == true else { return }
-        shortcutActionBridge.send(action)
+    private func setupAuthenticationObservation() {
+        githubAuthManager.$isAuthenticating
+            .receive(on: RunLoop.main)
+            .sink { [weak self] isAuthenticating in
+                self?.setAutoHideSuspended(isAuthenticating)
+            }
+            .store(in: &cancellables)
     }
 
     private func setupContextMenu() {
@@ -197,22 +217,44 @@ class StatusBarController: ObservableObject {
         rebuildContextMenu()
     }
 
-    private func setupPopover() {
-        let popover = NSPopover()
-        popover.behavior = .transient
-        let hostingController = PopoverHostingController(rootView: makeRootView())
-        popover.contentViewController = hostingController
+    private func setupMainWindow() {
+        let contentRect = NSRect(origin: .zero, size: Constants.windowInitialSize)
+        let window = NSWindow(
+            contentRect: contentRect,
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+
+        window.title = "GitMenuBar"
+        window.isReleasedWhenClosed = false
+        window.setContentSize(Constants.windowInitialSize)
+        window.minSize = Constants.windowMinimumSize
+
+        let hostingController = NSHostingController(rootView: makeRootView())
+        window.contentViewController = hostingController
+
+        windowDelegate.onShouldClose = { [weak self] in
+            self?.hideMainWindow()
+            return false
+        }
+        windowDelegate.onDidResignKey = { [weak self] in
+            self?.handleMainWindowDidResignKey()
+        }
+
+        window.delegate = windowDelegate
+
         self.hostingController = hostingController
-        self.popover = popover
+        mainWindow = window
     }
 
     private func makeRootView() -> AnyView {
         let rootView = MainMenuView(
-            closePopover: { [weak self] in
-                self?.popover?.close()
+            closeWindow: { [weak self] in
+                self?.hideMainWindow()
             },
-            togglePopoverBehavior: { [weak self] in
-                self?.togglePopoverBehavior()
+            setAutoHideSuspended: { [weak self] suspended in
+                self?.setAutoHideSuspended(suspended)
             }
         )
         .environmentObject(gitManager)
@@ -227,17 +269,60 @@ class StatusBarController: ObservableObject {
         return AnyView(rootView)
     }
 
-    func togglePopoverBehavior() {
-        if popover?.behavior == .transient {
-            popover?.behavior = .applicationDefined
-        } else {
-            popover?.behavior = .transient
+    private func setAutoHideSuspended(_ suspended: Bool) {
+        isAutoHideSuspended = suspended
+    }
+
+    private func handleMainWindowDidResignKey() {
+        guard shouldAutoHideOnBlur else { return }
+        hideMainWindow()
+    }
+
+    private var shouldAutoHideOnBlur: Bool {
+        MainWindowPreferences.isAutoHideOnBlurEnabled() && !isAutoHideSuspended
+    }
+
+    private var isMainWindowVisible: Bool {
+        mainWindow?.isVisible == true
+    }
+
+    private func handleActionShortcut(_ action: MainMenuShortcutAction) {
+        shortcutQueue.enqueue(action)
+
+        if isMainWindowVisible, presentationModel.route == .main {
+            flushPendingShortcutActionsIfReady()
+            return
+        }
+
+        let trace = beginWindowOpenTrace(trigger: "shortcut_\(describe(shortcutAction: action))")
+        let repositoryPath = currentRepositoryPath()
+        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
+
+        openMainWindow(
+            route: .main,
+            repositoryPath: repositoryPath,
+            isGitRepo: isGitRepo,
+            shouldRefreshAfterPresentation: true,
+            trace: trace
+        )
+    }
+
+    private func flushPendingShortcutActionsIfReady() {
+        let actions = shortcutQueue.dequeueAllIfReady(
+            isWindowVisible: isMainWindowVisible,
+            isMainRoute: presentationModel.route == .main
+        )
+
+        guard !actions.isEmpty else { return }
+
+        for action in actions {
+            shortcutActionBridge.send(action)
         }
     }
 
     @objc private func handleStatusItemClick(_: AnyObject?) {
         guard let currentEvent = NSApp.currentEvent else {
-            togglePopover(nil)
+            toggleMainWindow(nil)
             return
         }
 
@@ -247,7 +332,7 @@ class StatusBarController: ObservableObject {
         case .leftMouseUp where currentEvent.modifierFlags.contains(.control):
             showContextMenu()
         default:
-            togglePopover(nil)
+            toggleMainWindow(nil)
         }
     }
 
@@ -322,7 +407,7 @@ class StatusBarController: ObservableObject {
                 forceAutomaticMessage: true
             )
             if result.shouldOpenPopover {
-                presentMainPopoverForActionFeedback()
+                presentMainWindowForActionFeedback()
             }
         }
     }
@@ -335,7 +420,7 @@ class StatusBarController: ObservableObject {
                 shouldPushAfterCommit: true
             )
             if result.shouldOpenPopover {
-                presentMainPopoverForActionFeedback()
+                presentMainWindowForActionFeedback()
             }
         }
     }
@@ -344,31 +429,31 @@ class StatusBarController: ObservableObject {
         Task { @MainActor in
             let result = await actionCoordinator.performSync()
             if result.shouldOpenPopover {
-                presentMainPopoverForActionFeedback()
+                presentMainWindowForActionFeedback()
             }
         }
     }
 
     @objc private func openSettingsFromContextMenu() {
-        openSettingsPopover()
+        openSettingsWindow()
     }
 
     @objc private func quitFromContextMenu() {
         NSApplication.shared.terminate(nil)
     }
 
-    @objc func togglePopover(_: AnyObject?) {
-        if popover?.isShown == true {
-            popover?.close()
+    @objc func toggleMainWindow(_: AnyObject?) {
+        if isMainWindowVisible {
+            hideMainWindow()
             return
         }
 
-        let trace = beginPopoverOpenTrace(trigger: "toggle")
+        let trace = beginWindowOpenTrace(trigger: "toggle")
         let repositoryPath = currentRepositoryPath()
         let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
         let initialRoute = initialRoute(for: repositoryPath, isGitRepo: isGitRepo)
 
-        openPopover(
+        openMainWindow(
             route: initialRoute,
             repositoryPath: repositoryPath,
             isGitRepo: isGitRepo,
@@ -377,50 +462,80 @@ class StatusBarController: ObservableObject {
         )
     }
 
-    private func openPopover(
+    private func openMainWindow(
         route: MainMenuRoute,
         repositoryPath: String?,
         isGitRepo: Bool,
         shouldRefreshAfterPresentation: Bool,
-        trace: PopoverOpenTrace
+        trace: WindowOpenTrace
     ) {
         presentationModel.prepareForPresentation(route: route, requestCommitFocus: route == .main)
         if route != .main {
             presentationModel.clearCreateRepoSuggestion()
         }
 
-        logPopoverOpen(trace, message: "route resolved to \(describe(route: route))")
-        presentPopover(trace: trace)
+        logWindowOpen(trace, message: "route resolved to \(describe(route: route))")
+        presentMainWindow(trace: trace)
 
         if shouldRefreshAfterPresentation {
-            refreshPopoverData(trace: trace)
+            refreshMainWindowData(trace: trace)
         } else {
             presentationModel.finishRefresh()
+            flushPendingShortcutActionsIfReady()
         }
 
         validateRemoteIfNeeded(path: repositoryPath, isGitRepo: isGitRepo, trace: trace)
     }
 
-    private func presentPopover(trace: PopoverOpenTrace) {
-        guard let popover, let button = statusItem?.button else { return }
+    private func presentMainWindow(trace: WindowOpenTrace) {
+        guard let mainWindow else { return }
 
-        if popover.isShown {
-            popover.close()
+        if !hasPositionedWindowInitially {
+            positionMainWindowRelativeToStatusItem(mainWindow)
+            hasPositionedWindowInitially = true
         }
 
-        popover.contentSize = NSSize(width: 400, height: 700)
-
         NSApp.activate(ignoringOtherApps: true)
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        logPopoverOpen(trace, message: "popover shown")
+        mainWindow.makeKeyAndOrderFront(nil)
+        logWindowOpen(trace, message: "window shown")
     }
 
-    private func openSettingsPopover() {
-        let trace = beginPopoverOpenTrace(trigger: "settings")
+    private func positionMainWindowRelativeToStatusItem(_ window: NSWindow) {
+        guard let button = statusItem?.button,
+              let buttonWindow = button.window,
+              let screen = buttonWindow.screen ?? NSScreen.main
+        else {
+            window.center()
+            return
+        }
+
+        let buttonRectInWindow = button.convert(button.bounds, to: nil)
+        let buttonRectInScreen = buttonWindow.convertToScreen(buttonRectInWindow)
+        let visibleFrame = screen.visibleFrame
+
+        var originX = buttonRectInScreen.maxX - window.frame.width
+        var originY = buttonRectInScreen.minY - window.frame.height - 8
+
+        originX = min(max(originX, visibleFrame.minX + 8), visibleFrame.maxX - window.frame.width - 8)
+
+        if originY < visibleFrame.minY + 8 {
+            originY = visibleFrame.maxY - window.frame.height - 20
+        }
+
+        window.setFrameOrigin(NSPoint(x: originX, y: originY))
+    }
+
+    private func hideMainWindow() {
+        guard let mainWindow, mainWindow.isVisible else { return }
+        mainWindow.orderOut(nil)
+    }
+
+    private func openSettingsWindow() {
+        let trace = beginWindowOpenTrace(trigger: "settings")
         let repositoryPath = currentRepositoryPath()
         let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
 
-        openPopover(
+        openMainWindow(
             route: .settings,
             repositoryPath: repositoryPath,
             isGitRepo: isGitRepo,
@@ -429,19 +544,20 @@ class StatusBarController: ObservableObject {
         )
     }
 
-    /// Opens the popover programmatically (used when app is launched with a folder path)
-    func openPopover() {
-        if popover?.isShown == true {
+    /// Opens the main window programmatically (used when app is launched with a folder path)
+    func openMainWindow() {
+        if isMainWindowVisible {
             NSApp.activate(ignoringOtherApps: true)
+            mainWindow?.makeKeyAndOrderFront(nil)
             return
         }
 
-        let trace = beginPopoverOpenTrace(trigger: "programmatic")
+        let trace = beginWindowOpenTrace(trigger: "programmatic")
         let repositoryPath = currentRepositoryPath()
         let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
         let initialRoute = initialRoute(for: repositoryPath, isGitRepo: isGitRepo)
 
-        openPopover(
+        openMainWindow(
             route: initialRoute,
             repositoryPath: repositoryPath,
             isGitRepo: isGitRepo,
@@ -450,18 +566,20 @@ class StatusBarController: ObservableObject {
         )
     }
 
-    private func presentMainPopoverForActionFeedback() {
-        if popover?.isShown == true {
+    private func presentMainWindowForActionFeedback() {
+        if isMainWindowVisible {
             presentationModel.showMain(requestCommitFocus: true)
             NSApp.activate(ignoringOtherApps: true)
+            mainWindow?.makeKeyAndOrderFront(nil)
+            flushPendingShortcutActionsIfReady()
             return
         }
 
-        let trace = beginPopoverOpenTrace(trigger: "context_action")
+        let trace = beginWindowOpenTrace(trigger: "context_action")
         let repositoryPath = currentRepositoryPath()
         let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
 
-        openPopover(
+        openMainWindow(
             route: .main,
             repositoryPath: repositoryPath,
             isGitRepo: isGitRepo,
@@ -470,10 +588,10 @@ class StatusBarController: ObservableObject {
         )
     }
 
-    /// Opens the popover directly showing the create repo view (used when opening a non-git folder)
-    func openPopoverWithCreateRepo(path: String) {
-        let trace = beginPopoverOpenTrace(trigger: "create_repo")
-        openPopover(
+    /// Opens the main window directly showing the create repo view (used when opening a non-git folder)
+    func openMainWindowWithCreateRepo(path: String) {
+        let trace = beginWindowOpenTrace(trigger: "create_repo")
+        openMainWindow(
             route: .createRepo(path: path),
             repositoryPath: path,
             isGitRepo: gitManager.isGitRepository(at: path),
@@ -508,22 +626,23 @@ class StatusBarController: ObservableObject {
         return true
     }
 
-    private func refreshPopoverData(trace: PopoverOpenTrace) {
+    private func refreshMainWindowData(trace: WindowOpenTrace) {
         presentationModel.startRefresh()
-        logPopoverOpen(trace, message: "refresh started")
+        logWindowOpen(trace, message: "refresh started")
 
         gitManager.updateUncommittedFiles { [weak self] in
             guard let self else { return }
 
-            self.logPopoverOpen(trace, message: "working tree loaded")
+            self.logWindowOpen(trace, message: "working tree loaded")
             self.gitManager.refresh {
                 self.presentationModel.finishRefresh()
-                self.logPopoverOpen(trace, message: "refresh completed")
+                self.flushPendingShortcutActionsIfReady()
+                self.logWindowOpen(trace, message: "refresh completed")
             }
         }
     }
 
-    private func validateRemoteIfNeeded(path: String?, isGitRepo: Bool, trace: PopoverOpenTrace) {
+    private func validateRemoteIfNeeded(path: String?, isGitRepo: Bool, trace: WindowOpenTrace) {
         guard let path, isGitRepo, githubAuthManager.isAuthenticated else {
             presentationModel.clearCreateRepoSuggestion()
             return
@@ -540,13 +659,13 @@ class StatusBarController: ObservableObject {
         }
 
         remoteExistenceByPath[path] = .checking
-        logPopoverOpen(trace, message: "remote validation started")
+        logWindowOpen(trace, message: "remote validation started")
 
         gitManager.remoteRepositoryExists(at: path) { [weak self] exists in
             guard let self else { return }
 
             self.remoteExistenceByPath[path] = exists ? .exists : .missing
-            self.logPopoverOpen(trace, message: "remote validation completed (\(exists ? "exists" : "missing"))")
+            self.logWindowOpen(trace, message: "remote validation completed (\(exists ? "exists" : "missing"))")
 
             guard self.currentRepositoryPath() == path else { return }
 
@@ -561,21 +680,21 @@ class StatusBarController: ObservableObject {
         }
     }
 
-    private func beginPopoverOpenTrace(trigger: String) -> PopoverOpenTrace {
-        nextPopoverOpenTraceID += 1
-        let trace = PopoverOpenTrace(
-            id: nextPopoverOpenTraceID,
+    private func beginWindowOpenTrace(trigger: String) -> WindowOpenTrace {
+        nextWindowOpenTraceID += 1
+        let trace = WindowOpenTrace(
+            id: nextWindowOpenTraceID,
             startedAt: CFAbsoluteTimeGetCurrent(),
             trigger: trigger
         )
 
-        print("[PopoverOpen #\(trace.id)] trigger=\(trigger) +0ms")
+        print("[WindowOpen #\(trace.id)] trigger=\(trigger) +0ms")
         return trace
     }
 
-    private func logPopoverOpen(_ trace: PopoverOpenTrace, message: String) {
+    private func logWindowOpen(_ trace: WindowOpenTrace, message: String) {
         let elapsedMilliseconds = Int((CFAbsoluteTimeGetCurrent() - trace.startedAt) * 1000)
-        print("[PopoverOpen #\(trace.id)] trigger=\(trace.trigger) +\(elapsedMilliseconds)ms \(message)")
+        print("[WindowOpen #\(trace.id)] trigger=\(trace.trigger) +\(elapsedMilliseconds)ms \(message)")
     }
 
     private func describe(route: MainMenuRoute) -> String {
@@ -588,11 +707,28 @@ class StatusBarController: ObservableObject {
             return "createRepo(\(path))"
         }
     }
-}
 
-class PopoverHostingController<Content: View>: NSHostingController<Content> {
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.window?.setContentSize(view.fittingSize)
+    private func describe(shortcutAction: MainMenuShortcutAction) -> String {
+        switch shortcutAction {
+        case .commit:
+            return "commit"
+        case .sync:
+            return "sync"
+        }
     }
 }
+
+private final class MainWindowLifecycleDelegate: NSObject, NSWindowDelegate {
+    var onShouldClose: (() -> Bool)?
+    var onDidResignKey: (() -> Void)?
+
+    func windowShouldClose(_: NSWindow) -> Bool {
+        onShouldClose?() ?? true
+    }
+
+    func windowDidResignKey(_: Notification) {
+        onDidResignKey?()
+    }
+}
+
+// swiftlint:enable file_length type_body_length

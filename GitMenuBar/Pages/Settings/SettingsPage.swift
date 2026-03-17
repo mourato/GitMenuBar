@@ -9,11 +9,13 @@ struct SettingsPageView: View {
     let repositoryPath: String
     let recentPaths: [String]
     @Binding var showFullPathInRecents: Bool
+    @AppStorage(AppPreferences.Keys.autoHideMainWindowOnBlur) private var autoHideMainWindowOnBlur =
+        MainWindowPreferences.defaultAutoHideOnBlur
     let onRepositoryPathChanged: (String) -> Void
     let onBrowse: () -> Void
     let onSelectRecentPath: (String) -> Void
     let onDone: () -> Void
-    let onTogglePopoverBehavior: () -> Void
+    let onSetAutoHideSuspended: (Bool) -> Void
     let onWipe: () -> Void
 
     var body: some View {
@@ -54,7 +56,12 @@ struct SettingsPageView: View {
                     }
                     .padding(.top, 4)
 
-                    GitHubConnectionSection(onTogglePopoverBehavior: onTogglePopoverBehavior)
+                    Toggle("Auto-hide window when focus is lost", isOn: $autoHideMainWindowOnBlur)
+                        .toggleStyle(.checkbox)
+                        .font(.system(size: 11))
+                        .padding(.top, 2)
+
+                    GitHubConnectionSection(setAutoHideSuspended: onSetAutoHideSuspended)
 
                     AISettingsSectionView()
                         .padding(.top, 4)
@@ -116,7 +123,7 @@ private struct SettingsPagePreviewContainer: View {
                 onBrowse: {},
                 onSelectRecentPath: { _ in },
                 onDone: {},
-                onTogglePopoverBehavior: {},
+                onSetAutoHideSuspended: { _ in },
                 onWipe: {}
             )
         }

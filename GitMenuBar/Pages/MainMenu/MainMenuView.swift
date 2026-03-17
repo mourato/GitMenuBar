@@ -71,15 +71,15 @@ struct MainMenuView: View {
     @State var discardError: String?
     @State var showDiscardAllConfirmation = false
 
-    let closePopover: () -> Void
-    let togglePopoverBehavior: () -> Void
+    let closeWindow: () -> Void
+    let setAutoHideSuspended: (Bool) -> Void
 
     init(
-        closePopover: @escaping () -> Void = {},
-        togglePopoverBehavior: @escaping () -> Void = {}
+        closeWindow: @escaping () -> Void = {},
+        setAutoHideSuspended: @escaping (Bool) -> Void = { _ in }
     ) {
-        self.closePopover = closePopover
-        self.togglePopoverBehavior = togglePopoverBehavior
+        self.closeWindow = closeWindow
+        self.setAutoHideSuspended = setAutoHideSuspended
     }
 
     var body: some View {
@@ -112,7 +112,7 @@ struct MainMenuView: View {
                         switchRepository(path: path, closeSettingsAfterRefresh: true)
                     },
                     onDone: handleSettingsDone,
-                    onTogglePopoverBehavior: togglePopoverBehavior,
+                    onSetAutoHideSuspended: setAutoHideSuspended,
                     onWipe: {
                         showWipeConfirmation = true
                     }

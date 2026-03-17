@@ -3,7 +3,7 @@ import SwiftUI
 struct GitHubConnectionSection: View {
     @EnvironmentObject private var githubAuthManager: GitHubAuthManager
 
-    let onTogglePopoverBehavior: () -> Void
+    let setAutoHideSuspended: (Bool) -> Void
 
     var body: some View {
         SettingsSection(title: "GitHub", systemImage: "globe") {
@@ -31,9 +31,7 @@ struct GitHubConnectionSection: View {
             }
         }
         .onChange(of: githubAuthManager.isAuthenticating) { _, isAuthenticating in
-            if !isAuthenticating {
-                onTogglePopoverBehavior()
-            }
+            setAutoHideSuspended(isAuthenticating)
         }
     }
 
@@ -94,7 +92,7 @@ struct GitHubConnectionSection: View {
                     .foregroundColor(.secondary)
                 Spacer()
                 Button("Connect") {
-                    onTogglePopoverBehavior()
+                    setAutoHideSuspended(true)
                     githubAuthManager.startDeviceFlow()
                 }
                 .buttonStyle(.borderless)
@@ -123,7 +121,7 @@ struct GitHubConnectionSection: View {
     authManager.isAuthenticated = true
     authManager.username = "octocat"
 
-    return GitHubConnectionSection(onTogglePopoverBehavior: {})
+    return GitHubConnectionSection(setAutoHideSuspended: { _ in })
         .environmentObject(authManager)
         .padding()
         .frame(width: 360)

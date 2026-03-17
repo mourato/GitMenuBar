@@ -188,7 +188,7 @@ extension MainMenuView {
             .padding(.horizontal, 10)
             .padding(.vertical, 16)
             .onExitCommand {
-                closePopover()
+                closeWindow()
             }
             .onReceive(shortcutActionBridge.actions) { action in
                 guard presentationModel.route == .main else { return }

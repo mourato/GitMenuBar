@@ -1,6 +1,6 @@
 import Combine
 
-enum MainMenuShortcutAction {
+enum MainMenuShortcutAction: Equatable {
     case commit
     case sync
 }

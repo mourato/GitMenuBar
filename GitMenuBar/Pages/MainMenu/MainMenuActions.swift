@@ -134,9 +134,9 @@ extension MainMenuView {
         gitManager.resetToLastCommit()
         commentText = ""
 
-        // Wait for reset to complete, then close popover
+        // Wait for reset to complete, then hide the main window
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            closePopover()
+            closeWindow()
         }
     }
 
@@ -153,7 +153,7 @@ extension MainMenuView {
                     // Clear the remote URL since repo is deleted
                     gitManager.remoteUrl = ""
                     presentationModel.clearCreateRepoSuggestion()
-                    closePopover()
+                    closeWindow()
                 }
             } catch {
                 await MainActor.run {
@@ -207,9 +207,9 @@ extension MainMenuView {
     }
 
     func selectDirectory() {
-        togglePopoverBehavior()
+        setAutoHideSuspended(true)
         DirectoryPickerService().selectDirectory(activateApp: true) { path in
-            self.togglePopoverBehavior()
+            self.setAutoHideSuspended(false)
 
             if let path {
                 switchRepository(path: path)
