@@ -4,9 +4,9 @@ import SwiftUI
 struct KeyboardShortcutsSection: View {
     var body: some View {
         SettingsSection(title: "Keyboard Shortcuts", systemImage: "keyboard") {
-            shortcutRow("Open Window", name: .togglePopover)
-            shortcutRow("Commit (App Focused)", name: .commit)
-            shortcutRow("Sync (App Focused)", name: .sync)
+            shortcutRow("Open Window (global)", name: .togglePopover)
+            shortcutRow("Commit", name: .commit)
+            shortcutRow("Sync", name: .sync)
 
             HStack {
                 Spacer()
