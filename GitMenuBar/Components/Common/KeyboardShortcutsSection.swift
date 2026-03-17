@@ -5,8 +5,8 @@ struct KeyboardShortcutsSection: View {
     var body: some View {
         SettingsSection(title: "Keyboard Shortcuts", systemImage: "keyboard") {
             shortcutRow("Open Window", name: .togglePopover)
-            shortcutRow("Commit", name: .commit)
-            shortcutRow("Sync", name: .sync)
+            shortcutRow("Commit (App Focused)", name: .commit)
+            shortcutRow("Sync (App Focused)", name: .sync)
 
             HStack {
                 Spacer()

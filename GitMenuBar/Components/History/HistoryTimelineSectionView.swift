@@ -4,6 +4,7 @@ import SwiftUI
 private enum HistoryTimelineMetrics {
     static let gutterWidth: CGFloat = 18
     static let circleSize: CGFloat = 8
+    static let rowContentVerticalPadding: CGFloat = 6
 }
 
 struct HistoryTimelineSectionView: View {
@@ -51,7 +52,7 @@ struct HistoryTimelineSectionView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.secondary)
 
-                    VStack(spacing: 4) {
+                    VStack(spacing: 0) {
                         ForEach(Array(section.commits.enumerated()), id: \.element.id) { index, commit in
                             HistoryTimelineRowView(
                                 commit: commit,
@@ -125,9 +126,9 @@ private struct HistoryTimelineRowView: View {
                             .foregroundColor(.secondary)
                     }
                 }
+                .padding(.vertical, HistoryTimelineMetrics.rowContentVerticalPadding)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.vertical, 6)
             .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(RoundedRectangle(cornerRadius: 8))

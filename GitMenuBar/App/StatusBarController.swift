@@ -15,6 +15,7 @@ final class StatusBarController: ObservableObject {
         static let statusIconPointSize = NSSize(width: 16, height: 16)
         static let windowInitialSize = NSSize(width: 400, height: 700)
         static let windowMinimumSize = NSSize(width: 360, height: 620)
+        static let appFocusedShortcutNames: [KeyboardShortcuts.Name] = [.commit, .sync]
     }
 
     private struct WindowOpenTrace {
@@ -214,6 +215,33 @@ final class StatusBarController: ObservableObject {
                 self?.handleActionShortcut(.sync)
             }
         }
+
+        setupActionShortcutScopeObservation()
+    }
+
+    private func setupActionShortcutScopeObservation() {
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+            .sink { _ in
+                KeyboardShortcuts.enable(Constants.appFocusedShortcutNames)
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)
+            .sink { _ in
+                KeyboardShortcuts.disable(Constants.appFocusedShortcutNames)
+            }
+            .store(in: &cancellables)
+
+        updateActionShortcutScope(isAppActive: NSApp.isActive)
+    }
+
+    private func updateActionShortcutScope(isAppActive: Bool) {
+        if isAppActive {
+            KeyboardShortcuts.enable(Constants.appFocusedShortcutNames)
+            return
+        }
+
+        KeyboardShortcuts.disable(Constants.appFocusedShortcutNames)
     }
 
     private func setupAuthenticationObservation() {
