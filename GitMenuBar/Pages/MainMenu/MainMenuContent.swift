@@ -187,6 +187,10 @@ extension MainMenuView {
             .padding(.horizontal, 10)
             .padding(.vertical, 16)
             .onExitCommand {
+                if isCommandPalettePresented {
+                    closeCommandPalette()
+                    return
+                }
                 closeWindow()
             }
             .onReceive(shortcutActionBridge.actions) { action in
@@ -354,7 +358,14 @@ extension MainMenuView {
     }
 
     private func requestCommitFieldFocus() {
+        guard !isCommandPalettePresented else {
+            return
+        }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            guard !isCommandPalettePresented else {
+                return
+            }
             isCommentFieldFocused = true
         }
     }

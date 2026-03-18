@@ -3,6 +3,7 @@
 //  GitMenuBar
 //
 
+import AppKit
 import Foundation
 
 extension MainMenuView {
@@ -203,6 +204,61 @@ extension MainMenuView {
         UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
     }
 
+    func presentCommandPaletteIfPossible() {
+        guard presentationModel.route == .main else {
+            return
+        }
+
+        commandPaletteQuery = ""
+        selectedCommandPaletteItemID = MainMenuCommandPaletteResolver.defaultSelectionID(
+            for: commandPaletteAllItems
+        )
+        isCommandPalettePresented = true
+    }
+
+    func handleCommandPalettePresentationRequest(_ token: Int) {
+        guard token > lastHandledCommandPaletteToken else {
+            return
+        }
+
+        lastHandledCommandPaletteToken = token
+        presentCommandPaletteIfPossible()
+    }
+
+    func closeCommandPalette() {
+        isCommandPalettePresented = false
+        commandPaletteQuery = ""
+        selectedCommandPaletteItemID = nil
+    }
+
+    func executeCommandPaletteItem(_ item: MainMenuCommandPaletteItem) {
+        switch MainMenuCommandPaletteResolver.executionDecision(for: item.kind) {
+        case .executeNow:
+            closeCommandPalette()
+            executeCommandPaletteItemImmediately(item)
+        case .requiresConfirmation:
+            closeCommandPalette()
+            showRestartConfirmation = true
+        }
+    }
+
+    func restartApplication() {
+        let appURL = URL(fileURLWithPath: Bundle.main.bundlePath)
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+
+        NSWorkspace.shared.openApplication(at: appURL, configuration: configuration) { _, error in
+            DispatchQueue.main.async {
+                if let error {
+                    restartError = error.localizedDescription
+                    return
+                }
+
+                NSApplication.shared.terminate(nil)
+            }
+        }
+    }
+
     func isCommitInFuture(_ commit: Commit) -> Bool {
         // A commit is "future" if it appears before current HEAD in the history list
         // This happens when we've reset backwards
@@ -212,5 +268,35 @@ extension MainMenuView {
             return false
         }
         return commitIndex < currentIndex
+    }
+
+    private func executeCommandPaletteItemImmediately(_ item: MainMenuCommandPaletteItem) {
+        switch item.kind {
+        case .commit:
+            Task {
+                _ = await actionCoordinator.performCommit(
+                    commentText: "",
+                    forceAutomaticMessage: true
+                )
+            }
+        case .commitAndPush:
+            Task {
+                _ = await actionCoordinator.performCommit(
+                    commentText: "",
+                    forceAutomaticMessage: true,
+                    shouldPushAfterCommit: true
+                )
+            }
+        case .sync:
+            Task {
+                _ = await actionCoordinator.performSync()
+            }
+        case let .recentProject(path):
+            switchRepository(path: path)
+        case .restartApp:
+            showRestartConfirmation = true
+        case .quitApp:
+            NSApplication.shared.terminate(nil)
+        }
     }
 }

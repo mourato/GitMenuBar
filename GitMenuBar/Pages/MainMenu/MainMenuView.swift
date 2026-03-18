@@ -27,11 +27,17 @@ struct MainMenuView: View {
     @AppStorage(AppPreferences.Keys.isHistorySectionCollapsed) var isHistorySectionCollapsed = false
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
     @State var showBranchSelector = false
+    @State var isCommandPalettePresented = false
+    @State var commandPaletteQuery = ""
+    @State var selectedCommandPaletteItemID: String?
+    @State var lastHandledCommandPaletteToken = 0
     @State var selectedPushBranch: String = ""
     @State var showPullToNewBranch = false
     @State var pullToNewBranchName = ""
     @State var useRebase = false
     @State var syncError: String?
+    @State var showRestartConfirmation = false
+    @State var restartError: String?
     @State var branchSwitchError: String?
     @State var showCreateBranch = false
     @State var newBranchName: String = ""
@@ -212,6 +218,17 @@ struct MainMenuView: View {
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
         .padding(10)
         .frame(width: 400)
+        .onAppear {
+            handleCommandPalettePresentationRequest(presentationModel.showCommandPaletteToken)
+        }
+        .onChange(of: presentationModel.showCommandPaletteToken) { token in
+            handleCommandPalettePresentationRequest(token)
+        }
+        .onChange(of: presentationModel.route) { route in
+            if route != .main {
+                closeCommandPalette()
+            }
+        }
     }
 }
 

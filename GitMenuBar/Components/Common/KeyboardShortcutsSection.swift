@@ -5,6 +5,7 @@ struct KeyboardShortcutsSection: View {
     var body: some View {
         SettingsSection(title: "Keyboard Shortcuts", systemImage: "keyboard") {
             shortcutRow("Open Window (global)", name: .togglePopover)
+            shortcutRow("Command Palette", name: .commandPalette)
             shortcutRow("Commit", name: .commit)
             shortcutRow("Sync", name: .sync)
 
@@ -12,6 +13,7 @@ struct KeyboardShortcutsSection: View {
                 Spacer()
                 Button("Reset to Defaults") {
                     KeyboardShortcuts.reset(.togglePopover)
+                    KeyboardShortcuts.reset(.commandPalette)
                     KeyboardShortcuts.reset(.commit)
                     KeyboardShortcuts.reset(.sync)
                 }

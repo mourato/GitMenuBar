@@ -66,6 +66,22 @@ extension MainMenuView {
             } message: {
                 Text(renameBranchError ?? "An unknown error occurred.")
             }
+            .alert("Restart GitMenuBar?", isPresented: $showRestartConfirmation) {
+                Button("Cancel", role: .cancel) {}
+                Button("Restart") {
+                    restartApplication()
+                }
+            } message: {
+                Text("This will relaunch the app immediately.")
+            }
+            .alert("Restart Failed", isPresented: .init(
+                get: { restartError != nil },
+                set: { if !$0 { restartError = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(restartError ?? "An unknown error occurred.")
+            }
             .alert("Merge into \(mergeTargetBranch)?", isPresented: $showMergeConfirmation) {
                 Button("Merge") {
                     gitManager.mergeBranch(fromBranch: mergeBranchName) { result in
@@ -198,6 +214,25 @@ extension MainMenuView {
                     },
                     onPull: pullToNewBranch
                 )
+            }
+            .overlay {
+                if isCommandPalettePresented && presentationModel.route == .main {
+                    ZStack {
+                        Color.black.opacity(0.22)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                closeCommandPalette()
+                            }
+
+                        MainMenuCommandPaletteView(
+                            query: $commandPaletteQuery,
+                            items: commandPaletteVisibleItems,
+                            selectedItemID: $selectedCommandPaletteItemID,
+                            onClose: closeCommandPalette,
+                            onSelectItem: executeCommandPaletteItem
+                        )
+                    }
+                }
             }
     }
 }

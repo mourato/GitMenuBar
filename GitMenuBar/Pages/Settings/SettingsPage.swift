@@ -24,7 +24,6 @@ struct GeneralSettingsPaneView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
-
                 HStack {
                     Text("Open at Login")
                     Spacer()
@@ -63,13 +62,13 @@ struct GeneralSettingsPaneView: View {
                     .controlSize(.small)
                     .accessibilityLabel("Show window on monitor with mouse pointer")
                 }
-                
+
                 Divider()
 
                 appearancePicker
-                
+
                 Divider()
-                
+
                 RepositoryPathSection(
                     repositoryPath: Binding(
                         get: { PathDisplayFormatter.abbreviatedPath(repositoryPath) },
@@ -77,7 +76,7 @@ struct GeneralSettingsPaneView: View {
                     ),
                     onBrowse: browseRepository
                 )
-                
+
                 Divider()
 
                 RecentProjectsSection(

@@ -142,6 +142,31 @@ extension MainMenuView {
         !gitManager.stagedFiles.isEmpty || !gitManager.changedFiles.isEmpty
     }
 
+    var commandPaletteActionState: StatusBarContextMenuActionState {
+        StatusBarContextMenuActionState.resolve(
+            hasCommitWork: actionCoordinator.hasWorkingTreeChanges,
+            hasSyncWork: actionCoordinator.hasSyncWork,
+            canAutoCommit: actionCoordinator.canAutoCommit,
+            canSync: actionCoordinator.canSync
+        )
+    }
+
+    var commandPaletteAllItems: [MainMenuCommandPaletteItem] {
+        MainMenuCommandPaletteResolver.resolveItems(
+            actionState: commandPaletteActionState,
+            syncActionTitle: actionCoordinator.syncActionTitle,
+            recentPaths: recentPaths,
+            currentRepoPath: currentRepoPath
+        )
+    }
+
+    var commandPaletteVisibleItems: [MainMenuCommandPaletteItem] {
+        MainMenuCommandPaletteResolver.filteredItems(
+            from: commandPaletteAllItems,
+            query: commandPaletteQuery
+        )
+    }
+
     var canCommit: Bool {
         primaryActionState.canCommit
     }

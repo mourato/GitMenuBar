@@ -32,6 +32,7 @@ final class MainMenuPresentationModel: ObservableObject {
     @Published private(set) var route: MainMenuRoute = .main
     @Published private(set) var refreshState: RefreshState = .idle
     @Published private(set) var focusCommitFieldToken = 0
+    @Published private(set) var showCommandPaletteToken = 0
     @Published private(set) var createRepoSuggestionPath: String?
 
     func prepareForPresentation(route: MainMenuRoute, requestCommitFocus: Bool) {
@@ -91,5 +92,9 @@ final class MainMenuPresentationModel: ObservableObject {
 
     func requestCommitFocus() {
         focusCommitFieldToken += 1
+    }
+
+    func requestCommandPalettePresentation() {
+        showCommandPaletteToken += 1
     }
 }

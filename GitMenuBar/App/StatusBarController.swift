@@ -16,7 +16,7 @@ final class StatusBarController: ObservableObject {
         static let windowInitialSize = NSSize(width: 400, height: 700)
         static let windowMinimumSize = NSSize(width: 360, height: 620)
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
-        static let appFocusedShortcutNames: [KeyboardShortcuts.Name] = [.commit, .sync]
+        static let appFocusedShortcutNames: [KeyboardShortcuts.Name] = [.commandPalette, .commit, .sync]
     }
 
     private struct WindowOpenTrace {
@@ -210,6 +210,12 @@ final class StatusBarController: ObservableObject {
             }
         }
 
+        KeyboardShortcuts.onKeyDown(for: .commandPalette) { [weak self] in
+            Task { @MainActor in
+                self?.handleCommandPaletteShortcut()
+            }
+        }
+
         KeyboardShortcuts.onKeyDown(for: .commit) { [weak self] in
             Task { @MainActor in
                 self?.handleActionShortcut(.commit)
@@ -360,6 +366,33 @@ final class StatusBarController: ObservableObject {
             shouldRefreshAfterPresentation: true,
             trace: trace
         )
+    }
+
+    private func handleCommandPaletteShortcut() {
+        if isMainWindowVisible {
+            presentationModel.showMain(requestCommitFocus: false)
+            NSApp.activate(ignoringOtherApps: true)
+            mainWindow?.makeKeyAndOrderFront(nil)
+            DispatchQueue.main.async { [weak self] in
+                self?.presentationModel.requestCommandPalettePresentation()
+            }
+            return
+        }
+
+        let trace = beginWindowOpenTrace(trigger: "shortcut_commandPalette")
+        let repositoryPath = currentRepositoryPath()
+        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
+
+        openMainWindow(
+            route: .main,
+            repositoryPath: repositoryPath,
+            isGitRepo: isGitRepo,
+            shouldRefreshAfterPresentation: true,
+            trace: trace
+        )
+        DispatchQueue.main.async { [weak self] in
+            self?.presentationModel.requestCommandPalettePresentation()
+        }
     }
 
     private func flushPendingShortcutActionsIfReady() {
