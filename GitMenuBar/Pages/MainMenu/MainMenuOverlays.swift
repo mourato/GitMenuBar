@@ -223,6 +223,7 @@ extension MainMenuView {
                             .onTapGesture {
                                 closeCommandPalette()
                             }
+                            .zIndex(0)
 
                         MainMenuCommandPaletteView(
                             query: $commandPaletteQuery,
@@ -231,6 +232,7 @@ extension MainMenuView {
                             onClose: closeCommandPalette,
                             onSelectItem: executeCommandPaletteItem
                         )
+                        .zIndex(1)
                     }
                 }
             }

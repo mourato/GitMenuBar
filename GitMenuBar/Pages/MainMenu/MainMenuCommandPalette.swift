@@ -233,25 +233,34 @@ struct MainMenuCommandPaletteView: View {
             if items.isEmpty {
                 emptyState
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        ForEach(MainMenuCommandPaletteSection.allCases, id: \.self) { section in
-                            let sectionItems = items.filter { $0.section == section }
-                            if !sectionItems.isEmpty {
-                                sectionView(section: section, items: sectionItems)
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(alignment: .leading, spacing: 8) {
+                            ForEach(MainMenuCommandPaletteSection.allCases, id: \.self) { section in
+                                let sectionItems = items.filter { $0.section == section }
+                                if !sectionItems.isEmpty {
+                                    sectionView(section: section, items: sectionItems)
+                                }
                             }
                         }
+                        .padding(.bottom, 2)
                     }
-                    .padding(.bottom, 2)
+                    .scrollIndicators(.hidden)
+                    .frame(maxHeight: 330)
+                    .onAppear {
+                        scrollSelectionIntoView(using: proxy, animated: false)
+                    }
+                    .onChange(of: selectedItemID) { _ in
+                        scrollSelectionIntoView(using: proxy, animated: true)
+                    }
                 }
-                .frame(maxHeight: 330)
             }
         }
         .padding(14)
         .frame(width: 360)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.regularMaterial)
+                .fill(Color(nsColor: .windowBackgroundColor))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -296,6 +305,7 @@ struct MainMenuCommandPaletteView: View {
                 } label: {
                     row(for: item)
                 }
+                .id(item.id)
                 .buttonStyle(.plain)
                 .disabled(!item.isEnabled)
             }
@@ -343,6 +353,34 @@ struct MainMenuCommandPaletteView: View {
         }
 
         selectedItemID = MainMenuCommandPaletteResolver.defaultSelectionID(for: items)
+    }
+
+    private func scrollSelectionIntoView(using proxy: ScrollViewProxy, animated: Bool) {
+        guard let selectedItemID else {
+            return
+        }
+
+        let targetID = selectedItemID
+        let performScroll = {
+            proxy.scrollTo(targetID, anchor: .center)
+        }
+
+        if animated {
+            DispatchQueue.main.async {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    performScroll()
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                performScroll()
+            }
+            return
+        }
+
+        DispatchQueue.main.async {
+            performScroll()
+        }
     }
 
     private func execute(_ item: MainMenuCommandPaletteItem) {

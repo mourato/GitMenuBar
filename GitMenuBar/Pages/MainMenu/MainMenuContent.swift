@@ -79,7 +79,7 @@ extension MainMenuView {
                     requestCommitFieldFocus()
                 }
 
-                ScrollView {
+                ScrollView(.vertical, showsIndicators: !isCommandPalettePresented) {
                     VStack(alignment: .leading, spacing: 12) {
                         if let suggestionPath = presentationModel.createRepoSuggestionPath, suggestionPath == currentRepoPath {
                             createRepoSuggestionBanner(path: suggestionPath)
@@ -103,6 +103,7 @@ extension MainMenuView {
                     }
                     .padding(.horizontal, 10)
                 }
+                .scrollDisabled(isCommandPalettePresented)
                 .frame(maxHeight: 520)
                 .frame(width: 380, alignment: .leading)
                 .id(gitManager.stagedFiles.count + gitManager.changedFiles.count)

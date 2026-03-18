@@ -36,3 +36,14 @@ hdiutil create \
 rm -rf "${STAGING_DIR}"
 
 echo "DMG created: ${DMG_PATH}"
+
+if [[ -t 0 ]]; then
+    printf "Open DMG now? [y/N] "
+    read -r open_dmg < /dev/tty || open_dmg=""
+
+    case "${open_dmg}" in
+        y|Y)
+            open "${DMG_PATH}"
+            ;;
+    esac
+fi
