@@ -279,6 +279,7 @@ final class StatusBarController: ObservableObject {
             defer: false
         )
 
+        configureMainWindowAppearance(window)
         window.title = "GitMenuBar"
         window.isReleasedWhenClosed = false
         window.setContentSize(Constants.windowInitialSize)
@@ -304,6 +305,14 @@ final class StatusBarController: ObservableObject {
 
         self.hostingController = hostingController
         mainWindow = window
+    }
+
+    private func configureMainWindowAppearance(_ window: NSWindow) {
+        window.styleMask.insert(.fullSizeContentView)
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
+        window.isMovableByWindowBackground = true
     }
 
     private func makeRootView() -> AnyView {

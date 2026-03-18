@@ -42,6 +42,7 @@ struct MainMenuHeaderView<ProjectSelectorContent: View>: View {
                 .buttonStyle(.borderless)
                 .focusable(false)
         }
+        .padding(.leading, 72)
         .padding(.top, 4)
     }
 }
