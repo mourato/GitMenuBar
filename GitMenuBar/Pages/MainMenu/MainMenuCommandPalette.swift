@@ -229,6 +229,9 @@ struct MainMenuCommandPaletteView: View {
                         .fill(Color.primary.opacity(0.05))
                 )
                 .focused($isSearchFieldFocused)
+                .onSubmit {
+                    executeSelectedOrFirstVisibleItem()
+                }
 
             if items.isEmpty {
                 emptyState
@@ -392,6 +395,26 @@ struct MainMenuCommandPaletteView: View {
         onSelectItem(item)
     }
 
+    private func executeSelectedOrFirstVisibleItem() {
+        guard let item = resolveItemToExecuteOnEnter() else {
+            NSSound.beep()
+            return
+        }
+
+        selectedItemID = item.id
+        execute(item)
+    }
+
+    private func resolveItemToExecuteOnEnter() -> MainMenuCommandPaletteItem? {
+        if let selectedItemID,
+           let selectedItem = items.first(where: { $0.id == selectedItemID })
+        {
+            return selectedItem
+        }
+
+        return items.first
+    }
+
     private func installLocalKeyMonitor() {
         guard localKeyEventMonitor == nil else {
             return
@@ -431,12 +454,7 @@ struct MainMenuCommandPaletteView: View {
             )
             return true
         case 36, 76: // Return, Enter
-            guard let selectedItem = items.first(where: { $0.id == selectedItemID }) else {
-                NSSound.beep()
-                return true
-            }
-
-            execute(selectedItem)
+            executeSelectedOrFirstVisibleItem()
             return true
         default:
             return false
