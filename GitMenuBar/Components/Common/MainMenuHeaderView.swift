@@ -43,7 +43,6 @@ struct MainMenuHeaderView<ProjectSelectorContent: View>: View {
                 .focusable(false)
         }
         .padding(.leading, 72)
-        .padding(.top, 4)
     }
 }
 

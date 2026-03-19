@@ -186,7 +186,8 @@ extension MainMenuView {
                 }
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 16)
+            .padding(.bottom, 16)
+            .ignoresSafeArea(.container, edges: .top)
             .onExitCommand {
                 if isCommandPalettePresented {
                     closeCommandPalette()

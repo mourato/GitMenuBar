@@ -216,7 +216,8 @@ struct MainMenuView: View {
             Text(discardError ?? "An unknown error occurred.")
         }
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
-        .padding(10)
+        .padding(.horizontal, 10)
+        .padding(.bottom, 10)
         .frame(width: 400)
         .onAppear {
             handleCommandPalettePresentationRequest(presentationModel.showCommandPaletteToken)
