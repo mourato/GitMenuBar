@@ -35,9 +35,6 @@ extension MainMenuView {
                     onProjectLongPress: {
                         showRepoOptions = true
                     },
-                    onSettingsTap: {
-                        openSettingsWindow()
-                    },
                     projectSelectorContent: {
                         ProjectSelectorPopoverView(
                             recentPaths: recentPaths,
@@ -53,9 +50,7 @@ extension MainMenuView {
                         )
                     }
                 )
-
-                Divider()
-                    .padding(.top, 4)
+                .padding(.vertical, 8)
 
                 CommitComposerSectionView(
                     commentText: $commentText,
@@ -183,6 +178,12 @@ extension MainMenuView {
                     }
 
                     Spacer()
+
+                    Button("Settings") {
+                        openSettingsWindow()
+                    }
+                    .buttonStyle(.borderless)
+                    .focusable(false)
                 }
             }
             .padding(.horizontal, 10)

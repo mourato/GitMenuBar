@@ -5,7 +5,6 @@ struct MainMenuHeaderView<ProjectSelectorContent: View>: View {
     let currentProjectName: String
     @Binding var showProjectSelector: Bool
     let onProjectLongPress: () -> Void
-    let onSettingsTap: () -> Void
     let projectSelectorContent: () -> ProjectSelectorContent
 
     var body: some View {
@@ -37,10 +36,6 @@ struct MainMenuHeaderView<ProjectSelectorContent: View>: View {
             }
 
             Spacer()
-
-            Button("Settings", action: onSettingsTap)
-                .buttonStyle(.borderless)
-                .focusable(false)
         }
         .padding(.leading, 72)
     }
@@ -51,7 +46,6 @@ struct MainMenuHeaderView<ProjectSelectorContent: View>: View {
         currentProjectName: "gitmenubar",
         showProjectSelector: .constant(false),
         onProjectLongPress: {},
-        onSettingsTap: {},
         projectSelectorContent: {
             Text("Projects")
                 .padding()
