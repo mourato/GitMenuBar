@@ -18,6 +18,58 @@ extension MainMenuView {
                     }
                 )
             }
+            .confirmationDialog(
+                "Commit message contains only spaces",
+                isPresented: .init(
+                    get: { actionCoordinator.whitespaceCommitPrompt != nil },
+                    set: { isPresented in
+                        if !isPresented {
+                            actionCoordinator.dismissWhitespaceCommitPrompt()
+                        }
+                    }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let prompt = actionCoordinator.whitespaceCommitPrompt {
+                    Button("Commit As Typed") {
+                        Task {
+                            let result = await actionCoordinator.commitUsingCurrentWhitespaceMessage(
+                                prompt.rawCommentText,
+                                shouldPushAfterCommit: prompt.shouldPushAfterCommit
+                            )
+                            if result.didCommit {
+                                commentText = ""
+                                if hideCommitMessageField {
+                                    isCommitFieldTemporarilyVisible = false
+                                }
+                            }
+                        }
+                    }
+
+                    Button("Generate Message") {
+                        Task {
+                            let result = await actionCoordinator.commitByGeneratingMessage(
+                                afterDiscardingWhitespace: prompt.rawCommentText,
+                                shouldPushAfterCommit: prompt.shouldPushAfterCommit
+                            )
+                            if result.didCommit {
+                                commentText = ""
+                                if hideCommitMessageField {
+                                    isCommitFieldTemporarilyVisible = false
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Button("Cancel", role: .cancel) {
+                    actionCoordinator.dismissWhitespaceCommitPrompt()
+                }
+            } message: {
+                Text(
+                    "The current message has no visible text. You can cancel, commit with the current text, or ignore it and generate a message automatically."
+                )
+            }
             .alert("Push Failed", isPresented: .init(
                 get: { pushError != nil },
                 set: { if !$0 { pushError = nil } }

@@ -3,8 +3,10 @@ import SwiftUI
 struct CommitComposerSectionView: View {
     @Binding var commentText: String
     let isCommentFieldFocused: FocusState<Bool>.Binding
+    let showsCommentField: Bool
     let primaryButtonSystemImage: String?
     let isPrimaryActionBusy: Bool
+    let automaticMessageHint: String?
     let generationDisabledReason: String?
     let generationError: String?
     let primaryButtonTitle: String
@@ -13,19 +15,21 @@ struct CommitComposerSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Commit message (optional)", text: $commentText, axis: .vertical)
-                .font(.system(size: 13))
-                .lineLimit(1 ... 4)
-                .textFieldStyle(.plain)
-                .padding(.leading, 16)
-                .padding(.vertical, 10)
-                .background(Color.black.opacity(0.06))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .focused(isCommentFieldFocused)
+            if showsCommentField {
+                TextField("Commit message (optional)", text: $commentText, axis: .vertical)
+                    .font(.system(size: 13))
+                    .lineLimit(1 ... 4)
+                    .textFieldStyle(.plain)
+                    .padding(.leading, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.black.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .focused(isCommentFieldFocused)
+            }
 
             Button(action: onPrimaryAction) {
                 HStack(spacing: 8) {
@@ -49,6 +53,12 @@ struct CommitComposerSectionView: View {
             .tint(isPrimaryButtonDisabled ? .gray.opacity(0.75) : nil)
             .disabled(isPrimaryButtonDisabled)
 
+            if let automaticMessageHint {
+                Text(automaticMessageHint)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+
             if let generationDisabledReason {
                 Text(generationDisabledReason)
                     .font(.system(size: 10))
@@ -66,13 +76,17 @@ struct CommitComposerSectionView: View {
 private struct CommitComposerSectionPreviewContainer: View {
     @State private var message = "feat(ui): improve spacing"
     @FocusState private var isFocused: Bool
+    let showsCommentField: Bool
+    let automaticMessageHint: String?
 
     var body: some View {
         CommitComposerSectionView(
             commentText: $message,
             isCommentFieldFocused: $isFocused,
+            showsCommentField: showsCommentField,
             primaryButtonSystemImage: "checkmark",
             isPrimaryActionBusy: false,
+            automaticMessageHint: automaticMessageHint,
             generationDisabledReason: nil,
             generationError: nil,
             primaryButtonTitle: "Commit",
@@ -85,5 +99,15 @@ private struct CommitComposerSectionPreviewContainer: View {
 }
 
 #Preview("Commit Composer") {
-    CommitComposerSectionPreviewContainer()
+    CommitComposerSectionPreviewContainer(
+        showsCommentField: true,
+        automaticMessageHint: nil
+    )
+}
+
+#Preview("Commit Composer Hidden Field") {
+    CommitComposerSectionPreviewContainer(
+        showsCommentField: false,
+        automaticMessageHint: "Commit messages will be generated automatically."
+    )
 }

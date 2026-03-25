@@ -8,6 +8,7 @@ struct GeneralSettingsPaneView: View {
     @AppStorage(AppPreferences.Keys.toggleShortcutUsesMouseMonitor)
     private var toggleShortcutUsesMouseMonitor =
         MainWindowPreferences.defaultToggleShortcutUsesMouseMonitor
+    @AppStorage(AppPreferences.Keys.hideCommitMessageField) private var hideCommitMessageField = false
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
 
     @State private var repositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
@@ -61,6 +62,24 @@ struct GeneralSettingsPaneView: View {
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .accessibilityLabel("Show window on monitor with mouse pointer")
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Hide commit message field")
+                        Spacer()
+                        Toggle("", isOn: $hideCommitMessageField)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .accessibilityLabel("Hide commit message field")
+                    }
+
+                    Text(
+                        "When enabled, GitMenuBar hides the text field and prefers automatic commit messages. If automatic generation is unavailable, the field is shown when needed."
+                    )
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Divider()

@@ -7,14 +7,26 @@ import AppKit
 import Foundation
 
 extension MainMenuView {
+    private var shouldRevealCommitFieldBeforeSubmitting: Bool {
+        hideCommitMessageField && !isCommitFieldTemporarilyVisible && !aiCommitCoordinator.isReadyForGeneration
+    }
+
     private var recentProjectsStore: RecentProjectsStore {
         RecentProjectsStore()
     }
 
     func submitComment() async {
+        if shouldRevealCommitFieldBeforeSubmitting {
+            revealCommitFieldForManualEntry()
+            return
+        }
+
         let result = await actionCoordinator.performCommit(commentText: commentText)
         if result.didCommit {
             commentText = ""
+            if hideCommitMessageField {
+                isCommitFieldTemporarilyVisible = false
+            }
         }
     }
 
@@ -229,6 +241,11 @@ extension MainMenuView {
         isCommandPalettePresented = false
         commandPaletteQuery = ""
         selectedCommandPaletteItemID = nil
+    }
+
+    func revealCommitFieldForManualEntry() {
+        isCommitFieldTemporarilyVisible = true
+        presentationModel.requestCommitFocus()
     }
 
     func executeCommandPaletteItem(_ item: MainMenuCommandPaletteItem) {

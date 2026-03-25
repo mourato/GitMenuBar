@@ -82,15 +82,14 @@ struct MainMenuPrimaryActionState: Equatable {
 
     static func resolve(
         hasWorkingTreeChanges: Bool,
-        hasCommitMessage: Bool,
+        canCommitWithCurrentInput: Bool,
         syncLabelState: MainMenuSyncLabelState,
-        canAutoCommit: Bool,
         isBusy: Bool
     ) -> MainMenuPrimaryActionState {
         let hasSyncWork = syncLabelState.hasSyncWork
         let showsIdleCommitState = !hasWorkingTreeChanges && !hasSyncWork
         let showsCommitAction = hasWorkingTreeChanges || !hasSyncWork
-        let canCommit = hasWorkingTreeChanges && (hasCommitMessage || canAutoCommit) && !isBusy
+        let canCommit = hasWorkingTreeChanges && canCommitWithCurrentInput && !isBusy
         let canSync = hasSyncWork && !hasWorkingTreeChanges && !isBusy
 
         return MainMenuPrimaryActionState(
@@ -104,16 +103,39 @@ struct MainMenuPrimaryActionState: Equatable {
 }
 
 extension MainMenuView {
-    var hasCommitMessage: Bool {
+    var hasVisibleCommitMessage: Bool {
         !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var hasWhitespaceOnlyCommitInput: Bool {
+        !commentText.isEmpty && !hasVisibleCommitMessage
+    }
+
+    var showsCommentField: Bool {
+        !hideCommitMessageField || isCommitFieldTemporarilyVisible
+    }
+
+    var automaticMessageHint: String? {
+        guard !showsCommentField else {
+            return nil
+        }
+
+        if aiCommitCoordinator.isReadyForGeneration {
+            return "Commit messages will be generated automatically."
+        }
+
+        return "Automatic commit generation is unavailable. Click Commit to enter a message manually."
+    }
+
+    var canCommitWithCurrentInput: Bool {
+        hasVisibleCommitMessage || hasWhitespaceOnlyCommitInput || aiCommitCoordinator.isReadyForGeneration || !showsCommentField
     }
 
     var primaryActionState: MainMenuPrimaryActionState {
         MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: hasWorkingTreeChanges,
-            hasCommitMessage: hasCommitMessage,
+            canCommitWithCurrentInput: canCommitWithCurrentInput,
             syncLabelState: syncLabelState,
-            canAutoCommit: aiCommitCoordinator.isReadyForGeneration,
             isBusy: isPrimaryActionBusy
         )
     }
@@ -196,11 +218,11 @@ extension MainMenuView {
     }
 
     var shouldShowGenerationHint: Bool {
-        hasWorkingTreeChanges && !hasCommitMessage && !aiCommitCoordinator.isReadyForGeneration
+        hasWorkingTreeChanges && !showsCommentField && !aiCommitCoordinator.isReadyForGeneration
     }
 
     var displayedGenerationError: String? {
-        guard hasWorkingTreeChanges, !hasCommitMessage else { return nil }
+        guard hasWorkingTreeChanges, !hasVisibleCommitMessage, !hasWhitespaceOnlyCommitInput else { return nil }
         return aiCommitCoordinator.generationError
     }
 }

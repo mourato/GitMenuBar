@@ -100,7 +100,10 @@ class GitManager: ObservableObject {
 
         DispatchQueue.global(qos: .userInitiated).async {
             // Commit only what is already staged.
-            let commitResult = self.executeGitCommand(in: self.storedRepoPath, args: ["commit", "--no-gpg-sign", "-m", message])
+            let commitResult = self.executeGitCommand(
+                in: self.storedRepoPath,
+                args: ["commit", "--no-gpg-sign", "--allow-empty-message", "--cleanup=verbatim", "-m", message]
+            )
             if commitResult.failure {
                 DispatchQueue.main.async {
                     self.isCommitting = false

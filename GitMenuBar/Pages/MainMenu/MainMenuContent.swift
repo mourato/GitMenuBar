@@ -55,8 +55,10 @@ extension MainMenuView {
                 CommitComposerSectionView(
                     commentText: $commentText,
                     isCommentFieldFocused: $isCommentFieldFocused,
+                    showsCommentField: showsCommentField,
                     primaryButtonSystemImage: primaryButtonSystemImage,
                     isPrimaryActionBusy: isPrimaryActionBusy,
+                    automaticMessageHint: automaticMessageHint,
                     generationDisabledReason: shouldShowGenerationHint ? aiCommitCoordinator.generationDisabledReason : nil,
                     generationError: displayedGenerationError,
                     primaryButtonTitle: primaryButtonTitle,
@@ -361,7 +363,7 @@ extension MainMenuView {
     }
 
     private func requestCommitFieldFocus() {
-        guard !isCommandPalettePresented else {
+        guard showsCommentField, !isCommandPalettePresented else {
             return
         }
 

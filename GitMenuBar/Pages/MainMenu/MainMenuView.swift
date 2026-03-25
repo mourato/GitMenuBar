@@ -25,8 +25,10 @@ struct MainMenuView: View {
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isUnstagedSectionCollapsed) var isUnstagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isHistorySectionCollapsed) var isHistorySectionCollapsed = false
+    @AppStorage(AppPreferences.Keys.hideCommitMessageField) var hideCommitMessageField = false
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
     @State var showBranchSelector = false
+    @State var isCommitFieldTemporarilyVisible = false
     @State var isCommandPalettePresented = false
     @State var commandPaletteQuery = ""
     @State var selectedCommandPaletteItemID: String?
@@ -228,6 +230,14 @@ struct MainMenuView: View {
         .onChange(of: presentationModel.route) { route in
             if route != .main {
                 closeCommandPalette()
+                if commentText.isEmpty {
+                    isCommitFieldTemporarilyVisible = false
+                }
+            }
+        }
+        .onChange(of: hideCommitMessageField) { isHidden in
+            if !isHidden || commentText.isEmpty {
+                isCommitFieldTemporarilyVisible = false
             }
         }
     }

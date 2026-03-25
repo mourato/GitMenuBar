@@ -9,9 +9,8 @@ final class GitMenuBarTests: XCTestCase {
     func testPrimaryActionShowsEnabledCommitWhenChangesAndMessageExist() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: true,
-            hasCommitMessage: true,
+            canCommitWithCurrentInput: true,
             syncLabelState: .pushOnly,
-            canAutoCommit: true,
             isBusy: false
         )
 
@@ -25,9 +24,8 @@ final class GitMenuBarTests: XCTestCase {
     func testPrimaryActionKeepsCommitDisabledWhenMessageIsMissing() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: true,
-            hasCommitMessage: false,
+            canCommitWithCurrentInput: false,
             syncLabelState: .pushOnly,
-            canAutoCommit: false,
             isBusy: false
         )
 
@@ -40,12 +38,11 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.showsIdleCommitState)
     }
 
-    func testPrimaryActionEnablesCommitWhenAutoCommitIsAvailable() {
+    func testPrimaryActionEnablesCommitWhenInputCanBeResolvedAutomatically() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: true,
-            hasCommitMessage: false,
+            canCommitWithCurrentInput: true,
             syncLabelState: .pushOnly,
-            canAutoCommit: true,
             isBusy: false
         )
 
@@ -60,9 +57,8 @@ final class GitMenuBarTests: XCTestCase {
     func testPrimaryActionShowsPushChangesWhenOnlyLocalCommitsNeedSync() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: false,
-            hasCommitMessage: false,
+            canCommitWithCurrentInput: false,
             syncLabelState: .pushOnly,
-            canAutoCommit: false,
             isBusy: false
         )
 
@@ -77,9 +73,8 @@ final class GitMenuBarTests: XCTestCase {
     func testPrimaryActionUsesSyncChangesWhenRemoteHasCommitsMissingLocally() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: false,
-            hasCommitMessage: true,
+            canCommitWithCurrentInput: true,
             syncLabelState: .syncChanges,
-            canAutoCommit: false,
             isBusy: false
         )
 
@@ -94,9 +89,8 @@ final class GitMenuBarTests: XCTestCase {
     func testPrimaryActionUsesSyncChangesWhenLocalAndRemoteAreDiverged() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: false,
-            hasCommitMessage: false,
+            canCommitWithCurrentInput: false,
             syncLabelState: .syncChanges,
-            canAutoCommit: false,
             isBusy: false
         )
 
@@ -111,9 +105,8 @@ final class GitMenuBarTests: XCTestCase {
     func testPrimaryActionFallsBackToDisabledCommitWhenNothingNeedsAction() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: false,
-            hasCommitMessage: false,
+            canCommitWithCurrentInput: false,
             syncLabelState: .none,
-            canAutoCommit: false,
             isBusy: false
         )
 
@@ -151,5 +144,41 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertTrue(state.showsCommit)
         XCTAssertTrue(state.showsCommitAndPush)
         XCTAssertFalse(state.showsSync)
+    }
+
+    func testPrimaryActionEnablesCommitForWhitespaceOnlyInput() {
+        let state = MainMenuPrimaryActionState.resolve(
+            hasWorkingTreeChanges: true,
+            canCommitWithCurrentInput: true,
+            syncLabelState: .none,
+            isBusy: false
+        )
+
+        XCTAssertTrue(state.canCommit)
+        XCTAssertFalse(state.isPrimaryButtonDisabled)
+    }
+
+    func testPrimaryActionEnablesCommitWhenFieldIsHiddenAndAutomaticGenerationIsAvailable() {
+        let state = MainMenuPrimaryActionState.resolve(
+            hasWorkingTreeChanges: true,
+            canCommitWithCurrentInput: true,
+            syncLabelState: .none,
+            isBusy: false
+        )
+
+        XCTAssertTrue(state.canCommit)
+        XCTAssertEqual(state.primaryButtonTitle, "Commit")
+    }
+
+    func testPrimaryActionEnablesCommitWhenFieldIsHiddenAndMustBeRevealed() {
+        let state = MainMenuPrimaryActionState.resolve(
+            hasWorkingTreeChanges: true,
+            canCommitWithCurrentInput: true,
+            syncLabelState: .none,
+            isBusy: false
+        )
+
+        XCTAssertTrue(state.canCommit)
+        XCTAssertFalse(state.isPrimaryButtonDisabled)
     }
 }
