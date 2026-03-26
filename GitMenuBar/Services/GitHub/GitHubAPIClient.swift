@@ -122,9 +122,8 @@ class GitHubAPIClient {
             case 429:
                 throw GitHubAPIError.rateLimitExceeded
             default:
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let message = json["message"] as? String
-                {
+                let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["message"] as? String
+                if let message {
                     throw GitHubAPIError.unknown(message)
                 }
                 throw GitHubAPIError.unknown("Status code: \(httpResponse.statusCode)")
@@ -205,9 +204,8 @@ class GitHubAPIClient {
             case 404:
                 throw GitHubAPIError.notFound
             default:
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let message = json["message"] as? String
-                {
+                let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["message"] as? String
+                if let message {
                     throw GitHubAPIError.unknown(message)
                 }
                 throw GitHubAPIError.unknown("Status code: \(httpResponse.statusCode)")
@@ -401,9 +399,8 @@ class GitHubAPIClient {
             case 404:
                 throw GitHubAPIError.notFound
             default:
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let message = json["message"] as? String
-                {
+                let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["message"] as? String
+                if let message {
                     throw GitHubAPIError.unknown(message)
                 }
                 throw GitHubAPIError.unknown("Status code: \(httpResponse.statusCode)")
@@ -456,9 +453,8 @@ class GitHubAPIClient {
             case 422:
                 throw GitHubAPIError.unknown("Unprocessable Entity - validation failed")
             default:
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let message = json["message"] as? String
-                {
+                let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["message"] as? String
+                if let message {
                     throw GitHubAPIError.unknown(message)
                 }
                 throw GitHubAPIError.unknown("Status code: \(httpResponse.statusCode)")

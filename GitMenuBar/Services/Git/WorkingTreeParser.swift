@@ -1,17 +1,19 @@
 import Foundation
 
 final class WorkingTreeParser {
+    struct PorcelainStatus {
+        let stagedStatuses: [String: WorkingTreeFileStatus]
+        let changedStatuses: [String: WorkingTreeFileStatus]
+        let untrackedPaths: Set<String>
+    }
+
     private let runner: GitCommandRunner
 
     init(runner: GitCommandRunner) {
         self.runner = runner
     }
 
-    func parsePorcelainStatus(_ output: String) -> (
-        stagedStatuses: [String: WorkingTreeFileStatus],
-        changedStatuses: [String: WorkingTreeFileStatus],
-        untrackedPaths: Set<String>
-    ) {
+    func parsePorcelainStatus(_ output: String) -> PorcelainStatus {
         var stagedStatuses: [String: WorkingTreeFileStatus] = [:]
         var changedStatuses: [String: WorkingTreeFileStatus] = [:]
         var untrackedPaths = Set<String>()
@@ -44,7 +46,11 @@ final class WorkingTreeParser {
             }
         }
 
-        return (stagedStatuses, changedStatuses, untrackedPaths)
+        return PorcelainStatus(
+            stagedStatuses: stagedStatuses,
+            changedStatuses: changedStatuses,
+            untrackedPaths: untrackedPaths
+        )
     }
 
     func parseNumstat(_ output: String) -> [String: LineDiffStats] {

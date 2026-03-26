@@ -257,9 +257,8 @@ class GitHubAuthManager: ObservableObject {
         do {
             let (data, _) = try await URLSession.shared.data(for: request)
 
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let login = json["login"] as? String
-            {
+            let login = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["login"] as? String
+            if let login {
                 await MainActor.run {
                     self.username = login
                 }

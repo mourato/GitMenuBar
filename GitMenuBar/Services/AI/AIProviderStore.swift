@@ -52,17 +52,19 @@ final class AIProviderStore: ObservableObject {
     }
 
     func load() {
-        if let providersData = dataStore.data(forKey: providersKey),
-           let decodedProviders = try? JSONDecoder().decode([AIProviderConfig].self, from: providersData)
-        {
+        let decodedProviders = dataStore.data(forKey: providersKey).flatMap { data in
+            try? JSONDecoder().decode([AIProviderConfig].self, from: data)
+        }
+        if let decodedProviders {
             providers = decodedProviders
         } else {
             providers = []
         }
 
-        if let preferencesData = dataStore.data(forKey: preferencesKey),
-           let decodedPreferences = try? JSONDecoder().decode(AICommitPreferences.self, from: preferencesData)
-        {
+        let decodedPreferences = dataStore.data(forKey: preferencesKey).flatMap { data in
+            try? JSONDecoder().decode(AICommitPreferences.self, from: data)
+        }
+        if let decodedPreferences {
             preferences = decodedPreferences
         } else {
             preferences = .default
@@ -94,9 +96,8 @@ final class AIProviderStore: ObservableObject {
     func updateDefaultProvider(_ providerId: UUID?) {
         preferences.defaultProviderId = providerId
 
-        if let provider = defaultProvider,
-           preferences.defaultModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        {
+        let defaultModelIsEmpty = preferences.defaultModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if let provider = defaultProvider, defaultModelIsEmpty {
             preferences.defaultModel = provider.selectedModel
         }
 
@@ -148,9 +149,10 @@ final class AIProviderStore: ObservableObject {
             return
         }
 
-        if let selectedId = preferences.defaultProviderId,
-           !providers.contains(where: { $0.id == selectedId })
-        {
+        let hasValidDefaultProvider = preferences.defaultProviderId.map { selectedId in
+            providers.contains(where: { $0.id == selectedId })
+        } ?? false
+        if preferences.defaultProviderId != nil, !hasValidDefaultProvider {
             preferences.defaultProviderId = providers.first?.id
         }
 
@@ -158,9 +160,8 @@ final class AIProviderStore: ObservableObject {
             preferences.defaultProviderId = providers.first?.id
         }
 
-        if let provider = defaultProvider,
-           preferences.defaultModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        {
+        let defaultModelIsEmpty = preferences.defaultModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if let provider = defaultProvider, defaultModelIsEmpty {
             preferences.defaultModel = provider.selectedModel
         }
     }

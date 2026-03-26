@@ -2,6 +2,12 @@ import Foundation
 
 @MainActor
 final class AICommitCoordinator: ObservableObject {
+    private struct GenerationDependencies {
+        let provider: AIProviderConfig
+        let apiKey: String
+        let model: String
+    }
+
     @Published private(set) var isGenerating: Bool = false
     @Published var generationError: String?
 
@@ -145,7 +151,7 @@ final class AICommitCoordinator: ObservableObject {
         return apiKey
     }
 
-    private func resolvedGenerationDependencies() throws -> (provider: AIProviderConfig, apiKey: String, model: String) {
+    private func resolvedGenerationDependencies() throws -> GenerationDependencies {
         guard let provider = providerStore.defaultProvider else {
             throw AIError.providerNotConfigured
         }
@@ -160,6 +166,6 @@ final class AICommitCoordinator: ObservableObject {
             throw AIError.modelNotConfigured
         }
 
-        return (provider, apiKey, model)
+        return GenerationDependencies(provider: provider, apiKey: apiKey, model: model)
     }
 }

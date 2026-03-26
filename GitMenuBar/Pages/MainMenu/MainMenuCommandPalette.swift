@@ -349,9 +349,10 @@ struct MainMenuCommandPaletteView: View {
             return
         }
 
-        if let selectedItemID,
-           items.contains(where: { $0.id == selectedItemID })
-        {
+        let selectionStillVisible = selectedItemID.map { id in
+            items.contains(where: { $0.id == id })
+        } ?? false
+        if selectionStillVisible {
             return
         }
 
@@ -406,9 +407,10 @@ struct MainMenuCommandPaletteView: View {
     }
 
     private func resolveItemToExecuteOnEnter() -> MainMenuCommandPaletteItem? {
-        if let selectedItemID,
-           let selectedItem = items.first(where: { $0.id == selectedItemID })
-        {
+        let selectedItem = selectedItemID.flatMap { id in
+            items.first(where: { $0.id == id })
+        }
+        if let selectedItem {
             return selectedItem
         }
 

@@ -120,9 +120,8 @@ struct AIProviderEditorSheet: View {
 
             availableModels = models
 
-            if selectedModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               let firstModel = models.first
-            {
+            let shouldSelectFirstModel = selectedModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            if shouldSelectFirstModel, let firstModel = models.first {
                 selectedModel = firstModel
             }
         } catch {

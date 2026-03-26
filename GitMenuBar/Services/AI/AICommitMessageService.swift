@@ -162,11 +162,11 @@ final class AICommitMessageService {
                 var effectiveScope = selectedScope
                 var rawDiff = self.diff(for: selectedScope, gitManager: gitManager)
 
-                if overrideScope == nil,
-                   preferredScopeMode == .stagedWithFallbackAll,
-                   selectedScope == .staged,
-                   rawDiff.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                {
+                let shouldFallbackToAll = overrideScope == nil &&
+                    preferredScopeMode == .stagedWithFallbackAll &&
+                    selectedScope == .staged &&
+                    rawDiff.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                if shouldFallbackToAll {
                     effectiveScope = .all
                     rawDiff = self.diff(for: .all, gitManager: gitManager)
                 }

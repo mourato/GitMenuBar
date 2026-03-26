@@ -47,10 +47,9 @@ private func makeBaseURL(from endpoint: String) throws -> URL {
 
 private func requestFailedError(from data: Data, fallback: String) -> AIError {
     if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-        if let error = json["error"] as? [String: Any],
-           let message = error["message"] as? String
-        {
-            return .requestFailed(message)
+        let nestedErrorMessage = (json["error"] as? [String: Any])?["message"] as? String
+        if let nestedErrorMessage {
+            return .requestFailed(nestedErrorMessage)
         }
 
         if let message = json["message"] as? String {
