@@ -60,13 +60,19 @@ class GitHubAPIClient {
         let email: String?
     }
 
+    private enum GitHubCommitAuthorKey: String, CodingKey {
+        case login
+        case avatarUrl = "avatar_url"
+    }
+
     private struct GitHubCommitAuthor: Decodable {
         let login: String?
         let avatarUrl: String?
 
-        enum CodingKeys: String, CodingKey {
-            case login
-            case avatarUrl = "avatar_url"
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: GitHubCommitAuthorKey.self)
+            login = try container.decodeIfPresent(String.self, forKey: .login)
+            avatarUrl = try container.decodeIfPresent(String.self, forKey: .avatarUrl)
         }
     }
 

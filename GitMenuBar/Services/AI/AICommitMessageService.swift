@@ -30,6 +30,11 @@ final class AICommitMessageService {
         let truncationNotice: String?
     }
 
+    private struct SnippetAllocation {
+        let consumed: [Int]
+        let snippets: [String]
+    }
+
     private static let diffHeaderRegex = try? NSRegularExpression(
         pattern: #"^diff --git (?:"a/(.+)"|a/(\S+)) (?:"b/(.+)"|b/(\S+))$"#
     )
@@ -229,97 +234,11 @@ final class AICommitMessageService {
         sections: [ParsedDiffSection]
     ) -> StructuredDiffPayload {
         let totalCharacters = sections.reduce(0) { $0 + $1.content.count }
+        let allocation = allocateSnippets(from: sections)
+        let includedSnippets = buildIncludedSnippets(from: sections, allocation: allocation)
+        let overflowSummaries = buildOverflowSummaries(from: sections, allocation: allocation)
+        let effectiveIncludedCharacters = allocation.consumed.reduce(0, +)
         let fileCount = sections.count
-        let baselineReserve = fileCount == 0 ? 0 : min(220, maxDiffCharacters / max(fileCount, 1))
-
-        var consumed = Array(repeating: 0, count: fileCount)
-        var snippets = Array(repeating: "", count: fileCount)
-        var usedCharacters = 0
-
-        if maxDiffCharacters > 0 {
-            for index in sections.indices {
-                guard usedCharacters < maxDiffCharacters else { break }
-
-                let content = sections[index].content
-                let initialTake = min(baselineReserve, content.count)
-                if initialTake <= 0 {
-                    continue
-                }
-
-                let take = min(initialTake, maxDiffCharacters - usedCharacters)
-                snippets[index] = String(content.prefix(take))
-                consumed[index] = take
-                usedCharacters += take
-            }
-
-            while usedCharacters < maxDiffCharacters {
-                let pendingIndices = sections.indices.filter { consumed[$0] < sections[$0].content.count }
-                if pendingIndices.isEmpty {
-                    break
-                }
-
-                let remainingBudget = maxDiffCharacters - usedCharacters
-                let share = max(80, remainingBudget / pendingIndices.count)
-                var wroteAnySlice = false
-
-                for index in pendingIndices {
-                    if usedCharacters >= maxDiffCharacters {
-                        break
-                    }
-
-                    let content = sections[index].content
-                    let remainingInSection = content.count - consumed[index]
-                    guard remainingInSection > 0 else {
-                        continue
-                    }
-
-                    let take = min(share, remainingInSection, maxDiffCharacters - usedCharacters)
-                    guard take > 0 else {
-                        continue
-                    }
-
-                    let start = content.index(content.startIndex, offsetBy: consumed[index])
-                    let end = content.index(start, offsetBy: take)
-                    snippets[index].append(contentsOf: content[start ..< end])
-                    consumed[index] += take
-                    usedCharacters += take
-                    wroteAnySlice = true
-                }
-
-                if !wroteAnySlice {
-                    break
-                }
-            }
-        }
-
-        let includedSnippets = sections.indices.compactMap { index -> IncludedDiffSnippet? in
-            let snippet = snippets[index].trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !snippet.isEmpty else {
-                return nil
-            }
-
-            let truncated = consumed[index] < sections[index].content.count
-            return IncludedDiffSnippet(
-                path: sections[index].path,
-                content: snippet,
-                truncated: truncated
-            )
-        }
-
-        let overflowSummaries = sections.indices.compactMap { index -> OverflowSummary? in
-            let omittedCharacters = max(0, sections[index].content.count - consumed[index])
-            guard omittedCharacters > 0 else {
-                return nil
-            }
-
-            return OverflowSummary(
-                path: sections[index].path,
-                lineDiff: sections[index].lineDiff,
-                omittedCharacters: omittedCharacters
-            )
-        }
-
-        let effectiveIncludedCharacters = consumed.reduce(0, +)
         let truncationNotice: String? = {
             guard effectiveIncludedCharacters < totalCharacters else { return nil }
             return "Diff truncated to \(effectiveIncludedCharacters) characters from \(totalCharacters) characters across \(fileCount) files."
@@ -335,6 +254,110 @@ final class AICommitMessageService {
             includedCharacters: effectiveIncludedCharacters,
             truncationNotice: truncationNotice
         )
+    }
+
+    private func allocateSnippets(from sections: [ParsedDiffSection]) -> SnippetAllocation {
+        let fileCount = sections.count
+        let baselineReserve = fileCount == 0 ? 0 : min(220, maxDiffCharacters / max(fileCount, 1))
+        var consumed = Array(repeating: 0, count: fileCount)
+        var snippets = Array(repeating: "", count: fileCount)
+        var usedCharacters = 0
+
+        guard maxDiffCharacters > 0 else {
+            return SnippetAllocation(consumed: consumed, snippets: snippets)
+        }
+
+        for index in sections.indices {
+            guard usedCharacters < maxDiffCharacters else { break }
+
+            let content = sections[index].content
+            let initialTake = min(baselineReserve, content.count)
+            guard initialTake > 0 else {
+                continue
+            }
+
+            let take = min(initialTake, maxDiffCharacters - usedCharacters)
+            snippets[index] = String(content.prefix(take))
+            consumed[index] = take
+            usedCharacters += take
+        }
+
+        while usedCharacters < maxDiffCharacters {
+            let pendingIndices = sections.indices.filter { consumed[$0] < sections[$0].content.count }
+            guard !pendingIndices.isEmpty else {
+                break
+            }
+
+            let remainingBudget = maxDiffCharacters - usedCharacters
+            let share = max(80, remainingBudget / pendingIndices.count)
+            var wroteAnySlice = false
+
+            for index in pendingIndices {
+                guard usedCharacters < maxDiffCharacters else {
+                    break
+                }
+
+                let content = sections[index].content
+                let remainingInSection = content.count - consumed[index]
+                guard remainingInSection > 0 else {
+                    continue
+                }
+
+                let take = min(share, remainingInSection, maxDiffCharacters - usedCharacters)
+                guard take > 0 else {
+                    continue
+                }
+
+                let start = content.index(content.startIndex, offsetBy: consumed[index])
+                let end = content.index(start, offsetBy: take)
+                snippets[index].append(contentsOf: content[start ..< end])
+                consumed[index] += take
+                usedCharacters += take
+                wroteAnySlice = true
+            }
+
+            guard wroteAnySlice else {
+                break
+            }
+        }
+
+        return SnippetAllocation(consumed: consumed, snippets: snippets)
+    }
+
+    private func buildIncludedSnippets(
+        from sections: [ParsedDiffSection],
+        allocation: SnippetAllocation
+    ) -> [IncludedDiffSnippet] {
+        sections.indices.compactMap { index in
+            let snippet = allocation.snippets[index].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !snippet.isEmpty else {
+                return nil
+            }
+
+            return IncludedDiffSnippet(
+                path: sections[index].path,
+                content: snippet,
+                truncated: allocation.consumed[index] < sections[index].content.count
+            )
+        }
+    }
+
+    private func buildOverflowSummaries(
+        from sections: [ParsedDiffSection],
+        allocation: SnippetAllocation
+    ) -> [OverflowSummary] {
+        sections.indices.compactMap { index in
+            let omittedCharacters = max(0, sections[index].content.count - allocation.consumed[index])
+            guard omittedCharacters > 0 else {
+                return nil
+            }
+
+            return OverflowSummary(
+                path: sections[index].path,
+                lineDiff: sections[index].lineDiff,
+                omittedCharacters: omittedCharacters
+            )
+        }
     }
 
     private func parseSections(from diff: String) -> [ParsedDiffSection] {

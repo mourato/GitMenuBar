@@ -10,6 +10,11 @@ import Foundation
 class GitManager: ObservableObject {
     private static let defaultCommitHistoryLimit = 25
 
+    private struct RepositoryWipeError: Error {
+        let code: Int
+        let description: String
+    }
+
     @Published var commitCount: Int = 0
     @Published var isCommitting: Bool = false
     @Published var uncommittedFiles: [String] = []
@@ -1241,131 +1246,167 @@ class GitManager: ObservableObject {
     /// Uses the orphan branch approach to completely remove all history
     func wipeRepository(completion: @escaping (Result<Void, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            completion(.failure(makeRepositoryWipeNSError(code: 1, description: "No repository path configured")))
             return
         }
 
         DispatchQueue.global(qos: .userInitiated).async {
-            // Step 0a: Ensure .git-backup-* is in .gitignore before creating backup
-            let gitignorePath = (self.storedRepoPath as NSString).appendingPathComponent(".gitignore")
-            let backupIgnorePattern = ".git-backup-*"
-
             do {
-                var gitignoreContent = ""
-                if FileManager.default.fileExists(atPath: gitignorePath) {
-                    gitignoreContent = try String(contentsOfFile: gitignorePath, encoding: .utf8)
-                }
+                self.ensureBackupIgnorePatternForRepositoryWipe()
+                let backupPath = try self.backupGitDirectoryForRepositoryWipe()
+                print("Backed up .git folder to: \(backupPath)")
 
-                // Check if pattern already exists
-                if !gitignoreContent.contains(backupIgnorePattern) {
-                    // Add the pattern (with newline if file doesn't end with one)
-                    if !gitignoreContent.isEmpty, !gitignoreContent.hasSuffix("\n") {
-                        gitignoreContent += "\n"
-                    }
-                    gitignoreContent += backupIgnorePattern + "\n"
-                    try gitignoreContent.write(toFile: gitignorePath, atomically: true, encoding: .utf8)
-                    print("Added \(backupIgnorePattern) to .gitignore")
+                let branchToWipe = try self.detectBranchToWipe()
+                try self.createOrphanBranchForRepositoryWipe()
+                try self.stageFilesForRepositoryWipe()
+                try self.createInitialCommitForRepositoryWipe()
+                try self.replaceBranchHistory(branchToWipe: branchToWipe)
+
+                _ = self.executeGitCommand(in: self.storedRepoPath, args: ["gc", "--prune=now"])
+                DispatchQueue.main.async {
+                    self.refresh()
+                    completion(.success(()))
                 }
+            } catch let error as RepositoryWipeError {
+                self.reportRepositoryWipeFailure(error, completion: completion)
             } catch {
-                print("Warning: Could not update .gitignore: \(error.localizedDescription)")
-                // Continue anyway - not a fatal error
+                self.reportRepositoryWipeFailure(
+                    RepositoryWipeError(code: 0, description: error.localizedDescription),
+                    completion: completion
+                )
+            }
+        }
+    }
+
+    private func makeRepositoryWipeNSError(code: Int, description: String) -> NSError {
+        NSError(domain: "GitManager", code: code, userInfo: [NSLocalizedDescriptionKey: description])
+    }
+
+    private func reportRepositoryWipeFailure(
+        _ error: RepositoryWipeError,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        DispatchQueue.main.async {
+            completion(.failure(self.makeRepositoryWipeNSError(code: error.code, description: error.description)))
+        }
+    }
+
+    private func ensureBackupIgnorePatternForRepositoryWipe() {
+        let gitignorePath = (storedRepoPath as NSString).appendingPathComponent(".gitignore")
+        let backupIgnorePattern = ".git-backup-*"
+
+        do {
+            var gitignoreContent = ""
+            if FileManager.default.fileExists(atPath: gitignorePath) {
+                gitignoreContent = try String(contentsOfFile: gitignorePath, encoding: .utf8)
             }
 
-            // Step 0b: Backup the .git folder before wiping
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyyMMdd-HHmmss"
-            let timestamp = dateFormatter.string(from: Date())
-            let gitPath = ".git"
-            let backupPath = ".git-backup-\(timestamp)"
-
-            // Use shell 'cp -R' instead of FileManager.copyItem to avoid xattr permission errors on SMB
-            let backupResult = self.executeCommand(in: self.storedRepoPath, executable: "/bin/cp", args: ["-R", gitPath, backupPath])
-            if backupResult.failure {
-                DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 0, userInfo: [NSLocalizedDescriptionKey: "Failed to backup .git folder: \(backupResult.output)"])))
-                }
-                return
-            }
-            print("Backed up .git folder to: \(backupPath)")
-
-            // Step 1: Detect current branch to wipe
-            let branchParseResult = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-parse", "--abbrev-ref", "HEAD"])
-            if branchParseResult.failure {
-                DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to detect current branch: \(branchParseResult.output)"])))
-                }
-                return
-            }
-
-            let branchToWipe = branchParseResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            // Do not allow wiping in detached HEAD state
-            if branchToWipe == "HEAD" {
-                DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cannot wipe in detached HEAD state. Please checkout a branch first."])))
-                }
+            guard !gitignoreContent.contains(backupIgnorePattern) else {
                 return
             }
 
-            // Step 2: Create an orphan branch (no history)
-            let orphanResult = self.executeGitCommand(in: self.storedRepoPath, args: ["checkout", "--orphan", "temp_wipe_branch"])
-            if orphanResult.failure {
-                DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to create orphan branch: \(orphanResult.output)"])))
-                }
-                return
+            if !gitignoreContent.isEmpty, !gitignoreContent.hasSuffix("\n") {
+                gitignoreContent += "\n"
             }
+            gitignoreContent += backupIgnorePattern + "\n"
+            try gitignoreContent.write(toFile: gitignorePath, atomically: true, encoding: .utf8)
+            print("Added \(backupIgnorePattern) to .gitignore")
+        } catch {
+            print("Warning: Could not update .gitignore: \(error.localizedDescription)")
+        }
+    }
 
-            // Step 3: Stage all current files
-            let addResult = self.executeGitCommand(in: self.storedRepoPath, args: ["add", "-A"])
-            if addResult.failure {
-                DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to stage files: \(addResult.output)"])))
-                }
-                return
-            }
+    private func backupGitDirectoryForRepositoryWipe() throws -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyyMMdd-HHmmss"
+        let timestamp = dateFormatter.string(from: Date())
+        let backupPath = ".git-backup-\(timestamp)"
 
-            // Step 4: Create the fresh "Initial commit"
-            let commitResult = self.executeGitCommand(in: self.storedRepoPath, args: ["commit", "--no-gpg-sign", "-m", "Initial commit"])
-            if commitResult.failure {
-                DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 4, userInfo: [NSLocalizedDescriptionKey: "Failed to create initial commit: \(commitResult.output)"])))
-                }
-                return
-            }
+        let backupResult = executeCommand(in: storedRepoPath, executable: "/bin/cp", args: ["-R", ".git", backupPath])
+        guard !backupResult.failure else {
+            throw RepositoryWipeError(
+                code: 0,
+                description: "Failed to backup .git folder: \(backupResult.output)"
+            )
+        }
 
-            // Step 5: Delete the old branch
-            let deleteBranchResult = self.executeGitCommand(in: self.storedRepoPath, args: ["branch", "-D", branchToWipe])
-            if deleteBranchResult.failure {
-                print("Warning: Could not delete old branch \(branchToWipe): \(deleteBranchResult.output)")
-            }
+        return backupPath
+    }
 
-            // Step 6: Rename current branch to the original branch name
-            let renameResult = self.executeGitCommand(in: self.storedRepoPath, args: ["branch", "-m", branchToWipe])
-            if renameResult.failure {
-                DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 5, userInfo: [NSLocalizedDescriptionKey: "Failed to rename branch to \(branchToWipe): \(renameResult.output)"])))
-                }
-                return
-            }
+    private func detectBranchToWipe() throws -> String {
+        let branchParseResult = executeGitCommand(in: storedRepoPath, args: ["rev-parse", "--abbrev-ref", "HEAD"])
+        guard !branchParseResult.failure else {
+            throw RepositoryWipeError(
+                code: 2,
+                description: "Failed to detect current branch: \(branchParseResult.output)"
+            )
+        }
 
-            // Step 7: Force push to remote to overwrite history (use -u to set upstream tracking)
-            let forcePushResult = self.executeGitCommand(in: self.storedRepoPath, args: ["push", "-u", "-f", "origin", branchToWipe], useAuth: true)
-            if forcePushResult.failure {
-                DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 6, userInfo: [NSLocalizedDescriptionKey: "Failed to force push to \(branchToWipe): \(forcePushResult.output)"])))
-                }
-                return
-            }
+        let branchToWipe = branchParseResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard branchToWipe != "HEAD" else {
+            throw RepositoryWipeError(
+                code: 2,
+                description: "Cannot wipe in detached HEAD state. Please checkout a branch first."
+            )
+        }
 
-            // Step 7: Clean up old objects (optional but thorough)
-            _ = self.executeGitCommand(in: self.storedRepoPath, args: ["gc", "--prune=now"])
+        return branchToWipe
+    }
 
-            // Success - refresh the UI
-            DispatchQueue.main.async {
-                self.refresh()
-                completion(.success(()))
-            }
+    private func createOrphanBranchForRepositoryWipe() throws {
+        let orphanResult = executeGitCommand(in: storedRepoPath, args: ["checkout", "--orphan", "temp_wipe_branch"])
+        guard !orphanResult.failure else {
+            throw RepositoryWipeError(
+                code: 2,
+                description: "Failed to create orphan branch: \(orphanResult.output)"
+            )
+        }
+    }
+
+    private func stageFilesForRepositoryWipe() throws {
+        let addResult = executeGitCommand(in: storedRepoPath, args: ["add", "-A"])
+        guard !addResult.failure else {
+            throw RepositoryWipeError(code: 3, description: "Failed to stage files: \(addResult.output)")
+        }
+    }
+
+    private func createInitialCommitForRepositoryWipe() throws {
+        let commitResult = executeGitCommand(
+            in: storedRepoPath,
+            args: ["commit", "--no-gpg-sign", "-m", "Initial commit"]
+        )
+        guard !commitResult.failure else {
+            throw RepositoryWipeError(
+                code: 4,
+                description: "Failed to create initial commit: \(commitResult.output)"
+            )
+        }
+    }
+
+    private func replaceBranchHistory(branchToWipe: String) throws {
+        let deleteBranchResult = executeGitCommand(in: storedRepoPath, args: ["branch", "-D", branchToWipe])
+        if deleteBranchResult.failure {
+            print("Warning: Could not delete old branch \(branchToWipe): \(deleteBranchResult.output)")
+        }
+
+        let renameResult = executeGitCommand(in: storedRepoPath, args: ["branch", "-m", branchToWipe])
+        guard !renameResult.failure else {
+            throw RepositoryWipeError(
+                code: 5,
+                description: "Failed to rename branch to \(branchToWipe): \(renameResult.output)"
+            )
+        }
+
+        let forcePushResult = executeGitCommand(
+            in: storedRepoPath,
+            args: ["push", "-u", "-f", "origin", branchToWipe],
+            useAuth: true
+        )
+        guard !forcePushResult.failure else {
+            throw RepositoryWipeError(
+                code: 6,
+                description: "Failed to force push to \(branchToWipe): \(forcePushResult.output)"
+            )
         }
     }
 

@@ -378,16 +378,16 @@ private struct OpenAIChatRequest: Encodable {
     let messages: [Message]
 }
 
+private struct OpenAIChatChoiceMessage: Decodable {
+    let content: String
+}
+
+private struct OpenAIChatChoice: Decodable {
+    let message: OpenAIChatChoiceMessage
+}
+
 private struct OpenAIChatResponse: Decodable {
-    struct Choice: Decodable {
-        struct Message: Decodable {
-            let content: String
-        }
-
-        let message: Message
-    }
-
-    let choices: [Choice]
+    let choices: [OpenAIChatChoice]
 }
 
 private struct AnthropicModelsResponse: Decodable {
@@ -436,35 +436,35 @@ private struct GeminiModelsResponse: Decodable {
     let models: [Model]
 }
 
+private struct GeminiGenerateContentPart: Encodable {
+    let text: String
+}
+
+private struct GeminiGenerateContent: Encodable {
+    let parts: [GeminiGenerateContentPart]
+}
+
+private struct GeminiGenerationConfig: Encodable {
+    let temperature: Double
+}
+
 private struct GeminiGenerateRequest: Encodable {
-    struct Content: Encodable {
-        struct Part: Encodable {
-            let text: String
-        }
+    let contents: [GeminiGenerateContent]
+    let generationConfig: GeminiGenerationConfig
+}
 
-        let parts: [Part]
-    }
+private struct GeminiGenerateCandidateContentPart: Decodable {
+    let text: String
+}
 
-    struct GenerationConfig: Encodable {
-        let temperature: Double
-    }
+private struct GeminiGenerateCandidateContent: Decodable {
+    let parts: [GeminiGenerateCandidateContentPart]
+}
 
-    let contents: [Content]
-    let generationConfig: GenerationConfig
+private struct GeminiGenerateCandidate: Decodable {
+    let content: GeminiGenerateCandidateContent
 }
 
 private struct GeminiGenerateResponse: Decodable {
-    struct Candidate: Decodable {
-        struct Content: Decodable {
-            struct Part: Decodable {
-                let text: String
-            }
-
-            let parts: [Part]
-        }
-
-        let content: Content
-    }
-
-    let candidates: [Candidate]
+    let candidates: [GeminiGenerateCandidate]
 }
