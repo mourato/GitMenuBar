@@ -27,4 +27,7 @@ function_body_length:
 identifier_name:
   min_length: 2
 
+opening_brace:
+  severity: warning
+
 reporter: "xcode"
