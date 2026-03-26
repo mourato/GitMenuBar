@@ -29,6 +29,8 @@ If a tradeoff is required, choose **correctness and robustness** over short-term
 
 - Prefer CLI-first verification and reproducible commands.
 - Keep changes small and validated incrementally.
+- When working from a branch, PR, or local diff, inspect the touched files first and treat lint findings in modified code as mandatory work for the same change.
+- Resolve critical lint violations in the diff before running full-project verification; do not defer issues introduced or exposed by the current change.
 - Before merge, run: `make build && make test && make lint`.
 - When UI/logic/assets become unused, sanitize in the same PR: remove orphan files, dead helpers, and stale resources safely.
 - Treat code sanitization as mandatory maintenance, not optional cleanup; include objective evidence (`rg`, target wiring, runtime path) for each removal.
