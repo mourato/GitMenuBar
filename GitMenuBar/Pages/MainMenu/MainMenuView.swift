@@ -102,7 +102,7 @@ struct MainMenuView: View {
                         addToRecents(path)
                         presentationModel.showMain(requestCommitFocus: true)
                         gitManager.updateRemoteUrl()
-                        gitManager.refresh()
+                        gitManager.refresh(includeReflogHistory: false)
                     }
                 )
                 .environmentObject(gitManager)

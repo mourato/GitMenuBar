@@ -44,6 +44,7 @@ class GitManager: ObservableObject {
     private let commandRunner: GitCommandRunner
     private let commitHistoryParser: CommitHistoryParser
     private let workingTreeParser: WorkingTreeParser
+    private var includesReflogCommitsInHistory = false
 
     init(repositoryPathOverride: String? = nil) {
         repositoryContext = GitRepositoryContext(overridePath: repositoryPathOverride)
@@ -54,7 +55,7 @@ class GitManager: ObservableObject {
         updateUncommittedFiles()
         updateBranchInfo()
         updateRemoteUrl()
-        fetchCommitHistory()
+        fetchCommitHistory(includeReflog: false)
         fetchBranches()
     }
 
@@ -67,12 +68,15 @@ class GitManager: ObservableObject {
         !commitHistory.isEmpty && commitHistory.count >= commitHistoryLimit
     }
 
-    func refresh(completion: (() -> Void)? = nil) {
+    func refresh(
+        includeReflogHistory: Bool? = nil,
+        completion: (() -> Void)? = nil
+    ) {
         updateLocalCommitCount()
         updateUncommittedFiles {
             self.updateBranchInfo {
                 self.updateRemoteUrl()
-                self.fetchCommitHistory()
+                self.fetchCommitHistory(includeReflog: includeReflogHistory)
                 self.fetchBranches()
                 self.checkRemoteStatus()
                 self.checkRepoVisibility()
@@ -885,11 +889,13 @@ class GitManager: ObservableObject {
         }
     }
 
-    func fetchCommitHistory(limit: Int? = nil) {
+    func fetchCommitHistory(limit: Int? = nil, includeReflog: Bool? = nil) {
         let resolvedLimit = max(1, limit ?? commitHistoryLimit)
+        let resolvedIncludeReflog = includeReflog ?? includesReflogCommitsInHistory
 
         guard !storedRepoPath.isEmpty else {
             DispatchQueue.main.async {
+                self.includesReflogCommitsInHistory = resolvedIncludeReflog
                 self.commitHistoryLimit = resolvedLimit
                 self.commitHistory = []
             }
@@ -897,9 +903,14 @@ class GitManager: ObservableObject {
         }
 
         DispatchQueue.global(qos: .userInitiated).async {
-            let commits = self.commitHistoryParser.fetchCommitHistory(in: self.storedRepoPath, limit: resolvedLimit)
+            let commits = self.commitHistoryParser.fetchCommitHistory(
+                in: self.storedRepoPath,
+                limit: resolvedLimit,
+                includeReflog: resolvedIncludeReflog
+            )
 
             DispatchQueue.main.async {
+                self.includesReflogCommitsInHistory = resolvedIncludeReflog
                 self.commitHistoryLimit = resolvedLimit
                 self.commitHistory = commits
             }
@@ -922,7 +933,7 @@ class GitManager: ObservableObject {
                 print("Error resetting to commit: \(result.output)")
             } else {
                 DispatchQueue.main.async {
-                    self.refresh()
+                    self.refresh(includeReflogHistory: true)
                     print("Reset to commit: \(hash)")
                 }
             }

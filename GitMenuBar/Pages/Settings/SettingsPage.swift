@@ -146,7 +146,7 @@ struct GeneralSettingsPaneView: View {
             return
         }
 
-        gitManager.refresh()
+        gitManager.refresh(includeReflogHistory: false)
     }
 
     private var appearancePicker: some View {
@@ -294,7 +294,7 @@ struct ShortcutsSettingsPaneView: View {
 
                 switch result {
                 case .success:
-                    gitManager.refresh()
+                    gitManager.refresh(includeReflogHistory: false)
                 case let .failure(error):
                     wipeError = error.localizedDescription
                 }

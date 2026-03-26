@@ -374,9 +374,9 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
-    private func refreshRepository() async {
+    private func refreshRepository(includeReflogHistory: Bool = false) async {
         await withCheckedContinuation { continuation in
-            gitManager.refresh {
+            gitManager.refresh(includeReflogHistory: includeReflogHistory) {
                 continuation.resume()
             }
         }

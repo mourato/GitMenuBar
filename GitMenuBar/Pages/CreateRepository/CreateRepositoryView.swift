@@ -185,7 +185,7 @@ struct CreateRepoContentView: View {
 
                 // Success! Refresh git manager to update UI with new remote URL
                 await MainActor.run {
-                    gitManager.refresh()
+                    gitManager.refresh(includeReflogHistory: false)
                     onSuccess(folderPath)
                 }
 

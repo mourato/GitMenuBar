@@ -135,7 +135,7 @@ extension MainMenuView {
 
         setCurrentRepositoryPath(path)
         addToRecents(path)
-        gitManager.refresh()
+        gitManager.refresh(includeReflogHistory: false)
     }
 
     func resetToLastCommit() {

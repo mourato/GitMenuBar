@@ -10,11 +10,14 @@ final class CommitHistoryParser {
         self.runner = runner
     }
 
-    func fetchCommitHistory(in repositoryPath: String, limit: Int = 50) -> [Commit] {
+    func fetchCommitHistory(
+        in repositoryPath: String,
+        limit: Int = 50,
+        includeReflog: Bool = false
+    ) -> [Commit] {
         let format = "%x1e%H%x1f%h%x1f%at%x1f%an%x1f%ae%x1f%s%x1f%B%x1d"
-        let args = [
+        var args = [
             "log",
-            "--reflog",
             "--date-order",
             "--pretty=format:\(format)",
             "--numstat",
@@ -23,6 +26,10 @@ final class CommitHistoryParser {
             "-n",
             String(limit)
         ]
+
+        if includeReflog {
+            args.insert("--reflog", at: 1)
+        }
 
         let result = runner.runGitCommand(in: repositoryPath, args: args)
         guard !result.failure else {
