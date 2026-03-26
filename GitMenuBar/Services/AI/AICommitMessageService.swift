@@ -1,7 +1,7 @@
 import Foundation
 
 final class AICommitMessageService {
-    private struct ParsedDiffSection {
+    struct ParsedDiffSection {
         let path: String
         let content: String
         let lineDiff: LineDiffStats
