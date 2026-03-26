@@ -1,11 +1,11 @@
 import AppKit
 import SwiftUI
 
-struct MainMenuHeaderView<ProjectSelectorContent: View>: View {
+struct MainMenuHeaderView<Content: View>: View {
     let currentProjectName: String
     @Binding var showProjectSelector: Bool
     let onProjectLongPress: () -> Void
-    let projectSelectorContent: () -> ProjectSelectorContent
+    let projectSelectorContent: () -> Content
 
     var body: some View {
         HStack {

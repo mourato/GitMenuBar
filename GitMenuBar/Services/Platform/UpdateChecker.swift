@@ -73,9 +73,9 @@ final class UpdateChecker {
         let rhsParts = rhs.split(separator: ".").map { Int($0) ?? 0 }
 
         let maxCount = max(lhsParts.count, rhsParts.count)
-        for i in 0 ..< maxCount {
-            let lhsValue = i < lhsParts.count ? lhsParts[i] : 0
-            let rhsValue = i < rhsParts.count ? rhsParts[i] : 0
+        for index in 0 ..< maxCount {
+            let lhsValue = index < lhsParts.count ? lhsParts[index] : 0
+            let rhsValue = index < rhsParts.count ? rhsParts[index] : 0
 
             if lhsValue != rhsValue {
                 return lhsValue > rhsValue

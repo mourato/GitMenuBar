@@ -403,8 +403,11 @@ class GitManager: ObservableObject {
                     }
                 } else {
                     // Try with master
-                    let revListMaster = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-list", "--count", "HEAD", "^origin/master"])
-                    let count = Int(revListMaster.output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+                    let revListDefaultBranchFallback = self.executeGitCommand(
+                        in: self.storedRepoPath,
+                        args: ["rev-list", "--count", "HEAD", "^origin/master"]
+                    )
+                    let count = Int(revListDefaultBranchFallback.output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
 
                     DispatchQueue.main.async {
                         self.commitCount = count
@@ -958,9 +961,15 @@ class GitManager: ObservableObject {
                 if !revListMain.failure, let count = Int(revListMain.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
                     isAhead = count > 0
                 } else {
-                    let revListMaster = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-list", "--count", "HEAD", "^origin/master"])
-                    if !revListMaster.failure, let count = Int(revListMaster.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                        isAhead = count > 0
+                    let revListDefaultBranchFallback = self.executeGitCommand(
+                        in: self.storedRepoPath,
+                        args: ["rev-list", "--count", "HEAD", "^origin/master"]
+                    )
+                    let fallbackCount = Int(
+                        revListDefaultBranchFallback.output.trimmingCharacters(in: .whitespacesAndNewlines)
+                    )
+                    if !revListDefaultBranchFallback.failure, let fallbackCount {
+                        isAhead = fallbackCount > 0
                     }
                 }
             } else if let count = Int(revListResult.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
