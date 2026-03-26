@@ -19,7 +19,7 @@ final class AIProviderAdaptersTests: XCTestCase {
 
         MockURLProtocol.requestHandler = { request in
             XCTAssertEqual(request.url?.path, "/v1/models")
-            let data = "{\"data\":[{\"id\":\"gpt-4.1\"},{\"id\":\"gpt-4o-mini\"}]}".data(using: .utf8) ?? Data()
+            let data = Data("{\"data\":[{\"id\":\"gpt-4.1\"},{\"id\":\"gpt-4o-mini\"}]}".utf8)
             return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, data)
         }
 
@@ -40,7 +40,7 @@ final class AIProviderAdaptersTests: XCTestCase {
         MockURLProtocol.requestHandler = { request in
             XCTAssertEqual(request.url?.path, "/v1/messages")
             let payload = "{\"content\":[{\"type\":\"text\",\"text\":\"feat(core): improve parser\\n\\n- optimize tokenizer\"}]}"
-            let data = payload.data(using: .utf8) ?? Data()
+            let data = Data(payload.utf8)
             return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, data)
         }
 

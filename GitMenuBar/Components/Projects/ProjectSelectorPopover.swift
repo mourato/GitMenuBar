@@ -13,7 +13,7 @@ struct ProjectSelectorPopoverView: View {
                 .foregroundColor(.secondary)
 
             ForEach(recentPaths, id: \.self) { path in
-                Button(action: { onSelectPath(path) }) {
+                Button(action: { onSelectPath(path) }, label: {
                     HStack(spacing: 6) {
                         Image(systemName: path == currentRepoPath ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 12))
@@ -23,7 +23,7 @@ struct ProjectSelectorPopoverView: View {
                             .lineLimit(1)
                         Spacer()
                     }
-                }
+                })
                 .buttonStyle(.plain)
             }
 

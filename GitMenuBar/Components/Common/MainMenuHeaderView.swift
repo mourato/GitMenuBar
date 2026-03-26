@@ -9,7 +9,7 @@ struct MainMenuHeaderView<Content: View>: View {
 
     var body: some View {
         HStack {
-            Button(action: { showProjectSelector.toggle() }) {
+            Button(action: { showProjectSelector.toggle() }, label: {
                 HStack(spacing: 4) {
                     Text(currentProjectName)
                         .font(.system(size: 14, weight: .semibold))
@@ -20,7 +20,7 @@ struct MainMenuHeaderView<Content: View>: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                 }
-            }
+            })
             .buttonStyle(.plain)
             .contentShape(Rectangle())
             .onLongPressGesture(minimumDuration: 2.0, perform: onProjectLongPress)
