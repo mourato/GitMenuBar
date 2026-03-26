@@ -775,6 +775,136 @@ class GitManager: ObservableObject {
             .joined(separator: "\n\n")
     }
 
+    func hasUncommittedChanges() -> Bool {
+        guard !storedRepoPath.isEmpty else {
+            return false
+        }
+
+        return !executeGitCommand(in: storedRepoPath, args: ["status", "--porcelain"])
+            .output
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
+    }
+
+    func isMergeCommit(_ hash: String, completion: @escaping (Result<Bool, Error>) -> Void) {
+        guard !storedRepoPath.isEmpty else {
+            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = self.resolveMergeCommitStatus(for: hash)
+            DispatchQueue.main.async {
+                completion(result)
+            }
+        }
+    }
+
+    func isCommitPublishedToUpstream(_ hash: String, completion: @escaping (Result<Bool, Error>) -> Void) {
+        guard !storedRepoPath.isEmpty else {
+            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = self.resolveCommitPublishedStatus(for: hash)
+            DispatchQueue.main.async {
+                completion(result)
+            }
+        }
+    }
+
+    func diffForCommit(_ hash: String, completion: @escaping (Result<String, Error>) -> Void) {
+        guard !storedRepoPath.isEmpty else {
+            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = self.resolveDiffForCommit(hash)
+            DispatchQueue.main.async {
+                completion(result)
+            }
+        }
+    }
+
+    func rewriteCommitMessage(
+        commitHash: String,
+        newMessage: String,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        guard !storedRepoPath.isEmpty else {
+            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            if self.hasUncommittedChanges() {
+                let error = NSError(
+                    domain: "GitManager",
+                    code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Commit message editing requires a clean working tree."]
+                )
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
+                return
+            }
+
+            switch self.resolveMergeCommitStatus(for: commitHash) {
+            case let .failure(error):
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
+                return
+            case let .success(isMergeCommit) where isMergeCommit:
+                let error = NSError(
+                    domain: "GitManager",
+                    code: 3,
+                    userInfo: [NSLocalizedDescriptionKey: "Editing merge commits is not supported yet."]
+                )
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
+                return
+            case .success:
+                break
+            }
+
+            let headResult = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-parse", "HEAD"])
+            guard !headResult.failure else {
+                let error = NSError(
+                    domain: "GitManager",
+                    code: 4,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to resolve HEAD: \(headResult.output)"]
+                )
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
+                return
+            }
+
+            let headHash = headResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
+            let result: Result<Void, Error>
+            if commitHash == headHash {
+                result = self.amendHeadCommitMessage(newMessage)
+            } else {
+                result = self.rewordHistoricalCommitMessage(commitHash: commitHash, newMessage: newMessage)
+            }
+
+            DispatchQueue.main.async {
+                switch result {
+                case let .failure(error):
+                    completion(.failure(error))
+                case .success:
+                    self.refresh(includeReflogHistory: false) {
+                        completion(.success(()))
+                    }
+                }
+            }
+        }
+    }
+
     private func diffForUntrackedFiles() -> String {
         let untrackedResult = executeGitCommand(in: storedRepoPath, args: ["ls-files", "--others", "--exclude-standard"])
         if untrackedResult.failure {
@@ -886,6 +1016,164 @@ class GitManager: ObservableObject {
             self.updateUncommittedFiles()
             self.updateBranchInfo()
             print("Reset to last commit")
+        }
+    }
+
+    private func resolveMergeCommitStatus(for hash: String) -> Result<Bool, Error> {
+        let result = executeGitCommand(in: storedRepoPath, args: ["rev-list", "--parents", "-n", "1", hash])
+        guard !result.failure else {
+            return .failure(NSError(domain: "GitManager", code: 5, userInfo: [NSLocalizedDescriptionKey: "Failed to inspect commit: \(result.output)"]))
+        }
+
+        let hashes = result.output
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(separator: " ", omittingEmptySubsequences: true)
+
+        return .success(hashes.count > 2)
+    }
+
+    private func resolveCommitPublishedStatus(for hash: String) -> Result<Bool, Error> {
+        let upstreamResult = executeGitCommand(in: storedRepoPath, args: ["rev-parse", "--verify", "@{u}"])
+        if upstreamResult.failure {
+            return .success(false)
+        }
+
+        let containsResult = executeGitCommand(
+            in: storedRepoPath,
+            args: ["merge-base", "--is-ancestor", hash, "@{u}"]
+        )
+
+        return .success(!containsResult.failure)
+    }
+
+    private func resolveDiffForCommit(_ hash: String) -> Result<String, Error> {
+        let result = executeGitCommand(
+            in: storedRepoPath,
+            args: ["show", "--format=", "--no-renames", "--no-ext-diff", hash]
+        )
+
+        guard !result.failure else {
+            return .failure(NSError(domain: "GitManager", code: 6, userInfo: [NSLocalizedDescriptionKey: "Failed to load commit diff: \(result.output)"]))
+        }
+
+        let diff = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !diff.isEmpty else {
+            return .failure(NSError(domain: "GitManager", code: 7, userInfo: [NSLocalizedDescriptionKey: "No diff found for the selected commit."]))
+        }
+
+        return .success(diff)
+    }
+
+    private func amendHeadCommitMessage(_ newMessage: String) -> Result<Void, Error> {
+        let result = executeGitCommand(
+            in: storedRepoPath,
+            args: [
+                "commit",
+                "--amend",
+                "--no-gpg-sign",
+                "--allow-empty-message",
+                "--cleanup=verbatim",
+                "-m",
+                newMessage
+            ]
+        )
+
+        if result.failure {
+            return .failure(NSError(domain: "GitManager", code: 8, userInfo: [NSLocalizedDescriptionKey: "Failed to amend commit message: \(result.output)"]))
+        }
+
+        return .success(())
+    }
+
+    private func rewordHistoricalCommitMessage(commitHash: String, newMessage: String) -> Result<Void, Error> {
+        let parentResult = executeGitCommand(in: storedRepoPath, args: ["rev-parse", "\(commitHash)^"])
+        let isRootCommit = parentResult.failure
+        let parentReference = parentResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let sequenceEditorPath = writeTemporaryScript(contents: sequenceEditorScript(), executable: true),
+              let messageEditorPath = writeTemporaryScript(contents: messageEditorScript(), executable: true),
+              let messageFilePath = writeTemporaryScript(contents: newMessage, executable: false)
+        else {
+            return .failure(NSError(domain: "GitManager", code: 9, userInfo: [NSLocalizedDescriptionKey: "Failed to prepare commit rewrite scripts."]))
+        }
+
+        defer {
+            cleanupTemporaryArtifacts([sequenceEditorPath, messageEditorPath, messageFilePath])
+        }
+
+        let additionalEnvironment = [
+            "GIT_SEQUENCE_EDITOR": sequenceEditorPath,
+            "GIT_EDITOR": messageEditorPath,
+            "TARGET_COMMIT_HASH": commitHash,
+            "COMMIT_MESSAGE_FILE": messageFilePath
+        ]
+
+        let args = isRootCommit ? ["rebase", "-i", "--root"] : ["rebase", "-i", parentReference]
+        let rebaseResult = executeGitCommand(
+            in: storedRepoPath,
+            args: args,
+            additionalEnvironment: additionalEnvironment
+        )
+
+        if rebaseResult.failure {
+            _ = executeGitCommand(in: storedRepoPath, args: ["rebase", "--abort"])
+            return .failure(NSError(domain: "GitManager", code: 10, userInfo: [NSLocalizedDescriptionKey: "Failed to rewrite commit message: \(rebaseResult.output)"]))
+        }
+
+        return .success(())
+    }
+
+    private func sequenceEditorScript() -> String {
+        """
+        #!/bin/sh
+        todo_file="$1"
+        temp_file="${todo_file}.tmp"
+        target="$TARGET_COMMIT_HASH"
+
+        awk -v target="$target" '
+        BEGIN { updated = 0 }
+        {
+            if (!updated && $1 == "pick" && index(target, $2) == 1) {
+                $1 = "reword"
+                updated = 1
+            }
+            print
+        }
+        END {
+            if (!updated) {
+                exit 2
+            }
+        }
+        ' "$todo_file" > "$temp_file" && mv "$temp_file" "$todo_file"
+        """
+    }
+
+    private func messageEditorScript() -> String {
+        """
+        #!/bin/sh
+        cat "$COMMIT_MESSAGE_FILE" > "$1"
+        """
+    }
+
+    private func writeTemporaryScript(contents: String, executable: Bool) -> String? {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gitmenubar-\(UUID().uuidString)")
+            .path
+
+        do {
+            try contents.write(toFile: path, atomically: true, encoding: .utf8)
+            let permissions = executable ? 0o700 : 0o600
+            try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: path)
+            return path
+        } catch {
+            print("Failed to write temporary file: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private func cleanupTemporaryArtifacts(_ paths: [String]) {
+        for path in paths {
+            try? FileManager.default.removeItem(atPath: path)
         }
     }
 
@@ -1072,12 +1360,34 @@ class GitManager: ObservableObject {
         }
     }
 
-    private func executeGitCommand(in directory: String, args: [String], useAuth: Bool = false) -> (output: String, failure: Bool) {
-        commandRunner.runGitCommand(in: directory, args: args, useAuth: useAuth)
+    private func executeGitCommand(
+        in directory: String,
+        args: [String],
+        useAuth: Bool = false,
+        additionalEnvironment: [String: String] = [:]
+    ) -> (output: String, failure: Bool) {
+        commandRunner.runGitCommand(
+            in: directory,
+            args: args,
+            useAuth: useAuth,
+            additionalEnvironment: additionalEnvironment
+        )
     }
 
-    private func executeCommand(in directory: String, executable: String, args: [String], useAuth: Bool = false) -> (output: String, failure: Bool) {
-        commandRunner.runCommand(in: directory, executable: executable, args: args, useAuth: useAuth)
+    private func executeCommand(
+        in directory: String,
+        executable: String,
+        args: [String],
+        useAuth: Bool = false,
+        additionalEnvironment: [String: String] = [:]
+    ) -> (output: String, failure: Bool) {
+        commandRunner.runCommand(
+            in: directory,
+            executable: executable,
+            args: args,
+            useAuth: useAuth,
+            additionalEnvironment: additionalEnvironment
+        )
     }
 
     // MARK: - Branch Management

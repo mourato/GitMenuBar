@@ -115,6 +115,55 @@ final class AICommitCoordinatorTests: XCTestCase {
         XCTAssertEqual(providerStore.defaultProvider?.hasStoredAPIKey, false)
     }
 
+    func testGenerateMessageForRawDiffUsesExplicitDiff() async throws {
+        let providerStore = makeProviderStore()
+        let provider = makeProvider(hasStoredAPIKey: true)
+        providerStore.upsertProvider(provider)
+
+        let apiKeyStore = SpyAIAPIKeyStore(storage: [provider.id: "secret-key"])
+        let session = makeMockedURLSession()
+        var capturedPrompt = ""
+
+        MockURLProtocol.requestHandler = { request in
+            let body = self.requestBodyData(from: request)
+            if let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
+                let messages = json["messages"] as? [[String: Any]]
+                let userMessage = messages?.first(where: { ($0["role"] as? String) == "user" })
+                capturedPrompt = userMessage?["content"] as? String ?? ""
+            }
+
+            let response = "{\"choices\":[{\"message\":{\"content\":\"feat: rewritten\"}}]}"
+            let data = response.data(using: .utf8) ?? Data()
+            return (
+                HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                data
+            )
+        }
+
+        let coordinator = AICommitCoordinator(
+            providerStore: providerStore,
+            keychainStore: apiKeyStore,
+            messageService: AICommitMessageService(session: session),
+            gitManager: GitManager(repositoryPathOverride: "")
+        )
+
+        let message = try await coordinator.generateMessage(
+            forRawDiff: """
+            diff --git a/README.md b/README.md
+            --- a/README.md
+            +++ b/README.md
+            @@ -1 +1,2 @@
+             base
+            +updated
+            """,
+            scopeDescription: "Selected commit"
+        )
+
+        XCTAssertEqual(message, "feat: rewritten")
+        XCTAssertTrue(capturedPrompt.contains("Diff scope used: Selected commit."))
+        XCTAssertTrue(capturedPrompt.contains("File: README.md"))
+    }
+
     private func makeProviderStore() -> AIProviderStore {
         AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
     }
@@ -141,6 +190,33 @@ final class AICommitCoordinatorTests: XCTestCase {
             availableModels: ["gpt-4.1"],
             hasStoredAPIKey: hasStoredAPIKey
         )
+    }
+
+    private func requestBodyData(from request: URLRequest) -> Data {
+        if let body = request.httpBody {
+            return body
+        }
+
+        guard let bodyStream = request.httpBodyStream else {
+            return Data()
+        }
+
+        bodyStream.open()
+        defer { bodyStream.close() }
+
+        var data = Data()
+        let bufferSize = 1024
+        var buffer = [UInt8](repeating: 0, count: bufferSize)
+
+        while bodyStream.hasBytesAvailable {
+            let bytesRead = bodyStream.read(&buffer, maxLength: bufferSize)
+            if bytesRead <= 0 {
+                break
+            }
+            data.append(buffer, count: bytesRead)
+        }
+
+        return data
     }
 }
 

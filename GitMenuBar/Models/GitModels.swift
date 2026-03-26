@@ -9,8 +9,33 @@ struct Commit: Identifiable, Equatable {
     let authorName: String
     let authorEmail: String
     let committedAt: Date
+    let isMergeCommit: Bool
     let stats: CommitStats
     let changedFiles: [CommitFileChange]
+
+    init(
+        id: String,
+        shortHash: String,
+        subject: String,
+        body: String,
+        authorName: String,
+        authorEmail: String,
+        committedAt: Date,
+        isMergeCommit: Bool = false,
+        stats: CommitStats,
+        changedFiles: [CommitFileChange]
+    ) {
+        self.id = id
+        self.shortHash = shortHash
+        self.subject = subject
+        self.body = body
+        self.authorName = authorName
+        self.authorEmail = authorEmail
+        self.committedAt = committedAt
+        self.isMergeCommit = isMergeCommit
+        self.stats = stats
+        self.changedFiles = changedFiles
+    }
 }
 
 struct CommitStats: Equatable, Hashable {

@@ -18,6 +18,15 @@ extension MainMenuView {
                     }
                 )
             }
+            .alert(item: $commitHistoryEditCoordinator.alert) { alert in
+                Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    dismissButton: .cancel(Text("OK")) {
+                        commitHistoryEditCoordinator.clearAlert()
+                    }
+                )
+            }
             .confirmationDialog(
                 "Commit message contains only spaces",
                 isPresented: .init(
@@ -69,6 +78,30 @@ extension MainMenuView {
                 Text(
                     "The current message has no visible text. You can cancel, commit with the current text, or ignore it and generate a message automatically."
                 )
+            }
+            .confirmationDialog(
+                "Rewrite Published Commit?",
+                isPresented: .init(
+                    get: { commitHistoryEditCoordinator.rewriteConfirmation != nil },
+                    set: { isPresented in
+                        if !isPresented {
+                            commitHistoryEditCoordinator.dismissRewriteConfirmation()
+                        }
+                    }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Rewrite Commit", role: .destructive) {
+                    Task {
+                        await confirmPublishedCommitRewrite()
+                    }
+                }
+
+                Button("Cancel", role: .cancel) {
+                    commitHistoryEditCoordinator.dismissRewriteConfirmation()
+                }
+            } message: {
+                Text("This commit already exists on the remote. Rewriting it changes local history and your next push may require force push.")
             }
             .alert("Push Failed", isPresented: .init(
                 get: { pushError != nil },
@@ -194,6 +227,35 @@ extension MainMenuView {
                     },
                     onRename: renameBranch
                 )
+            }
+            .sheet(
+                isPresented: .init(
+                    get: { commitHistoryEditCoordinator.isEditorPresented },
+                    set: { isPresented in
+                        if !isPresented {
+                            commitHistoryEditCoordinator.dismissEditor()
+                        }
+                    }
+                )
+            ) {
+                if let editingCommit = commitHistoryEditCoordinator.editingCommit {
+                    CommitMessageEditorSheet(
+                        title: commitHistoryEditCoordinator.editMode.title,
+                        commit: editingCommit,
+                        message: $commitHistoryEditCoordinator.draftMessage,
+                        isPublishedCommit: commitHistoryEditCoordinator.isPublishedCommit,
+                        isSaving: commitHistoryEditCoordinator.isSaving,
+                        errorMessage: commitHistoryEditCoordinator.inlineError,
+                        onCancel: {
+                            commitHistoryEditCoordinator.dismissEditor()
+                        },
+                        onSave: {
+                            Task {
+                                await saveEditedCommitMessage()
+                            }
+                        }
+                    )
+                }
             }
             .sheet(isPresented: $actionCoordinator.showSyncOptions) {
                 VStack(spacing: 16) {

@@ -7,6 +7,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
     @StateObject private var aiProviderStore: AIProviderStore
     @StateObject private var aiCommitCoordinator: AICommitCoordinator
     @StateObject private var actionCoordinator: MainMenuActionCoordinator
+    @StateObject private var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
     @StateObject private var shortcutActionBridge = MainMenuShortcutActionBridge()
     @StateObject private var presentationModel = MainMenuPresentationModel()
 
@@ -38,6 +39,12 @@ struct MainMenuPreviewHarness<Content: View>: View {
                 aiCommitCoordinator: previewCoordinator
             )
         )
+        _commitHistoryEditCoordinator = StateObject(
+            wrappedValue: CommitHistoryEditCoordinator(
+                gitManager: previewGitManager,
+                aiCommitCoordinator: previewCoordinator
+            )
+        )
 
         self.width = width
         self.content = content()
@@ -51,6 +58,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
             .environmentObject(aiProviderStore)
             .environmentObject(aiCommitCoordinator)
             .environmentObject(actionCoordinator)
+            .environmentObject(commitHistoryEditCoordinator)
             .environmentObject(shortcutActionBridge)
             .environmentObject(presentationModel)
             .frame(width: width)

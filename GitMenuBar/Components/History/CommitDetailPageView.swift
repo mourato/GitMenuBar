@@ -10,6 +10,8 @@ struct CommitDetailPageView: View {
     let isCommitInFuture: (Commit) -> Bool
     let onBack: () -> Void
     let onRestoreCommit: (Commit) -> Void
+    let onEditCommitMessage: (Commit) -> Void
+    let onGenerateCommitMessage: (Commit) -> Void
     @State private var authorAvatarURL: URL?
     @State private var loadedAvatarLookupKey: String?
 
@@ -154,6 +156,24 @@ struct CommitDetailPageView: View {
                 Text("•")
                     .foregroundColor(.secondary)
 
+                Button("Generate Message with AI") {
+                    onGenerateCommitMessage(commit)
+                }
+                .buttonStyle(.link)
+                .disabled(commit.isMergeCommit)
+
+                Text("•")
+                    .foregroundColor(.secondary)
+
+                Button("Edit Message Manually") {
+                    onEditCommitMessage(commit)
+                }
+                .buttonStyle(.link)
+                .disabled(commit.isMergeCommit)
+
+                Text("•")
+                    .foregroundColor(.secondary)
+
                 Button("Reset to Here") {
                     onRestoreCommit(commit)
                 }
@@ -162,6 +182,12 @@ struct CommitDetailPageView: View {
                 .disabled(commit.id == currentHash)
             }
             .font(.system(size: 11, weight: .medium))
+
+            if commit.isMergeCommit {
+                Text("Editing merge commits is not supported yet.")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
         }
     }
 
@@ -383,7 +409,9 @@ private enum CommitDetailPagePreviewData {
         remoteUrl: "https://github.com/example/repo.git",
         isCommitInFuture: { _ in false },
         onBack: {},
-        onRestoreCommit: { _ in }
+        onRestoreCommit: { _ in },
+        onEditCommitMessage: { _ in },
+        onGenerateCommitMessage: { _ in }
     )
     .environmentObject(
         GitHubAuthManager(
@@ -401,7 +429,9 @@ private enum CommitDetailPagePreviewData {
         remoteUrl: "https://github.com/example/repo.git",
         isCommitInFuture: { _ in false },
         onBack: {},
-        onRestoreCommit: { _ in }
+        onRestoreCommit: { _ in },
+        onEditCommitMessage: { _ in },
+        onGenerateCommitMessage: { _ in }
     )
     .environmentObject(
         GitHubAuthManager(

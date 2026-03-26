@@ -15,6 +15,8 @@ struct HistoryTimelineSectionView: View {
     let isCommitInFuture: (Commit) -> Bool
     let onSelectCommit: (Commit) -> Void
     let onRestoreCommit: (Commit) -> Void
+    let onEditCommitMessage: (Commit) -> Void
+    let onGenerateCommitMessage: (Commit) -> Void
 
     private var sections: [HistoryCommitDaySection] {
         HistoryCommitGrouping.group(commits: commits)
@@ -66,6 +68,12 @@ struct HistoryTimelineSectionView: View {
                                 },
                                 onRestoreCommit: {
                                     onRestoreCommit(commit)
+                                },
+                                onEditCommitMessage: {
+                                    onEditCommitMessage(commit)
+                                },
+                                onGenerateCommitMessage: {
+                                    onGenerateCommitMessage(commit)
                                 }
                             )
                         }
@@ -93,6 +101,8 @@ private struct HistoryTimelineRowView: View {
     let showsBottomConnector: Bool
     let onTap: () -> Void
     let onRestoreCommit: () -> Void
+    let onEditCommitMessage: () -> Void
+    let onGenerateCommitMessage: () -> Void
 
     @State private var isHovered = false
 
@@ -159,6 +169,23 @@ private struct HistoryTimelineRowView: View {
             }
 
             Divider()
+
+            Button("Generate Message with AI") {
+                onGenerateCommitMessage()
+            }
+            .disabled(commit.isMergeCommit)
+
+            Button("Edit Message Manually") {
+                onEditCommitMessage()
+            }
+            .disabled(commit.isMergeCommit)
+
+            if commit.isMergeCommit {
+                Button("Editing merge commits is not supported yet.") {}
+                    .disabled(true)
+
+                Divider()
+            }
 
             Button("Reset to Here") {
                 onRestoreCommit()
@@ -308,7 +335,9 @@ private struct HistoryTimelineRowView: View {
         isLoading: false,
         isCommitInFuture: { _ in false },
         onSelectCommit: { _ in },
-        onRestoreCommit: { _ in }
+        onRestoreCommit: { _ in },
+        onEditCommitMessage: { _ in },
+        onGenerateCommitMessage: { _ in }
     )
     .padding()
     .frame(width: 380)

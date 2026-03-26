@@ -319,6 +319,16 @@ extension MainMenuView {
                     onRestoreCommit: { commit in
                         guard commit.id != gitManager.currentHash else { return }
                         gitManager.resetToCommit(commit.id)
+                    },
+                    onEditCommitMessage: { commit in
+                        Task {
+                            await startManualCommitMessageEdit(for: commit)
+                        }
+                    },
+                    onGenerateCommitMessage: { commit in
+                        Task {
+                            await startAutomaticCommitMessageEdit(for: commit)
+                        }
                     }
                 )
 

@@ -20,6 +20,7 @@ struct MainMenuView: View {
     @EnvironmentObject var githubAuthManager: GitHubAuthManager
     @EnvironmentObject var aiCommitCoordinator: AICommitCoordinator
     @EnvironmentObject var actionCoordinator: MainMenuActionCoordinator
+    @EnvironmentObject var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
     @EnvironmentObject var shortcutActionBridge: MainMenuShortcutActionBridge
     @EnvironmentObject var presentationModel: MainMenuPresentationModel
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
@@ -121,6 +122,16 @@ struct MainMenuView: View {
                     onRestoreCommit: { commit in
                         guard commit.id != gitManager.currentHash else { return }
                         gitManager.resetToCommit(commit.id)
+                    },
+                    onEditCommitMessage: { commit in
+                        Task {
+                            await startManualCommitMessageEdit(for: commit)
+                        }
+                    },
+                    onGenerateCommitMessage: { commit in
+                        Task {
+                            await startAutomaticCommitMessageEdit(for: commit)
+                        }
                     }
                 )
             }

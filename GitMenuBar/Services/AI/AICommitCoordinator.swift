@@ -25,31 +25,44 @@ final class AICommitCoordinator: ObservableObject {
     func generateMessage(scopeOverride: DiffScope?) async throws -> String {
         generationError = nil
 
-        guard let provider = providerStore.defaultProvider else {
-            throw AIError.providerNotConfigured
-        }
-
-        let apiKey = resolvedAPIKey(for: provider)
-        guard !apiKey.isEmpty else {
-            throw AIError.apiKeyMissing
-        }
-
-        let model = providerStore.effectiveDefaultModel()
-        guard !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw AIError.modelNotConfigured
-        }
+        let dependencies = try resolvedGenerationDependencies()
 
         isGenerating = true
         defer { isGenerating = false }
 
         do {
             return try await messageService.generateCommitMessage(
-                provider: provider,
-                apiKey: apiKey,
-                model: model,
+                provider: dependencies.provider,
+                apiKey: dependencies.apiKey,
+                model: dependencies.model,
                 preferredScopeMode: providerStore.preferences.defaultScopeMode,
                 overrideScope: scopeOverride,
                 gitManager: gitManager
+            )
+        } catch {
+            generationError = error.localizedDescription
+            throw error
+        }
+    }
+
+    func generateMessage(
+        forRawDiff rawDiff: String,
+        scopeDescription: String = "Selected commit"
+    ) async throws -> String {
+        generationError = nil
+
+        let dependencies = try resolvedGenerationDependencies()
+
+        isGenerating = true
+        defer { isGenerating = false }
+
+        do {
+            return try await messageService.generateCommitMessage(
+                provider: dependencies.provider,
+                apiKey: dependencies.apiKey,
+                model: dependencies.model,
+                rawDiff: rawDiff,
+                scopeDescription: scopeDescription
             )
         } catch {
             generationError = error.localizedDescription
@@ -130,5 +143,23 @@ final class AICommitCoordinator: ObservableObject {
         }
 
         return apiKey
+    }
+
+    private func resolvedGenerationDependencies() throws -> (provider: AIProviderConfig, apiKey: String, model: String) {
+        guard let provider = providerStore.defaultProvider else {
+            throw AIError.providerNotConfigured
+        }
+
+        let apiKey = resolvedAPIKey(for: provider)
+        guard !apiKey.isEmpty else {
+            throw AIError.apiKeyMissing
+        }
+
+        let model = providerStore.effectiveDefaultModel()
+        guard !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw AIError.modelNotConfigured
+        }
+
+        return (provider, apiKey, model)
     }
 }

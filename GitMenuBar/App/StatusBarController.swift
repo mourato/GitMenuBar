@@ -64,6 +64,10 @@ final class StatusBarController: ObservableObject {
         gitManager: gitManager,
         aiCommitCoordinator: aiCommitCoordinator
     )
+    lazy var commitHistoryEditCoordinator = CommitHistoryEditCoordinator(
+        gitManager: gitManager,
+        aiCommitCoordinator: aiCommitCoordinator
+    )
     private lazy var settingsWindowController = AppSettingsWindowController(
         gitManager: gitManager,
         loginItemManager: loginItemManager,
@@ -333,6 +337,7 @@ final class StatusBarController: ObservableObject {
         .environmentObject(aiProviderStore)
         .environmentObject(aiCommitCoordinator)
         .environmentObject(actionCoordinator)
+        .environmentObject(commitHistoryEditCoordinator)
         .environmentObject(shortcutActionBridge)
         .environmentObject(presentationModel)
 

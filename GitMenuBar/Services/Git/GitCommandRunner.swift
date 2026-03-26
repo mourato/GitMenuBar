@@ -8,31 +8,46 @@ final class GitCommandRunner {
     func runGitCommand(
         in directory: String,
         args: [String],
-        useAuth: Bool = false
+        useAuth: Bool = false,
+        additionalEnvironment: [String: String] = [:]
     ) -> (output: String, failure: Bool) {
-        runCommand(in: directory, executable: "/usr/bin/git", args: args, useAuth: useAuth)
+        runCommand(
+            in: directory,
+            executable: "/usr/bin/git",
+            args: args,
+            useAuth: useAuth,
+            additionalEnvironment: additionalEnvironment
+        )
     }
 
     func runCommand(
         in directory: String,
         executable: String,
         args: [String],
-        useAuth: Bool = false
+        useAuth: Bool = false,
+        additionalEnvironment: [String: String] = [:]
     ) -> (output: String, failure: Bool) {
         let task = Process()
         task.launchPath = executable
         task.arguments = args
         task.currentDirectoryPath = directory
+        var environment = ProcessInfo.processInfo.environment
 
         if useAuth, let token = tokenProvider?() {
-            var env = ProcessInfo.processInfo.environment
             let scriptPath = createAskpassScript(token: token)
             if let scriptPath {
-                env["GIT_ASKPASS"] = scriptPath
-                env["GIT_TERMINAL_PROMPT"] = "0"
-                task.environment = env
+                environment["GIT_ASKPASS"] = scriptPath
+                environment["GIT_TERMINAL_PROMPT"] = "0"
                 askpassScriptPath = scriptPath
             }
+        }
+
+        for (key, value) in additionalEnvironment {
+            environment[key] = value
+        }
+
+        if !environment.isEmpty {
+            task.environment = environment
         }
 
         let pipe = Pipe()

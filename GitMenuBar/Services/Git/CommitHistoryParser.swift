@@ -15,7 +15,7 @@ final class CommitHistoryParser {
         limit: Int = 50,
         includeReflog: Bool = false
     ) -> [Commit] {
-        let format = "%x1e%H%x1f%h%x1f%at%x1f%an%x1f%ae%x1f%s%x1f%B%x1d"
+        let format = "%x1e%H%x1f%h%x1f%at%x1f%an%x1f%ae%x1f%P%x1f%s%x1f%B%x1d"
         var args = [
             "log",
             "--date-order",
@@ -50,8 +50,8 @@ final class CommitHistoryParser {
             }
 
             let metadata = sections[0]
-            let fields = metadata.split(separator: fieldSeparator, maxSplits: 6, omittingEmptySubsequences: false)
-            guard fields.count == 7 else {
+            let fields = metadata.split(separator: fieldSeparator, maxSplits: 7, omittingEmptySubsequences: false)
+            guard fields.count == 8 else {
                 continue
             }
 
@@ -60,7 +60,10 @@ final class CommitHistoryParser {
                 continue
             }
 
-            let subject = String(fields[5]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let parentHashes = String(fields[5])
+                .split(separator: " ", omittingEmptySubsequences: true)
+                .map(String.init)
+            let subject = String(fields[6]).trimmingCharacters(in: .whitespacesAndNewlines)
             guard shouldIncludeCommit(subject: subject) else {
                 continue
             }
@@ -77,10 +80,11 @@ final class CommitHistoryParser {
                     id: hash,
                     shortHash: String(fields[1]).trimmingCharacters(in: .whitespacesAndNewlines),
                     subject: subject,
-                    body: String(fields[6]).trimmingCharacters(in: .whitespacesAndNewlines),
+                    body: String(fields[7]).trimmingCharacters(in: .whitespacesAndNewlines),
                     authorName: String(fields[3]).trimmingCharacters(in: .whitespacesAndNewlines),
                     authorEmail: String(fields[4]).trimmingCharacters(in: .whitespacesAndNewlines),
                     committedAt: Date(timeIntervalSince1970: timestamp),
+                    isMergeCommit: parentHashes.count > 1,
                     stats: stats,
                     changedFiles: changedFiles
                 )

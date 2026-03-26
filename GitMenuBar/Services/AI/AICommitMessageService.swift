@@ -21,6 +21,7 @@ final class AICommitMessageService {
 
     private struct StructuredDiffPayload {
         let scope: DiffScope
+        let scopeDescription: String
         let includedSnippets: [IncludedDiffSnippet]
         let overflowSummaries: [OverflowSummary]
         let filePathsInScope: [String]
@@ -78,6 +79,45 @@ final class AICommitMessageService {
             overrideScope: overrideScope
         )
 
+        return try await generateCommitMessage(
+            provider: provider,
+            apiKey: apiKey,
+            model: model,
+            payload: payload
+        )
+    }
+
+    func generateCommitMessage(
+        provider: AIProviderConfig,
+        apiKey: String,
+        model: String,
+        rawDiff: String,
+        scopeDescription: String = "Selected commit"
+    ) async throws -> String {
+        let normalizedDiff = rawDiff.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedDiff.isEmpty else {
+            throw AIError.noDiffAvailable
+        }
+
+        let payload = assemblePayload(
+            scope: .all,
+            scopeDescription: scopeDescription,
+            rawDiff: normalizedDiff
+        )
+        return try await generateCommitMessage(
+            provider: provider,
+            apiKey: apiKey,
+            model: model,
+            payload: payload
+        )
+    }
+
+    private func generateCommitMessage(
+        provider: AIProviderConfig,
+        apiKey: String,
+        model: String,
+        payload: StructuredDiffPayload
+    ) async throws -> String {
         let prompt = buildPrompt(payload: payload)
 
         let adapter = AIProviderAdapterFactory.makeAdapter(for: provider.type)
@@ -139,6 +179,7 @@ final class AICommitMessageService {
 
                 let payload = self.assemblePayload(
                     scope: effectiveScope,
+                    scopeDescription: effectiveScope.title,
                     rawDiff: normalizedDiff
                 )
                 continuation.resume(returning: payload)
@@ -157,7 +198,11 @@ final class AICommitMessageService {
         }
     }
 
-    private func assemblePayload(scope: DiffScope, rawDiff: String) -> StructuredDiffPayload {
+    private func assemblePayload(
+        scope: DiffScope,
+        scopeDescription: String,
+        rawDiff: String
+    ) -> StructuredDiffPayload {
         let sections = parseSections(from: rawDiff).sorted { lhs, rhs in
             lhs.path < rhs.path
         }
@@ -168,13 +213,21 @@ final class AICommitMessageService {
                 content: rawDiff,
                 lineDiff: lineDiff(for: rawDiff)
             )
-            return assemblePayload(scope: scope, sections: [fallback])
+            return assemblePayload(
+                scope: scope,
+                scopeDescription: scopeDescription,
+                sections: [fallback]
+            )
         }
 
-        return assemblePayload(scope: scope, sections: sections)
+        return assemblePayload(scope: scope, scopeDescription: scopeDescription, sections: sections)
     }
 
-    private func assemblePayload(scope: DiffScope, sections: [ParsedDiffSection]) -> StructuredDiffPayload {
+    private func assemblePayload(
+        scope: DiffScope,
+        scopeDescription: String,
+        sections: [ParsedDiffSection]
+    ) -> StructuredDiffPayload {
         let totalCharacters = sections.reduce(0) { $0 + $1.content.count }
         let fileCount = sections.count
         let baselineReserve = fileCount == 0 ? 0 : min(220, maxDiffCharacters / max(fileCount, 1))
@@ -274,6 +327,7 @@ final class AICommitMessageService {
 
         return StructuredDiffPayload(
             scope: scope,
+            scopeDescription: scopeDescription,
             includedSnippets: includedSnippets,
             overflowSummaries: overflowSummaries,
             filePathsInScope: sections.map(\.path),
@@ -376,7 +430,7 @@ final class AICommitMessageService {
             "4. Return plain text only, no markdown code fences.",
             "5. Do not include explanations outside the commit message.",
             "",
-            "Diff scope used: \(payload.scope.title).",
+            "Diff scope used: \(payload.scopeDescription).",
             "Files in scope (\(payload.filePathsInScope.count)): \(payload.filePathsInScope.joined(separator: ", "))."
         ]
 

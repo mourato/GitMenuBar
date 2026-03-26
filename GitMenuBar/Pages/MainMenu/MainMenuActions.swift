@@ -248,6 +248,28 @@ extension MainMenuView {
         presentationModel.requestCommitFocus()
     }
 
+    func startManualCommitMessageEdit(for commit: Commit) async {
+        await commitHistoryEditCoordinator.beginManualEdit(for: commit)
+    }
+
+    func startAutomaticCommitMessageEdit(for commit: Commit) async {
+        await commitHistoryEditCoordinator.beginAIGeneratedEdit(for: commit)
+    }
+
+    func saveEditedCommitMessage() async {
+        let didRewrite = await commitHistoryEditCoordinator.saveDraftMessage()
+        if didRewrite {
+            presentationModel.showMain()
+        }
+    }
+
+    func confirmPublishedCommitRewrite() async {
+        let didRewrite = await commitHistoryEditCoordinator.confirmPublishedRewrite()
+        if didRewrite {
+            presentationModel.showMain()
+        }
+    }
+
     func executeCommandPaletteItem(_ item: MainMenuCommandPaletteItem) {
         switch MainMenuCommandPaletteResolver.executionDecision(for: item.kind) {
         case .executeNow:

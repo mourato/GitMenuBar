@@ -10,6 +10,7 @@ final class CommitHistoryParserTests: XCTestCase {
         let timestamp: TimeInterval
         let authorName: String
         let authorEmail: String
+        let parents: String
         let subject: String
         let body: String
         let stats: [String]
@@ -23,6 +24,7 @@ final class CommitHistoryParserTests: XCTestCase {
                 timestamp: 1_709_856_000,
                 authorName: "Renato",
                 authorEmail: "renato@example.com",
+                parents: "1234567",
                 subject: "feat(history): show commit details",
                 body: """
                 - Add delayed hover card
@@ -44,6 +46,7 @@ final class CommitHistoryParserTests: XCTestCase {
         XCTAssertEqual(commits.first?.body, "- Add delayed hover card\n- Render commit stats in footer")
         XCTAssertEqual(commits.first?.authorName, "Renato")
         XCTAssertEqual(commits.first?.authorEmail, "renato@example.com")
+        XCTAssertEqual(commits.first?.isMergeCommit, false)
         XCTAssertEqual(commits.first?.stats, CommitStats(filesChanged: 2, insertions: 16, deletions: 3))
         XCTAssertEqual(
             commits.first?.changedFiles,
@@ -69,6 +72,7 @@ final class CommitHistoryParserTests: XCTestCase {
                 timestamp: 1_709_942_400,
                 authorName: "Renato",
                 authorEmail: "renato@example.com",
+                parents: "abcdef0",
                 subject: "fix(parser): support binary files",
                 body: "",
                 stats: [
@@ -102,6 +106,7 @@ final class CommitHistoryParserTests: XCTestCase {
                     timestamp: 1_709_942_400,
                     authorName: "Renato",
                     authorEmail: "renato@example.com",
+                    parents: "parent1",
                     subject: "feat: latest version",
                     body: "",
                     stats: ["1\t0\tREADME.md"]
@@ -114,6 +119,7 @@ final class CommitHistoryParserTests: XCTestCase {
                     timestamp: 1_709_856_000,
                     authorName: "Renato",
                     authorEmail: "renato@example.com",
+                    parents: "parent2",
                     subject: "feat: older duplicate",
                     body: "ignored",
                     stats: ["9\t9\tREADME.md"]
@@ -126,6 +132,7 @@ final class CommitHistoryParserTests: XCTestCase {
                     timestamp: 1_709_769_600,
                     authorName: "Renato",
                     authorEmail: "renato@example.com",
+                    parents: "parent0",
                     subject: "chore: previous commit",
                     body: "",
                     stats: ["2\t1\tSources/App.swift"]
@@ -150,6 +157,7 @@ final class CommitHistoryParserTests: XCTestCase {
                     timestamp: 1_709_942_400,
                     authorName: "Automation",
                     authorEmail: "bot@example.com",
+                    parents: "parent1",
                     subject: "t3 checkpoint ref=refs/t3/checkpoints/example/turn/1",
                     body: "",
                     stats: ["1\t0\tREADME.md"]
@@ -162,6 +170,7 @@ final class CommitHistoryParserTests: XCTestCase {
                     timestamp: 1_709_856_000,
                     authorName: "Renato",
                     authorEmail: "renato@example.com",
+                    parents: "parent2",
                     subject: "feat(history): keep visible commits only",
                     body: "",
                     stats: ["3\t1\tGitMenuBar/Services/Git/CommitHistoryParser.swift"]
@@ -173,6 +182,27 @@ final class CommitHistoryParserTests: XCTestCase {
 
         XCTAssertEqual(commits.map(\.id), ["visiblehash"])
         XCTAssertEqual(commits.first?.subject, "feat(history): keep visible commits only")
+    }
+
+    func testParseMarksMergeCommits() {
+        let output = makeRecord(
+            CommitRecord(
+                hash: "mergehash",
+                shortHash: "merge12",
+                timestamp: 1_709_942_400,
+                authorName: "Renato",
+                authorEmail: "renato@example.com",
+                parents: "abc123 def456",
+                subject: "Merge branch 'feature/history'",
+                body: "",
+                stats: ["1\t0\tREADME.md"]
+            )
+        )
+
+        let commits = parser.parse(output)
+
+        XCTAssertEqual(commits.count, 1)
+        XCTAssertEqual(commits.first?.isMergeCommit, true)
     }
 
     func testFetchCommitHistoryDefaultsTo50Items() throws {
@@ -208,6 +238,8 @@ final class CommitHistoryParserTests: XCTestCase {
             record.authorName,
             fieldSeparator,
             record.authorEmail,
+            fieldSeparator,
+            record.parents,
             fieldSeparator,
             record.subject,
             fieldSeparator,

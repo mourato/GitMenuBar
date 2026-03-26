@@ -300,6 +300,51 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
         XCTAssertTrue(prompts[0].contains("Overflow summary:"))
     }
 
+    func testServiceSupportsGeneratingMessageFromExplicitCommitDiff() async throws {
+        let session = makeMockedURLSession()
+        let service = AICommitMessageService(maxDiffCharacters: 10000, session: session)
+        var capturedPrompt = ""
+
+        MockURLProtocol.requestHandler = { request in
+            let body = self.requestBodyData(from: request)
+            if let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
+                let messages = json["messages"] as? [[String: Any]]
+                let userMessage = messages?.first(where: { ($0["role"] as? String) == "user" })
+                capturedPrompt = userMessage?["content"] as? String ?? ""
+            }
+
+            let response = "{\"choices\":[{\"message\":{\"content\":\"feat: explicit diff\"}}]}"
+            let data = response.data(using: .utf8) ?? Data()
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, data)
+        }
+
+        let provider = AIProviderConfig(
+            name: "OpenAI",
+            type: .openAI,
+            endpointURL: "https://mock.openai.local",
+            selectedModel: "gpt-4.1"
+        )
+
+        let generated = try await service.generateCommitMessage(
+            provider: provider,
+            apiKey: "test-key",
+            model: "gpt-4.1",
+            rawDiff: """
+            diff --git a/README.md b/README.md
+            --- a/README.md
+            +++ b/README.md
+            @@ -1 +1,2 @@
+             base
+            +explicit
+            """,
+            scopeDescription: "Selected commit"
+        )
+
+        XCTAssertEqual(generated, "feat: explicit diff")
+        XCTAssertTrue(capturedPrompt.contains("Diff scope used: Selected commit."))
+        XCTAssertTrue(capturedPrompt.contains("File: README.md"))
+    }
+
     private func requestBodyData(from request: URLRequest) -> Data {
         if let body = request.httpBody {
             return body
