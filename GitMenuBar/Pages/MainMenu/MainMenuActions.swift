@@ -244,11 +244,7 @@ extension MainMenuView {
         }
 
         lastHandledRepositoryOptionsToken = token
-        guard presentationModel.route == .main, canPresentRepositoryOptions else {
-            return
-        }
-
-        showRepoOptions = true
+        requestRepositoryOptionsPopoverPresentation()
     }
 
     func closeCommandPalette() {

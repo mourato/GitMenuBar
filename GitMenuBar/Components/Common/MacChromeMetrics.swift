@@ -4,9 +4,46 @@ import SwiftUI
 enum MacChromeMetrics {
     static let compactSpacing: CGFloat = 8
     static let sectionSpacing: CGFloat = 12
-    static let panelPadding: CGFloat = 10
+    static let groupSpacing: CGFloat = 20
+    static let panelPadding: CGFloat = 16
+    static let windowPadding: CGFloat = 20
+    static let rowCornerRadius: CGFloat = 8
     static let cornerRadius: CGFloat = 10
     static let largeCornerRadius: CGFloat = 14
+}
+
+enum MacChromeTypography {
+    static var windowTitle: Font {
+        .headline
+    }
+
+    static var sectionLabel: Font {
+        .subheadline.weight(.semibold)
+    }
+
+    static var body: Font {
+        .body
+    }
+
+    static var detail: Font {
+        .subheadline
+    }
+
+    static var caption: Font {
+        .caption
+    }
+
+    static var captionStrong: Font {
+        .caption.weight(.semibold)
+    }
+
+    static var field: Font {
+        .body.weight(.medium)
+    }
+
+    static var monospacedCaption: Font {
+        .system(.caption, design: .monospaced)
+    }
 }
 
 enum MacChromePalette {

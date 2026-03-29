@@ -13,8 +13,8 @@ import SwiftUI
 final class StatusBarController: ObservableObject {
     private enum Constants {
         static let statusIconPointSize = NSSize(width: 16, height: 16)
-        static let windowInitialSize = NSSize(width: 400, height: 700)
-        static let windowMinimumSize = NSSize(width: 360, height: 620)
+        static let windowInitialSize = NSSize(width: 440, height: 720)
+        static let windowMinimumSize = NSSize(width: 400, height: 640)
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
         static let appFocusedShortcutNames: [KeyboardShortcuts.Name] = [.commandPalette, .commit, .sync]
     }

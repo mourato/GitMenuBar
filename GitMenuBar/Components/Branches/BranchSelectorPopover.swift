@@ -23,6 +23,20 @@ struct BranchSelectorPopoverView: View {
 
     var body: some View {
         List {
+            if !isDetachedHead {
+                Section("Current") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label(currentBranch, systemImage: "arrow.triangle.branch")
+                            .font(MacChromeTypography.body)
+
+                        Text("Checked out in this repository.")
+                            .font(MacChromeTypography.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+
             if isDetachedHead {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
@@ -30,7 +44,7 @@ struct BranchSelectorPopoverView: View {
                             .foregroundStyle(.orange)
 
                         Text("You aren't on a branch. Edits made here might be hard to find later.")
-                            .font(.caption)
+                            .font(MacChromeTypography.caption)
                             .foregroundStyle(.secondary)
 
                         Button(action: onCreateBranchFromDetached) {
@@ -43,12 +57,13 @@ struct BranchSelectorPopoverView: View {
             }
 
             if isRemoteAhead {
-                Section {
+                Section("Sync") {
                     Button(action: onQuickPull) {
                         VStack(alignment: .leading, spacing: 2) {
                             Label("Pull \(behindCount) commit\(behindCount == 1 ? "" : "s")", systemImage: "arrow.down.circle.fill")
+                                .font(MacChromeTypography.body)
                             Text("Update the current branch from remote.")
-                                .font(.caption)
+                                .font(MacChromeTypography.caption)
                                 .foregroundStyle(.secondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -86,7 +101,7 @@ struct BranchSelectorPopoverView: View {
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
         .macPanelSurface()
-        .frame(width: 260, height: 320)
+        .frame(width: 300, height: 360)
     }
 }
 

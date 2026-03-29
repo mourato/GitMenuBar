@@ -28,13 +28,14 @@ extension MainMenuView {
 
     var mainView: some View {
         applyMainViewOverlays(
-            to: VStack(spacing: 8) {
+            to: VStack(spacing: MacChromeMetrics.groupSpacing) {
                 MainMenuHeaderView(
                     currentProjectName: currentProjectName,
                     showProjectSelector: $showProjectSelector,
+                    showRepositoryOptionsPopover: $showRepositoryOptionsPopover,
                     showsRepositoryOptionsButton: canPresentRepositoryOptions,
                     onShowRepositoryOptions: {
-                        showRepoOptions = true
+                        requestRepositoryOptionsPopoverPresentation()
                     },
                     projectSelectorContent: {
                         ProjectSelectorPopoverView(
@@ -49,22 +50,28 @@ extension MainMenuView {
                                 selectDirectory()
                             },
                             onShowRepositoryOptions: canPresentRepositoryOptions ? {
-                                showProjectSelector = false
-                                showRepoOptions = true
+                                requestRepositoryOptionsPopoverPresentation()
                             } : nil
                         )
                     },
                     projectContextMenu: {
                         if canPresentRepositoryOptions {
                             Button("Repository Options…") {
-                                showRepoOptions = true
+                                requestRepositoryOptionsPopoverPresentation()
                             }
                         } else {
                             EmptyView()
                         }
+                    },
+                    repositoryOptionsContent: {
+                        RepositoryOptionsPopoverView(
+                            visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
+                            visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
+                            onToggleVisibility: confirmRepositoryVisibilityAction,
+                            onDeleteRepository: confirmRepositoryDeleteAction
+                        )
                     }
                 )
-                .padding(.vertical, 8)
 
                 CommitComposerSectionView(
                     commentText: $commentText,
@@ -91,7 +98,7 @@ extension MainMenuView {
                 }
 
                 ScrollView(.vertical, showsIndicators: !isCommandPalettePresented) {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: MacChromeMetrics.groupSpacing) {
                         if let inlineStatusBanner {
                             InlineStatusBannerView(
                                 banner: inlineStatusBanner,
@@ -119,11 +126,10 @@ extension MainMenuView {
                         }
                         historySection
                     }
-                    .padding(.horizontal, 10)
                 }
                 .scrollDisabled(isCommandPalettePresented)
                 .frame(maxHeight: 520)
-                .frame(width: 380, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .id(gitManager.stagedFiles.count + gitManager.changedFiles.count)
 
                 HStack {
@@ -134,6 +140,7 @@ extension MainMenuView {
                         behindCount: gitManager.behindCount,
                         isDetachedHead: gitManager.isDetachedHead,
                         onTap: {
+                            showRepositoryOptionsPopover = false
                             showBranchSelector.toggle()
                         }
                     )
@@ -203,17 +210,21 @@ extension MainMenuView {
                     Spacer()
 
                     Button("Settings") {
+                        showRepositoryOptionsPopover = false
                         openSettingsWindow()
                     }
                     .buttonStyle(.borderless)
+                    .font(MacChromeTypography.detail)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.bottom, 16)
-            .ignoresSafeArea(.container, edges: .top)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .onExitCommand {
                 if isCommandPalettePresented {
                     closeCommandPalette()
+                    return
+                }
+                if showRepositoryOptionsPopover {
+                    showRepositoryOptionsPopover = false
                     return
                 }
                 closeWindow()
@@ -317,18 +328,6 @@ extension MainMenuView {
         }
     }
 
-    private var loadingStateView: some View {
-        HStack(spacing: 8) {
-            ProgressView()
-                .controlSize(.small)
-
-            Text("Loading working tree…")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 4)
-    }
-
     private var historySection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HistorySectionHeaderView(
@@ -372,7 +371,7 @@ extension MainMenuView {
                             gitManager.loadMoreCommitHistory(batchSize: 25)
                         }
                         .buttonStyle(.link)
-                        .font(.system(size: 11, weight: .medium))
+                        .font(MacChromeTypography.detail)
                         .disabled(presentationModel.refreshState.isRefreshing)
                     }
                     .padding(.top, 2)
@@ -380,28 +379,6 @@ extension MainMenuView {
             }
         }
         .padding(.top, 2)
-    }
-
-    private func createRepoSuggestionBanner(path: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.orange)
-
-            Text("GitHub remote not found for this repository.")
-                .font(.system(size: 11))
-                .foregroundColor(.primary)
-
-            Spacer()
-
-            Button("Create Repo") {
-                presentationModel.showCreateRepo(path: path)
-            }
-            .buttonStyle(.link)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.orange.opacity(0.12))
-        .cornerRadius(8)
     }
 
     private func requestCommitFieldFocus() {

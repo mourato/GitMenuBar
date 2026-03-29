@@ -18,7 +18,7 @@ struct KeyboardShortcutsSection: View {
                     KeyboardShortcuts.reset(.sync)
                 }
                 .buttonStyle(.borderless)
-                .font(.system(size: 11))
+                .font(MacChromeTypography.detail)
             }
         }
     }
@@ -26,7 +26,7 @@ struct KeyboardShortcutsSection: View {
     private func shortcutRow(_ title: String, name: KeyboardShortcuts.Name) -> some View {
         HStack {
             Text(title)
-                .font(.system(size: 11))
+                .font(MacChromeTypography.body)
             Spacer()
             KeyboardShortcuts.Recorder(for: name)
                 .labelsHidden()

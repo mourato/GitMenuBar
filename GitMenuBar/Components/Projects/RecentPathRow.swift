@@ -12,19 +12,19 @@ struct RecentPathRowView: View {
         Button(action: onTap) {
             HStack {
                 Image(systemName: "clock")
-                    .font(.system(size: 12))
+                    .font(MacChromeTypography.detail)
                     .foregroundColor(.secondary)
                 Text(displayText)
-                    .font(.system(size: 12))
+                    .font(MacChromeTypography.body)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(fullPath)
                 Spacer()
             }
             .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(isHovered ? Color.gray.opacity(0.15) : Color.gray.opacity(0.1))
-            .cornerRadius(4)
+            .frame(minHeight: 28)
+            .background(isHovered ? MacChromePalette.hoverFill() : Color(nsColor: .controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
         }
         .buttonStyle(.plain)
         .onHover { inside in

@@ -18,7 +18,7 @@ extension MainMenuView {
               !showPullToNewBranch,
               !showRenameBranch,
               !commitHistoryEditCoordinator.isEditorPresented,
-              !showRepoOptions
+              !showRepositoryOptionsPopover
         else {
             return false
         }

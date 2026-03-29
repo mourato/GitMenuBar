@@ -8,10 +8,11 @@ struct RepositoryPathSection: View {
         SettingsSection(title: "Git Repository Path", systemImage: "folder") {
             TextField("Select repository directory", text: $repositoryPath)
                 .textFieldStyle(.roundedBorder)
-                .font(.system(size: 12))
+                .font(MacChromeTypography.field)
 
             Button("Browse...", action: onBrowse)
                 .buttonStyle(.borderless)
+                .font(MacChromeTypography.detail)
                 .focusable(false)
         }
     }

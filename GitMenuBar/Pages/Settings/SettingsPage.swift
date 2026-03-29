@@ -24,9 +24,10 @@ struct GeneralSettingsPaneView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            VStack(spacing: MacChromeMetrics.groupSpacing) {
                 HStack {
                     Text("Open at Login")
+                        .font(MacChromeTypography.body)
                     Spacer()
                     Toggle(
                         "",
@@ -45,6 +46,7 @@ struct GeneralSettingsPaneView: View {
 
                 HStack {
                     Text("Auto-hide window when focus is lost")
+                        .font(MacChromeTypography.body)
                     Spacer()
                     Toggle("", isOn: $autoHideMainWindowOnBlur)
                         .toggleStyle(.switch)
@@ -54,6 +56,7 @@ struct GeneralSettingsPaneView: View {
 
                 HStack {
                     Text("Show window on monitor with mouse pointer")
+                        .font(MacChromeTypography.body)
                     Spacer()
                     Toggle(
                         "",
@@ -67,6 +70,7 @@ struct GeneralSettingsPaneView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text("Hide commit message field")
+                            .font(MacChromeTypography.body)
                         Spacer()
                         Toggle("", isOn: $hideCommitMessageField)
                             .toggleStyle(.switch)
@@ -75,9 +79,10 @@ struct GeneralSettingsPaneView: View {
                     }
 
                     Text(
-                        "When enabled, GitMenuBar hides the text field and prefers automatic commit messages. If automatic generation is unavailable, the field is shown when needed."
+                        "When enabled, GitMenuBar hides the text field and prefers automatic commit messages. "
+                            + "If automatic generation is unavailable, the field is shown when needed."
                     )
-                    .font(.system(size: 11))
+                    .font(MacChromeTypography.caption)
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 }
@@ -105,8 +110,8 @@ struct GeneralSettingsPaneView: View {
                     onSelectPath: selectRecentPath
                 )
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, MacChromeMetrics.windowPadding)
+            .padding(.vertical, MacChromeMetrics.groupSpacing)
         }
         .frame(minWidth: 420, minHeight: 700)
         .preferredColorScheme(preferredColorScheme)
@@ -152,7 +157,7 @@ struct GeneralSettingsPaneView: View {
     private var appearancePicker: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Appearance")
-                .font(.system(size: 13, weight: .medium))
+                .font(MacChromeTypography.sectionLabel)
 
             Picker(
                 "",
@@ -193,14 +198,14 @@ struct AccountsSettingsPaneView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            VStack(spacing: MacChromeMetrics.groupSpacing) {
                 GitHubConnectionSection(setAutoHideSuspended: onSetAutoHideSuspended)
 
                 AISettingsSectionView()
                     .padding(.top, 4)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, MacChromeMetrics.windowPadding)
+            .padding(.vertical, MacChromeMetrics.groupSpacing)
         }
         .frame(minWidth: 420, minHeight: 700)
         .preferredColorScheme(preferredColorScheme)
@@ -228,13 +233,13 @@ struct ShortcutsSettingsPaneView: View {
     @State private var wipeError: String?
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: MacChromeMetrics.groupSpacing) {
             ScrollView {
-                VStack(spacing: 12) {
+                VStack(spacing: MacChromeMetrics.groupSpacing) {
                     KeyboardShortcutsSection()
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, MacChromeMetrics.windowPadding)
+                .padding(.vertical, MacChromeMetrics.groupSpacing)
             }
 
             Divider()
@@ -244,6 +249,7 @@ struct ShortcutsSettingsPaneView: View {
                     showWipeConfirmation = true
                 })
                 .buttonStyle(.borderless)
+                .font(MacChromeTypography.detail)
                 .foregroundColor(.secondary)
                 .disabled(!githubAuthManager.isAuthenticated || gitManager.remoteUrl.isEmpty)
                 .help("Reset repository to a single commit, erasing all history")
@@ -254,10 +260,11 @@ struct ShortcutsSettingsPaneView: View {
                     NSApplication.shared.terminate(nil)
                 }
                 .buttonStyle(.borderless)
+                .font(MacChromeTypography.detail)
                 .foregroundColor(.secondary)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 12)
+            .padding(.horizontal, MacChromeMetrics.windowPadding)
+            .padding(.bottom, MacChromeMetrics.groupSpacing)
         }
         .alert("Wipe Repository History?", isPresented: $showWipeConfirmation) {
             Button("Cancel", role: .cancel) {}

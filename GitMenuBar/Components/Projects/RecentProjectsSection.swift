@@ -11,14 +11,14 @@ struct RecentProjectsSection: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Text("Recently Used")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(MacChromeTypography.sectionLabel)
                         .foregroundColor(.secondary)
 
                     Spacer()
 
                     Toggle("Show full path", isOn: $showFullPathInRecents.animation(.easeInOut(duration: 0.2)))
                         .toggleStyle(.checkbox)
-                        .font(.system(size: 11))
+                        .font(MacChromeTypography.caption)
                 }
 
                 ForEach(recentPaths.filter { $0 != currentRepoPath }.prefix(5), id: \.self) { path in

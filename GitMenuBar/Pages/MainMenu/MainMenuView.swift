@@ -11,7 +11,8 @@ struct MainMenuView: View {
     @State var isDeleting = false
     @State var deleteError: String?
     @State var showProjectSelector = false
-    @State var showRepoOptions = false
+    @State var showRepositoryOptionsPopover = false
+    @State var pendingRepositoryOptionsPresentation = false
     @State var showVisibilityConfirmation = false
     @State var isTogglingVisibility = false
     @State var toggleVisibilityError: String?
@@ -158,23 +159,6 @@ struct MainMenuView: View {
         } message: {
             Text(repositoryActionSet.visibilityConfirmationMessage)
         }
-        .confirmationDialog("Repository Options", isPresented: $showRepoOptions) {
-            Button(repositoryActionSet.visibilityActionTitle) {
-                // Delay to allow menu to dismiss
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    showVisibilityConfirmation = true
-                }
-            }
-            Button("Delete Repository", role: .destructive) {
-                // Delay to allow menu to dismiss
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    showDeleteConfirmation = true
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(repositoryActionSet.visibilityStatusDescription)
-        }
         .alert("Discard Changes?", isPresented: $showDiscardConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Discard", role: .destructive) {
@@ -208,9 +192,9 @@ struct MainMenuView: View {
             Text("Are you sure you want to discard all unstaged changes? This action cannot be undone.")
         }
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
-        .padding(.horizontal, 10)
-        .padding(.bottom, 10)
-        .frame(width: 400)
+        .padding(.horizontal, MacChromeMetrics.windowPadding)
+        .padding(.bottom, MacChromeMetrics.windowPadding)
+        .frame(minWidth: 400, idealWidth: 440, maxWidth: .infinity)
         .onAppear {
             installMainKeyboardMonitor()
             handleCommandPalettePresentationRequest(presentationModel.showCommandPaletteToken)
@@ -226,9 +210,20 @@ struct MainMenuView: View {
         .onChange(of: presentationModel.showRepositoryOptionsToken) { token in
             handleRepositoryOptionsPresentationRequest(token)
         }
+        .onChange(of: showProjectSelector) { _ in
+            presentPendingRepositoryOptionsIfPossible()
+        }
+        .onChange(of: showBranchSelector) { _ in
+            presentPendingRepositoryOptionsIfPossible()
+        }
+        .onChange(of: isCommandPalettePresented) { _ in
+            presentPendingRepositoryOptionsIfPossible()
+        }
         .onChange(of: presentationModel.route) { route in
             if route != .main {
                 closeCommandPalette()
+                showRepositoryOptionsPopover = false
+                pendingRepositoryOptionsPresentation = false
                 if commentText.isEmpty {
                     isCommitFieldTemporarilyVisible = false
                 }

@@ -17,9 +17,10 @@ struct ProjectSelectorPopoverView: View {
                                 .foregroundStyle(path == currentRepoPath ? Color.accentColor : Color.secondary)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(URL(fileURLWithPath: path).lastPathComponent)
+                                    .font(MacChromeTypography.body)
                                     .lineLimit(1)
                                 Text(PathDisplayFormatter.abbreviatedPath(path))
-                                    .font(.caption)
+                                    .font(MacChromeTypography.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
                             }
@@ -45,7 +46,7 @@ struct ProjectSelectorPopoverView: View {
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
         .macPanelSurface()
-        .frame(width: 280, height: 240)
+        .frame(width: 300, height: 260)
     }
 }
 

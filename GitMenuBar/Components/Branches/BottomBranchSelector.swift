@@ -13,50 +13,26 @@ struct BottomBranchSelectorView: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 8) {
-                HStack(spacing: 0) {
-                    Image(systemName: "arrow.triangle.branch")
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .padding(.trailing, 4)
+                Label(currentBranch, systemImage: "arrow.triangle.branch")
+                    .font(MacChromeTypography.detail)
+                    .foregroundStyle(.primary)
+                    .labelStyle(.titleAndIcon)
+                    .lineLimit(1)
 
-                    Text(currentBranch)
-                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                if commitCount > 0 {
+                    statusBadge(symbol: "arrow.up", count: commitCount, style: .accent)
                 }
-                .foregroundColor(.primary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(backgroundColor)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .animation(nil, value: currentBranch)
-                .animation(nil, value: commitCount)
 
-                HStack(spacing: 4) {
-                    HStack(spacing: 0) {
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .padding(.trailing, 4)
-
-                        Text("\(commitCount)")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                    }
-
-                    if isRemoteAhead {
-                        HStack(spacing: 4) {
-                            Divider()
-                                .frame(width: 1, height: 6)
-                                .background(Color.primary.opacity(0.12))
-
-                            HStack(spacing: 0) {
-                                Image(systemName: "arrow.down")
-                                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                                    .padding(.trailing, 4)
-
-                                Text("\(behindCount)")
-                                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                            }
-                        }
-                    }
+                if isRemoteAhead {
+                    statusBadge(symbol: "arrow.down", count: behindCount, style: .warning)
                 }
             }
+            .padding(.horizontal, 10)
+            .frame(minHeight: 28)
+            .background(backgroundColor)
+            .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
+            .animation(nil, value: currentBranch)
+            .animation(nil, value: commitCount)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Current branch \(currentBranch)")
@@ -74,10 +50,44 @@ struct BottomBranchSelectorView: View {
         if isDetachedHead {
             return Color.red.opacity(colorSchemeContrast == .increased ? 0.28 : 0.16)
         }
-        if isRemoteAhead || commitCount > 0 {
-            return Color.orange.opacity(colorSchemeContrast == .increased ? 0.24 : 0.14)
-        }
+
         return Color(nsColor: .controlBackgroundColor)
+    }
+
+    private func statusBadge(symbol: String, count: Int, style: BadgeStyle) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: symbol)
+            Text("\(count)")
+        }
+        .font(MacChromeTypography.captionStrong)
+        .foregroundStyle(style.foregroundColor)
+        .padding(.horizontal, 7)
+        .frame(minHeight: 20)
+        .background(style.backgroundColor(colorSchemeContrast: colorSchemeContrast))
+        .clipShape(Capsule())
+    }
+}
+
+private enum BadgeStyle {
+    case accent
+    case warning
+
+    var foregroundColor: Color {
+        switch self {
+        case .accent:
+            return .accentColor
+        case .warning:
+            return .orange
+        }
+    }
+
+    func backgroundColor(colorSchemeContrast: ColorSchemeContrast) -> Color {
+        switch self {
+        case .accent:
+            return MacChromePalette.accentFill(contrast: colorSchemeContrast)
+        case .warning:
+            return MacChromePalette.warningFill(contrast: colorSchemeContrast)
+        }
     }
 }
 

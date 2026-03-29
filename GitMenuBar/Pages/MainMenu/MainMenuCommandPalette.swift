@@ -92,10 +92,10 @@ struct MainMenuCommandPaletteView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: MacChromeMetrics.sectionSpacing) {
             TextField("Search commands", text: $query)
                 .textFieldStyle(.roundedBorder)
-                .font(.title3.weight(.medium))
+                .font(MacChromeTypography.field)
                 .focused($isSearchFieldFocused)
                 .onSubmit {
                     executeSelectedOrFirstVisibleItem()
@@ -127,7 +127,7 @@ struct MainMenuCommandPaletteView: View {
                 }
             }
         }
-        .padding(14)
+        .padding(MacChromeMetrics.panelPadding)
         .frame(width: 360)
         .background(backgroundStyle)
         .overlay(
@@ -151,9 +151,9 @@ struct MainMenuCommandPaletteView: View {
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("No matching commands")
-                .font(.system(size: 13, weight: .semibold))
+                .font(MacChromeTypography.sectionLabel)
             Text("Try another query.")
-                .font(.system(size: 12))
+                .font(MacChromeTypography.caption)
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 18)
@@ -174,7 +174,7 @@ struct MainMenuCommandPaletteView: View {
     private func sectionView(section: MainMenuCommandPaletteSection, items: [MainMenuCommandPaletteItem]) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(section.title)
-                .font(.system(size: 11, weight: .semibold))
+                .font(MacChromeTypography.captionStrong)
                 .foregroundColor(.secondary)
 
             ForEach(items) { item in
@@ -198,12 +198,12 @@ struct MainMenuCommandPaletteView: View {
         return HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(MacChromeTypography.body)
                     .foregroundColor(item.isEnabled ? .primary : .secondary)
 
                 if let subtitle = item.subtitle {
                     Text(subtitle)
-                        .font(.system(size: 11))
+                        .font(MacChromeTypography.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
@@ -214,10 +214,10 @@ struct MainMenuCommandPaletteView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
+            RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous)
                 .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.clear)
         )
-        .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
     }
 
     private func synchronizeSelectionWithVisibleItems() {
