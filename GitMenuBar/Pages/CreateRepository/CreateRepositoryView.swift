@@ -5,6 +5,17 @@
 
 import SwiftUI
 
+private enum CreateRepositoryFlowError: LocalizedError {
+    case message(String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .message(message):
+            return message
+        }
+    }
+}
+
 /// Content view for creating a repository - designed to be embedded inline
 struct CreateRepoContentView: View {
     @EnvironmentObject var gitManager: GitManager
@@ -107,14 +118,11 @@ struct CreateRepoContentView: View {
                         Text("Create & Publish to GitHub")
                     }
                 }
-                .font(.system(size: 12, weight: .medium))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(repoName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCreating ? Color.gray.opacity(0.3) : Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(6)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .keyboardShortcut(.defaultAction)
             .disabled(repoName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCreating)
         }
     }
@@ -127,82 +135,96 @@ struct CreateRepoContentView: View {
         showError = false
 
         Task {
-            do {
-                let repositoryService = GitHubRepositoryService(authManager: githubAuthManager)
-                let repo = try await repositoryService.createOrFetchRepository(
-                    name: trimmedName,
-                    isPrivate: isPrivate,
-                    description: nil
-                )
+            await performCreateRepository(named: trimmedName)
+        }
+    }
 
-                // Step 2: Initialize local git repository (only if not already initialized)
-                let isGitRepo = gitManager.isGitRepository(at: folderPath)
-                if !isGitRepo {
-                    guard gitManager.initializeRepository(at: folderPath) else {
-                        showErrorMessage("Failed to initialize local git repository")
-                        return
-                    }
+    private func performCreateRepository(named repositoryName: String) async {
+        do {
+            let repository = try await createRemoteRepository(named: repositoryName)
+            try ensureLocalRepositoryReady()
+            try configureRemote(with: repository.cloneUrl)
+            try pushRepository()
 
-                    // Step 3: Create initial commit (only for newly initialized repos)
-                    guard gitManager.createInitialCommit(at: folderPath, message: "Initial commit") else {
-                        showErrorMessage("Failed to create initial commit")
-                        return
-                    }
-                } else {
-                    // Repository already exists - check if there are uncommitted changes
-                    // If there are, commit them
-                    if gitManager.hasUncommittedChanges(at: folderPath) {
-                        // There are uncommitted changes - commit them
-                        guard gitManager.createInitialCommit(at: folderPath, message: "Initial commit") else {
-                            showErrorMessage("Failed to commit existing changes")
-                            return
-                        }
-                    }
-                    // If no uncommitted changes, we can proceed (there must be at least one commit already)
-                }
-
-                // Step 4: Add or update GitHub remote
-                let hasRemote = gitManager.hasRemoteConfigured(at: folderPath)
-                if hasRemote {
-                    // Update existing remote
-                    guard gitManager.updateRemoteURL(at: folderPath, newURL: repo.cloneUrl) else {
-                        showErrorMessage("Failed to update remote URL")
-                        return
-                    }
-                } else {
-                    // Add new remote
-                    guard gitManager.addRemote(at: folderPath, url: repo.cloneUrl) else {
-                        showErrorMessage("Failed to add remote")
-                        return
-                    }
-                }
-
-                // Step 5: Push to GitHub
-                guard gitManager.pushToNewRemote(at: folderPath) else {
-                    showErrorMessage("Failed to push to GitHub")
-                    return
-                }
-
-                // Success! Refresh git manager to update UI with new remote URL
-                await MainActor.run {
-                    gitManager.refresh(includeReflogHistory: false)
-                    onSuccess(folderPath)
-                }
-
-            } catch let error as GitHubAPIError {
-                switch error {
-                case .unauthorized:
-                    showErrorMessage("GitHub authentication failed. Please reconnect.")
-                case .rateLimitExceeded:
-                    showErrorMessage("GitHub rate limit exceeded. Please try again later.")
-                case let .networkError(err):
-                    showErrorMessage("Network error: \(err.localizedDescription)")
-                default:
-                    showErrorMessage("Failed to create repository: \(error)")
-                }
-            } catch {
-                showErrorMessage("Unexpected error: \(error.localizedDescription)")
+            await MainActor.run {
+                gitManager.refresh(includeReflogHistory: false)
+                onSuccess(folderPath)
             }
+        } catch let error as CreateRepositoryFlowError {
+            await showErrorMessage(error.localizedDescription)
+        } catch let error as GitHubAPIError {
+            await showGitHubError(error)
+        } catch {
+            await showErrorMessage("Unexpected error: \(error.localizedDescription)")
+        }
+    }
+
+    private func createRemoteRepository(named repositoryName: String) async throws -> GitHubRepository {
+        let repositoryService = GitHubRepositoryService(authManager: githubAuthManager)
+        return try await repositoryService.createOrFetchRepository(
+            name: repositoryName,
+            isPrivate: isPrivate,
+            description: nil
+        )
+    }
+
+    private func ensureLocalRepositoryReady() throws {
+        if gitManager.isGitRepository(at: folderPath) {
+            try commitExistingChangesIfNeeded()
+            return
+        }
+
+        guard gitManager.initializeRepository(at: folderPath) else {
+            throw CreateRepositoryFlowError.message("Failed to initialize local git repository")
+        }
+
+        try createInitialCommit(message: "Failed to create initial commit")
+    }
+
+    private func commitExistingChangesIfNeeded() throws {
+        guard gitManager.hasUncommittedChanges(at: folderPath) else {
+            return
+        }
+
+        try createInitialCommit(message: "Failed to commit existing changes")
+    }
+
+    private func createInitialCommit(message: String) throws {
+        guard gitManager.createInitialCommit(at: folderPath, message: "Initial commit") else {
+            throw CreateRepositoryFlowError.message(message)
+        }
+    }
+
+    private func configureRemote(with cloneURL: String) throws {
+        if gitManager.hasRemoteConfigured(at: folderPath) {
+            guard gitManager.updateRemoteURL(at: folderPath, newURL: cloneURL) else {
+                throw CreateRepositoryFlowError.message("Failed to update remote URL")
+            }
+            return
+        }
+
+        guard gitManager.addRemote(at: folderPath, url: cloneURL) else {
+            throw CreateRepositoryFlowError.message("Failed to add remote")
+        }
+    }
+
+    private func pushRepository() throws {
+        guard gitManager.pushToNewRemote(at: folderPath) else {
+            throw CreateRepositoryFlowError.message("Failed to push to GitHub")
+        }
+    }
+
+    @MainActor
+    private func showGitHubError(_ error: GitHubAPIError) {
+        switch error {
+        case .unauthorized:
+            showErrorMessage("GitHub authentication failed. Please reconnect.")
+        case .rateLimitExceeded:
+            showErrorMessage("GitHub rate limit exceeded. Please try again later.")
+        case let .networkError(networkError):
+            showErrorMessage("Network error: \(networkError.localizedDescription)")
+        default:
+            showErrorMessage("Failed to create repository: \(error)")
         }
     }
 

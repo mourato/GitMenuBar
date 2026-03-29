@@ -5,6 +5,20 @@
 
 import Foundation
 
+enum MainMenuInlineBannerSource: Equatable {
+    case coordinatorAlert
+    case deleteRepository
+    case toggleVisibility
+    case discard
+    case sync
+    case branchSwitch
+    case merge
+    case deleteBranch
+    case renameBranch
+    case restart
+    case push
+}
+
 enum MainMenuSyncLabelState: Equatable {
     case none
     case pushOnly
@@ -103,6 +117,74 @@ struct MainMenuPrimaryActionState: Equatable {
 }
 
 extension MainMenuView {
+    var inlineStatusBannerSource: MainMenuInlineBannerSource? {
+        if actionCoordinator.alert != nil {
+            return .coordinatorAlert
+        }
+        if deleteError != nil {
+            return .deleteRepository
+        }
+        if toggleVisibilityError != nil {
+            return .toggleVisibility
+        }
+        if discardError != nil {
+            return .discard
+        }
+        if syncError != nil {
+            return .sync
+        }
+        if branchSwitchError != nil {
+            return .branchSwitch
+        }
+        if mergeError != nil {
+            return .merge
+        }
+        if deleteBranchError != nil {
+            return .deleteBranch
+        }
+        if renameBranchError != nil {
+            return .renameBranch
+        }
+        if restartError != nil {
+            return .restart
+        }
+        if pushError != nil {
+            return .push
+        }
+
+        return nil
+    }
+
+    var inlineStatusBanner: InlineStatusBanner? {
+        switch inlineStatusBannerSource {
+        case .coordinatorAlert:
+            guard let alert = actionCoordinator.alert else { return nil }
+            return InlineStatusBanner(title: alert.title, message: alert.message, style: .error)
+        case .deleteRepository:
+            return banner(title: "Delete Failed", message: deleteError)
+        case .toggleVisibility:
+            return banner(title: "Visibility Update Failed", message: toggleVisibilityError)
+        case .discard:
+            return banner(title: "Discard Failed", message: discardError)
+        case .sync:
+            return banner(title: "Sync Failed", message: syncError)
+        case .branchSwitch:
+            return banner(title: "Branch Switch Failed", message: branchSwitchError)
+        case .merge:
+            return banner(title: "Merge Failed", message: mergeError)
+        case .deleteBranch:
+            return banner(title: "Delete Failed", message: deleteBranchError)
+        case .renameBranch:
+            return banner(title: "Rename Failed", message: renameBranchError)
+        case .restart:
+            return banner(title: "Restart Failed", message: restartError)
+        case .push:
+            return banner(title: "Push Failed", message: pushError)
+        case .none:
+            return nil
+        }
+    }
+
     var hasVisibleCommitMessage: Bool {
         !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -158,6 +240,10 @@ extension MainMenuView {
     var currentProjectName: String {
         guard !currentRepoPath.isEmpty else { return "Select Project" }
         return PathDisplayFormatter.projectName(from: currentRepoPath)
+    }
+
+    var canPresentRepositoryOptions: Bool {
+        githubAuthManager.isAuthenticated && !gitManager.remoteUrl.isEmpty
     }
 
     var hasWorkingTreeChanges: Bool {
@@ -224,5 +310,10 @@ extension MainMenuView {
     var displayedGenerationError: String? {
         guard hasWorkingTreeChanges, !hasVisibleCommitMessage, !hasWhitespaceOnlyCommitInput else { return nil }
         return aiCommitCoordinator.generationError
+    }
+
+    private func banner(title: String, message: String?) -> InlineStatusBanner? {
+        guard let message else { return nil }
+        return InlineStatusBanner(title: title, message: message, style: .error)
     }
 }

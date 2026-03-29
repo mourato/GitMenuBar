@@ -1,11 +1,29 @@
 import AppKit
 import SwiftUI
 
-struct MainMenuHeaderView<Content: View>: View {
+struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View>: View {
     let currentProjectName: String
     @Binding var showProjectSelector: Bool
-    let onProjectLongPress: () -> Void
-    let projectSelectorContent: () -> Content
+    let showsRepositoryOptionsButton: Bool
+    let onShowRepositoryOptions: () -> Void
+    let projectSelectorContent: () -> PopoverContent
+    let projectContextMenu: () -> ContextMenuContent
+
+    init(
+        currentProjectName: String,
+        showProjectSelector: Binding<Bool>,
+        showsRepositoryOptionsButton: Bool,
+        onShowRepositoryOptions: @escaping () -> Void,
+        @ViewBuilder projectSelectorContent: @escaping () -> PopoverContent,
+        @ViewBuilder projectContextMenu: @escaping () -> ContextMenuContent
+    ) {
+        self.currentProjectName = currentProjectName
+        _showProjectSelector = showProjectSelector
+        self.showsRepositoryOptionsButton = showsRepositoryOptionsButton
+        self.onShowRepositoryOptions = onShowRepositoryOptions
+        self.projectSelectorContent = projectSelectorContent
+        self.projectContextMenu = projectContextMenu
+    }
 
     var body: some View {
         HStack {
@@ -23,7 +41,8 @@ struct MainMenuHeaderView<Content: View>: View {
             })
             .buttonStyle(.plain)
             .contentShape(Rectangle())
-            .onLongPressGesture(minimumDuration: 2.0, perform: onProjectLongPress)
+            .accessibilityLabel("Current repository")
+            .accessibilityHint("Opens the recent repository picker.")
             .onHover { inside in
                 if inside {
                     NSCursor.pointingHand.push()
@@ -31,13 +50,25 @@ struct MainMenuHeaderView<Content: View>: View {
                     NSCursor.pop()
                 }
             }
+            .contextMenu(menuItems: projectContextMenu)
             .popover(isPresented: $showProjectSelector) {
                 projectSelectorContent()
             }
 
+            if showsRepositoryOptionsButton {
+                Button {
+                    onShowRepositoryOptions()
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Repository options")
+                .accessibilityHint("Shows repository visibility and deletion actions.")
+            }
+
             Spacer()
         }
-        .padding(.leading, 72)
     }
 }
 
@@ -45,10 +76,14 @@ struct MainMenuHeaderView<Content: View>: View {
     MainMenuHeaderView(
         currentProjectName: "gitmenubar",
         showProjectSelector: .constant(false),
-        onProjectLongPress: {},
+        showsRepositoryOptionsButton: true,
+        onShowRepositoryOptions: {},
         projectSelectorContent: {
             Text("Projects")
                 .padding()
+        },
+        projectContextMenu: {
+            Button("Repository Options…") {}
         }
     )
     .padding()

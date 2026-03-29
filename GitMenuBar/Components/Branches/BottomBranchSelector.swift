@@ -8,6 +8,7 @@ struct BottomBranchSelectorView: View {
     let behindCount: Int
     let isDetachedHead: Bool
     let onTap: () -> Void
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
         Button(action: onTap) {
@@ -20,7 +21,7 @@ struct BottomBranchSelectorView: View {
                     Text(currentBranch)
                         .font(.system(size: 11, weight: .regular, design: .rounded))
                 }
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(backgroundColor)
@@ -42,7 +43,7 @@ struct BottomBranchSelectorView: View {
                         HStack(spacing: 4) {
                             Divider()
                                 .frame(width: 1, height: 6)
-                                .background(Color.white.opacity(0.1))
+                                .background(Color.primary.opacity(0.12))
 
                             HStack(spacing: 0) {
                                 Image(systemName: "arrow.down")
@@ -58,7 +59,8 @@ struct BottomBranchSelectorView: View {
             }
         }
         .buttonStyle(.plain)
-        .focusable(false)
+        .accessibilityLabel("Current branch \(currentBranch)")
+        .accessibilityHint("Shows branch selection and sync actions.")
         .onHover { inside in
             if inside {
                 NSCursor.pointingHand.push()
@@ -70,12 +72,12 @@ struct BottomBranchSelectorView: View {
 
     private var backgroundColor: Color {
         if isDetachedHead {
-            return Color.red.opacity(0.3)
+            return Color.red.opacity(colorSchemeContrast == .increased ? 0.28 : 0.16)
         }
         if isRemoteAhead || commitCount > 0 {
-            return Color.orange.opacity(0.2)
+            return Color.orange.opacity(colorSchemeContrast == .increased ? 0.24 : 0.14)
         }
-        return Color.green.opacity(0.2)
+        return Color(nsColor: .controlBackgroundColor)
     }
 }
 

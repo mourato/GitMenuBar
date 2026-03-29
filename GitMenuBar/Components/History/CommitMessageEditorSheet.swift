@@ -76,6 +76,7 @@ struct CommitMessageEditorSheet: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
                 .disabled(message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
             }
         }

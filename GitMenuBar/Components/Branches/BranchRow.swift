@@ -46,6 +46,9 @@ struct BranchRowView: View {
         .background(isHovered ? Color.primary.opacity(0.05) : Color.clear)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(isCurrentBranch ? "\(branchName), current branch" : branchName)
+        .accessibilityHint("Opens branch actions.")
         .contextMenu {
             Button("Rename") {
                 onRename?()

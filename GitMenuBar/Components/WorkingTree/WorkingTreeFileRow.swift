@@ -57,6 +57,8 @@ struct WorkingTreeFileRowView: View {
         .onHover { inside in
             isHovered = inside
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(accessibilityLabel)
         .contextMenu {
             Button("Open File") {
                 onOpen?()
@@ -112,6 +114,7 @@ struct WorkingTreeFileRowView: View {
                         }
                         .buttonStyle(.plain)
                         .help("Open File")
+                        .accessibilityLabel("Open \(file.fileName)")
                     }
 
                     if let onDiscard = onDiscard {
@@ -124,6 +127,7 @@ struct WorkingTreeFileRowView: View {
                         }
                         .buttonStyle(.plain)
                         .help("Discard Changes")
+                        .accessibilityLabel("Discard changes in \(file.fileName)")
                     }
 
                     Button(action: onAction) {
@@ -135,6 +139,7 @@ struct WorkingTreeFileRowView: View {
                     }
                     .buttonStyle(.plain)
                     .help(actionHelp)
+                    .accessibilityLabel("\(actionHelp) for \(file.fileName)")
                 }
                 .opacity(isHovered ? 1 : 0)
                 .allowsHitTesting(isHovered)
@@ -144,6 +149,15 @@ struct WorkingTreeFileRowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.leading, 10)
         .clipped()
+    }
+
+    private var accessibilityLabel: String {
+        var value = file.fileName
+        if !file.directoryPath.isEmpty {
+            value += ", \(file.directoryPath)"
+        }
+        value += ", status \(file.status.symbol)"
+        return value
     }
 }
 

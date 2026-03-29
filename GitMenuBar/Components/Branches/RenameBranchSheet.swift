@@ -3,33 +3,40 @@ import SwiftUI
 struct RenameBranchSheet: View {
     let oldBranchName: String
     @Binding var newBranchName: String
+    let errorMessage: String?
     let onCancel: () -> Void
     let onRename: () -> Void
 
     var body: some View {
         VStack(spacing: 16) {
             Text("Rename Branch")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.headline)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("New name for '\(oldBranchName)':")
-                    .font(.system(size: 12))
                     .foregroundColor(.secondary)
 
                 TextField("new-branch-name", text: $newBranchName)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 12, design: .monospaced))
                     .onSubmit(onRename)
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
             }
 
             HStack(spacing: 12) {
                 Button("Cancel", action: onCancel)
-                    .keyboardShortcut(.escape, modifiers: [])
+                    .keyboardShortcut(.cancelAction)
 
                 Spacer()
 
                 Button("Rename", action: onRename)
                     .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
                     .disabled(newBranchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || newBranchName == oldBranchName)
             }
         }
@@ -45,6 +52,7 @@ private struct RenameBranchSheetPreviewContainer: View {
         RenameBranchSheet(
             oldBranchName: "feature/menu",
             newBranchName: $branchName,
+            errorMessage: nil,
             onCancel: {},
             onRename: {}
         )

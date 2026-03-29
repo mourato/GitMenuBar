@@ -10,19 +10,18 @@ struct GitHubConnectionSection: View {
             if githubAuthManager.isAuthenticated {
                 HStack {
                     Text("Connected as @\(githubAuthManager.username)")
-                        .font(.system(size: 11))
+                        .font(.caption)
                         .foregroundColor(.secondary)
                     Spacer()
                     Button("Disconnect") {
                         githubAuthManager.disconnect()
                     }
                     .buttonStyle(.borderless)
-                    .focusable(false)
-                    .font(.system(size: 11))
+                    .font(.caption)
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(Color.green.opacity(0.1))
+                .background(Color(nsColor: .controlBackgroundColor))
                 .cornerRadius(4)
             } else if githubAuthManager.isAuthenticating {
                 authenticatingView
@@ -48,23 +47,22 @@ struct GitHubConnectionSection: View {
                         HStack(spacing: 4) {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 10))
-                                .foregroundColor(.green)
+                                .foregroundColor(.accentColor)
                             Text("Copied to clipboard")
-                                .font(.system(size: 10))
+                                .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
 
                     Text("Enter this code on GitHub")
-                        .font(.system(size: 11))
+                        .font(.caption)
                         .foregroundColor(.secondary)
 
                     Button("Cancel") {
                         githubAuthManager.cancelAuthentication()
                     }
                     .buttonStyle(.borderless)
-                    .focusable(false)
-                    .font(.system(size: 11))
+                    .font(.caption)
                     .foregroundColor(.secondary)
                 }
             } else {
@@ -72,7 +70,7 @@ struct GitHubConnectionSection: View {
                     ProgressView()
                         .scaleEffect(0.7)
                     Text("Connecting...")
-                        .font(.system(size: 11))
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
@@ -80,7 +78,7 @@ struct GitHubConnectionSection: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
         .padding(.horizontal, 12)
-        .background(Color.blue.opacity(0.08))
+        .background(Color(nsColor: .controlBackgroundColor))
         .cornerRadius(6)
     }
 
@@ -95,20 +93,19 @@ struct GitHubConnectionSection: View {
                     setAutoHideSuspended(true)
                     githubAuthManager.startDeviceFlow()
                 }
-                .buttonStyle(.borderless)
-                .focusable(false)
-                .font(.system(size: 11))
+                .buttonStyle(.borderedProminent)
+                .font(.caption)
             }
 
             if !githubAuthManager.authError.isEmpty {
                 Text(githubAuthManager.authError)
-                    .font(.system(size: 10))
+                    .font(.caption)
                     .foregroundColor(.red)
             }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color.gray.opacity(0.1))
+        .background(Color(nsColor: .controlBackgroundColor))
         .cornerRadius(4)
     }
 }

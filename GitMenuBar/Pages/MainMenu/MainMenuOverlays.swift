@@ -6,18 +6,21 @@
 import SwiftUI
 
 extension MainMenuView {
-    // swiftlint:disable:next function_body_length
     func applyMainViewOverlays<Content: View>(to view: Content) -> some View {
+        let commitAndRewriteOverlays = applyWhitespaceAndRewriteOverlays(to: view)
+        let confirmationAlerts = applyConfirmationAlerts(to: commitAndRewriteOverlays)
+        let sheets = applySheets(to: confirmationAlerts)
+        return applyCommandPaletteOverlay(to: sheets)
+    }
+
+    private func applyWhitespaceAndRewriteOverlays<Content: View>(to view: Content) -> some View {
+        let editAlertView = applyCommitEditAlert(to: view)
+        let whitespaceView = applyWhitespaceCommitConfirmation(to: editAlertView)
+        return applyPublishedRewriteConfirmation(to: whitespaceView)
+    }
+
+    private func applyCommitEditAlert<Content: View>(to view: Content) -> some View {
         view
-            .alert(item: $actionCoordinator.alert) { alert in
-                Alert(
-                    title: Text(alert.title),
-                    message: Text(alert.message),
-                    dismissButton: .cancel(Text("OK")) {
-                        actionCoordinator.clearAlert()
-                    }
-                )
-            }
             .alert(item: $commitHistoryEditCoordinator.alert) { alert in
                 Alert(
                     title: Text(alert.title),
@@ -27,6 +30,10 @@ extension MainMenuView {
                     }
                 )
             }
+    }
+
+    private func applyWhitespaceCommitConfirmation<Content: View>(to view: Content) -> some View {
+        view
             .confirmationDialog(
                 "Commit message contains only spaces",
                 isPresented: .init(
@@ -76,9 +83,14 @@ extension MainMenuView {
                 }
             } message: {
                 Text(
-                    "The current message has no visible text. You can cancel, commit with the current text, or ignore it and generate a message automatically."
+                    "The current message has no visible text. You can cancel, commit with the current text, "
+                        + "or ignore it and generate a message automatically."
                 )
             }
+    }
+
+    private func applyPublishedRewriteConfirmation<Content: View>(to view: Content) -> some View {
+        view
             .confirmationDialog(
                 "Rewrite Published Commit?",
                 isPresented: .init(
@@ -101,71 +113,23 @@ extension MainMenuView {
                     commitHistoryEditCoordinator.dismissRewriteConfirmation()
                 }
             } message: {
-                Text("This commit already exists on the remote. Rewriting it changes local history and your next push may require force push.")
+                Text(
+                    "This commit already exists on the remote. Rewriting it changes local history "
+                        + "and your next push may require force push."
+                )
             }
-            .alert("Push Failed", isPresented: .init(
-                get: { pushError != nil },
-                set: { if !$0 { pushError = nil } }
-            )) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(pushError ?? "An unknown error occurred.")
-            }
-            .alert("Sync Failed", isPresented: .init(
-                get: { syncError != nil },
-                set: { if !$0 { syncError = nil } }
-            )) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(syncError ?? "An unknown error occurred.")
-            }
-            .alert("Branch Switch Failed", isPresented: .init(
-                get: { branchSwitchError != nil },
-                set: { if !$0 { branchSwitchError = nil } }
-            )) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(branchSwitchError ?? "An unknown error occurred.")
-            }
-            .alert("Merge Failed", isPresented: .init(
-                get: { mergeError != nil },
-                set: { if !$0 { mergeError = nil } }
-            )) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(mergeError ?? "An unknown error occurred.")
-            }
-            .alert("Delete Failed", isPresented: .init(
-                get: { deleteBranchError != nil },
-                set: { if !$0 { deleteBranchError = nil } }
-            )) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(deleteBranchError ?? "An unknown error occurred.")
-            }
-            .alert("Rename Failed", isPresented: .init(
-                get: { renameBranchError != nil },
-                set: { if !$0 { renameBranchError = nil } }
-            )) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(renameBranchError ?? "An unknown error occurred.")
-            }
+    }
+
+    private func applyConfirmationAlerts<Content: View>(to view: Content) -> some View {
+        view
             .alert("Restart GitMenuBar?", isPresented: $showRestartConfirmation) {
                 Button("Cancel", role: .cancel) {}
                 Button("Restart") {
                     restartApplication()
                 }
+                .keyboardShortcut(.defaultAction)
             } message: {
                 Text("This will relaunch the app immediately.")
-            }
-            .alert("Restart Failed", isPresented: .init(
-                get: { restartError != nil },
-                set: { if !$0 { restartError = nil } }
-            )) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(restartError ?? "An unknown error occurred.")
             }
             .alert("Merge into \(mergeTargetBranch)?", isPresented: $showMergeConfirmation) {
                 Button("Merge") {
@@ -180,7 +144,10 @@ extension MainMenuView {
                     mergeTargetBranch = ""
                 }
             } message: {
-                Text("This will bring all changes from '\(mergeBranchName)' into your current branch '\(mergeTargetBranch)'.")
+                Text(
+                    "This will bring all changes from '\(mergeBranchName)' into your current branch "
+                        + "'\(mergeTargetBranch)'."
+                )
             }
             .alert("Uncommitted Changes", isPresented: $showDirtySwitchConfirmation) {
                 Button("Switch & Carry Over") {
@@ -211,23 +178,14 @@ extension MainMenuView {
                 }
             } message: {
                 Text(
-                    (branchNameToDelete == "main" || branchNameToDelete == "master" || branchNameToDelete == "develop") ?
-                        "WARNING: '\(branchNameToDelete)' is a primary branch. Deleting it may cause serious issues." :
-                        "Are you sure you want to delete this branch? This action cannot be undone."
+                    deleteBranchWarningMessage
                 )
             }
+    }
 
-            .sheet(isPresented: $showRenameBranch) {
-                RenameBranchSheet(
-                    oldBranchName: oldBranchName,
-                    newBranchName: $renameBranchNewName,
-                    onCancel: {
-                        showRenameBranch = false
-                        renameBranchNewName = ""
-                    },
-                    onRename: renameBranch
-                )
-            }
+    private func applySheets<Content: View>(to view: Content) -> some View {
+        view
+            .sheet(isPresented: $showRenameBranch, content: renameBranchSheet)
             .sheet(
                 isPresented: .init(
                     get: { commitHistoryEditCoordinator.isEditorPresented },
@@ -237,119 +195,161 @@ extension MainMenuView {
                         }
                     }
                 )
-            ) {
-                if let editingCommit = commitHistoryEditCoordinator.editingCommit {
-                    CommitMessageEditorSheet(
-                        title: commitHistoryEditCoordinator.editMode.title,
-                        commit: editingCommit,
-                        message: $commitHistoryEditCoordinator.draftMessage,
-                        isPublishedCommit: commitHistoryEditCoordinator.isPublishedCommit,
-                        isSaving: commitHistoryEditCoordinator.isSaving,
-                        errorMessage: commitHistoryEditCoordinator.inlineError,
-                        onCancel: {
-                            commitHistoryEditCoordinator.dismissEditor()
-                        },
-                        onSave: {
-                            Task {
-                                await saveEditedCommitMessage()
-                            }
+            ) { commitMessageEditorSheet() }
+            .sheet(isPresented: $actionCoordinator.showSyncOptions, content: syncOptionsSheet)
+            .sheet(isPresented: $showCreateBranch, content: createBranchSheet)
+            .sheet(isPresented: $showPullToNewBranch, content: pullToNewBranchSheet)
+    }
+
+    private func applyCommandPaletteOverlay<Content: View>(to view: Content) -> some View {
+        view.overlay {
+            if isCommandPalettePresented && presentationModel.route == .main {
+                ZStack {
+                    Color(nsColor: .windowBackgroundColor).opacity(0.28)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            closeCommandPalette()
                         }
+                        .zIndex(0)
+
+                    MainMenuCommandPaletteView(
+                        query: $commandPaletteQuery,
+                        items: commandPaletteVisibleItems,
+                        selectedItemID: $selectedCommandPaletteItemID,
+                        onClose: closeCommandPalette,
+                        onSelectItem: executeCommandPaletteItem
                     )
+                    .accessibilityAddTraits(.isModal)
+                    .zIndex(1)
                 }
             }
-            .sheet(isPresented: $actionCoordinator.showSyncOptions) {
-                VStack(spacing: 16) {
-                    Text("Sync with Remote")
-                        .font(.system(size: 14, weight: .semibold))
+        }
+    }
 
-                    Text("Remote has \(gitManager.behindCount) new commit\(gitManager.behindCount == 1 ? "" : "s")")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+    private var deleteBranchWarningMessage: String {
+        let protectedBranches = ["main", "master", "develop"]
+        if protectedBranches.contains(branchNameToDelete) {
+            return "WARNING: '\(branchNameToDelete)' is a primary branch. Deleting it may cause serious issues."
+        }
 
-                    VStack(alignment: .leading, spacing: 12) {
-                        SyncOptionCard(
-                            title: "Merge",
-                            subtitle: "Safe: Creates a merge commit",
-                            backgroundColor: Color.blue.opacity(0.1)
-                        ) {
-                            useRebase = false
-                            syncWithRemote()
-                        }
+        return "Are you sure you want to delete this branch? This action cannot be undone."
+    }
 
-                        SyncOptionCard(
-                            title: "Rebase",
-                            subtitle: "Clean: Replays your commits on top",
-                            backgroundColor: Color.purple.opacity(0.1)
-                        ) {
-                            useRebase = true
-                            syncWithRemote()
-                        }
+    private func renameBranchSheet() -> some View {
+        RenameBranchSheet(
+            oldBranchName: oldBranchName,
+            newBranchName: $renameBranchNewName,
+            errorMessage: renameBranchError,
+            onCancel: {
+                showRenameBranch = false
+                renameBranchNewName = ""
+                renameBranchError = nil
+            },
+            onRename: renameBranch
+        )
+    }
 
-                        SyncOptionCard(
-                            title: "Pull to New Branch",
-                            subtitle: "Safe: Creates a fresh branch from remote",
-                            backgroundColor: Color.green.opacity(0.1)
-                        ) {
-                            actionCoordinator.dismissSyncOptions()
-                            pullToNewBranchName = "\(gitManager.currentBranch)-remote"
-                            showPullToNewBranch = true
-                        }
-                    }
-
-                    Button("Cancel") {
-                        actionCoordinator.dismissSyncOptions()
-                    }
-                    .buttonStyle(.borderless)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 8)
-                }
-                .padding()
-                .frame(width: 320)
-            }
-            .sheet(isPresented: $showCreateBranch) {
-                CreateBranchSheet(
-                    branchName: $newBranchName,
-                    currentBranch: gitManager.currentBranch,
-                    errorMessage: createBranchError,
-                    onCancel: {
-                        showCreateBranch = false
-                        newBranchName = ""
-                        createBranchError = nil
-                    },
-                    onCreate: createNewBranch
-                )
-            }
-            .sheet(isPresented: $showPullToNewBranch) {
-                PullToNewBranchSheet(
-                    branchName: $pullToNewBranchName,
-                    onCancel: {
-                        showPullToNewBranch = false
-                        pullToNewBranchName = ""
-                    },
-                    onPull: pullToNewBranch
-                )
-            }
-            .overlay {
-                if isCommandPalettePresented && presentationModel.route == .main {
-                    ZStack {
-                        Color.black.opacity(0.22)
-                            .ignoresSafeArea()
-                            .onTapGesture {
-                                closeCommandPalette()
-                            }
-                            .zIndex(0)
-
-                        MainMenuCommandPaletteView(
-                            query: $commandPaletteQuery,
-                            items: commandPaletteVisibleItems,
-                            selectedItemID: $selectedCommandPaletteItemID,
-                            onClose: closeCommandPalette,
-                            onSelectItem: executeCommandPaletteItem
-                        )
-                        .zIndex(1)
+    @ViewBuilder
+    private func commitMessageEditorSheet() -> some View {
+        if let editingCommit = commitHistoryEditCoordinator.editingCommit {
+            CommitMessageEditorSheet(
+                title: commitHistoryEditCoordinator.editMode.title,
+                commit: editingCommit,
+                message: $commitHistoryEditCoordinator.draftMessage,
+                isPublishedCommit: commitHistoryEditCoordinator.isPublishedCommit,
+                isSaving: commitHistoryEditCoordinator.isSaving,
+                errorMessage: commitHistoryEditCoordinator.inlineError,
+                onCancel: {
+                    commitHistoryEditCoordinator.dismissEditor()
+                },
+                onSave: {
+                    Task {
+                        await saveEditedCommitMessage()
                     }
                 }
+            )
+        }
+    }
+
+    private func syncOptionsSheet() -> some View {
+        VStack(spacing: 16) {
+            Text("Sync with Remote")
+                .font(.system(size: 14, weight: .semibold))
+
+            Text(syncOptionsSubtitle)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+
+            VStack(alignment: .leading, spacing: 12) {
+                SyncOptionCard(
+                    title: "Merge",
+                    subtitle: "Safe: Creates a merge commit",
+                    backgroundColor: Color.blue.opacity(0.1)
+                ) {
+                    useRebase = false
+                    syncWithRemote()
+                }
+
+                SyncOptionCard(
+                    title: "Rebase",
+                    subtitle: "Clean: Replays your commits on top",
+                    backgroundColor: Color.purple.opacity(0.1)
+                ) {
+                    useRebase = true
+                    syncWithRemote()
+                }
+
+                SyncOptionCard(
+                    title: "Pull to New Branch",
+                    subtitle: "Safe: Creates a fresh branch from remote",
+                    backgroundColor: Color.green.opacity(0.1)
+                ) {
+                    actionCoordinator.dismissSyncOptions()
+                    pullToNewBranchName = "\(gitManager.currentBranch)-remote"
+                    showPullToNewBranch = true
+                }
             }
+
+            Button("Cancel") {
+                actionCoordinator.dismissSyncOptions()
+            }
+            .buttonStyle(.borderless)
+            .foregroundColor(.secondary)
+            .padding(.top, 8)
+        }
+        .padding()
+        .frame(width: 320)
+    }
+
+    private var syncOptionsSubtitle: String {
+        "Remote has \(gitManager.behindCount) new commit\(gitManager.behindCount == 1 ? "" : "s")"
+    }
+
+    private func createBranchSheet() -> some View {
+        CreateBranchSheet(
+            branchName: $newBranchName,
+            currentBranch: gitManager.currentBranch,
+            errorMessage: createBranchError,
+            onCancel: {
+                showCreateBranch = false
+                newBranchName = ""
+                createBranchError = nil
+            },
+            onCreate: createNewBranch
+        )
+    }
+
+    private func pullToNewBranchSheet() -> some View {
+        PullToNewBranchSheet(
+            branchName: $pullToNewBranchName,
+            errorMessage: syncError,
+            onCancel: {
+                showPullToNewBranch = false
+                pullToNewBranchName = ""
+                syncError = nil
+            },
+            onPull: pullToNewBranch
+        )
     }
 }
 

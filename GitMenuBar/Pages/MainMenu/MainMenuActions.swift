@@ -237,10 +237,72 @@ extension MainMenuView {
         presentCommandPaletteIfPossible()
     }
 
+    func handleRepositoryOptionsPresentationRequest(_ token: Int) {
+        guard token > lastHandledRepositoryOptionsToken else {
+            return
+        }
+
+        lastHandledRepositoryOptionsToken = token
+        guard presentationModel.route == .main, canPresentRepositoryOptions else {
+            return
+        }
+
+        showRepoOptions = true
+    }
+
     func closeCommandPalette() {
         isCommandPalettePresented = false
         commandPaletteQuery = ""
         selectedCommandPaletteItemID = nil
+    }
+
+    func dismissInlineStatusBanner() {
+        guard let source = inlineStatusBannerSource else {
+            return
+        }
+
+        switch source {
+        case .coordinatorAlert, .deleteRepository, .toggleVisibility, .discard:
+            dismissInlineBannerState(source)
+        case .sync, .branchSwitch, .merge, .deleteBranch, .renameBranch, .restart, .push:
+            dismissInlineBannerOperationError(source)
+        }
+    }
+
+    private func dismissInlineBannerState(_ source: MainMenuInlineBannerSource) {
+        switch source {
+        case .coordinatorAlert:
+            actionCoordinator.clearAlert()
+        case .deleteRepository:
+            deleteError = nil
+        case .toggleVisibility:
+            toggleVisibilityError = nil
+        case .discard:
+            discardError = nil
+        default:
+            break
+        }
+    }
+
+    private func dismissInlineBannerOperationError(_ source: MainMenuInlineBannerSource) {
+        switch source {
+        case .sync:
+            syncError = nil
+        case .branchSwitch:
+            branchSwitchError = nil
+        case .merge:
+            mergeError = nil
+        case .deleteBranch:
+            deleteBranchError = nil
+        case .renameBranch:
+            renameBranchError = nil
+        case .restart:
+            restartError = nil
+        case .push:
+            pushError = nil
+        default:
+            break
+        }
     }
 
     func revealCommitFieldForManualEntry() {

@@ -16,17 +16,14 @@ struct GitMenuBarApp: App {
             EmptyView()
         }
         .commands {
-            CommandGroup(replacing: .appSettings) {
-                Button("Settings…") {
-                    appDelegate.showSettingsWindow()
-                }
-                .keyboardShortcut(",", modifiers: .command)
-            }
+            GitMenuBarCommandMenus(commandCenter: appDelegate.appCommandCenter)
         }
     }
 }
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
+    let appCommandCenter = AppCommandCenter()
     var statusBarController: StatusBarController?
     var githubAuthManager: GitHubAuthManager?
     private let recentProjectsStore = RecentProjectsStore()
@@ -51,7 +48,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         githubAuthManager = GitHubAuthManager()
 
         // Create and show status bar controller - keep strong reference
-        statusBarController = StatusBarController(githubAuthManager: githubAuthManager!)
+        statusBarController = StatusBarController(
+            githubAuthManager: githubAuthManager!,
+            appCommandCenter: appCommandCenter
+        )
 
         // Check login item status after controller is created
         statusBarController?.loginItemManager.checkLoginItemStatus()

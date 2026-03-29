@@ -5,6 +5,7 @@ struct HistorySectionHeaderView: View {
     @Binding var isCollapsed: Bool
 
     @State private var isHovered = false
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
         HStack(spacing: 8) {
@@ -21,18 +22,23 @@ struct HistorySectionHeaderView: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("History section")
+            .accessibilityHint(isCollapsed ? "Expands commit history." : "Collapses commit history.")
 
             Spacer(minLength: 8)
 
             Text("\(commitCount)")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.gray)
-                .background(.white.opacity(0.08))
+                .font(.caption.weight(.medium))
+                .foregroundColor(.secondary)
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 4)
         .background(isHovered ? Color.primary.opacity(0.08) : Color.clear)
         .cornerRadius(4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.secondary.opacity(colorSchemeContrast == .increased ? 0.45 : 0), lineWidth: 1)
+        )
         .contentShape(Rectangle())
         .onHover { inside in
             isHovered = inside

@@ -39,13 +39,13 @@ struct CreateBranchSheet: View {
 
             HStack {
                 Button("Cancel", action: onCancel)
-                    .buttonStyle(.borderless)
-                    .foregroundColor(.secondary)
+                    .keyboardShortcut(.cancelAction)
 
                 Spacer()
 
                 Button("Create", action: onCreate)
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
                     .disabled(branchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }

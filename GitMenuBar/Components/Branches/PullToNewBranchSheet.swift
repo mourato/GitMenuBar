@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PullToNewBranchSheet: View {
     @Binding var branchName: String
+    let errorMessage: String?
     let onCancel: () -> Void
     let onPull: () -> Void
 
@@ -19,16 +20,23 @@ struct PullToNewBranchSheet: View {
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 12, design: .monospaced))
                     .onSubmit(onPull)
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
             }
 
             HStack(spacing: 12) {
                 Button("Cancel", action: onCancel)
-                    .keyboardShortcut(.escape, modifiers: [])
+                    .keyboardShortcut(.cancelAction)
 
                 Spacer()
 
                 Button("Pull", action: onPull)
                     .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
                     .disabled(branchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
@@ -43,6 +51,7 @@ private struct PullToNewBranchSheetPreviewContainer: View {
     var body: some View {
         PullToNewBranchSheet(
             branchName: $branchName,
+            errorMessage: nil,
             onCancel: {},
             onPull: {}
         )

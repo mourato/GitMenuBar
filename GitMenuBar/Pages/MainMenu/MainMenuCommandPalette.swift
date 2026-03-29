@@ -88,18 +88,13 @@ struct MainMenuCommandPaletteView: View {
 
     @FocusState private var isSearchFieldFocused: Bool
     @State private var localKeyEventMonitor: Any?
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             TextField("Search commands", text: $query)
-                .textFieldStyle(.plain)
-                .font(.system(size: 20, weight: .medium))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.primary.opacity(0.05))
-                )
+                .textFieldStyle(.roundedBorder)
+                .font(.title3.weight(.medium))
                 .focused($isSearchFieldFocused)
                 .onSubmit {
                     executeSelectedOrFirstVisibleItem()
@@ -133,15 +128,12 @@ struct MainMenuCommandPaletteView: View {
         }
         .padding(14)
         .frame(width: 360)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(nsColor: .windowBackgroundColor))
-        )
+        .background(backgroundStyle)
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.16), radius: 20, x: 0, y: 10)
+        .shadow(color: Color.black.opacity(0.10), radius: 16, x: 0, y: 8)
         .onAppear {
             selectedItemID = MainMenuCommandPaletteResolver.defaultSelectionID(for: items)
             isSearchFieldFocused = true
@@ -167,6 +159,17 @@ struct MainMenuCommandPaletteView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    @ViewBuilder
+    private var backgroundStyle: some View {
+        if reduceTransparency {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(nsColor: .windowBackgroundColor))
+        } else {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.regularMaterial)
+        }
+    }
+
     private func sectionView(section: MainMenuCommandPaletteSection, items: [MainMenuCommandPaletteItem]) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(section.title)
@@ -183,6 +186,7 @@ struct MainMenuCommandPaletteView: View {
                 .id(item.id)
                 .buttonStyle(.plain)
                 .disabled(!item.isEnabled)
+                .accessibilityLabel(item.title)
             }
         }
     }

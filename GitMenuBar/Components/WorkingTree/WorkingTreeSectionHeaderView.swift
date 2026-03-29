@@ -11,6 +11,7 @@ struct WorkingTreeSectionHeaderView: View {
     var onDiscardAll: (() -> Void)?
 
     @State private var isHovered = false
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
         HStack(spacing: 8) {
@@ -27,6 +28,8 @@ struct WorkingTreeSectionHeaderView: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("\(title) section")
+            .accessibilityHint(isCollapsed ? "Expands the section." : "Collapses the section.")
 
             Spacer(minLength: 8)
 
@@ -48,6 +51,7 @@ struct WorkingTreeSectionHeaderView: View {
                         }
                         .buttonStyle(.plain)
                         .help("Discard All")
+                        .accessibilityLabel("Discard all files in \(title)")
                     }
 
                     Button(action: onAction) {
@@ -59,20 +63,24 @@ struct WorkingTreeSectionHeaderView: View {
                     }
                     .buttonStyle(.plain)
                     .help(actionHelp)
+                    .accessibilityLabel(actionHelp)
                 }
                 .opacity(isHovered && showsAction ? 1 : 0)
                 .allowsHitTesting(isHovered && showsAction)
             }
 
             Text(summary.fileCountText)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.gray)
-                .background(.white.opacity(0.08))
+                .font(.caption.weight(.medium))
+                .foregroundColor(.secondary)
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 4)
         .background(isHovered ? Color.primary.opacity(0.08) : Color.clear)
         .cornerRadius(4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.secondary.opacity(colorSchemeContrast == .increased ? 0.45 : 0), lineWidth: 1)
+        )
         .contentShape(Rectangle())
         .onHover { inside in
             isHovered = inside

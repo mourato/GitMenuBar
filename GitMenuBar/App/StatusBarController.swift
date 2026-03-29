@@ -48,6 +48,7 @@ final class StatusBarController: ObservableObject {
     let gitManager = GitManager()
     let loginItemManager = LoginItemManager()
     let githubAuthManager: GitHubAuthManager
+    let appCommandCenter: AppCommandCenter
     let aiProviderStore = AIProviderStore()
     let aiKeychainStore: any AIAPIKeyStore
     let aiCommitMessageService = AICommitMessageService()
@@ -82,8 +83,9 @@ final class StatusBarController: ObservableObject {
         }
     )
 
-    init(githubAuthManager: GitHubAuthManager) {
+    init(githubAuthManager: GitHubAuthManager, appCommandCenter: AppCommandCenter) {
         self.githubAuthManager = githubAuthManager
+        self.appCommandCenter = appCommandCenter
         if AppExecutionContext.usesEphemeralCredentialStores {
             aiKeychainStore = InMemoryAIAPIKeyStore()
         } else {
@@ -99,6 +101,9 @@ final class StatusBarController: ObservableObject {
 
         // Wire up GitHub API client for checking repo existence
         gitManager.githubAPIClient = GitHubAPIClient(authManager: githubAuthManager)
+        appCommandCenter.performInvocation = { [weak self] invocation in
+            self?.performAppCommand(invocation)
+        }
 
         setupStatusItem()
         setupContextMenu()
@@ -107,8 +112,10 @@ final class StatusBarController: ObservableObject {
         setupBadgeRefreshTimer()
         setupShortcutHandlers()
         setupAuthenticationObservation()
+        setupAppCommandObservation()
 
         gitManager.updateUncommittedFiles()
+        refreshAppCommands()
     }
 
     private func setupStatusItem() {
@@ -265,6 +272,31 @@ final class StatusBarController: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] isAuthenticating in
                 self?.setAutoHideSuspended(isAuthenticating)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func setupAppCommandObservation() {
+        let publishers: [AnyPublisher<Void, Never>] = [
+            gitManager.$stagedFiles.map { _ in () }.eraseToAnyPublisher(),
+            gitManager.$changedFiles.map { _ in () }.eraseToAnyPublisher(),
+            gitManager.$isAheadOfRemote.map { _ in () }.eraseToAnyPublisher(),
+            gitManager.$isRemoteAhead.map { _ in () }.eraseToAnyPublisher(),
+            gitManager.$remoteUrl.map { _ in () }.eraseToAnyPublisher(),
+            githubAuthManager.$isAuthenticated.map { _ in () }.eraseToAnyPublisher(),
+            presentationModel.$route.map { _ in () }.eraseToAnyPublisher(),
+            NotificationCenter.default.publisher(
+                for: UserDefaults.didChangeNotification,
+                object: UserDefaults.standard
+            )
+            .map { _ in () }
+            .eraseToAnyPublisher()
+        ]
+
+        Publishers.MergeMany(publishers)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] in
+                self?.refreshAppCommands()
             }
             .store(in: &cancellables)
     }
@@ -451,97 +483,98 @@ final class StatusBarController: ObservableObject {
         let menu = contextMenu ?? NSMenu()
         menu.removeAllItems()
 
-        let actionState = StatusBarContextMenuActionState.resolve(
-            hasCommitWork: actionCoordinator.hasWorkingTreeChanges,
-            hasSyncWork: actionCoordinator.hasSyncWork,
-            canAutoCommit: actionCoordinator.canAutoCommit,
-            canSync: actionCoordinator.canSync
-        )
-
-        if actionState.showsCommit {
-            let commitItem = NSMenuItem(title: "Commit", action: #selector(commitFromContextMenu), keyEquivalent: "")
-            commitItem.target = self
-            commitItem.isEnabled = actionState.canCommit
-            menu.addItem(commitItem)
-        }
-
-        if actionState.showsCommitAndPush {
-            let commitAndPushItem = NSMenuItem(
-                title: "Commit & Push",
-                action: #selector(commitAndPushFromContextMenu),
-                keyEquivalent: ""
-            )
-            commitAndPushItem.target = self
-            commitAndPushItem.isEnabled = actionState.canCommitAndPush
-            menu.addItem(commitAndPushItem)
-        }
-
-        if actionState.showsSync {
-            let syncItem = NSMenuItem(
-                title: actionCoordinator.syncActionTitle,
-                action: #selector(syncFromContextMenu),
-                keyEquivalent: ""
-            )
-            syncItem.target = self
-            syncItem.isEnabled = actionState.canSync
-            menu.addItem(syncItem)
-        }
-
-        if actionState.hasVisibleActions {
+        if appendCommandItems([.commit, .commitAndPush, .sync], to: menu) {
             menu.addItem(NSMenuItem.separator())
         }
 
-        let settingsItem = NSMenuItem(title: "Settings", action: #selector(openSettingsFromContextMenu), keyEquivalent: ",")
-        settingsItem.target = self
-        menu.addItem(settingsItem)
+        if appendCommandItems(
+            [.openRepositoryOnGitHub, .revealRepositoryInFinder, .showRepositoryOptions],
+            to: menu
+        ) {
+            menu.addItem(NSMenuItem.separator())
+        }
 
-        let quitItem = NSMenuItem(title: "Quit", action: #selector(quitFromContextMenu), keyEquivalent: "q")
-        quitItem.target = self
-        menu.addItem(quitItem)
+        appendRecentProjectsMenu(to: menu)
+        addCommandMenuItem(.chooseRepository, to: menu)
+        menu.addItem(NSMenuItem.separator())
+
+        addCommandMenuItem(.showSettings, to: menu)
+        addCommandMenuItem(.quit, to: menu)
 
         contextMenu = menu
     }
 
-    @objc private func commitFromContextMenu() {
-        Task { @MainActor in
-            let result = await actionCoordinator.performCommit(
-                commentText: "",
-                forceAutomaticMessage: true
+    private func appendCommandItems(_ commandIDs: [AppCommandID], to menu: NSMenu) -> Bool {
+        let hasEnabledItem = commandIDs.contains { appCommandCenter.state(for: $0).isEnabled }
+
+        for commandID in commandIDs {
+            addCommandMenuItem(commandID, to: menu)
+        }
+
+        return hasEnabledItem
+    }
+
+    private func addCommandMenuItem(_ commandID: AppCommandID, to menu: NSMenu) {
+        let state = appCommandCenter.state(for: commandID)
+        let item = makeMenuItem(
+            title: state.title,
+            action: #selector(handleContextMenuCommand(_:)),
+            representedCommand: commandID,
+            isEnabled: state.isEnabled
+        )
+        menu.addItem(item)
+    }
+
+    private func appendRecentProjectsMenu(to menu: NSMenu) {
+        guard !appCommandCenter.recentProjects.isEmpty else {
+            return
+        }
+
+        let recentMenuItem = NSMenuItem(title: "Open Recent", action: nil, keyEquivalent: "")
+        let submenu = NSMenu(title: "Open Recent")
+
+        for project in appCommandCenter.recentProjects {
+            let item = NSMenuItem(
+                title: project.title,
+                action: #selector(handleRecentProjectContextMenuItem(_:)),
+                keyEquivalent: ""
             )
-            if result.shouldOpenPopover {
-                presentMainWindowForActionFeedback()
-            }
+            item.target = self
+            item.toolTip = project.subtitle
+            item.representedObject = project.path
+            submenu.addItem(item)
         }
+
+        recentMenuItem.submenu = submenu
+        menu.addItem(recentMenuItem)
     }
 
-    @objc private func commitAndPushFromContextMenu() {
-        Task { @MainActor in
-            let result = await actionCoordinator.performCommit(
-                commentText: "",
-                forceAutomaticMessage: true,
-                shouldPushAfterCommit: true
-            )
-            if result.shouldOpenPopover {
-                presentMainWindowForActionFeedback()
-            }
+    private func makeMenuItem(
+        title: String,
+        action: Selector,
+        representedCommand: AppCommandID,
+        isEnabled: Bool
+    ) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        item.representedObject = representedCommand
+        item.isEnabled = isEnabled
+        return item
+    }
+
+    @objc private func handleContextMenuCommand(_ sender: NSMenuItem) {
+        guard let commandID = sender.representedObject as? AppCommandID else {
+            return
         }
+
+        appCommandCenter.perform(commandID)
     }
 
-    @objc private func syncFromContextMenu() {
-        Task { @MainActor in
-            let result = await actionCoordinator.performSync()
-            if result.shouldOpenPopover {
-                presentMainWindowForActionFeedback()
-            }
+    @objc private func handleRecentProjectContextMenuItem(_ sender: NSMenuItem) {
+        guard let path = sender.representedObject as? String else {
+            return
         }
-    }
-
-    @objc private func openSettingsFromContextMenu() {
-        openSettingsWindow()
-    }
-
-    @objc private func quitFromContextMenu() {
-        NSApplication.shared.terminate(nil)
+        appCommandCenter.performRecentProject(path: path)
     }
 
     private func toggleMainWindowFromShortcut() {
@@ -765,6 +798,159 @@ final class StatusBarController: ObservableObject {
     private func currentRepositoryPath() -> String? {
         let path = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
         return path.isEmpty ? nil : path
+    }
+
+    private func refreshAppCommands() {
+        let snapshot = AppCommandResolver.resolveSnapshot(
+            context: AppCommandContext(
+                actionState: StatusBarContextMenuActionState.resolve(
+                    hasCommitWork: actionCoordinator.hasWorkingTreeChanges,
+                    hasSyncWork: actionCoordinator.hasSyncWork,
+                    canAutoCommit: actionCoordinator.canAutoCommit,
+                    canSync: actionCoordinator.canSync
+                ),
+                syncActionTitle: actionCoordinator.syncActionTitle,
+                currentRepoPath: currentRepositoryPath() ?? "",
+                remoteUrl: gitManager.remoteUrl,
+                recentPaths: RecentProjectsStore().recentPaths(),
+                isGitHubAuthenticated: githubAuthManager.isAuthenticated
+            )
+        )
+
+        appCommandCenter.apply(snapshot)
+    }
+
+    private func performAppCommand(_ invocation: AppCommandInvocation) {
+        switch invocation {
+        case let .command(commandID):
+            performAppCommand(commandID)
+        case let .recentProject(path):
+            selectRepository(path)
+        }
+    }
+
+    private func performAppCommand(_ commandID: AppCommandID) {
+        if handleCoordinatorCommand(commandID) {
+            return
+        }
+
+        let handlers: [AppCommandID: () -> Void] = [
+            .openWindow: openMainWindow,
+            .showSettings: openSettingsWindow,
+            .showCommandPalette: handleCommandPaletteShortcut,
+            .chooseRepository: chooseRepository,
+            .revealRepositoryInFinder: revealCurrentRepositoryInFinder,
+            .openRepositoryOnGitHub: openCurrentRepositoryOnGitHub,
+            .showRepositoryOptions: presentRepositoryOptions,
+            .helpRepository: { self.open(urlString: "https://github.com/saihgupr/GitMenuBar") },
+            .reportIssue: { self.open(urlString: "https://github.com/saihgupr/GitMenuBar/issues/new/choose") },
+            .quit: { NSApplication.shared.terminate(nil) }
+        ]
+        handlers[commandID]?()
+    }
+
+    private func handleCoordinatorCommand(_ commandID: AppCommandID) -> Bool {
+        switch commandID {
+        case .commit:
+            performCommitCommand(shouldPushAfterCommit: false)
+        case .commitAndPush:
+            performCommitCommand(shouldPushAfterCommit: true)
+        case .sync:
+            performSyncCommand()
+        default:
+            return false
+        }
+
+        return true
+    }
+
+    private func performCommitCommand(shouldPushAfterCommit: Bool) {
+        Task { @MainActor in
+            let result = await actionCoordinator.performCommit(
+                commentText: "",
+                forceAutomaticMessage: true,
+                shouldPushAfterCommit: shouldPushAfterCommit
+            )
+            if result.shouldOpenPopover {
+                presentMainWindowForActionFeedback()
+            }
+        }
+    }
+
+    private func performSyncCommand() {
+        Task { @MainActor in
+            let result = await actionCoordinator.performSync()
+            if result.shouldOpenPopover {
+                presentMainWindowForActionFeedback()
+            }
+        }
+    }
+
+    private func chooseRepository() {
+        setAutoHideSuspended(true)
+        DirectoryPickerService().selectDirectory(activateApp: true) { [weak self] selectedPath in
+            guard let self else { return }
+            self.setAutoHideSuspended(false)
+
+            guard let selectedPath else { return }
+            self.selectRepository(selectedPath)
+        }
+    }
+
+    private func selectRepository(_ path: String) {
+        UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
+        RecentProjectsStore().add(path)
+        refreshAppCommands()
+
+        if !gitManager.isGitRepository(at: path), githubAuthManager.isAuthenticated {
+            openMainWindowWithCreateRepo(path: path)
+            return
+        }
+
+        openMainWindow()
+        gitManager.refresh(includeReflogHistory: false)
+    }
+
+    private func revealCurrentRepositoryInFinder() {
+        guard let path = currentRepositoryPath() else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+    }
+
+    private func openCurrentRepositoryOnGitHub() {
+        guard let reference = GitHubRemoteURLParser.parse(gitManager.remoteUrl) else {
+            return
+        }
+
+        open(urlString: "https://github.com/\(reference.owner)/\(reference.repository)")
+    }
+
+    private func presentRepositoryOptions() {
+        if isMainWindowVisible {
+            presentationModel.showMain(requestCommitFocus: false)
+            presentationModel.requestRepositoryOptionsPresentation()
+            NSApp.activate(ignoringOtherApps: true)
+            mainWindow?.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let trace = beginWindowOpenTrace(trigger: "repository_options")
+        let repositoryPath = currentRepositoryPath()
+        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
+        openMainWindow(
+            route: .main,
+            repositoryPath: repositoryPath,
+            isGitRepo: isGitRepo,
+            shouldRefreshAfterPresentation: true,
+            trace: trace
+        )
+        DispatchQueue.main.async { [weak self] in
+            self?.presentationModel.requestRepositoryOptionsPresentation()
+        }
+    }
+
+    private func open(urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+        NSWorkspace.shared.open(url)
     }
 
     private func initialRoute(for repositoryPath: String?, isGitRepo: Bool) -> MainMenuRoute {

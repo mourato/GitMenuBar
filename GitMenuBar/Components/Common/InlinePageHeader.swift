@@ -20,7 +20,6 @@ struct InlinePageHeader: View {
 
             Button(actionTitle, action: onAction)
                 .buttonStyle(.borderless)
-                .focusable(false)
         }
         .padding(.top, 4)
     }

@@ -32,7 +32,8 @@ extension MainMenuView {
                 MainMenuHeaderView(
                     currentProjectName: currentProjectName,
                     showProjectSelector: $showProjectSelector,
-                    onProjectLongPress: {
+                    showsRepositoryOptionsButton: canPresentRepositoryOptions,
+                    onShowRepositoryOptions: {
                         showRepoOptions = true
                     },
                     projectSelectorContent: {
@@ -46,8 +47,21 @@ extension MainMenuView {
                             onBrowse: {
                                 showProjectSelector = false
                                 selectDirectory()
-                            }
+                            },
+                            onShowRepositoryOptions: canPresentRepositoryOptions ? {
+                                showProjectSelector = false
+                                showRepoOptions = true
+                            } : nil
                         )
+                    },
+                    projectContextMenu: {
+                        if canPresentRepositoryOptions {
+                            Button("Repository Options…") {
+                                showRepoOptions = true
+                            }
+                        } else {
+                            EmptyView()
+                        }
                     }
                 )
                 .padding(.vertical, 8)
@@ -78,6 +92,13 @@ extension MainMenuView {
 
                 ScrollView(.vertical, showsIndicators: !isCommandPalettePresented) {
                     VStack(alignment: .leading, spacing: 12) {
+                        if let inlineStatusBanner {
+                            InlineStatusBannerView(
+                                banner: inlineStatusBanner,
+                                onDismiss: dismissInlineStatusBanner
+                            )
+                        }
+
                         if let suggestionPath = presentationModel.createRepoSuggestionPath, suggestionPath == currentRepoPath {
                             createRepoSuggestionBanner(path: suggestionPath)
                         }

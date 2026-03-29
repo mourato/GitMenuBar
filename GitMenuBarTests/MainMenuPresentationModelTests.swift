@@ -48,6 +48,15 @@ final class MainMenuPresentationModelTests: XCTestCase {
         XCTAssertEqual(model.showCommandPaletteToken, 2)
     }
 
+    func testRequestRepositoryOptionsPresentationIncrementsToken() {
+        let model = MainMenuPresentationModel()
+
+        model.requestRepositoryOptionsPresentation()
+        model.requestRepositoryOptionsPresentation()
+
+        XCTAssertEqual(model.showRepositoryOptionsToken, 2)
+    }
+
     func testRefreshStateTransitions() {
         let model = MainMenuPresentationModel()
 

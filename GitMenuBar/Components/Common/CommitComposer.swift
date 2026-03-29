@@ -17,18 +17,10 @@ struct CommitComposerSectionView: View {
         VStack(alignment: .leading, spacing: 8) {
             if showsCommentField {
                 TextField("Commit message (optional)", text: $commentText, axis: .vertical)
-                    .font(.system(size: 13))
                     .lineLimit(1 ... 4)
-                    .textFieldStyle(.plain)
-                    .padding(.leading, 16)
-                    .padding(.vertical, 10)
-                    .background(Color.black.opacity(0.06))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .textFieldStyle(.roundedBorder)
                     .focused(isCommentFieldFocused)
+                    .accessibilityHint("Type a commit message or leave it empty to use automatic generation when available.")
             }
 
             Button(action: onPrimaryAction) {
@@ -52,20 +44,21 @@ struct CommitComposerSectionView: View {
             .buttonStyle(.borderedProminent)
             .tint(isPrimaryButtonDisabled ? .gray.opacity(0.75) : nil)
             .disabled(isPrimaryButtonDisabled)
+            .keyboardShortcut(.defaultAction)
 
             if let automaticMessageHint {
                 Text(automaticMessageHint)
-                    .font(.system(size: 10))
+                    .font(.caption)
                     .foregroundColor(.secondary)
             }
 
             if let generationDisabledReason {
                 Text(generationDisabledReason)
-                    .font(.system(size: 10))
+                    .font(.caption)
                     .foregroundColor(.secondary)
             } else if let generationError {
                 Text(generationError)
-                    .font(.system(size: 10))
+                    .font(.caption)
                     .foregroundColor(.red)
             }
         }

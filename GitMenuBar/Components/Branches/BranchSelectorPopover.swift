@@ -16,109 +16,73 @@ struct BranchSelectorPopoverView: View {
     let onNewBranch: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        List {
             if isDetachedHead {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.red)
-                        Text("Detached HEAD State")
-                            .font(.system(size: 11, weight: .bold))
-                    }
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Detached HEAD State", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
 
-                    Text("You aren't on a branch. Edits made here might be hard to find later.")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        Text("You aren't on a branch. Edits made here might be hard to find later.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
-                    Button(action: onCreateBranchFromDetached) {
-                        Label("Create Branch from here...", systemImage: "plus.branch")
-                            .font(.system(size: 11))
+                        Button(action: onCreateBranchFromDetached) {
+                            Label("Create Branch from Here…", systemImage: "plus.branch")
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(.accentColor)
+                    .padding(.vertical, 4)
                 }
-                .padding(12)
-                .background(Color.red.opacity(0.05))
-
-                Divider()
             }
-
-            Text("Branches")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 12)
-                .padding(.top, 10)
-                .padding(.bottom, 6)
-
-            Divider()
-                .padding(.horizontal, 10)
 
             if isRemoteAhead {
-                Button(action: onQuickPull) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "arrow.down.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.orange)
+                Section {
+                    Button(action: onQuickPull) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Pull \(behindCount) commits")
-                                .font(.system(size: 11, weight: .semibold))
-                            Text("Update current branch from remote")
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
+                            Label("Pull \(behindCount) commit\(behindCount == 1 ? "" : "s")", systemImage: "arrow.down.circle.fill")
+                            Text("Update the current branch from remote.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
-                        Spacer()
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(Color.orange.opacity(0.1))
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                .onHover { inside in
-                    if inside {
-                        NSCursor.pointingHand.push()
-                    } else {
-                        NSCursor.pop()
-                    }
-                }
-
-                Divider()
-                    .padding(.horizontal, 10)
             }
 
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(availableBranches, id: \.self) { branch in
-                        BranchRowView(
-                            branchName: branch,
-                            isCurrentBranch: branch == currentBranch,
-                            currentBranchName: currentBranch,
-                            onTap: {
-                                onSelectBranch(branch)
-                            },
-                            onMerge: branch == currentBranch ? nil : {
-                                onMergeBranch(branch)
-                            },
-                            onDelete: branch == currentBranch ? nil : {
-                                onDeleteBranch(branch)
-                            },
-                            onRename: {
-                                onRenameBranch(branch)
-                            }
-                        )
-                    }
+            Section("Branches") {
+                ForEach(availableBranches, id: \.self) { branch in
+                    BranchRowView(
+                        branchName: branch,
+                        isCurrentBranch: branch == currentBranch,
+                        currentBranchName: currentBranch,
+                        onTap: {
+                            onSelectBranch(branch)
+                        },
+                        onMerge: branch == currentBranch ? nil : {
+                            onMergeBranch(branch)
+                        },
+                        onDelete: branch == currentBranch ? nil : {
+                            onDeleteBranch(branch)
+                        },
+                        onRename: {
+                            onRenameBranch(branch)
+                        }
+                    )
                 }
-                .padding(.vertical, 4)
             }
-            .frame(maxHeight: 200)
 
-            Divider()
-                .padding(.horizontal, 10)
-
-            NewBranchButton(onTap: onNewBranch)
+            Section {
+                Button(action: onNewBranch) {
+                    Label("New Branch…", systemImage: "plus")
+                }
+            }
         }
-        .frame(width: 200)
-        .padding(.bottom, 4)
+        .listStyle(.inset)
+        .scrollContentBackground(.hidden)
+        .background(.regularMaterial)
+        .frame(width: 260, height: 320)
     }
 }
 

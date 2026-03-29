@@ -34,6 +34,7 @@ struct MainMenuView: View {
     @State var commandPaletteQuery = ""
     @State var selectedCommandPaletteItemID: String?
     @State var lastHandledCommandPaletteToken = 0
+    @State var lastHandledRepositoryOptionsToken = 0
     @State var selectedPushBranch: String = ""
     @State var showPullToNewBranch = false
     @State var pullToNewBranchName = ""
@@ -141,23 +142,17 @@ struct MainMenuView: View {
             Button("Delete", role: .destructive) {
                 deleteRepository()
             }
+            .keyboardShortcut(.defaultAction)
             .disabled(isDeleting)
         } message: {
             Text("This will permanently delete the repository from GitHub. This action cannot be undone.")
-        }
-        .alert("Delete Failed", isPresented: .init(
-            get: { deleteError != nil },
-            set: { if !$0 { deleteError = nil } }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(deleteError ?? "An unknown error occurred.")
         }
         .alert(gitManager.isPrivate ? "Make Repository Public?" : "Make Repository Private?", isPresented: $showVisibilityConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button(gitManager.isPrivate ? "Make Public" : "Make Private") {
                 toggleRepoVisibility()
             }
+            .keyboardShortcut(.defaultAction)
         } message: {
             Text(
                 gitManager.isPrivate ?
@@ -182,14 +177,6 @@ struct MainMenuView: View {
         } message: {
             Text(gitManager.isPrivate ? "This repository is currently private." : "This repository is currently public.")
         }
-        .alert("Visibility Update Failed", isPresented: .init(
-            get: { toggleVisibilityError != nil },
-            set: { if !$0 { toggleVisibilityError = nil } }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(toggleVisibilityError ?? "An unknown error occurred.")
-        }
         .alert("Discard Changes?", isPresented: $showDiscardConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Discard", role: .destructive) {
@@ -201,6 +188,7 @@ struct MainMenuView: View {
                     }
                 }
             }
+            .keyboardShortcut(.defaultAction)
         } message: {
             if let path = discardFilePath {
                 Text("Are you sure you want to discard changes in '\(path)'? This action cannot be undone.")
@@ -217,16 +205,9 @@ struct MainMenuView: View {
                     }
                 }
             }
+            .keyboardShortcut(.defaultAction)
         } message: {
             Text("Are you sure you want to discard all unstaged changes? This action cannot be undone.")
-        }
-        .alert("Discard Failed", isPresented: .init(
-            get: { discardError != nil },
-            set: { if !$0 { discardError = nil } }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(discardError ?? "An unknown error occurred.")
         }
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
         .padding(.horizontal, 10)
@@ -234,9 +215,13 @@ struct MainMenuView: View {
         .frame(width: 400)
         .onAppear {
             handleCommandPalettePresentationRequest(presentationModel.showCommandPaletteToken)
+            handleRepositoryOptionsPresentationRequest(presentationModel.showRepositoryOptionsToken)
         }
         .onChange(of: presentationModel.showCommandPaletteToken) { token in
             handleCommandPalettePresentationRequest(token)
+        }
+        .onChange(of: presentationModel.showRepositoryOptionsToken) { token in
+            handleRepositoryOptionsPresentationRequest(token)
         }
         .onChange(of: presentationModel.route) { route in
             if route != .main {
