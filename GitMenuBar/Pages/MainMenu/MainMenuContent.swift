@@ -206,7 +206,6 @@ extension MainMenuView {
                         openSettingsWindow()
                     }
                     .buttonStyle(.borderless)
-                    .focusable(false)
                 }
             }
             .padding(.horizontal, 10)
@@ -251,19 +250,24 @@ extension MainMenuView {
 
             if !isStagedSectionCollapsed {
                 VStack(spacing: 3) {
-                    ForEach(gitManager.stagedFiles) { file in
+                    ForEach(stagedRowAdapters) { row in
                         WorkingTreeFileRowView(
-                            file: file,
+                            file: row.file,
                             actionIcon: "minus.circle",
-                            actionHelp: "Unstage file",
-                            onAction: { unstageFile(path: file.path) },
-                            onOpen: { gitManager.openFile(path: file.path) },
+                            actionHelp: row.actions.primaryLabel,
+                            isSelected: selectedMainItemID == row.id,
+                            onSelect: {
+                                selectMainItem(row.id)
+                            },
+                            onAction: { unstageFile(path: row.file.path) },
+                            onOpen: { gitManager.openFile(path: row.file.path) },
                             onDiscard: {
-                                discardFilePath = file.path
-                                discardFileStatus = file.status
+                                selectMainItem(row.id)
+                                discardFilePath = row.file.path
+                                discardFileStatus = row.file.status
                                 showDiscardConfirmation = true
                             },
-                            onReveal: { gitManager.revealInFinder(path: file.path) }
+                            onReveal: { gitManager.revealInFinder(path: row.file.path) }
                         )
                     }
                 }
@@ -288,19 +292,24 @@ extension MainMenuView {
 
             if !isUnstagedSectionCollapsed {
                 VStack(spacing: 3) {
-                    ForEach(gitManager.changedFiles) { file in
+                    ForEach(unstagedRowAdapters) { row in
                         WorkingTreeFileRowView(
-                            file: file,
+                            file: row.file,
                             actionIcon: "plus.circle",
-                            actionHelp: "Stage file",
-                            onAction: { stageFile(path: file.path) },
-                            onOpen: { gitManager.openFile(path: file.path) },
+                            actionHelp: row.actions.primaryLabel,
+                            isSelected: selectedMainItemID == row.id,
+                            onSelect: {
+                                selectMainItem(row.id)
+                            },
+                            onAction: { stageFile(path: row.file.path) },
+                            onOpen: { gitManager.openFile(path: row.file.path) },
                             onDiscard: {
-                                discardFilePath = file.path
-                                discardFileStatus = file.status
+                                selectMainItem(row.id)
+                                discardFilePath = row.file.path
+                                discardFileStatus = row.file.status
                                 showDiscardConfirmation = true
                             },
-                            onReveal: { gitManager.revealInFinder(path: file.path) }
+                            onReveal: { gitManager.revealInFinder(path: row.file.path) }
                         )
                     }
                 }
@@ -329,26 +338,28 @@ extension MainMenuView {
 
             if !isHistorySectionCollapsed {
                 HistoryTimelineSectionView(
-                    commits: gitManager.commitHistory,
-                    currentHash: gitManager.currentHash,
-                    remoteUrl: gitManager.remoteUrl,
+                    rows: historyRowAdapters,
+                    selectedItemID: selectedMainItemID,
                     isLoading: presentationModel.refreshState.isRefreshing,
-                    isCommitInFuture: isCommitInFuture,
-                    onSelectCommit: { commit in
-                        presentationModel.showHistoryDetail(commitID: commit.id)
+                    onSelectRow: { row in
+                        selectMainItem(row.id)
                     },
-                    onRestoreCommit: { commit in
-                        guard commit.id != gitManager.currentHash else { return }
-                        gitManager.resetToCommit(commit.id)
+                    onActivateCommit: { row in
+                        selectMainItem(row.id)
+                        presentationModel.showHistoryDetail(commitID: row.commit.id)
                     },
-                    onEditCommitMessage: { commit in
+                    onRestoreCommit: { row in
+                        guard row.actions.canRestore else { return }
+                        gitManager.resetToCommit(row.commit.id)
+                    },
+                    onEditCommitMessage: { row in
                         Task {
-                            await startManualCommitMessageEdit(for: commit)
+                            await startManualCommitMessageEdit(for: row.commit)
                         }
                     },
-                    onGenerateCommitMessage: { commit in
+                    onGenerateCommitMessage: { row in
                         Task {
-                            await startAutomaticCommitMessageEdit(for: commit)
+                            await startAutomaticCommitMessageEdit(for: row.commit)
                         }
                     }
                 )

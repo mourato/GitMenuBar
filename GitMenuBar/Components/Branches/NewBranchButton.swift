@@ -6,19 +6,21 @@ struct NewBranchButton: View {
     @State private var isHovered = false
 
     var body: some View {
-        HStack {
-            Image(systemName: "plus.circle.fill")
-                .font(.system(size: 10))
-                .foregroundColor(.blue)
-            Text("New Branch")
-                .font(.system(size: 11, weight: .medium))
-            Spacer()
+        Button(action: onTap) {
+            HStack {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(.accentColor)
+                Text("New Branch")
+                    .font(.system(size: 11, weight: .medium))
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(isHovered ? MacChromePalette.hoverFill() : Color.clear)
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(isHovered ? Color.primary.opacity(0.05) : Color.clear)
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onTap)
+        .buttonStyle(.plain)
         .onHover { inside in
             isHovered = inside
             if inside {

@@ -33,8 +33,10 @@ struct MainMenuView: View {
     @State var isCommandPalettePresented = false
     @State var commandPaletteQuery = ""
     @State var selectedCommandPaletteItemID: String?
+    @State var selectedMainItemID: MainMenuSelectableItem?
     @State var lastHandledCommandPaletteToken = 0
     @State var lastHandledRepositoryOptionsToken = 0
+    @State var mainKeyboardMonitor: Any?
     @State var selectedPushBranch: String = ""
     @State var showPullToNewBranch = false
     @State var pullToNewBranchName = ""
@@ -147,21 +149,17 @@ struct MainMenuView: View {
         } message: {
             Text("This will permanently delete the repository from GitHub. This action cannot be undone.")
         }
-        .alert(gitManager.isPrivate ? "Make Repository Public?" : "Make Repository Private?", isPresented: $showVisibilityConfirmation) {
+        .alert(repositoryActionSet.visibilityConfirmationTitle, isPresented: $showVisibilityConfirmation) {
             Button("Cancel", role: .cancel) {}
-            Button(gitManager.isPrivate ? "Make Public" : "Make Private") {
+            Button(repositoryActionSet.visibilityActionTitle) {
                 toggleRepoVisibility()
             }
             .keyboardShortcut(.defaultAction)
         } message: {
-            Text(
-                gitManager.isPrivate ?
-                    "Anyone on the internet will be able to see this repository." :
-                    "You will choose who can see and commit to this repository."
-            )
+            Text(repositoryActionSet.visibilityConfirmationMessage)
         }
         .confirmationDialog("Repository Options", isPresented: $showRepoOptions) {
-            Button(gitManager.isPrivate ? "Make Public" : "Make Private") {
+            Button(repositoryActionSet.visibilityActionTitle) {
                 // Delay to allow menu to dismiss
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     showVisibilityConfirmation = true
@@ -175,7 +173,7 @@ struct MainMenuView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(gitManager.isPrivate ? "This repository is currently private." : "This repository is currently public.")
+            Text(repositoryActionSet.visibilityStatusDescription)
         }
         .alert("Discard Changes?", isPresented: $showDiscardConfirmation) {
             Button("Cancel", role: .cancel) {}
@@ -214,8 +212,13 @@ struct MainMenuView: View {
         .padding(.bottom, 10)
         .frame(width: 400)
         .onAppear {
+            installMainKeyboardMonitor()
             handleCommandPalettePresentationRequest(presentationModel.showCommandPaletteToken)
             handleRepositoryOptionsPresentationRequest(presentationModel.showRepositoryOptionsToken)
+            synchronizeSelectedMainItem()
+        }
+        .onDisappear {
+            removeMainKeyboardMonitor()
         }
         .onChange(of: presentationModel.showCommandPaletteToken) { token in
             handleCommandPalettePresentationRequest(token)
@@ -235,6 +238,9 @@ struct MainMenuView: View {
             if !isHidden || commentText.isEmpty {
                 isCommitFieldTemporarilyVisible = false
             }
+        }
+        .onChange(of: keyboardSelectableItems) { _ in
+            synchronizeSelectedMainItem()
         }
     }
 }

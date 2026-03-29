@@ -21,8 +21,7 @@ struct GitHubConnectionSection: View {
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(Color(nsColor: .controlBackgroundColor))
-                .cornerRadius(4)
+                .macPanelSurface(cornerRadius: MacChromeMetrics.cornerRadius)
             } else if githubAuthManager.isAuthenticating {
                 authenticatingView
             } else {
@@ -78,8 +77,7 @@ struct GitHubConnectionSection: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
         .padding(.horizontal, 12)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .cornerRadius(6)
+        .macPanelSurface(cornerRadius: MacChromeMetrics.cornerRadius)
     }
 
     private var disconnectedView: some View {
@@ -105,8 +103,7 @@ struct GitHubConnectionSection: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .cornerRadius(4)
+        .macPanelSurface(cornerRadius: MacChromeMetrics.cornerRadius)
     }
 }
 

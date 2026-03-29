@@ -89,6 +89,7 @@ struct MainMenuCommandPaletteView: View {
     @FocusState private var isSearchFieldFocused: Bool
     @State private var localKeyEventMonitor: Any?
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -246,6 +247,13 @@ struct MainMenuCommandPaletteView: View {
         }
 
         if animated {
+            if reduceMotion {
+                DispatchQueue.main.async {
+                    performScroll()
+                }
+                return
+            }
+
             DispatchQueue.main.async {
                 withAnimation(.easeInOut(duration: 0.15)) {
                     performScroll()

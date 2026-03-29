@@ -244,7 +244,6 @@ struct ShortcutsSettingsPaneView: View {
                     showWipeConfirmation = true
                 })
                 .buttonStyle(.borderless)
-                .focusable(false)
                 .foregroundColor(.secondary)
                 .disabled(!githubAuthManager.isAuthenticated || gitManager.remoteUrl.isEmpty)
                 .help("Reset repository to a single commit, erasing all history")
@@ -255,7 +254,6 @@ struct ShortcutsSettingsPaneView: View {
                     NSApplication.shared.terminate(nil)
                 }
                 .buttonStyle(.borderless)
-                .focusable(false)
                 .foregroundColor(.secondary)
             }
             .padding(.horizontal, 16)

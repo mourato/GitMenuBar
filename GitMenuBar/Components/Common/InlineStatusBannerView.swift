@@ -79,9 +79,9 @@ struct InlineStatusBannerView: View {
         case .info:
             return Color(nsColor: .controlBackgroundColor)
         case .warning:
-            return Color.orange.opacity(colorSchemeContrast == .increased ? 0.22 : 0.12)
+            return MacChromePalette.warningFill(contrast: colorSchemeContrast)
         case .error:
-            return Color.red.opacity(colorSchemeContrast == .increased ? 0.20 : 0.10)
+            return MacChromePalette.errorFill(contrast: colorSchemeContrast)
         }
     }
 
@@ -90,9 +90,9 @@ struct InlineStatusBannerView: View {
         case .info:
             return Color.secondary.opacity(colorSchemeContrast == .increased ? 0.6 : 0.2)
         case .warning:
-            return Color.orange.opacity(colorSchemeContrast == .increased ? 0.7 : 0.35)
+            return MacChromePalette.warningBorder(contrast: colorSchemeContrast)
         case .error:
-            return Color.red.opacity(colorSchemeContrast == .increased ? 0.7 : 0.35)
+            return MacChromePalette.errorBorder(contrast: colorSchemeContrast)
         }
     }
 }

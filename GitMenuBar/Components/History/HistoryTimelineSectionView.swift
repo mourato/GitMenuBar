@@ -7,24 +7,38 @@ private enum HistoryTimelineMetrics {
     static let rowContentVerticalPadding: CGFloat = 6
 }
 
-struct HistoryTimelineSectionView: View {
-    let commits: [Commit]
-    let currentHash: String
-    let remoteUrl: String
-    let isLoading: Bool
-    let isCommitInFuture: (Commit) -> Bool
-    let onSelectCommit: (Commit) -> Void
-    let onRestoreCommit: (Commit) -> Void
-    let onEditCommitMessage: (Commit) -> Void
-    let onGenerateCommitMessage: (Commit) -> Void
+private struct HistoryTimelineDaySection: Identifiable {
+    let title: String
+    let rows: [HistoryRowAdapter]
 
-    private var sections: [HistoryCommitDaySection] {
-        HistoryCommitGrouping.group(commits: commits)
+    var id: String {
+        title
+    }
+}
+
+struct HistoryTimelineSectionView: View {
+    let rows: [HistoryRowAdapter]
+    let selectedItemID: MainMenuSelectableItem?
+    let isLoading: Bool
+    let onSelectRow: (HistoryRowAdapter) -> Void
+    let onActivateCommit: (HistoryRowAdapter) -> Void
+    let onRestoreCommit: (HistoryRowAdapter) -> Void
+    let onEditCommitMessage: (HistoryRowAdapter) -> Void
+    let onGenerateCommitMessage: (HistoryRowAdapter) -> Void
+
+    private var sections: [HistoryTimelineDaySection] {
+        let rowByCommitID = Dictionary(uniqueKeysWithValues: rows.map { ($0.commit.id, $0) })
+        return HistoryCommitGrouping.group(commits: rows.map(\.commit)).map { section in
+            HistoryTimelineDaySection(
+                title: section.title,
+                rows: section.commits.compactMap { rowByCommitID[$0.id] }
+            )
+        }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if commits.isEmpty {
+            if rows.isEmpty {
                 placeholderView
             } else {
                 timelineList
@@ -55,25 +69,27 @@ struct HistoryTimelineSectionView: View {
                         .foregroundColor(.secondary)
 
                     VStack(spacing: 0) {
-                        ForEach(Array(section.commits.enumerated()), id: \.element.id) { index, commit in
+                        ForEach(Array(section.rows.enumerated()), id: \.element.commit.id) { index, row in
                             HistoryTimelineRowView(
-                                commit: commit,
-                                commitURL: commitURL(for: commit),
-                                isCurrentCommit: commit.id == currentHash,
-                                isFutureCommit: isCommitInFuture(commit),
+                                commit: row.commit,
+                                commitURL: row.actionSet.commitURL,
+                                isCurrentCommit: row.actionSet.isCurrentCommit,
+                                isFutureCommit: row.actionSet.isFutureCommit,
+                                isSelected: selectedItemID == row.id,
                                 showsTopConnector: index > 0,
-                                showsBottomConnector: index < section.commits.count - 1,
-                                onTap: {
-                                    onSelectCommit(commit)
+                                showsBottomConnector: index < section.rows.count - 1,
+                                onSelect: {
+                                    onSelectRow(row)
                                 },
+                                onActivate: { onActivateCommit(row) },
                                 onRestoreCommit: {
-                                    onRestoreCommit(commit)
+                                    onRestoreCommit(row)
                                 },
                                 onEditCommitMessage: {
-                                    onEditCommitMessage(commit)
+                                    onEditCommitMessage(row)
                                 },
                                 onGenerateCommitMessage: {
-                                    onGenerateCommitMessage(commit)
+                                    onGenerateCommitMessage(row)
                                 }
                             )
                         }
@@ -82,14 +98,6 @@ struct HistoryTimelineSectionView: View {
             }
         }
     }
-
-    private func commitURL(for commit: Commit) -> URL? {
-        guard let reference = GitHubRemoteURLParser.parse(remoteUrl) else {
-            return nil
-        }
-
-        return URL(string: "https://github.com/\(reference.owner)/\(reference.repository)/commit/\(commit.id)")
-    }
 }
 
 private struct HistoryTimelineRowView: View {
@@ -97,9 +105,11 @@ private struct HistoryTimelineRowView: View {
     let commitURL: URL?
     let isCurrentCommit: Bool
     let isFutureCommit: Bool
+    let isSelected: Bool
     let showsTopConnector: Bool
     let showsBottomConnector: Bool
-    let onTap: () -> Void
+    let onSelect: () -> Void
+    let onActivate: () -> Void
     let onRestoreCommit: () -> Void
     let onEditCommitMessage: () -> Void
     let onGenerateCommitMessage: () -> Void
@@ -107,44 +117,39 @@ private struct HistoryTimelineRowView: View {
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(alignment: .center, spacing: 10) {
-                timelineGutter
+        HStack(alignment: .center, spacing: 10) {
+            timelineGutter
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text(commit.subject)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(titleColor)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(commit.subject)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(titleColor)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
 
-                        if isFutureCommit {
-                            Text("Future")
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundColor(.blue)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(Color.blue.opacity(0.12))
-                                .clipShape(Capsule())
-                        }
-
-                        Spacer(minLength: 0)
-
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(.secondary)
+                    if isFutureCommit {
+                        Text("Future")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.blue.opacity(0.12))
+                            .clipShape(Capsule())
                     }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
                 }
-                .padding(.vertical, HistoryTimelineMetrics.rowContentVerticalPadding)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 8)
+            .padding(.vertical, HistoryTimelineMetrics.rowContentVerticalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(RoundedRectangle(cornerRadius: 8))
         }
-        .buttonStyle(.plain)
-        .focusable(false)
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(backgroundColor)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
@@ -152,6 +157,15 @@ private struct HistoryTimelineRowView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .contentShape(RoundedRectangle(cornerRadius: 8))
+        .onTapGesture {
+            onSelect()
+        }
+        .onTapGesture(count: 2) {
+            onActivate()
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(commit.subject)
+        .accessibilityHint("Press Return to open commit details.")
         .contextMenu {
             Button("Open on GitHub") {
                 if let commitURL {
@@ -242,6 +256,10 @@ private struct HistoryTimelineRowView: View {
     }
 
     private var backgroundColor: Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.14)
+        }
+
         if isCurrentCommit {
             return Color.accentColor.opacity(0.08)
         }
@@ -254,6 +272,10 @@ private struct HistoryTimelineRowView: View {
     }
 
     private var borderColor: Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.35)
+        }
+
         if isCurrentCommit {
             return Color.accentColor.opacity(0.35)
         }
@@ -304,37 +326,49 @@ private struct HistoryTimelineRowView: View {
 
 #Preview("History Timeline Section") {
     HistoryTimelineSectionView(
-        commits: [
-            Commit(
-                id: "1234567890abcdef",
-                shortHash: "1234567",
-                subject: "feat(git): improve status bar and menu item logic",
-                body: "",
-                authorName: "Renato",
-                authorEmail: "renato@example.com",
-                committedAt: .now.addingTimeInterval(-3600),
-                stats: CommitStats(filesChanged: 5, insertions: 114, deletions: 19),
-                changedFiles: [
-                    CommitFileChange(path: "GitMenuBar/App/StatusBarController.swift", lineDiff: LineDiffStats(added: 72, removed: 12))
-                ]
+        rows: [
+            HistoryRowAdapter(
+                commit: Commit(
+                    id: "1234567890abcdef",
+                    shortHash: "1234567",
+                    subject: "feat(git): improve status bar and menu item logic",
+                    body: "",
+                    authorName: "Renato",
+                    authorEmail: "renato@example.com",
+                    committedAt: .now.addingTimeInterval(-3600),
+                    stats: CommitStats(filesChanged: 5, insertions: 114, deletions: 19),
+                    changedFiles: [
+                        CommitFileChange(
+                            path: "GitMenuBar/App/StatusBarController.swift",
+                            lineDiff: LineDiffStats(added: 72, removed: 12)
+                        )
+                    ]
+                ),
+                currentHash: "abcdef1234567890",
+                remoteUrl: "https://github.com/example/repo",
+                isCommitInFuture: false
             ),
-            Commit(
-                id: "abcdef1234567890",
-                shortHash: "abcdef1",
-                subject: "fix(history): group commits by day",
-                body: "",
-                authorName: "Renato",
-                authorEmail: "renato@example.com",
-                committedAt: .now.addingTimeInterval(-86400),
-                stats: CommitStats(filesChanged: 2, insertions: 8, deletions: 3),
-                changedFiles: []
+            HistoryRowAdapter(
+                commit: Commit(
+                    id: "abcdef1234567890",
+                    shortHash: "abcdef1",
+                    subject: "fix(history): group commits by day",
+                    body: "",
+                    authorName: "Renato",
+                    authorEmail: "renato@example.com",
+                    committedAt: .now.addingTimeInterval(-86400),
+                    stats: CommitStats(filesChanged: 2, insertions: 8, deletions: 3),
+                    changedFiles: []
+                ),
+                currentHash: "abcdef1234567890",
+                remoteUrl: "https://github.com/example/repo",
+                isCommitInFuture: false
             )
         ],
-        currentHash: "abcdef1234567890",
-        remoteUrl: "https://github.com/example/repo",
+        selectedItemID: .historyCommit(id: "abcdef1234567890"),
         isLoading: false,
-        isCommitInFuture: { _ in false },
-        onSelectCommit: { _ in },
+        onSelectRow: { _ in },
+        onActivateCommit: { _ in },
         onRestoreCommit: { _ in },
         onEditCommitMessage: { _ in },
         onGenerateCommitMessage: { _ in }

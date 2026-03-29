@@ -44,7 +44,7 @@ struct ProjectSelectorPopoverView: View {
         }
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
-        .background(.regularMaterial)
+        .macPanelSurface()
         .frame(width: 280, height: 240)
     }
 }

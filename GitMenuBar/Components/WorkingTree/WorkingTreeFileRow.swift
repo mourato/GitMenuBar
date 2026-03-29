@@ -32,12 +32,15 @@ struct WorkingTreeFileRowView: View {
     let file: WorkingTreeFile
     let actionIcon: String
     let actionHelp: String
+    var isSelected = false
+    var onSelect: (() -> Void)?
     let onAction: () -> Void
     var onOpen: (() -> Void)?
     var onDiscard: (() -> Void)?
     var onReveal: (() -> Void)?
 
     @State private var isHovered = false
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
         HStack(spacing: 8) {
@@ -50,15 +53,22 @@ struct WorkingTreeFileRowView: View {
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 4)
-        .background(isHovered ? Color.primary.opacity(0.06) : Color.clear)
+        .background(backgroundColor)
         .cornerRadius(4)
         .padding(.horizontal, -4) // Offset the internal padding so the row maintains its original width while letting the background expand
         .contentShape(Rectangle())
+        .onTapGesture {
+            onSelect?()
+        }
+        .onTapGesture(count: 2) {
+            onOpen?()
+        }
         .onHover { inside in
             isHovered = inside
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint("Press Return to open, or Delete to discard when available.")
         .contextMenu {
             Button("Open File") {
                 onOpen?()
@@ -159,6 +169,18 @@ struct WorkingTreeFileRowView: View {
         value += ", status \(file.status.symbol)"
         return value
     }
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return MacChromePalette.selectedFill()
+        }
+
+        if isHovered {
+            return MacChromePalette.hoverFill()
+        }
+
+        return Color.clear
+    }
 }
 
 #Preview("Working Tree File Row") {
@@ -170,6 +192,8 @@ struct WorkingTreeFileRowView: View {
         ),
         actionIcon: "plus.circle",
         actionHelp: "Stage file",
+        isSelected: true,
+        onSelect: {},
         onAction: {},
         onOpen: {},
         onDiscard: {},

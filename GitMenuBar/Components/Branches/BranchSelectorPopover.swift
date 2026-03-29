@@ -15,6 +15,12 @@ struct BranchSelectorPopoverView: View {
     let onRenameBranch: (String) -> Void
     let onNewBranch: () -> Void
 
+    private var branchRows: [BranchMenuRowAdapter] {
+        availableBranches.map {
+            BranchMenuRowAdapter(branchName: $0, currentBranchName: currentBranch)
+        }
+    }
+
     var body: some View {
         List {
             if isDetachedHead {
@@ -52,23 +58,21 @@ struct BranchSelectorPopoverView: View {
             }
 
             Section("Branches") {
-                ForEach(availableBranches, id: \.self) { branch in
+                ForEach(branchRows) { row in
+                    let mergeAction = row.canMerge ? { onMergeBranch(row.branchName) } : nil
+                    let deleteAction = row.canDelete ? { onDeleteBranch(row.branchName) } : nil
+                    let renameAction = row.canRename ? { onRenameBranch(row.branchName) } : nil
+
                     BranchRowView(
-                        branchName: branch,
-                        isCurrentBranch: branch == currentBranch,
-                        currentBranchName: currentBranch,
+                        branchName: row.branchName,
+                        isCurrentBranch: row.isCurrentBranch,
+                        currentBranchName: row.currentBranchName,
                         onTap: {
-                            onSelectBranch(branch)
+                            onSelectBranch(row.branchName)
                         },
-                        onMerge: branch == currentBranch ? nil : {
-                            onMergeBranch(branch)
-                        },
-                        onDelete: branch == currentBranch ? nil : {
-                            onDeleteBranch(branch)
-                        },
-                        onRename: {
-                            onRenameBranch(branch)
-                        }
+                        onMerge: mergeAction,
+                        onDelete: deleteAction,
+                        onRename: renameAction
                     )
                 }
             }
@@ -81,7 +85,7 @@ struct BranchSelectorPopoverView: View {
         }
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
-        .background(.regularMaterial)
+        .macPanelSurface()
         .frame(width: 260, height: 320)
     }
 }

@@ -117,6 +117,41 @@ struct MainMenuPrimaryActionState: Equatable {
 }
 
 extension MainMenuView {
+    var stagedRowAdapters: [WorkingTreeRowAdapter] {
+        gitManager.stagedFiles.map(WorkingTreeRowAdapter.staged(file:))
+    }
+
+    var unstagedRowAdapters: [WorkingTreeRowAdapter] {
+        gitManager.changedFiles.map(WorkingTreeRowAdapter.unstaged(file:))
+    }
+
+    var historyRowAdapters: [HistoryRowAdapter] {
+        gitManager.commitHistory.map {
+            HistoryRowAdapter(
+                commit: $0,
+                currentHash: gitManager.currentHash,
+                remoteUrl: gitManager.remoteUrl,
+                isCommitInFuture: isCommitInFuture($0)
+            )
+        }
+    }
+
+    var keyboardSelectableItems: [MainMenuSelectableItem] {
+        var items: [MainMenuSelectableItem] = []
+
+        if !isStagedSectionCollapsed {
+            items += stagedRowAdapters.map(\.id)
+        }
+        if !isUnstagedSectionCollapsed {
+            items += unstagedRowAdapters.map(\.id)
+        }
+        if !isHistorySectionCollapsed {
+            items += historyRowAdapters.map(\.id)
+        }
+
+        return items
+    }
+
     var inlineStatusBannerSource: MainMenuInlineBannerSource? {
         if actionCoordinator.alert != nil {
             return .coordinatorAlert
@@ -242,8 +277,23 @@ extension MainMenuView {
         return PathDisplayFormatter.projectName(from: currentRepoPath)
     }
 
+    var repositoryActionSet: RepositoryActionSet {
+        RepositoryActionSet(
+            currentRepoPath: currentRepoPath,
+            remoteUrl: gitManager.remoteUrl,
+            isGitHubAuthenticated: githubAuthManager.isAuthenticated,
+            isPrivate: gitManager.isPrivate
+        )
+    }
+
     var canPresentRepositoryOptions: Bool {
-        githubAuthManager.isAuthenticated && !gitManager.remoteUrl.isEmpty
+        repositoryActionSet.canShowRepositoryOptions
+    }
+
+    var branchMenuRows: [BranchMenuRowAdapter] {
+        gitManager.availableBranches.map {
+            BranchMenuRowAdapter(branchName: $0, currentBranchName: gitManager.currentBranch)
+        }
     }
 
     var hasWorkingTreeChanges: Bool {

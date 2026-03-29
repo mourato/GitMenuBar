@@ -15,6 +15,19 @@ struct CommitDetailPageView: View {
     @State private var authorAvatarURL: URL?
     @State private var loadedAvatarLookupKey: String?
 
+    private var actionSet: HistoryActionSet? {
+        guard let commit else {
+            return nil
+        }
+
+        return HistoryActionSet(
+            commit: commit,
+            currentHash: currentHash,
+            remoteUrl: remoteUrl,
+            isCommitInFuture: isCommitInFuture(commit)
+        )
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             header
@@ -59,7 +72,6 @@ struct CommitDetailPageView: View {
                 }
             }
             .buttonStyle(.plain)
-            .focusable(false)
 
             Spacer()
 
@@ -93,7 +105,7 @@ struct CommitDetailPageView: View {
                 }
                 Spacer(minLength: 0)
 
-                if isCommitInFuture(commit) {
+                if actionSet?.isFutureCommit == true {
                     Text("Future")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundColor(.blue)
@@ -130,12 +142,12 @@ struct CommitDetailPageView: View {
 
             HStack(spacing: 4) {
                 Button("Open on GitHub") {
-                    if let commitURL = commitURL(for: commit) {
+                    if let commitURL = actionSet?.commitURL {
                         NSWorkspace.shared.open(commitURL)
                     }
                 }
                 .buttonStyle(.link)
-                .disabled(commitURL(for: commit) == nil)
+                .disabled(!(actionSet?.canOpenOnGitHub ?? false))
 
                 Text("•")
                     .foregroundColor(.secondary)
@@ -160,7 +172,7 @@ struct CommitDetailPageView: View {
                     onGenerateCommitMessage(commit)
                 }
                 .buttonStyle(.link)
-                .disabled(commit.isMergeCommit)
+                .disabled(!(actionSet?.canGenerateMessage ?? false))
 
                 Text("•")
                     .foregroundColor(.secondary)
@@ -169,7 +181,7 @@ struct CommitDetailPageView: View {
                     onEditCommitMessage(commit)
                 }
                 .buttonStyle(.link)
-                .disabled(commit.isMergeCommit)
+                .disabled(!(actionSet?.canEditMessage ?? false))
 
                 Text("•")
                     .foregroundColor(.secondary)
@@ -178,8 +190,7 @@ struct CommitDetailPageView: View {
                     onRestoreCommit(commit)
                 }
                 .buttonStyle(.borderless)
-                .focusable(false)
-                .disabled(commit.id == currentHash)
+                .disabled(!(actionSet?.canRestore ?? false))
             }
             .font(.system(size: 11, weight: .medium))
 
@@ -220,7 +231,6 @@ struct CommitDetailPageView: View {
                 onBack()
             }
             .buttonStyle(.borderless)
-            .focusable(false)
         }
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -318,14 +328,6 @@ struct CommitDetailPageView: View {
 
     private func statsSummary(for commit: Commit) -> String {
         "\(commit.stats.filesChanged) files changed, \(commit.stats.insertions) insertions(+), \(commit.stats.deletions) deletions(-)"
-    }
-
-    private func commitURL(for commit: Commit) -> URL? {
-        guard let reference = GitHubRemoteURLParser.parse(remoteUrl) else {
-            return nil
-        }
-
-        return URL(string: "https://github.com/\(reference.owner)/\(reference.repository)/commit/\(commit.id)")
     }
 }
 

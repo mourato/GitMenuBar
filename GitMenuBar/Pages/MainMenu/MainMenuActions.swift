@@ -5,6 +5,7 @@
 
 import AppKit
 import Foundation
+import SwiftUI
 
 extension MainMenuView {
     private var shouldRevealCommitFieldBeforeSubmitting: Bool {

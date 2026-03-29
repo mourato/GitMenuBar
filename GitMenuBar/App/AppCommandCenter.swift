@@ -150,6 +150,27 @@ struct GitMenuBarCommandMenus: Commands {
             .keyboardShortcut(",", modifiers: .command)
         }
 
+        CommandGroup(replacing: .newItem) {
+            Button(commandCenter.state(for: .chooseRepository).title) {
+                commandCenter.perform(.chooseRepository)
+            }
+            .keyboardShortcut("o", modifiers: .command)
+
+            Menu("Open Recent") {
+                if commandCenter.recentProjects.isEmpty {
+                    Button("No Recent Repositories") {}
+                        .disabled(true)
+                } else {
+                    ForEach(commandCenter.recentProjects) { project in
+                        Button(project.title) {
+                            commandCenter.performRecentProject(path: project.path)
+                        }
+                        .help(project.subtitle)
+                    }
+                }
+            }
+        }
+
         CommandGroup(after: .toolbar) {
             Button(commandCenter.state(for: .showCommandPalette).title) {
                 commandCenter.perform(.showCommandPalette)

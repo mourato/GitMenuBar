@@ -75,11 +75,11 @@ struct WorkingTreeSectionHeaderView: View {
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 4)
-        .background(isHovered ? Color.primary.opacity(0.08) : Color.clear)
+        .background(isHovered ? MacChromePalette.hoverFill() : Color.clear)
         .cornerRadius(4)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.secondary.opacity(colorSchemeContrast == .increased ? 0.45 : 0), lineWidth: 1)
+                .stroke(MacChromePalette.neutralBorder(contrast: colorSchemeContrast).opacity(colorSchemeContrast == .increased ? 1 : 0), lineWidth: 1)
         )
         .contentShape(Rectangle())
         .onHover { inside in
@@ -90,6 +90,7 @@ struct WorkingTreeSectionHeaderView: View {
 
 private struct WorkingTreeSectionHeaderPreviewContainer: View {
     @State private var isCollapsed = false
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private let previewFiles = [
         WorkingTreeFile(
             path: "GitMenuBar/Pages/MainMenu/MainMenuContent.swift",

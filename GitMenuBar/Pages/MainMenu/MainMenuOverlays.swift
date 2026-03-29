@@ -284,7 +284,7 @@ extension MainMenuView {
                 SyncOptionCard(
                     title: "Merge",
                     subtitle: "Safe: Creates a merge commit",
-                    backgroundColor: Color.blue.opacity(0.1)
+                    tone: .accent
                 ) {
                     useRebase = false
                     syncWithRemote()
@@ -293,7 +293,7 @@ extension MainMenuView {
                 SyncOptionCard(
                     title: "Rebase",
                     subtitle: "Clean: Replays your commits on top",
-                    backgroundColor: Color.purple.opacity(0.1)
+                    tone: .warning
                 ) {
                     useRebase = true
                     syncWithRemote()
@@ -302,7 +302,7 @@ extension MainMenuView {
                 SyncOptionCard(
                     title: "Pull to New Branch",
                     subtitle: "Safe: Creates a fresh branch from remote",
-                    backgroundColor: Color.green.opacity(0.1)
+                    tone: .success
                 ) {
                     actionCoordinator.dismissSyncOptions()
                     pullToNewBranchName = "\(gitManager.currentBranch)-remote"
