@@ -78,6 +78,9 @@ struct MainMenuView: View {
     @State var discardFileStatus: WorkingTreeFileStatus?
     @State var discardError: String?
     @State var showDiscardAllConfirmation = false
+    @State var currentRepositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
+    @State var recentProjectPaths = RecentProjectsStore().recentPaths()
+    @State var renderSnapshot = MainMenuRenderSnapshot.empty
 
     let closeWindow: () -> Void
     let openSettingsWindow: () -> Void
@@ -196,6 +199,8 @@ struct MainMenuView: View {
         .padding(.bottom, MacChromeMetrics.windowPadding)
         .frame(minWidth: 400, idealWidth: 440, maxWidth: .infinity)
         .onAppear {
+            reloadRepositorySelectionSnapshot()
+            refreshRenderSnapshot()
             installMainKeyboardMonitor()
             handleCommandPalettePresentationRequest(presentationModel.showCommandPaletteToken)
             handleRepositoryOptionsPresentationRequest(presentationModel.showRepositoryOptionsToken)
@@ -234,6 +239,42 @@ struct MainMenuView: View {
                 isCommitFieldTemporarilyVisible = false
             }
         }
+        .onChange(of: gitManager.stagedFiles) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: gitManager.changedFiles) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: gitManager.commitHistory) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: gitManager.currentHash) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: gitManager.remoteUrl) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: gitManager.availableBranches) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: gitManager.currentBranch) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: currentRepositoryPath) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: recentProjectPaths) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: isStagedSectionCollapsed) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: isUnstagedSectionCollapsed) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: isHistorySectionCollapsed) { _ in
+            refreshRenderSnapshot()
+        }
         .onChange(of: keyboardSelectableItems) { _ in
             synchronizeSelectedMainItem()
         }
@@ -250,6 +291,31 @@ private extension AppPreferences.AppearanceMode {
         case .dark:
             return .dark
         }
+    }
+}
+
+private extension MainMenuView {
+    func reloadRepositorySelectionSnapshot() {
+        currentRepositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
+        recentProjectPaths = RecentProjectsStore().recentPaths()
+    }
+
+    func refreshRenderSnapshot() {
+        renderSnapshot = MainMenuRenderSnapshot.build(
+            stagedFiles: gitManager.stagedFiles,
+            changedFiles: gitManager.changedFiles,
+            commitHistory: gitManager.commitHistory,
+            currentHash: gitManager.currentHash,
+            remoteUrl: gitManager.remoteUrl,
+            availableBranches: gitManager.availableBranches,
+            currentBranch: gitManager.currentBranch,
+            isStagedSectionCollapsed: isStagedSectionCollapsed,
+            isUnstagedSectionCollapsed: isUnstagedSectionCollapsed,
+            isHistorySectionCollapsed: isHistorySectionCollapsed,
+            recentPaths: recentProjectPaths,
+            currentRepoPath: currentRepositoryPath,
+            isCommitInFuture: isCommitInFuture
+        )
     }
 }
 

@@ -7,17 +7,8 @@ private enum HistoryTimelineMetrics {
     static let rowContentVerticalPadding: CGFloat = 6
 }
 
-private struct HistoryTimelineDaySection: Identifiable {
-    let title: String
-    let rows: [HistoryRowAdapter]
-
-    var id: String {
-        title
-    }
-}
-
 struct HistoryTimelineSectionView: View {
-    let rows: [HistoryRowAdapter]
+    let sections: [HistoryTimelineSectionModel]
     let selectedItemID: MainMenuSelectableItem?
     let isLoading: Bool
     let onSelectRow: (HistoryRowAdapter) -> Void
@@ -26,19 +17,9 @@ struct HistoryTimelineSectionView: View {
     let onEditCommitMessage: (HistoryRowAdapter) -> Void
     let onGenerateCommitMessage: (HistoryRowAdapter) -> Void
 
-    private var sections: [HistoryTimelineDaySection] {
-        let rowByCommitID = Dictionary(uniqueKeysWithValues: rows.map { ($0.commit.id, $0) })
-        return HistoryCommitGrouping.group(commits: rows.map(\.commit)).map { section in
-            HistoryTimelineDaySection(
-                title: section.title,
-                rows: section.commits.compactMap { rowByCommitID[$0.id] }
-            )
-        }
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if rows.isEmpty {
+            if sections.isEmpty {
                 placeholderView
             } else {
                 timelineList
@@ -69,27 +50,27 @@ struct HistoryTimelineSectionView: View {
                         .foregroundColor(.secondary)
 
                     VStack(spacing: 0) {
-                        ForEach(Array(section.rows.enumerated()), id: \.element.commit.id) { index, row in
+                        ForEach(section.rows) { timelineRow in
                             HistoryTimelineRowView(
-                                commit: row.commit,
-                                commitURL: row.actionSet.commitURL,
-                                isCurrentCommit: row.actionSet.isCurrentCommit,
-                                isFutureCommit: row.actionSet.isFutureCommit,
-                                isSelected: selectedItemID == row.id,
-                                showsTopConnector: index > 0,
-                                showsBottomConnector: index < section.rows.count - 1,
+                                commit: timelineRow.row.commit,
+                                commitURL: timelineRow.row.actionSet.commitURL,
+                                isCurrentCommit: timelineRow.row.actionSet.isCurrentCommit,
+                                isFutureCommit: timelineRow.row.actionSet.isFutureCommit,
+                                isSelected: selectedItemID == timelineRow.row.id,
+                                showsTopConnector: timelineRow.showsTopConnector,
+                                showsBottomConnector: timelineRow.showsBottomConnector,
                                 onSelect: {
-                                    onSelectRow(row)
+                                    onSelectRow(timelineRow.row)
                                 },
-                                onActivate: { onActivateCommit(row) },
+                                onActivate: { onActivateCommit(timelineRow.row) },
                                 onRestoreCommit: {
-                                    onRestoreCommit(row)
+                                    onRestoreCommit(timelineRow.row)
                                 },
                                 onEditCommitMessage: {
-                                    onEditCommitMessage(row)
+                                    onEditCommitMessage(timelineRow.row)
                                 },
                                 onGenerateCommitMessage: {
-                                    onGenerateCommitMessage(row)
+                                    onGenerateCommitMessage(timelineRow.row)
                                 }
                             )
                         }
@@ -325,46 +306,48 @@ private struct HistoryTimelineRowView: View {
 }
 
 #Preview("History Timeline Section") {
-    HistoryTimelineSectionView(
-        rows: [
-            HistoryRowAdapter(
-                commit: Commit(
-                    id: "1234567890abcdef",
-                    shortHash: "1234567",
-                    subject: "feat(git): improve status bar and menu item logic",
-                    body: "",
-                    authorName: "Renato",
-                    authorEmail: "renato@example.com",
-                    committedAt: .now.addingTimeInterval(-3600),
-                    stats: CommitStats(filesChanged: 5, insertions: 114, deletions: 19),
-                    changedFiles: [
-                        CommitFileChange(
-                            path: "GitMenuBar/App/StatusBarController.swift",
-                            lineDiff: LineDiffStats(added: 72, removed: 12)
-                        )
-                    ]
-                ),
-                currentHash: "abcdef1234567890",
-                remoteUrl: "https://github.com/example/repo",
-                isCommitInFuture: false
+    let previewRows = [
+        HistoryRowAdapter(
+            commit: Commit(
+                id: "1234567890abcdef",
+                shortHash: "1234567",
+                subject: "feat(git): improve status bar and menu item logic",
+                body: "",
+                authorName: "Renato",
+                authorEmail: "renato@example.com",
+                committedAt: .now.addingTimeInterval(-3600),
+                stats: CommitStats(filesChanged: 5, insertions: 114, deletions: 19),
+                changedFiles: [
+                    CommitFileChange(
+                        path: "GitMenuBar/App/StatusBarController.swift",
+                        lineDiff: LineDiffStats(added: 72, removed: 12)
+                    )
+                ]
             ),
-            HistoryRowAdapter(
-                commit: Commit(
-                    id: "abcdef1234567890",
-                    shortHash: "abcdef1",
-                    subject: "fix(history): group commits by day",
-                    body: "",
-                    authorName: "Renato",
-                    authorEmail: "renato@example.com",
-                    committedAt: .now.addingTimeInterval(-86400),
-                    stats: CommitStats(filesChanged: 2, insertions: 8, deletions: 3),
-                    changedFiles: []
-                ),
-                currentHash: "abcdef1234567890",
-                remoteUrl: "https://github.com/example/repo",
-                isCommitInFuture: false
-            )
-        ],
+            currentHash: "abcdef1234567890",
+            remoteUrl: "https://github.com/example/repo",
+            isCommitInFuture: false
+        ),
+        HistoryRowAdapter(
+            commit: Commit(
+                id: "abcdef1234567890",
+                shortHash: "abcdef1",
+                subject: "fix(history): group commits by day",
+                body: "",
+                authorName: "Renato",
+                authorEmail: "renato@example.com",
+                committedAt: .now.addingTimeInterval(-86400),
+                stats: CommitStats(filesChanged: 2, insertions: 8, deletions: 3),
+                changedFiles: []
+            ),
+            currentHash: "abcdef1234567890",
+            remoteUrl: "https://github.com/example/repo",
+            isCommitInFuture: false
+        )
+    ]
+
+    HistoryTimelineSectionView(
+        sections: HistoryTimelineSectionModel.build(from: previewRows),
         selectedItemID: .historyCommit(id: "abcdef1234567890"),
         isLoading: false,
         onSelectRow: { _ in },

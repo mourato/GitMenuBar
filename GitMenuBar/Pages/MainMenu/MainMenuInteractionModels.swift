@@ -7,13 +7,13 @@ enum MainMenuSelectableItem: Hashable {
     case historyCommit(id: String)
 }
 
-struct WorkingTreeItemActions {
+struct WorkingTreeItemActions: Equatable {
     let primaryLabel: String
     let accessibilityLabel: String
     let canDiscard: Bool
 }
 
-struct WorkingTreeRowAdapter: Identifiable {
+struct WorkingTreeRowAdapter: Identifiable, Equatable {
     let id: MainMenuSelectableItem
     let file: WorkingTreeFile
     let actions: WorkingTreeItemActions
@@ -43,14 +43,14 @@ struct WorkingTreeRowAdapter: Identifiable {
     }
 }
 
-struct HistoryItemActions {
+struct HistoryItemActions: Equatable {
     let canOpenOnGitHub: Bool
     let canEditMessage: Bool
     let canGenerateMessage: Bool
     let canRestore: Bool
 }
 
-struct HistoryRowAdapter: Identifiable {
+struct HistoryRowAdapter: Identifiable, Equatable {
     let id: MainMenuSelectableItem
     let commit: Commit
     let actionSet: HistoryActionSet
@@ -73,6 +73,41 @@ struct HistoryRowAdapter: Identifiable {
             canGenerateMessage: actionSet.canGenerateMessage,
             canRestore: actionSet.canRestore
         )
+    }
+}
+
+struct HistoryTimelineRowModel: Identifiable, Equatable {
+    let row: HistoryRowAdapter
+    let showsTopConnector: Bool
+    let showsBottomConnector: Bool
+
+    var id: MainMenuSelectableItem {
+        row.id
+    }
+}
+
+struct HistoryTimelineSectionModel: Identifiable, Equatable {
+    let title: String
+    let rows: [HistoryTimelineRowModel]
+
+    var id: String {
+        title
+    }
+
+    static func build(from rows: [HistoryRowAdapter]) -> [HistoryTimelineSectionModel] {
+        let rowByCommitID = Dictionary(uniqueKeysWithValues: rows.map { ($0.commit.id, $0) })
+        return HistoryCommitGrouping.group(commits: rows.map(\.commit)).map { section in
+            let sectionRows = section.commits.compactMap { rowByCommitID[$0.id] }
+            let timelineRows = sectionRows.enumerated().map { index, row in
+                HistoryTimelineRowModel(
+                    row: row,
+                    showsTopConnector: index > 0,
+                    showsBottomConnector: index < sectionRows.count - 1
+                )
+            }
+
+            return HistoryTimelineSectionModel(title: section.title, rows: timelineRows)
+        }
     }
 }
 

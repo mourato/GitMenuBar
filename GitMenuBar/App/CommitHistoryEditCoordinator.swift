@@ -160,7 +160,7 @@ final class CommitHistoryEditCoordinator: ObservableObject {
             return nil
         }
 
-        if gitManager.hasUncommittedChanges() {
+        if await gitManager.hasUncommittedChangesAsync() {
             publishAlert(
                 title: "Clean Working Tree Required",
                 message: "Commit message editing requires a clean working tree. Commit, stash, or discard local changes first."
@@ -199,27 +199,15 @@ final class CommitHistoryEditCoordinator: ObservableObject {
     }
 
     private func diffForCommit(_ hash: String) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            gitManager.diffForCommit(hash) { result in
-                continuation.resume(with: result)
-            }
-        }
+        try await gitManager.diffForCommitAsync(hash)
     }
 
     private func isCommitPublishedToUpstream(_ hash: String) async throws -> Bool {
-        try await withCheckedThrowingContinuation { continuation in
-            gitManager.isCommitPublishedToUpstream(hash) { result in
-                continuation.resume(with: result)
-            }
-        }
+        try await gitManager.isCommitPublishedToUpstreamAsync(hash)
     }
 
     private func rewriteCommitMessage(commitHash: String, newMessage: String) async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            gitManager.rewriteCommitMessage(commitHash: commitHash, newMessage: newMessage) { result in
-                continuation.resume(with: result)
-            }
-        }
+        try await gitManager.rewriteCommitMessageAsync(commitHash: commitHash, newMessage: newMessage)
     }
 
     private func fullMessage(for commit: Commit) -> String {

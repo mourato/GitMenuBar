@@ -6,6 +6,12 @@
 import AppKit
 import Foundation
 
+struct GitHubAuthSessionSnapshot {
+    let token: String?
+    let username: String
+}
+
+@MainActor
 class GitHubAuthManager: ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var username: String = ""
@@ -22,7 +28,7 @@ class GitHubAuthManager: ObservableObject {
     // Device flow state
     private var deviceCode: String = ""
     private var pollingInterval: Int = 5
-    private var pollingTimer: Timer?
+    private var authenticationTask: Task<Void, Never>?
 
     init(
         tokenStore: (any GitHubTokenStore)? = nil,
@@ -51,11 +57,15 @@ class GitHubAuthManager: ObservableObject {
 
     /// Start the GitHub Device Flow authentication
     func startDeviceFlow() {
+        authenticationTask?.cancel()
         isAuthenticating = true
         authError = ""
         userCode = ""
+        deviceCode = ""
+        pollingInterval = 5
 
-        Task {
+        authenticationTask = Task { [weak self] in
+            guard let self else { return }
             await initiateDeviceFlow()
         }
     }
@@ -77,15 +87,15 @@ class GitHubAuthManager: ObservableObject {
 
         do {
             let (data, _) = try await URLSession.shared.data(for: request)
+            guard !Task.isCancelled else { return }
 
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 // Check for error
                 if let error = json["error"] as? String {
                     let errorDesc = json["error_description"] as? String ?? error
-                    await MainActor.run {
-                        self.authError = errorDesc
-                        self.isAuthenticating = false
-                    }
+                    authError = errorDesc
+                    isAuthenticating = false
+                    authenticationTask = nil
                     return
                 }
 
@@ -95,47 +105,43 @@ class GitHubAuthManager: ObservableObject {
                       let verificationUri = json["verification_uri"] as? String,
                       let interval = json["interval"] as? Int
                 else {
-                    await MainActor.run {
-                        self.authError = "Invalid response from GitHub"
-                        self.isAuthenticating = false
-                    }
+                    authError = "Invalid response from GitHub"
+                    isAuthenticating = false
+                    authenticationTask = nil
                     return
                 }
 
                 self.deviceCode = deviceCode
                 pollingInterval = interval
 
-                await MainActor.run {
-                    self.userCode = userCode
+                self.userCode = userCode
 
-                    // Copy code to clipboard
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(userCode, forType: .string)
-                }
+                // Copy code to clipboard
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(userCode, forType: .string)
 
                 // Open browser to verification URL
                 if let url = URL(string: verificationUri) {
-                    _ = await MainActor.run {
-                        NSWorkspace.shared.open(url)
-                    }
+                    NSWorkspace.shared.open(url)
                 }
 
                 // Start polling for the token
                 await startPolling()
             }
         } catch {
-            await MainActor.run {
-                self.authError = "Network error: \(error.localizedDescription)"
-                self.isAuthenticating = false
-            }
+            guard !Task.isCancelled else { return }
+            authError = "Network error: \(error.localizedDescription)"
+            isAuthenticating = false
+            authenticationTask = nil
         }
     }
 
     /// Step 2: Poll GitHub for the access token until user authorizes
     private func startPolling() async {
         // Poll with the specified interval
-        while isAuthenticating {
+        while isAuthenticating, !Task.isCancelled {
             try? await Task.sleep(nanoseconds: UInt64(pollingInterval) * 1_000_000_000)
+            guard !Task.isCancelled, isAuthenticating else { break }
 
             let result = await pollForToken()
 
@@ -143,11 +149,10 @@ class GitHubAuthManager: ObservableObject {
             case let .success(token):
                 // Store token and update state
                 tokenStore.saveToken(token)
-                await MainActor.run {
-                    self.isAuthenticated = true
-                    self.isAuthenticating = false
-                    self.userCode = ""
-                }
+                isAuthenticated = true
+                isAuthenticating = false
+                userCode = ""
+                authenticationTask = nil
                 await fetchUsername()
                 return
 
@@ -161,13 +166,16 @@ class GitHubAuthManager: ObservableObject {
                 continue
 
             case let .error(message):
-                await MainActor.run {
-                    self.authError = message
-                    self.isAuthenticating = false
-                    self.userCode = ""
-                }
+                authError = message
+                isAuthenticating = false
+                userCode = ""
+                authenticationTask = nil
                 return
             }
+        }
+
+        if Task.isCancelled {
+            authenticationTask = nil
         }
     }
 
@@ -228,16 +236,30 @@ class GitHubAuthManager: ObservableObject {
 
     /// Cancel the ongoing authentication
     func cancelAuthentication() {
+        authenticationTask?.cancel()
+        authenticationTask = nil
         isAuthenticating = false
         userCode = ""
         deviceCode = ""
+        pollingInterval = 5
         authError = ""
     }
 
     // MARK: - Token Storage
 
-    func getStoredToken() -> String? {
+    nonisolated func storedTokenSnapshot() -> String? {
         tokenStore.storedToken()
+    }
+
+    func getStoredToken() -> String? {
+        storedTokenSnapshot()
+    }
+
+    func sessionSnapshot() -> GitHubAuthSessionSnapshot {
+        GitHubAuthSessionSnapshot(
+            token: storedTokenSnapshot(),
+            username: username
+        )
     }
 
     private func deleteStoredToken() {
@@ -271,8 +293,14 @@ class GitHubAuthManager: ObservableObject {
     // MARK: - Disconnect
 
     func disconnect() {
+        authenticationTask?.cancel()
+        authenticationTask = nil
         deleteStoredToken()
         isAuthenticated = false
         username = ""
+    }
+
+    deinit {
+        authenticationTask?.cancel()
     }
 }

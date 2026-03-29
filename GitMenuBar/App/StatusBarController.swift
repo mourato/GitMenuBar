@@ -96,7 +96,7 @@ final class StatusBarController: ObservableObject {
 
         // Wire up token provider for git push operations
         gitManager.tokenProvider = { [weak githubAuthManager] in
-            githubAuthManager?.getStoredToken()
+            githubAuthManager?.storedTokenSnapshot()
         }
 
         // Wire up GitHub API client for checking repo existence

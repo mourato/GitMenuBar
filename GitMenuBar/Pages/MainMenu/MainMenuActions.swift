@@ -211,10 +211,12 @@ extension MainMenuView {
 
     func addToRecents(_ path: String) {
         recentProjectsStore.add(path)
+        recentProjectPaths = recentProjectsStore.recentPaths()
     }
 
     func setCurrentRepositoryPath(_ path: String) {
         UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
+        currentRepositoryPath = path
     }
 
     func presentCommandPaletteIfPossible() {

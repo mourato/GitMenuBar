@@ -18,7 +18,8 @@ class GitHubAPIClient {
     // MARK: - Create Repository
 
     func createRepository(name: String, isPrivate: Bool, description: String? = nil) async throws -> GitHubRepository {
-        guard let token = authManager.getStoredToken() else {
+        let session = await authManager.sessionSnapshot()
+        guard let token = session.token else {
             throw GitHubAPIError.unauthorized
         }
 
@@ -79,15 +80,16 @@ class GitHubAPIClient {
     // MARK: - Check Repository Exists
 
     func checkRepositoryExists(name: String) async throws -> Bool {
-        guard let token = authManager.getStoredToken() else {
+        let session = await authManager.sessionSnapshot()
+        guard let token = session.token else {
             throw GitHubAPIError.unauthorized
         }
 
-        guard !authManager.username.isEmpty else {
+        guard !session.username.isEmpty else {
             return false
         }
 
-        let url = URL(string: "\(baseURL)/repos/\(authManager.username)/\(name)")!
+        let url = URL(string: "\(baseURL)/repos/\(session.username)/\(name)")!
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -108,19 +110,21 @@ class GitHubAPIClient {
     // MARK: - Get Repository
 
     func getRepository(name: String) async throws -> GitHubRepository {
-        guard let token = authManager.getStoredToken() else {
+        let session = await authManager.sessionSnapshot()
+        guard session.token != nil else {
             throw GitHubAPIError.unauthorized
         }
 
-        guard !authManager.username.isEmpty else {
+        guard !session.username.isEmpty else {
             throw GitHubAPIError.unknown("Username not available")
         }
 
-        return try await getRepository(owner: authManager.username, name: name)
+        return try await getRepository(owner: session.username, name: name)
     }
 
     func getRepository(owner: String, name: String) async throws -> GitHubRepository {
-        guard let token = authManager.getStoredToken() else {
+        let session = await authManager.sessionSnapshot()
+        guard let token = session.token else {
             throw GitHubAPIError.unauthorized
         }
 
@@ -161,12 +165,13 @@ class GitHubAPIClient {
     // MARK: - Check Any Repository URL Exists
 
     func checkRepositoryURLExists(owner: String, repo: String) async -> Bool {
+        let session = await authManager.sessionSnapshot()
         let url = URL(string: "\(baseURL)/repos/\(owner)/\(repo)")!
         var request = URLRequest(url: url)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
         // Add auth if available (for private repos), but don't require it
-        if let token = authManager.getStoredToken() {
+        if let token = session.token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
@@ -191,6 +196,7 @@ class GitHubAPIClient {
         commitHash: String,
         authorEmail: String? = nil
     ) async -> URL? {
+        let session = await authManager.sessionSnapshot()
         let commitKey = commitAvatarCommitKey(owner: owner, repo: repo, commitHash: commitHash)
         var authorKeys: [String] = []
 
@@ -209,7 +215,7 @@ class GitHubAPIClient {
         var request = URLRequest(url: url)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
-        if let token = authManager.getStoredToken() {
+        if let token = session.token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
@@ -280,7 +286,8 @@ class GitHubAPIClient {
     // MARK: - Get Current User
 
     func getCurrentUser() async throws -> GitHubUser {
-        guard let token = authManager.getStoredToken() else {
+        let session = await authManager.sessionSnapshot()
+        guard let token = session.token else {
             throw GitHubAPIError.unauthorized
         }
 
@@ -312,7 +319,8 @@ class GitHubAPIClient {
     // MARK: - Delete Repository
 
     func deleteRepository(owner: String, name: String) async throws {
-        guard let token = authManager.getStoredToken() else {
+        let session = await authManager.sessionSnapshot()
+        guard let token = session.token else {
             throw GitHubAPIError.unauthorized
         }
 
@@ -356,7 +364,8 @@ class GitHubAPIClient {
     // MARK: - Update Repository Visibility
 
     func updateRepositoryVisibility(owner: String, name: String, isPrivate: Bool) async throws -> GitHubRepository {
-        guard let token = authManager.getStoredToken() else {
+        let session = await authManager.sessionSnapshot()
+        guard let token = session.token else {
             throw GitHubAPIError.unauthorized
         }
 

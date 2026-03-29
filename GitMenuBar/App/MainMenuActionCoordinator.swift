@@ -351,42 +351,22 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     private func commitLocally(_ message: String) async -> Result<Void, Error> {
-        await withCheckedContinuation { continuation in
-            gitManager.commitLocallyWithFallback(message) { result in
-                continuation.resume(returning: result)
-            }
-        }
+        await gitManager.commitLocallyWithFallbackAsync(message)
     }
 
     private func pushToRemote() async -> Result<Void, Error> {
-        await withCheckedContinuation { continuation in
-            gitManager.pushToRemote { result in
-                continuation.resume(returning: result)
-            }
-        }
+        await gitManager.pushToRemoteAsync()
     }
 
     private func pullFromRemote(rebase: Bool) async -> Result<Void, Error> {
-        await withCheckedContinuation { continuation in
-            gitManager.pullFromRemote(rebase: rebase) { result in
-                continuation.resume(returning: result)
-            }
-        }
+        await gitManager.pullFromRemoteAsync(rebase: rebase)
     }
 
     private func refreshRepository(includeReflogHistory: Bool = false) async {
-        await withCheckedContinuation { continuation in
-            gitManager.refresh(includeReflogHistory: includeReflogHistory) {
-                continuation.resume()
-            }
-        }
+        await gitManager.refreshAsync(includeReflogHistory: includeReflogHistory)
     }
 
     private func refreshRemoteStatus() async {
-        await withCheckedContinuation { continuation in
-            gitManager.checkRemoteStatus {
-                continuation.resume()
-            }
-        }
+        await gitManager.checkRemoteStatusAsync()
     }
 }

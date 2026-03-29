@@ -6,6 +6,7 @@
 import Foundation
 import ServiceManagement
 
+@MainActor
 class LoginItemManager: ObservableObject {
     @Published var isEnabled: Bool = false
 

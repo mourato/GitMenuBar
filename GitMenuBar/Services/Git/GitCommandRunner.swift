@@ -3,8 +3,6 @@ import Foundation
 final class GitCommandRunner {
     var tokenProvider: (() -> String?)?
 
-    private var askpassScriptPath: String?
-
     func runGitCommand(
         in directory: String,
         args: [String],
@@ -32,6 +30,7 @@ final class GitCommandRunner {
         task.arguments = args
         task.currentDirectoryPath = directory
         var environment = ProcessInfo.processInfo.environment
+        var askpassScriptPath: String?
 
         if useAuth, let token = tokenProvider?() {
             let scriptPath = createAskpassScript(token: token)
@@ -57,7 +56,7 @@ final class GitCommandRunner {
         do {
             try task.run()
         } catch {
-            cleanupAskpassScript()
+            cleanupAskpassScript(at: askpassScriptPath)
             return ("Failed to execute git command: \(error.localizedDescription)", true)
         }
 
@@ -67,7 +66,7 @@ final class GitCommandRunner {
         task.waitUntilExit()
         let status = task.terminationStatus
 
-        cleanupAskpassScript()
+        cleanupAskpassScript(at: askpassScriptPath)
 
         return (output, status != 0)
     }
@@ -87,10 +86,9 @@ final class GitCommandRunner {
         }
     }
 
-    private func cleanupAskpassScript() {
-        if let path = askpassScriptPath {
+    private func cleanupAskpassScript(at path: String?) {
+        if let path {
             try? FileManager.default.removeItem(atPath: path)
-            askpassScriptPath = nil
         }
     }
 }

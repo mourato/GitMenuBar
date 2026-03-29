@@ -3,7 +3,90 @@
 //  GitMenuBar
 //
 
+// swiftlint:disable file_length
 import Foundation
+
+struct MainMenuRenderSnapshot: Equatable {
+    let stagedRowAdapters: [WorkingTreeRowAdapter]
+    let unstagedRowAdapters: [WorkingTreeRowAdapter]
+    let historyRowAdapters: [HistoryRowAdapter]
+    let historySections: [HistoryTimelineSectionModel]
+    let keyboardSelectableItems: [MainMenuSelectableItem]
+    let branchMenuRows: [BranchMenuRowAdapter]
+    let recentPaths: [String]
+    let currentRepoPath: String
+    let currentProjectName: String
+
+    static let empty = MainMenuRenderSnapshot(
+        stagedRowAdapters: [],
+        unstagedRowAdapters: [],
+        historyRowAdapters: [],
+        historySections: [],
+        keyboardSelectableItems: [],
+        branchMenuRows: [],
+        recentPaths: [],
+        currentRepoPath: "",
+        currentProjectName: "Select Project"
+    )
+
+    // Precompute the main menu's expensive derived data from a single snapshot of source state.
+    // swiftlint:disable:next function_parameter_count
+    static func build(
+        stagedFiles: [WorkingTreeFile],
+        changedFiles: [WorkingTreeFile],
+        commitHistory: [Commit],
+        currentHash: String,
+        remoteUrl: String,
+        availableBranches: [String],
+        currentBranch: String,
+        isStagedSectionCollapsed: Bool,
+        isUnstagedSectionCollapsed: Bool,
+        isHistorySectionCollapsed: Bool,
+        recentPaths: [String],
+        currentRepoPath: String,
+        isCommitInFuture: (Commit) -> Bool
+    ) -> MainMenuRenderSnapshot {
+        let stagedRowAdapters = stagedFiles.map(WorkingTreeRowAdapter.staged(file:))
+        let unstagedRowAdapters = changedFiles.map(WorkingTreeRowAdapter.unstaged(file:))
+        let historyRowAdapters = commitHistory.map {
+            HistoryRowAdapter(
+                commit: $0,
+                currentHash: currentHash,
+                remoteUrl: remoteUrl,
+                isCommitInFuture: isCommitInFuture($0)
+            )
+        }
+        let historySections = HistoryTimelineSectionModel.build(from: historyRowAdapters)
+
+        var keyboardSelectableItems: [MainMenuSelectableItem] = []
+        if !isStagedSectionCollapsed {
+            keyboardSelectableItems += stagedRowAdapters.map(\.id)
+        }
+        if !isUnstagedSectionCollapsed {
+            keyboardSelectableItems += unstagedRowAdapters.map(\.id)
+        }
+        if !isHistorySectionCollapsed {
+            keyboardSelectableItems += historyRowAdapters.map(\.id)
+        }
+
+        let projectName = currentRepoPath.isEmpty ? "Select Project" : PathDisplayFormatter.projectName(from: currentRepoPath)
+        let branchMenuRows = availableBranches.map {
+            BranchMenuRowAdapter(branchName: $0, currentBranchName: currentBranch)
+        }
+
+        return MainMenuRenderSnapshot(
+            stagedRowAdapters: stagedRowAdapters,
+            unstagedRowAdapters: unstagedRowAdapters,
+            historyRowAdapters: historyRowAdapters,
+            historySections: historySections,
+            keyboardSelectableItems: keyboardSelectableItems,
+            branchMenuRows: branchMenuRows,
+            recentPaths: recentPaths,
+            currentRepoPath: currentRepoPath,
+            currentProjectName: projectName
+        )
+    }
+}
 
 enum MainMenuInlineBannerSource: Equatable {
     case coordinatorAlert
@@ -118,38 +201,23 @@ struct MainMenuPrimaryActionState: Equatable {
 
 extension MainMenuView {
     var stagedRowAdapters: [WorkingTreeRowAdapter] {
-        gitManager.stagedFiles.map(WorkingTreeRowAdapter.staged(file:))
+        renderSnapshot.stagedRowAdapters
     }
 
     var unstagedRowAdapters: [WorkingTreeRowAdapter] {
-        gitManager.changedFiles.map(WorkingTreeRowAdapter.unstaged(file:))
+        renderSnapshot.unstagedRowAdapters
     }
 
     var historyRowAdapters: [HistoryRowAdapter] {
-        gitManager.commitHistory.map {
-            HistoryRowAdapter(
-                commit: $0,
-                currentHash: gitManager.currentHash,
-                remoteUrl: gitManager.remoteUrl,
-                isCommitInFuture: isCommitInFuture($0)
-            )
-        }
+        renderSnapshot.historyRowAdapters
+    }
+
+    var historyTimelineSections: [HistoryTimelineSectionModel] {
+        renderSnapshot.historySections
     }
 
     var keyboardSelectableItems: [MainMenuSelectableItem] {
-        var items: [MainMenuSelectableItem] = []
-
-        if !isStagedSectionCollapsed {
-            items += stagedRowAdapters.map(\.id)
-        }
-        if !isUnstagedSectionCollapsed {
-            items += unstagedRowAdapters.map(\.id)
-        }
-        if !isHistorySectionCollapsed {
-            items += historyRowAdapters.map(\.id)
-        }
-
-        return items
+        renderSnapshot.keyboardSelectableItems
     }
 
     var inlineStatusBannerSource: MainMenuInlineBannerSource? {
@@ -265,16 +333,15 @@ extension MainMenuView {
     }
 
     var recentPaths: [String] {
-        RecentProjectsStore().recentPaths()
+        renderSnapshot.recentPaths
     }
 
     var currentRepoPath: String {
-        UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
+        renderSnapshot.currentRepoPath
     }
 
     var currentProjectName: String {
-        guard !currentRepoPath.isEmpty else { return "Select Project" }
-        return PathDisplayFormatter.projectName(from: currentRepoPath)
+        renderSnapshot.currentProjectName
     }
 
     var repositoryActionSet: RepositoryActionSet {
@@ -291,9 +358,7 @@ extension MainMenuView {
     }
 
     var branchMenuRows: [BranchMenuRowAdapter] {
-        gitManager.availableBranches.map {
-            BranchMenuRowAdapter(branchName: $0, currentBranchName: gitManager.currentBranch)
-        }
+        renderSnapshot.branchMenuRows
     }
 
     var hasWorkingTreeChanges: Bool {

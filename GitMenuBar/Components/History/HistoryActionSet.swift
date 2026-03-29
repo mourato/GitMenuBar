@@ -1,6 +1,6 @@
 import Foundation
 
-struct HistoryActionSet {
+struct HistoryActionSet: Equatable {
     let commitURL: URL?
     let isCurrentCommit: Bool
     let isFutureCommit: Bool

@@ -69,25 +69,97 @@ class GitManager: ObservableObject {
         set { repositoryContext.repositoryPath = newValue }
     }
 
+    private func runOnBackground<T>(_ operation: @escaping () -> T) async -> T {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                continuation.resume(returning: operation())
+            }
+        }
+    }
+
+    private func publishOnMainActor(_ update: @escaping @MainActor () -> Void) async {
+        await MainActor.run(body: update)
+    }
+
+    private func makeMissingRepositoryError() -> NSError {
+        NSError(
+            domain: "GitManager",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "No repository path configured"]
+        )
+    }
+
     var canLoadMoreCommitHistory: Bool {
         !commitHistory.isEmpty && commitHistory.count >= commitHistoryLimit
+    }
+
+    func refreshAsync(includeReflogHistory: Bool? = nil) async {
+        await updateLocalCommitCountAsync()
+        await updateUncommittedFilesAsync()
+        await updateBranchInfoAsync()
+        await updateRemoteUrlAsync()
+        await fetchCommitHistoryAsync(includeReflog: includeReflogHistory)
+        await fetchBranchesAsync()
+        await checkRemoteStatusAsync()
+        await checkRepoVisibilityAsync()
     }
 
     func refresh(
         includeReflogHistory: Bool? = nil,
         completion: (() -> Void)? = nil
     ) {
-        updateLocalCommitCount()
-        updateUncommittedFiles {
-            self.updateBranchInfo {
-                self.updateRemoteUrl()
-                self.fetchCommitHistory(includeReflog: includeReflogHistory)
-                self.fetchBranches()
-                self.checkRemoteStatus()
-                self.checkRepoVisibility()
+        Task { [weak self] in
+            guard let self else { return }
+            await refreshAsync(includeReflogHistory: includeReflogHistory)
+            await publishOnMainActor {
                 completion?()
             }
         }
+    }
+
+    func commitLocallyAsync(
+        _ message: String,
+        skipUIUpdates: Bool = false
+    ) async -> Result<Void, Error> {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+
+        await publishOnMainActor {
+            self.isCommitting = true
+        }
+
+        let result: Result<Void, Error> = await runOnBackground {
+            let commitResult = self.executeGitCommand(
+                in: repositoryPath,
+                args: ["commit", "--no-gpg-sign", "--allow-empty-message", "--cleanup=verbatim", "-m", message]
+            )
+
+            guard !commitResult.failure else {
+                return .failure(
+                    NSError(
+                        domain: "GitManager",
+                        code: 2,
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to create commit: \(commitResult.output)"]
+                    )
+                )
+            }
+
+            return .success(())
+        }
+
+        await publishOnMainActor {
+            self.isCommitting = false
+        }
+
+        if case .success = result, !skipUIUpdates {
+            await updateLocalCommitCountAsync()
+            await updateUncommittedFilesAsync()
+            await updateBranchInfoAsync()
+        }
+
+        return result
     }
 
     func commitLocally(
@@ -95,49 +167,30 @@ class GitManager: ObservableObject {
         skipUIUpdates: Bool = false,
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
-        isCommitting = true
-        guard !storedRepoPath.isEmpty else {
-            isCommitting = false
-            let error = NSError(
-                domain: "GitManager",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "No repository path configured"]
-            )
-            completion?(.failure(error))
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Commit only what is already staged.
-            let commitResult = self.executeGitCommand(
-                in: self.storedRepoPath,
-                args: ["commit", "--no-gpg-sign", "--allow-empty-message", "--cleanup=verbatim", "-m", message]
-            )
-            if commitResult.failure {
-                DispatchQueue.main.async {
-                    self.isCommitting = false
-                    let error = NSError(
-                        domain: "GitManager",
-                        code: 2,
-                        userInfo: [NSLocalizedDescriptionKey: "Failed to create commit: \(commitResult.output)"]
-                    )
-                    completion?(.failure(error))
-                }
-                return
-            }
-
-            DispatchQueue.main.async {
-                self.isCommitting = false
-                // Only update UI if we're not about to close the popover
-                if !skipUIUpdates {
-                    self.updateLocalCommitCount()
-                    self.updateUncommittedFiles()
-                    self.updateBranchInfo()
-                }
-                print("Created local commit: \(message)")
-                completion?(.success(()))
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await commitLocallyAsync(message, skipUIUpdates: skipUIUpdates)
+            await publishOnMainActor {
+                completion?(result)
             }
         }
+    }
+
+    func commitLocallyWithFallbackAsync(
+        _ message: String,
+        skipUIUpdates: Bool = false
+    ) async -> Result<Void, Error> {
+        await updateUncommittedFilesAsync()
+        let shouldAutoStage = stagedFiles.isEmpty && !changedFiles.isEmpty
+
+        if shouldAutoStage {
+            let stageResult = await stageAllChangesAsync()
+            guard case .success = stageResult else {
+                return stageResult
+            }
+        }
+
+        return await commitLocallyAsync(message, skipUIUpdates: skipUIUpdates)
     }
 
     func commitLocallyWithFallback(
@@ -145,22 +198,11 @@ class GitManager: ObservableObject {
         skipUIUpdates: Bool = false,
         completion: ((Result<Void, Error>) -> Void)? = nil
     ) {
-        updateUncommittedFiles {
-            let shouldAutoStage = self.stagedFiles.isEmpty && !self.changedFiles.isEmpty
-
-            guard shouldAutoStage else {
-                self.commitLocally(message, skipUIUpdates: skipUIUpdates, completion: completion)
-                return
-            }
-
-            self.stageAllChanges { result in
-                switch result {
-                case .success:
-                    self.commitLocally(message, skipUIUpdates: skipUIUpdates, completion: completion)
-                case let .failure(error):
-                    print("Error staging all changes for fallback commit: \(error.localizedDescription)")
-                    completion?(.failure(error))
-                }
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await commitLocallyWithFallbackAsync(message, skipUIUpdates: skipUIUpdates)
+            await publishOnMainActor {
+                completion?(result)
             }
         }
     }
@@ -290,70 +332,85 @@ class GitManager: ObservableObject {
     }
 
     func pushToRemote(completion: ((Result<Void, Error>) -> Void)? = nil) {
-        // Use current branch as target
-        pushToBranch(branchName: currentBranch, force: false, completion: completion)
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await pushToRemoteAsync()
+            await publishOnMainActor {
+                completion?(result)
+            }
+        }
+    }
+
+    func pushToRemoteAsync() async -> Result<Void, Error> {
+        await pushToBranchAsync(branchName: currentBranch, force: false)
     }
 
     func pushToBranch(branchName: String, force: Bool, completion: ((Result<Void, Error>) -> Void)? = nil) {
-        guard !storedRepoPath.isEmpty else {
-            let error = NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Error: No repository path configured"])
-            print(error.localizedDescription)
-            DispatchQueue.main.async {
-                completion?(.failure(error))
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await pushToBranchAsync(branchName: branchName, force: force)
+            await publishOnMainActor {
+                completion?(result)
             }
-            return
+        }
+    }
+
+    func pushToBranchAsync(branchName: String, force: Bool) async -> Result<Void, Error> {
+        let repositoryPath = storedRepoPath
+        let currentBranchName = currentBranch
+
+        guard !repositoryPath.isEmpty else {
+            let error = NSError(
+                domain: "GitManager",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Error: No repository path configured"]
+            )
+            print(error.localizedDescription)
+            return .failure(error)
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Determine push arguments
+        return await runOnBackground {
             var pushArgs: [String]
 
-            if branchName == self.currentBranch {
-                // Pushing current branch - always use -u to set/update upstream
+            if branchName == currentBranchName {
                 pushArgs = force ? ["push", "--force", "-u", "origin", branchName] : ["push", "-u", "origin", branchName]
             } else {
-                // Pushing current HEAD to a different remote branch
                 pushArgs = force ? ["push", "--force", "origin", "HEAD:\(branchName)"] : ["push", "origin", "HEAD:\(branchName)"]
             }
 
-            let pushResult = self.executeGitCommand(in: self.storedRepoPath, args: pushArgs, useAuth: true)
-
-            // If normal push fails, check if it's because of diverged history
+            let pushResult = self.executeGitCommand(in: repositoryPath, args: pushArgs, useAuth: true)
             if pushResult.failure {
-                // Check if the error is about diverged branches (common after reset)
                 if pushResult.output.contains("rejected") || pushResult.output.contains("diverged") || pushResult.output.contains("non-fast-forward") {
-                    print("History has diverged, attempting force push...")
+                    let forcePushArgs = branchName == currentBranchName
+                        ? ["push", "--force", "-u", "origin", branchName]
+                        : ["push", "--force", "origin", "HEAD:\(branchName)"]
+                    let forcePushResult = self.executeGitCommand(in: repositoryPath, args: forcePushArgs, useAuth: true)
 
-                    // Do a force push to overwrite remote history
-                    let forcePushArgs = branchName == self.currentBranch ? ["push", "--force", "-u", "origin", branchName] : ["push", "--force", "origin", "HEAD:\(branchName)"]
-                    let forcePushResult = self.executeGitCommand(in: self.storedRepoPath, args: forcePushArgs, useAuth: true)
-
-                    if forcePushResult.failure {
-                        let error = NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Error force pushing: \(forcePushResult.output)"])
+                    guard !forcePushResult.failure else {
+                        let error = NSError(
+                            domain: "GitManager",
+                            code: 2,
+                            userInfo: [NSLocalizedDescriptionKey: "Error force pushing: \(forcePushResult.output)"]
+                        )
                         print(error.localizedDescription)
-                        DispatchQueue.main.async {
-                            completion?(.failure(error))
-                        }
-                        return
+                        return .failure(error)
                     }
 
                     print("Successfully force pushed commits to remote")
-                } else {
-                    let error = NSError(domain: "GitManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Error pushing: \(pushResult.output)"])
-                    print(error.localizedDescription)
-                    DispatchQueue.main.async {
-                        completion?(.failure(error))
-                    }
-                    return
+                    return .success(())
                 }
-            } else {
-                print("Successfully pushed commits to remote")
+
+                let error = NSError(
+                    domain: "GitManager",
+                    code: 3,
+                    userInfo: [NSLocalizedDescriptionKey: "Error pushing: \(pushResult.output)"]
+                )
+                print(error.localizedDescription)
+                return .failure(error)
             }
 
-            // Success
-            DispatchQueue.main.async {
-                completion?(.success(()))
-            }
+            print("Successfully pushed commits to remote")
+            return .success(())
         }
     }
 
@@ -379,6 +436,28 @@ class GitManager: ObservableObject {
                     self.remoteUrl = ""
                 }
             }
+        }
+    }
+
+    func updateRemoteUrlAsync() async {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            await publishOnMainActor {
+                self.remoteUrl = ""
+            }
+            return
+        }
+
+        let remoteURL = await runOnBackground {
+            let result = self.executeGitCommand(in: repositoryPath, args: ["config", "--get", "remote.origin.url"])
+            guard !result.failure else {
+                return ""
+            }
+            return GitHubRemoteURLParser.normalizedWebURL(from: result.output)
+        }
+
+        await publishOnMainActor {
+            self.remoteUrl = remoteURL
         }
     }
 
@@ -426,6 +505,39 @@ class GitManager: ObservableObject {
                     completion?()
                 }
             }
+        }
+    }
+
+    func updateLocalCommitCountAsync() async {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            await publishOnMainActor {
+                self.commitCount = 0
+            }
+            return
+        }
+
+        let count = await runOnBackground {
+            let revListResult = self.executeGitCommand(in: repositoryPath, args: ["rev-list", "--count", "@{u}..HEAD"])
+
+            if revListResult.failure {
+                let revListFallback = self.executeGitCommand(in: repositoryPath, args: ["rev-list", "--count", "HEAD", "^origin/main"])
+                if let count = Int(revListFallback.output.trimmingCharacters(in: .whitespacesAndNewlines)), !revListFallback.failure {
+                    return count
+                }
+
+                let revListDefaultBranchFallback = self.executeGitCommand(
+                    in: repositoryPath,
+                    args: ["rev-list", "--count", "HEAD", "^origin/master"]
+                )
+                return Int(revListDefaultBranchFallback.output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+            }
+
+            return Int(revListResult.output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+        }
+
+        await publishOnMainActor {
+            self.commitCount = count
         }
     }
 
@@ -500,6 +612,78 @@ class GitManager: ObservableObject {
         }
     }
 
+    func updateUncommittedFilesAsync() async {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            await publishOnMainActor {
+                self.uncommittedFiles = []
+                self.stagedFiles = []
+                self.changedFiles = []
+            }
+            return
+        }
+
+        let snapshot = await runOnBackground {
+            let statusResult = self.executeGitCommand(in: repositoryPath, args: ["status", "--porcelain", "-uall"])
+
+            guard !statusResult.failure else {
+                print("Error getting git status: \(statusResult.output)")
+                return (
+                    stagedFiles: [WorkingTreeFile](),
+                    changedFiles: [WorkingTreeFile](),
+                    uncommittedFiles: [String]()
+                )
+            }
+
+            let status = self.workingTreeParser.parsePorcelainStatus(statusResult.output)
+            let stagedDiffs = self.workingTreeParser.parseNumstat(
+                self.executeGitCommand(in: repositoryPath, args: ["diff", "--cached", "--numstat", "--no-renames"]).output
+            )
+            var changedDiffs = self.workingTreeParser.parseNumstat(
+                self.executeGitCommand(in: repositoryPath, args: ["diff", "--numstat", "--no-renames"]).output
+            )
+            let untrackedDiffs = self.workingTreeParser.lineDiffForUntrackedFiles(
+                paths: status.untrackedPaths,
+                repositoryPath: repositoryPath
+            )
+            for (path, diff) in untrackedDiffs {
+                changedDiffs[path] = diff
+            }
+
+            let stagedEntries = status.stagedStatuses.keys
+                .sorted()
+                .map { path in
+                    WorkingTreeFile(
+                        path: path,
+                        lineDiff: stagedDiffs[path] ?? .zero,
+                        status: status.stagedStatuses[path] ?? .modified
+                    )
+                }
+            let changedEntries = status.changedStatuses.keys
+                .sorted()
+                .map { path in
+                    WorkingTreeFile(
+                        path: path,
+                        lineDiff: changedDiffs[path] ?? .zero,
+                        status: status.changedStatuses[path] ?? .modified
+                    )
+                }
+            let merged = Array(Set(status.stagedStatuses.keys).union(status.changedStatuses.keys)).sorted()
+
+            return (
+                stagedFiles: stagedEntries,
+                changedFiles: changedEntries,
+                uncommittedFiles: merged
+            )
+        }
+
+        await publishOnMainActor {
+            self.stagedFiles = snapshot.stagedFiles
+            self.changedFiles = snapshot.changedFiles
+            self.uncommittedFiles = snapshot.uncommittedFiles
+        }
+    }
+
     func stageFile(path: String, completion: ((Result<Void, Error>) -> Void)? = nil) {
         guard !storedRepoPath.isEmpty else {
             completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
@@ -544,6 +728,30 @@ class GitManager: ObservableObject {
                 }
             }
         }
+    }
+
+    func stageAllChangesAsync() async -> Result<Void, Error> {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+
+        let result = await runOnBackground {
+            self.executeGitCommand(in: repositoryPath, args: ["add", "-A"])
+        }
+
+        guard !result.failure else {
+            return .failure(
+                NSError(
+                    domain: "GitManager",
+                    code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to stage all changes: \(result.output)"]
+                )
+            )
+        }
+
+        await updateUncommittedFilesAsync()
+        return .success(())
     }
 
     func unstageAllChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
@@ -794,6 +1002,20 @@ class GitManager: ObservableObject {
             .isEmpty
     }
 
+    func hasUncommittedChangesAsync() async -> Bool {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            return false
+        }
+
+        return await runOnBackground {
+            !self.executeGitCommand(in: repositoryPath, args: ["status", "--porcelain"])
+                .output
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty
+        }
+    }
+
     func isMergeCommit(_ hash: String, completion: @escaping (Result<Bool, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
             completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
@@ -822,6 +1044,24 @@ class GitManager: ObservableObject {
         }
     }
 
+    func isCommitPublishedToUpstreamAsync(_ hash: String) async throws -> Bool {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            throw makeMissingRepositoryError()
+        }
+
+        let result = await runOnBackground {
+            self.resolveCommitPublishedStatus(for: hash)
+        }
+
+        switch result {
+        case let .success(isPublished):
+            return isPublished
+        case let .failure(error):
+            throw error
+        }
+    }
+
     func diffForCommit(_ hash: String, completion: @escaping (Result<String, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
             completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
@@ -836,80 +1076,99 @@ class GitManager: ObservableObject {
         }
     }
 
+    func diffForCommitAsync(_ hash: String) async throws -> String {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            throw makeMissingRepositoryError()
+        }
+
+        let result = await runOnBackground {
+            self.resolveDiffForCommit(hash)
+        }
+
+        switch result {
+        case let .success(diff):
+            return diff
+        case let .failure(error):
+            throw error
+        }
+    }
+
     func rewriteCommitMessage(
         commitHash: String,
         newMessage: String,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
-        guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await rewriteCommitMessageAsync(commitHash: commitHash, newMessage: newMessage)
+                await publishOnMainActor {
+                    completion(.success(()))
+                }
+            } catch {
+                await publishOnMainActor {
+                    completion(.failure(error))
+                }
+            }
+        }
+    }
+
+    func rewriteCommitMessageAsync(commitHash: String, newMessage: String) async throws {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            throw makeMissingRepositoryError()
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            if self.hasUncommittedChanges() {
-                let error = NSError(
-                    domain: "GitManager",
-                    code: 2,
-                    userInfo: [NSLocalizedDescriptionKey: "Commit message editing requires a clean working tree."]
-                )
-                DispatchQueue.main.async {
-                    completion(.failure(error))
-                }
-                return
-            }
+        if await hasUncommittedChangesAsync() {
+            throw NSError(
+                domain: "GitManager",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Commit message editing requires a clean working tree."]
+            )
+        }
 
-            switch self.resolveMergeCommitStatus(for: commitHash) {
-            case let .failure(error):
-                DispatchQueue.main.async {
-                    completion(.failure(error))
-                }
-                return
-            case let .success(isMergeCommit) where isMergeCommit:
-                let error = NSError(
-                    domain: "GitManager",
-                    code: 3,
-                    userInfo: [NSLocalizedDescriptionKey: "Editing merge commits is not supported yet."]
-                )
-                DispatchQueue.main.async {
-                    completion(.failure(error))
-                }
-                return
-            case .success:
-                break
-            }
+        let mergeStatus = await runOnBackground {
+            self.resolveMergeCommitStatus(for: commitHash)
+        }
+        switch mergeStatus {
+        case let .failure(error):
+            throw error
+        case let .success(isMergeCommit) where isMergeCommit:
+            throw NSError(
+                domain: "GitManager",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "Editing merge commits is not supported yet."]
+            )
+        case .success:
+            break
+        }
 
-            let headResult = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-parse", "HEAD"])
+        let rewriteResult: Result<Void, Error> = await runOnBackground {
+            let headResult = self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "HEAD"])
             guard !headResult.failure else {
-                let error = NSError(
-                    domain: "GitManager",
-                    code: 4,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to resolve HEAD: \(headResult.output)"]
+                return .failure(
+                    NSError(
+                        domain: "GitManager",
+                        code: 4,
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to resolve HEAD: \(headResult.output)"]
+                    )
                 )
-                DispatchQueue.main.async {
-                    completion(.failure(error))
-                }
-                return
             }
 
             let headHash = headResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
-            let result: Result<Void, Error>
             if commitHash == headHash {
-                result = self.amendHeadCommitMessage(newMessage)
-            } else {
-                result = self.rewordHistoricalCommitMessage(commitHash: commitHash, newMessage: newMessage)
+                return self.amendHeadCommitMessage(newMessage)
             }
 
-            DispatchQueue.main.async {
-                switch result {
-                case let .failure(error):
-                    completion(.failure(error))
-                case .success:
-                    self.refresh(includeReflogHistory: false) {
-                        completion(.success(()))
-                    }
-                }
-            }
+            return self.rewordHistoricalCommitMessage(commitHash: commitHash, newMessage: newMessage)
+        }
+
+        switch rewriteResult {
+        case let .failure(error):
+            throw error
+        case .success:
+            await refreshAsync(includeReflogHistory: false)
         }
     }
 
@@ -1006,6 +1265,77 @@ class GitManager: ObservableObject {
                 }
 
                 completion?()
+            }
+        }
+    }
+
+    func updateBranchInfoAsync() async {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            await publishOnMainActor {
+                self.currentBranch = "main"
+                self.isAheadOfRemote = false
+                self.currentHash = ""
+                self.isDetachedHead = false
+            }
+            return
+        }
+
+        let snapshot = await runOnBackground {
+            let branchResult = self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "--abbrev-ref", "HEAD"])
+            let branchName = branchResult.failure ? "main" : branchResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            let revListResult = self.executeGitCommand(in: repositoryPath, args: ["rev-list", "--count", "@{u}..HEAD"])
+
+            var isAhead = false
+            if revListResult.failure {
+                let revListMain = self.executeGitCommand(in: repositoryPath, args: ["rev-list", "--count", "HEAD", "^origin/main"])
+                if !revListMain.failure, let count = Int(revListMain.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                    isAhead = count > 0
+                } else {
+                    let revListDefaultBranchFallback = self.executeGitCommand(
+                        in: repositoryPath,
+                        args: ["rev-list", "--count", "HEAD", "^origin/master"]
+                    )
+                    let fallbackCount = Int(revListDefaultBranchFallback.output.trimmingCharacters(in: .whitespacesAndNewlines))
+                    if !revListDefaultBranchFallback.failure, let fallbackCount {
+                        isAhead = fallbackCount > 0
+                    }
+                }
+            } else if let count = Int(revListResult.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                isAhead = count > 0
+            }
+
+            let hashResult = self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "HEAD"])
+            let hash = hashResult.failure ? "" : hashResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            let detachedBranchName: String
+            let isDetachedHead = branchName == "HEAD"
+            if isDetachedHead {
+                let shortHashResult = self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "--short", "HEAD"])
+                detachedBranchName = shortHashResult.failure
+                    ? "(detached)"
+                    : "(detached at \(shortHashResult.output.trimmingCharacters(in: .whitespacesAndNewlines)))"
+            } else {
+                detachedBranchName = branchName
+            }
+
+            return (
+                branchName: detachedBranchName,
+                activeBranchName: branchName,
+                isAhead: isAhead,
+                currentHash: hash,
+                isDetachedHead: isDetachedHead
+            )
+        }
+
+        await publishOnMainActor {
+            self.currentBranch = snapshot.branchName
+            self.isAheadOfRemote = snapshot.isAhead
+            self.currentHash = snapshot.currentHash
+            self.isDetachedHead = snapshot.isDetachedHead
+            if !snapshot.isDetachedHead {
+                self.lastActiveBranch = snapshot.activeBranchName
             }
         }
     }
@@ -1216,6 +1546,35 @@ class GitManager: ObservableObject {
                 self.commitHistoryLimit = resolvedLimit
                 self.commitHistory = commits
             }
+        }
+    }
+
+    func fetchCommitHistoryAsync(limit: Int? = nil, includeReflog: Bool? = nil) async {
+        let resolvedLimit = max(1, limit ?? commitHistoryLimit)
+        let resolvedIncludeReflog = includeReflog ?? includesReflogCommitsInHistory
+        let repositoryPath = storedRepoPath
+
+        guard !repositoryPath.isEmpty else {
+            await publishOnMainActor {
+                self.includesReflogCommitsInHistory = resolvedIncludeReflog
+                self.commitHistoryLimit = resolvedLimit
+                self.commitHistory = []
+            }
+            return
+        }
+
+        let commits = await runOnBackground {
+            self.commitHistoryParser.fetchCommitHistory(
+                in: repositoryPath,
+                limit: resolvedLimit,
+                includeReflog: resolvedIncludeReflog
+            )
+        }
+
+        await publishOnMainActor {
+            self.includesReflogCommitsInHistory = resolvedIncludeReflog
+            self.commitHistoryLimit = resolvedLimit
+            self.commitHistory = commits
         }
     }
 
@@ -1484,133 +1843,168 @@ class GitManager: ObservableObject {
         }
     }
 
-    func checkRemoteStatus(completion: (() -> Void)? = nil) {
-        guard !storedRepoPath.isEmpty else {
-            DispatchQueue.main.async {
-                self.isRemoteAhead = false
-                self.isBehindRemote = false
-                self.behindCount = 0
-                completion?()
+    func fetchBranchesAsync() async {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            await publishOnMainActor {
+                self.availableBranches = []
             }
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            // First, fetch to update remote refs (do this quietly)
-            _ = self.executeGitCommand(in: self.storedRepoPath, args: ["fetch"], useAuth: true)
-
-            // Check if we're ahead or behind remote
-            // Format: "behind\tahead" (e.g., "2\t3" means 2 behind, 3 ahead)
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-list", "--left-right", "--count", "@{u}...HEAD"])
-
-            if !result.failure {
-                let parts = result.output.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "\t")
-                if parts.count == 2 {
-                    let behind = Int(parts[0]) ?? 0
-                    let ahead = Int(parts[1]) ?? 0
-
-                    DispatchQueue.main.async {
-                        self.behindCount = behind
-                        self.isRemoteAhead = behind > 0
-                        self.isBehindRemote = behind > 0
-                        completion?()
-                    }
-                    return
-                }
+        let branches = await runOnBackground {
+            let result = self.executeGitCommand(in: repositoryPath, args: ["branch", "-a", "--format=%(refname:short)"])
+            guard !result.failure else {
+                return [String]()
             }
 
-            // Fallback: no upstream or error
-            DispatchQueue.main.async {
+            return Array(
+                Set(
+                    result.output
+                        .components(separatedBy: .newlines)
+                        .filter { !$0.isEmpty }
+                        .map { branch in
+                            branch.hasPrefix("origin/") ? String(branch.dropFirst(7)) : branch
+                        }
+                        .filter { $0 != "HEAD" && $0 != "origin" && !$0.contains("origin/HEAD") }
+                )
+            ).sorted()
+        }
+
+        await publishOnMainActor {
+            self.availableBranches = branches
+        }
+    }
+
+    func checkRemoteStatus(completion: (() -> Void)? = nil) {
+        Task { [weak self] in
+            guard let self else { return }
+            await checkRemoteStatusAsync()
+            await publishOnMainActor {
+                completion?()
+            }
+        }
+    }
+
+    func checkRemoteStatusAsync() async {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            await publishOnMainActor {
                 self.isRemoteAhead = false
                 self.isBehindRemote = false
                 self.behindCount = 0
-                completion?()
             }
+            return
+        }
+
+        let snapshot = await runOnBackground {
+            _ = self.executeGitCommand(in: repositoryPath, args: ["fetch"], useAuth: true)
+            let result = self.executeGitCommand(in: repositoryPath, args: ["rev-list", "--left-right", "--count", "@{u}...HEAD"])
+
+            guard !result.failure else {
+                return (behindCount: 0, isRemoteAhead: false, isBehindRemote: false)
+            }
+
+            let parts = result.output.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "\t")
+            guard parts.count == 2 else {
+                return (behindCount: 0, isRemoteAhead: false, isBehindRemote: false)
+            }
+
+            let behind = Int(parts[0]) ?? 0
+            return (behindCount: behind, isRemoteAhead: behind > 0, isBehindRemote: behind > 0)
+        }
+
+        await publishOnMainActor {
+            self.behindCount = snapshot.behindCount
+            self.isRemoteAhead = snapshot.isRemoteAhead
+            self.isBehindRemote = snapshot.isBehindRemote
         }
     }
 
     func checkRepoVisibility(completion: (() -> Void)? = nil) {
-        guard !storedRepoPath.isEmpty else {
-            DispatchQueue.main.async {
-                self.isPrivate = false
+        Task { [weak self] in
+            guard let self else { return }
+            await checkRepoVisibilityAsync()
+            await publishOnMainActor {
                 completion?()
-            }
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Get URL from config to be sure
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["config", "--get", "remote.origin.url"])
-            guard !result.failure else {
-                DispatchQueue.main.async {
-                    completion?()
-                }
-                return
-            }
-
-            let remoteURL = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            guard let reference = GitHubRemoteURLParser.parse(remoteURL) else {
-                DispatchQueue.main.async {
-                    completion?()
-                }
-                return
-            }
-
-            guard let apiClient = self.githubAPIClient else {
-                DispatchQueue.main.async {
-                    completion?()
-                }
-                return
-            }
-
-            Task {
-                do {
-                    let repository = try await apiClient.getRepository(
-                        owner: reference.owner,
-                        name: reference.repository
-                    )
-                    DispatchQueue.main.async {
-                        self.isPrivate = repository.private
-                        completion?()
-                    }
-                } catch {
-                    print("Error checking repo visibility: \(error)")
-                    DispatchQueue.main.async {
-                        completion?()
-                    }
-                }
             }
         }
     }
 
-    func pullFromRemote(rebase: Bool, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+    func checkRepoVisibilityAsync() async {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            await publishOnMainActor {
+                self.isPrivate = false
+            }
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            let args = rebase ? ["pull", "--rebase"] : ["pull"]
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: args, useAuth: true)
+        let remoteURL = await runOnBackground {
+            self.executeGitCommand(in: repositoryPath, args: ["config", "--get", "remote.origin.url"])
+                .output
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
 
-            if result.failure {
-                // Check if it's a merge conflict
-                if result.output.contains("CONFLICT") || result.output.contains("conflict") {
-                    DispatchQueue.main.async {
-                        completion(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Merge conflict - please resolve manually"])))
-                    }
-                } else {
-                    DispatchQueue.main.async {
-                        completion(.failure(NSError(domain: "GitManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Pull failed: \(result.output)"])))
-                    }
-                }
-            } else {
-                print("Successfully pulled from remote")
-                DispatchQueue.main.async {
-                    completion(.success(()))
-                }
+        guard let reference = GitHubRemoteURLParser.parse(remoteURL), let apiClient = githubAPIClient else {
+            return
+        }
+
+        do {
+            let repository = try await apiClient.getRepository(
+                owner: reference.owner,
+                name: reference.repository
+            )
+            await publishOnMainActor {
+                self.isPrivate = repository.private
             }
+        } catch {
+            print("Error checking repo visibility: \(error)")
+        }
+    }
+
+    func pullFromRemote(rebase: Bool, completion: @escaping (Result<Void, Error>) -> Void) {
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await pullFromRemoteAsync(rebase: rebase)
+            await publishOnMainActor {
+                completion(result)
+            }
+        }
+    }
+
+    func pullFromRemoteAsync(rebase: Bool) async -> Result<Void, Error> {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+
+        return await runOnBackground {
+            let args = rebase ? ["pull", "--rebase"] : ["pull"]
+            let result = self.executeGitCommand(in: repositoryPath, args: args, useAuth: true)
+
+            guard !result.failure else {
+                if result.output.contains("CONFLICT") || result.output.contains("conflict") {
+                    return .failure(
+                        NSError(
+                            domain: "GitManager",
+                            code: 2,
+                            userInfo: [NSLocalizedDescriptionKey: "Merge conflict - please resolve manually"]
+                        )
+                    )
+                }
+
+                return .failure(
+                    NSError(
+                        domain: "GitManager",
+                        code: 3,
+                        userInfo: [NSLocalizedDescriptionKey: "Pull failed: \(result.output)"]
+                    )
+                )
+            }
+
+            print("Successfully pulled from remote")
+            return .success(())
         }
     }
 

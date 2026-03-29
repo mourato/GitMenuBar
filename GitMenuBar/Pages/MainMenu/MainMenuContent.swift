@@ -26,6 +26,124 @@ extension MainMenuView {
         gitManager.changedFiles.sectionSummary
     }
 
+    private var mainScrollContent: some View {
+        VStack(alignment: .leading, spacing: MacChromeMetrics.groupSpacing) {
+            if let inlineStatusBanner {
+                InlineStatusBannerView(
+                    banner: inlineStatusBanner,
+                    onDismiss: dismissInlineStatusBanner
+                )
+            }
+
+            if let suggestionPath = presentationModel.createRepoSuggestionPath, suggestionPath == currentRepoPath {
+                createRepoSuggestionBanner(path: suggestionPath)
+            }
+
+            if presentationModel.refreshState.isRefreshing && !hasWorkingTreeChanges {
+                loadingStateView
+            }
+
+            if showsWorkingTreeSections {
+                if hasStagedFiles {
+                    stagedSection
+                }
+                if hasUnstagedFiles {
+                    unstagedSection
+                }
+                Divider()
+                    .padding(.top, 2)
+            }
+            historySection
+        }
+    }
+
+    private var footerSection: some View {
+        HStack {
+            BottomBranchSelectorView(
+                currentBranch: gitManager.currentBranch,
+                commitCount: gitManager.commitCount,
+                isRemoteAhead: gitManager.isRemoteAhead,
+                behindCount: gitManager.behindCount,
+                isDetachedHead: gitManager.isDetachedHead,
+                onTap: {
+                    showRepositoryOptionsPopover = false
+                    showBranchSelector.toggle()
+                }
+            )
+            .popover(isPresented: $showBranchSelector) {
+                BranchSelectorPopoverView(
+                    isDetachedHead: gitManager.isDetachedHead,
+                    isRemoteAhead: gitManager.isRemoteAhead,
+                    behindCount: gitManager.behindCount,
+                    availableBranches: gitManager.availableBranches,
+                    currentBranch: gitManager.currentBranch,
+                    onCreateBranchFromDetached: {
+                        showBranchSelector = false
+                        showCreateBranch = true
+                    },
+                    onQuickPull: {
+                        showBranchSelector = false
+                        useRebase = false
+                        syncWithRemote()
+                    },
+                    onSelectBranch: { branch in
+                        showBranchSelector = false
+                        guard branch != gitManager.currentBranch else { return }
+
+                        if hasWorkingTreeChanges {
+                            pendingSwitchBranch = branch
+                            showDirtySwitchConfirmation = true
+                        } else {
+                            gitManager.switchBranch(branchName: branch) { result in
+                                if case let .failure(error) = result {
+                                    branchSwitchError = error.localizedDescription
+                                }
+                            }
+                        }
+                    },
+                    onMergeBranch: { branch in
+                        showBranchSelector = false
+                        if gitManager.currentBranch == "main" || gitManager.currentBranch == "master" {
+                            mergeBranchName = branch
+                            mergeTargetBranch = gitManager.currentBranch
+                            showMergeConfirmation = true
+                        } else {
+                            gitManager.mergeBranch(fromBranch: branch) { result in
+                                if case let .failure(error) = result {
+                                    mergeError = error.localizedDescription
+                                }
+                            }
+                        }
+                    },
+                    onDeleteBranch: { branch in
+                        showBranchSelector = false
+                        branchNameToDelete = branch
+                        showBranchDeleteConfirmation = true
+                    },
+                    onRenameBranch: { branch in
+                        showBranchSelector = false
+                        oldBranchName = branch
+                        renameBranchNewName = branch
+                        showRenameBranch = true
+                    },
+                    onNewBranch: {
+                        showBranchSelector = false
+                        showCreateBranch = true
+                    }
+                )
+            }
+
+            Spacer()
+
+            Button("Settings") {
+                showRepositoryOptionsPopover = false
+                openSettingsWindow()
+            }
+            .buttonStyle(.borderless)
+            .font(MacChromeTypography.detail)
+        }
+    }
+
     var mainView: some View {
         applyMainViewOverlays(
             to: VStack(spacing: MacChromeMetrics.groupSpacing) {
@@ -98,124 +216,13 @@ extension MainMenuView {
                 }
 
                 ScrollView(.vertical, showsIndicators: !isCommandPalettePresented) {
-                    VStack(alignment: .leading, spacing: MacChromeMetrics.groupSpacing) {
-                        if let inlineStatusBanner {
-                            InlineStatusBannerView(
-                                banner: inlineStatusBanner,
-                                onDismiss: dismissInlineStatusBanner
-                            )
-                        }
-
-                        if let suggestionPath = presentationModel.createRepoSuggestionPath, suggestionPath == currentRepoPath {
-                            createRepoSuggestionBanner(path: suggestionPath)
-                        }
-
-                        if presentationModel.refreshState.isRefreshing && !hasWorkingTreeChanges {
-                            loadingStateView
-                        }
-
-                        if showsWorkingTreeSections {
-                            if hasStagedFiles {
-                                stagedSection
-                            }
-                            if hasUnstagedFiles {
-                                unstagedSection
-                            }
-                            Divider()
-                                .padding(.top, 2)
-                        }
-                        historySection
-                    }
+                    mainScrollContent
                 }
                 .scrollDisabled(isCommandPalettePresented)
                 .frame(maxHeight: 520)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .id(gitManager.stagedFiles.count + gitManager.changedFiles.count)
 
-                HStack {
-                    BottomBranchSelectorView(
-                        currentBranch: gitManager.currentBranch,
-                        commitCount: gitManager.commitCount,
-                        isRemoteAhead: gitManager.isRemoteAhead,
-                        behindCount: gitManager.behindCount,
-                        isDetachedHead: gitManager.isDetachedHead,
-                        onTap: {
-                            showRepositoryOptionsPopover = false
-                            showBranchSelector.toggle()
-                        }
-                    )
-                    .popover(isPresented: $showBranchSelector) {
-                        BranchSelectorPopoverView(
-                            isDetachedHead: gitManager.isDetachedHead,
-                            isRemoteAhead: gitManager.isRemoteAhead,
-                            behindCount: gitManager.behindCount,
-                            availableBranches: gitManager.availableBranches,
-                            currentBranch: gitManager.currentBranch,
-                            onCreateBranchFromDetached: {
-                                showBranchSelector = false
-                                showCreateBranch = true
-                            },
-                            onQuickPull: {
-                                showBranchSelector = false
-                                useRebase = false
-                                syncWithRemote()
-                            },
-                            onSelectBranch: { branch in
-                                showBranchSelector = false
-                                guard branch != gitManager.currentBranch else { return }
-
-                                if hasWorkingTreeChanges {
-                                    pendingSwitchBranch = branch
-                                    showDirtySwitchConfirmation = true
-                                } else {
-                                    gitManager.switchBranch(branchName: branch) { result in
-                                        if case let .failure(error) = result {
-                                            branchSwitchError = error.localizedDescription
-                                        }
-                                    }
-                                }
-                            },
-                            onMergeBranch: { branch in
-                                showBranchSelector = false
-                                if gitManager.currentBranch == "main" || gitManager.currentBranch == "master" {
-                                    mergeBranchName = branch
-                                    mergeTargetBranch = gitManager.currentBranch
-                                    showMergeConfirmation = true
-                                } else {
-                                    gitManager.mergeBranch(fromBranch: branch) { result in
-                                        if case let .failure(error) = result {
-                                            mergeError = error.localizedDescription
-                                        }
-                                    }
-                                }
-                            },
-                            onDeleteBranch: { branch in
-                                showBranchSelector = false
-                                branchNameToDelete = branch
-                                showBranchDeleteConfirmation = true
-                            },
-                            onRenameBranch: { branch in
-                                showBranchSelector = false
-                                oldBranchName = branch
-                                renameBranchNewName = branch
-                                showRenameBranch = true
-                            },
-                            onNewBranch: {
-                                showBranchSelector = false
-                                showCreateBranch = true
-                            }
-                        )
-                    }
-
-                    Spacer()
-
-                    Button("Settings") {
-                        showRepositoryOptionsPopover = false
-                        openSettingsWindow()
-                    }
-                    .buttonStyle(.borderless)
-                    .font(MacChromeTypography.detail)
-                }
+                footerSection
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .onExitCommand {
@@ -337,7 +344,7 @@ extension MainMenuView {
 
             if !isHistorySectionCollapsed {
                 HistoryTimelineSectionView(
-                    rows: historyRowAdapters,
+                    sections: historyTimelineSections,
                     selectedItemID: selectedMainItemID,
                     isLoading: presentationModel.refreshState.isRefreshing,
                     onSelectRow: { row in
@@ -386,8 +393,9 @@ extension MainMenuView {
             return
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            guard !isCommandPalettePresented else {
+        Task { @MainActor in
+            await Task.yield()
+            guard showsCommentField, !isCommandPalettePresented else {
                 return
             }
             isCommentFieldFocused = true
