@@ -1,17 +1,28 @@
 ---
 name: code-quality
-description: Refactoring and maintainability standards.
+description: Refactoring and maintainability guidance for GitMenuBar with emphasis on deduplication, dead-code removal, and architectural clarity.
 ---
 
 # Code Quality
 
-## Checklist
-- Reuse existing helpers before creating new ones.
-- Keep side effects localized and explicit.
-- Reduce duplication across menu views and managers.
-- Prefer behavior-preserving refactors in small commits.
-- When code/UI/resources become unused, remove them in the same change with explicit evidence of non-usage.
-- Do not keep legacy files "just in case"; if rollback safety is needed, rely on version control instead of dead code.
+Use this skill when simplifying code, moving responsibilities, or cleaning up unused pieces exposed by a change.
 
-## Verification
-- Run `make build` and `make test` after refactors.
+## Checklist
+
+- Reuse an existing helper before adding another abstraction.
+- Keep side effects localized and named clearly.
+- Prefer one obvious owner for each workflow over thin wrappers that only forward calls.
+- Remove dead UI, dead helpers, dead resources, and stale previews in the same change when they become unused.
+- Support every removal with objective evidence: search results, target wiring, preview/runtime path, or call-site analysis.
+
+## Refactor Strategy
+
+- Prefer behavior-preserving refactors in small slices.
+- Separate broad moves from behavior changes when practical.
+- If a file is large because it mixes concerns, split by ownership boundary rather than by arbitrary line count.
+
+## Validation
+
+- `make build`
+- `make test`
+- Run `make lint` when the refactor changes structure enough to affect style or size rules.
