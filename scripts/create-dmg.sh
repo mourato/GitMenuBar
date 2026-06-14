@@ -27,11 +27,11 @@ cp -R "${APP_BUNDLE}" "${STAGING_DIR}/"
 ln -s /Applications "${STAGING_DIR}/Applications"
 
 rm -f "${DMG_PATH}"
-hdiutil create \
-    -volname "${VOLUME_NAME}" \
-    -srcfolder "${STAGING_DIR}" \
-    -ov -format UDZO \
-    "${DMG_PATH}"
+diskutil image create from \
+    "${STAGING_DIR}" \
+    "${DMG_PATH}" \
+    --volumeName "${VOLUME_NAME}" \
+    --format UDZO
 
 rm -rf "${STAGING_DIR}"
 
