@@ -381,8 +381,12 @@ final class StatusBarController: ObservableObject {
     }
 
     private func handleMainWindowDidResignKey() {
-        guard shouldAutoHideOnBlur else { return }
+        guard shouldAutoHideOnBlur, !isMainWindowPresentingSheet else { return }
         hideMainWindow()
+    }
+
+    private var isMainWindowPresentingSheet: Bool {
+        mainWindow?.attachedSheet != nil
     }
 
     private var shouldAutoHideOnBlur: Bool {
