@@ -21,6 +21,8 @@ The catalog is organized by responsibility so agents can trigger the narrowest u
 | `test-strategy`             | `.agents/skills/test-strategy/`             | Designing XCTest coverage, async tests, seams, doubles, and regression-oriented test plans                              |
 | `swift-testing-expert`      | `.agents/skills/swift-testing-expert/`      | Using modern Swift Testing APIs, `#expect`/`#require`, traits, parameterized tests, async waiting, and XCTest migration |
 | `swiftui-performance-audit` | `.agents/skills/swiftui-performance-audit/` | Auditing SwiftUI runtime performance, view invalidation, layout thrash, and when to request Instruments evidence        |
+| `thermo-nuclear-code-quality-review` | `.agents/skills/thermo-nuclear-code-quality-review/` | Running the strictest maintainability review for large files, abstraction quality, spaghetti growth, and structural simplification |
+| `improve`                   | `.agents/skills/improve/`                   | Surveying the codebase and writing self-contained implementation plans under `plans/`                                  |
 
 ## Catalog Notes
 
@@ -34,6 +36,8 @@ The catalog is organized by responsibility so agents can trigger the narrowest u
 - `test-strategy` is repo-specific verification guidance; `swift-testing-expert` is framework-level guidance for modern Swift Testing APIs and XCTest migration.
 - `performance-profiling` covers app-level bottlenecks across GitMenuBar; `swiftui-performance-audit` is the narrow skill for SwiftUI invalidation, rendering, and profiling evidence.
 - `swift-concurrency`, `swift-testing-expert`, and `swiftui-performance-audit` are installed external skills tracked in `skills-lock.json`.
+- `thermo-nuclear-code-quality-review` is the strict structural review pass; use it before accepting large-file growth, scattered conditionals, or new abstractions.
+- `improve` is advisory planning only; keep its source-code changes out of scope and write executable plans under `plans/`.
 
 ## Installed External Skills
 

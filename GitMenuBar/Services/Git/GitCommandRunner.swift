@@ -1,6 +1,10 @@
 import Foundation
 
 final class GitCommandRunner {
+    private enum Askpass {
+        static let tokenEnvironmentKey = "GITMENUBAR_GIT_ASKPASS_TOKEN"
+    }
+
     var tokenProvider: (() -> String?)?
 
     func runGitCommand(
@@ -33,10 +37,11 @@ final class GitCommandRunner {
         var askpassScriptPath: String?
 
         if useAuth, let token = tokenProvider?() {
-            let scriptPath = createAskpassScript(token: token)
+            let scriptPath = createAskpassScript()
             if let scriptPath {
                 environment["GIT_ASKPASS"] = scriptPath
                 environment["GIT_TERMINAL_PROMPT"] = "0"
+                environment[Askpass.tokenEnvironmentKey] = token
                 askpassScriptPath = scriptPath
             }
         }
@@ -71,10 +76,13 @@ final class GitCommandRunner {
         return (output, status != 0)
     }
 
-    private func createAskpassScript(token: String) -> String? {
+    private func createAskpassScript() -> String? {
         let tempDir = FileManager.default.temporaryDirectory
         let scriptPath = tempDir.appendingPathComponent("git-askpass-\(UUID().uuidString).sh").path
-        let scriptContent = "#!/bin/bash\necho \"\(token)\""
+        let scriptContent = """
+        #!/bin/sh
+        printf '%s\\n' "$\(Askpass.tokenEnvironmentKey)"
+        """
 
         do {
             try scriptContent.write(toFile: scriptPath, atomically: true, encoding: .utf8)
