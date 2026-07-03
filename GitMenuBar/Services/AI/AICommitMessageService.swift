@@ -30,6 +30,15 @@ final class AICommitMessageService {
         let truncationNotice: String?
     }
 
+    struct GenerationRequest {
+        let provider: AIProviderConfig
+        let apiKey: String
+        let model: String
+        let preferredScopeMode: AICommitDefaultScopeMode
+        let overrideScope: DiffScope?
+        let gitManager: GitManager
+    }
+
     private struct SnippetAllocation {
         let consumed: [Int]
         let snippets: [String]
@@ -60,30 +69,23 @@ final class AICommitMessageService {
         return try await adapter.fetchModels(config: config, apiKey: apiKey, session: session)
     }
 
-    func generateCommitMessage(
-        provider: AIProviderConfig,
-        apiKey: String,
-        model: String,
-        preferredScopeMode: AICommitDefaultScopeMode,
-        overrideScope: DiffScope?,
-        gitManager: GitManager
-    ) async throws -> String {
+    func generateCommitMessage(request: GenerationRequest) async throws -> String {
         let selectedScope = resolveRequestedScope(
-            preferredScopeMode: preferredScopeMode,
-            overrideScope: overrideScope
+            preferredScopeMode: request.preferredScopeMode,
+            overrideScope: request.overrideScope
         )
 
         let payload = try await resolveDiffPayload(
             for: selectedScope,
-            gitManager: gitManager,
-            preferredScopeMode: preferredScopeMode,
-            overrideScope: overrideScope
+            gitManager: request.gitManager,
+            preferredScopeMode: request.preferredScopeMode,
+            overrideScope: request.overrideScope
         )
 
         return try await generateCommitMessage(
-            provider: provider,
-            apiKey: apiKey,
-            model: model,
+            provider: request.provider,
+            apiKey: request.apiKey,
+            model: request.model,
             payload: payload
         )
     }
@@ -237,7 +239,9 @@ final class AICommitMessageService {
         let fileCount = sections.count
         let truncationNotice: String? = {
             guard effectiveIncludedCharacters < totalCharacters else { return nil }
-            return "Diff truncated to \(effectiveIncludedCharacters) characters from \(totalCharacters) characters across \(fileCount) files."
+            return """
+            Diff truncated to \(effectiveIncludedCharacters) characters from \(totalCharacters) characters across \(fileCount) files.
+            """
         }()
 
         return StructuredDiffPayload(
@@ -263,21 +267,46 @@ final class AICommitMessageService {
             return SnippetAllocation(consumed: consumed, snippets: snippets)
         }
 
-        for index in sections.indices {
-            guard usedCharacters < maxDiffCharacters else { break }
+        allocateBaselineSnippets(
+            from: sections,
+            baselineReserve: baselineReserve,
+            consumed: &consumed,
+            snippets: &snippets,
+            usedCharacters: &usedCharacters
+        )
+        allocateRemainingSnippets(
+            from: sections,
+            consumed: &consumed,
+            snippets: &snippets,
+            usedCharacters: &usedCharacters
+        )
 
+        return SnippetAllocation(consumed: consumed, snippets: snippets)
+    }
+
+    private func allocateBaselineSnippets(
+        from sections: [ParsedDiffSection],
+        baselineReserve: Int,
+        consumed: inout [Int],
+        snippets: inout [String],
+        usedCharacters: inout Int
+    ) {
+        for index in sections.indices where usedCharacters < maxDiffCharacters {
             let content = sections[index].content
-            let initialTake = min(baselineReserve, content.count)
-            guard initialTake > 0 else {
-                continue
-            }
-
-            let take = min(initialTake, maxDiffCharacters - usedCharacters)
+            let take = min(baselineReserve, content.count, maxDiffCharacters - usedCharacters)
+            guard take > 0 else { continue }
             snippets[index] = String(content.prefix(take))
             consumed[index] = take
             usedCharacters += take
         }
+    }
 
+    private func allocateRemainingSnippets(
+        from sections: [ParsedDiffSection],
+        consumed: inout [Int],
+        snippets: inout [String],
+        usedCharacters: inout Int
+    ) {
         while usedCharacters < maxDiffCharacters {
             let pendingIndices = sections.indices.filter { consumed[$0] < sections[$0].content.count }
             guard !pendingIndices.isEmpty else {
@@ -316,8 +345,6 @@ final class AICommitMessageService {
                 break
             }
         }
-
-        return SnippetAllocation(consumed: consumed, snippets: snippets)
     }
 
     private func buildIncludedSnippets(

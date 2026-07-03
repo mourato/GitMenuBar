@@ -38,12 +38,14 @@ final class AICommitCoordinator: ObservableObject {
 
         do {
             return try await messageService.generateCommitMessage(
-                provider: dependencies.provider,
-                apiKey: dependencies.apiKey,
-                model: dependencies.model,
-                preferredScopeMode: providerStore.preferences.defaultScopeMode,
-                overrideScope: scopeOverride,
-                gitManager: gitManager
+                request: AICommitMessageService.GenerationRequest(
+                    provider: dependencies.provider,
+                    apiKey: dependencies.apiKey,
+                    model: dependencies.model,
+                    preferredScopeMode: providerStore.preferences.defaultScopeMode,
+                    overrideScope: scopeOverride,
+                    gitManager: gitManager
+                )
             )
         } catch {
             generationError = error.localizedDescription

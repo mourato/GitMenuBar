@@ -87,12 +87,14 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
         let generated = try await service.generateCommitMessage(
-            provider: provider,
-            apiKey: "test-key",
-            model: "gpt-4.1",
-            preferredScopeMode: .stagedWithFallbackAll,
-            overrideScope: nil,
-            gitManager: gitManager
+            request: AICommitMessageService.GenerationRequest(
+                provider: provider,
+                apiKey: "test-key",
+                model: "gpt-4.1",
+                preferredScopeMode: .stagedWithFallbackAll,
+                overrideScope: nil,
+                gitManager: gitManager
+            )
         )
 
         XCTAssertEqual(generated, "feat: generated")
@@ -132,12 +134,14 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
         _ = try await service.generateCommitMessage(
-            provider: provider,
-            apiKey: "test-key",
-            model: "gpt-4.1",
-            preferredScopeMode: .stagedWithFallbackAll,
-            overrideScope: .all,
-            gitManager: gitManager
+            request: AICommitMessageService.GenerationRequest(
+                provider: provider,
+                apiKey: "test-key",
+                model: "gpt-4.1",
+                preferredScopeMode: .stagedWithFallbackAll,
+                overrideScope: .all,
+                gitManager: gitManager
+            )
         )
 
         XCTAssertTrue(capturedPrompt.contains("Diff truncated to 100 characters"))
@@ -177,12 +181,14 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
         _ = try await service.generateCommitMessage(
-            provider: provider,
-            apiKey: "test-key",
-            model: "gpt-4.1",
-            preferredScopeMode: .stagedWithFallbackAll,
-            overrideScope: .unstaged,
-            gitManager: gitManager
+            request: AICommitMessageService.GenerationRequest(
+                provider: provider,
+                apiKey: "test-key",
+                model: "gpt-4.1",
+                preferredScopeMode: .stagedWithFallbackAll,
+                overrideScope: .unstaged,
+                gitManager: gitManager
+            )
         )
 
         XCTAssertTrue(capturedPrompt.contains("File: a.txt"))
@@ -223,12 +229,14 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
         _ = try await service.generateCommitMessage(
-            provider: provider,
-            apiKey: "test-key",
-            model: "gpt-4.1",
-            preferredScopeMode: .stagedWithFallbackAll,
-            overrideScope: .unstaged,
-            gitManager: gitManager
+            request: AICommitMessageService.GenerationRequest(
+                provider: provider,
+                apiKey: "test-key",
+                model: "gpt-4.1",
+                preferredScopeMode: .stagedWithFallbackAll,
+                overrideScope: .unstaged,
+                gitManager: gitManager
+            )
         )
 
         XCTAssertTrue(capturedPrompt.contains("File: z.txt"))
@@ -278,20 +286,24 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
         _ = try await service.generateCommitMessage(
-            provider: provider,
-            apiKey: "test-key",
-            model: "gpt-4.1",
-            preferredScopeMode: .stagedWithFallbackAll,
-            overrideScope: .unstaged,
-            gitManager: gitManager
+            request: AICommitMessageService.GenerationRequest(
+                provider: provider,
+                apiKey: "test-key",
+                model: "gpt-4.1",
+                preferredScopeMode: .stagedWithFallbackAll,
+                overrideScope: .unstaged,
+                gitManager: gitManager
+            )
         )
         _ = try await service.generateCommitMessage(
-            provider: provider,
-            apiKey: "test-key",
-            model: "gpt-4.1",
-            preferredScopeMode: .stagedWithFallbackAll,
-            overrideScope: .unstaged,
-            gitManager: gitManager
+            request: AICommitMessageService.GenerationRequest(
+                provider: provider,
+                apiKey: "test-key",
+                model: "gpt-4.1",
+                preferredScopeMode: .stagedWithFallbackAll,
+                overrideScope: .unstaged,
+                gitManager: gitManager
+            )
         )
 
         XCTAssertEqual(prompts.count, 2)
