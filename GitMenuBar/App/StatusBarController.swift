@@ -30,10 +30,10 @@ final class StatusBarController: ObservableObject {
         case mousePointerMonitor
     }
 
-    private var statusItem: NSStatusItem?
+    var statusItem: NSStatusItem?
     private var mainWindow: NSWindow?
     private var hostingController: NSHostingController<AnyView>?
-    private var contextMenu: NSMenu?
+    var contextMenu: NSMenu?
     private var badgeRefreshTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
     private var baseStatusImage: NSImage?
@@ -120,7 +120,7 @@ final class StatusBarController: ObservableObject {
 
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: 20)
-        baseStatusImage = makeBaseStatusImage()
+        baseStatusImage = StatusItemBadgeRenderer.makeBaseStatusImage(iconSize: Constants.statusIconPointSize)
 
         guard let button = statusItem?.button else { return }
         button.image = baseStatusImage
@@ -133,19 +133,6 @@ final class StatusBarController: ObservableObject {
         updateStatusItemBadge(count: 0)
     }
 
-    private func makeBaseStatusImage() -> NSImage? {
-        if let image = NSImage(named: "MenuBarIcon") {
-            let resized = image.copy() as? NSImage ?? image
-            resized.size = Constants.statusIconPointSize
-            resized.isTemplate = true
-            return resized
-        }
-
-        let fallback = NSImage(systemSymbolName: "person.crop.circle.fill", accessibilityDescription: "GitBar")
-        fallback?.isTemplate = true
-        return fallback
-    }
-
     private func updateStatusItemBadge(count: Int) {
         guard let button = statusItem?.button else { return }
 
@@ -154,45 +141,11 @@ final class StatusBarController: ObservableObject {
             return
         }
 
-        button.image = makeBadgedImage(count: count)
-    }
-
-    private func makeBadgedImage(count: Int) -> NSImage? {
-        guard let baseStatusImage else { return nil }
-
-        let iconSize = Constants.statusIconPointSize
-        let image = NSImage(size: iconSize)
-
-        image.lockFocus()
-
-        let iconRect = NSRect(x: 0, y: 0, width: iconSize.width, height: iconSize.height)
-        baseStatusImage.draw(in: iconRect)
-
-        let displayText = count > 99 ? "99+" : "\(count)"
-        let badgeWidth: CGFloat = displayText.count >= 3 ? 17 : (displayText.count == 2 ? 14 : 12)
-        let badgeRect = NSRect(x: iconSize.width - badgeWidth + 1, y: iconSize.height - 11, width: badgeWidth, height: 11)
-
-        NSColor.systemRed.setFill()
-        NSBezierPath(roundedRect: badgeRect, xRadius: 5.5, yRadius: 5.5).fill()
-
-        let fontSize: CGFloat = displayText.count >= 3 ? 6 : 8
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: fontSize, weight: .bold),
-            .foregroundColor: NSColor.white
-        ]
-        let textSize = displayText.size(withAttributes: attributes)
-        let textRect = NSRect(
-            x: badgeRect.midX - (textSize.width / 2),
-            y: badgeRect.midY - (textSize.height / 2),
-            width: textSize.width,
-            height: textSize.height
+        button.image = StatusItemBadgeRenderer.makeBadgedImage(
+            count: count,
+            baseStatusImage: baseStatusImage,
+            iconSize: Constants.statusIconPointSize
         )
-
-        displayText.draw(in: textRect, withAttributes: attributes)
-
-        image.unlockFocus()
-        image.isTemplate = false
-        return image
     }
 
     private func setupBadgeObservation() {
@@ -481,104 +434,6 @@ final class StatusBarController: ObservableObject {
         statusItem?.menu = contextMenu
         button.performClick(nil)
         statusItem?.menu = nil
-    }
-
-    private func rebuildContextMenu() {
-        let menu = contextMenu ?? NSMenu()
-        menu.removeAllItems()
-
-        if appendCommandItems([.commit, .commitAndPush, .sync], to: menu) {
-            menu.addItem(NSMenuItem.separator())
-        }
-
-        if appendCommandItems(
-            [.openRepositoryOnGitHub, .revealRepositoryInFinder, .showRepositoryOptions],
-            to: menu
-        ) {
-            menu.addItem(NSMenuItem.separator())
-        }
-
-        appendRecentProjectsMenu(to: menu)
-        addCommandMenuItem(.chooseRepository, to: menu)
-        menu.addItem(NSMenuItem.separator())
-
-        addCommandMenuItem(.showSettings, to: menu)
-        addCommandMenuItem(.quit, to: menu)
-
-        contextMenu = menu
-    }
-
-    private func appendCommandItems(_ commandIDs: [AppCommandID], to menu: NSMenu) -> Bool {
-        let hasEnabledItem = commandIDs.contains { appCommandCenter.state(for: $0).isEnabled }
-
-        for commandID in commandIDs {
-            addCommandMenuItem(commandID, to: menu)
-        }
-
-        return hasEnabledItem
-    }
-
-    private func addCommandMenuItem(_ commandID: AppCommandID, to menu: NSMenu) {
-        let state = appCommandCenter.state(for: commandID)
-        let item = makeMenuItem(
-            title: state.title,
-            action: #selector(handleContextMenuCommand(_:)),
-            representedCommand: commandID,
-            isEnabled: state.isEnabled
-        )
-        menu.addItem(item)
-    }
-
-    private func appendRecentProjectsMenu(to menu: NSMenu) {
-        guard !appCommandCenter.recentProjects.isEmpty else {
-            return
-        }
-
-        let recentMenuItem = NSMenuItem(title: "Open Recent", action: nil, keyEquivalent: "")
-        let submenu = NSMenu(title: "Open Recent")
-
-        for project in appCommandCenter.recentProjects {
-            let item = NSMenuItem(
-                title: project.title,
-                action: #selector(handleRecentProjectContextMenuItem(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.toolTip = project.subtitle
-            item.representedObject = project.path
-            submenu.addItem(item)
-        }
-
-        recentMenuItem.submenu = submenu
-        menu.addItem(recentMenuItem)
-    }
-
-    private func makeMenuItem(
-        title: String,
-        action: Selector,
-        representedCommand: AppCommandID,
-        isEnabled: Bool
-    ) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
-        item.target = self
-        item.representedObject = representedCommand
-        item.isEnabled = isEnabled
-        return item
-    }
-
-    @objc private func handleContextMenuCommand(_ sender: NSMenuItem) {
-        guard let commandID = sender.representedObject as? AppCommandID else {
-            return
-        }
-
-        appCommandCenter.perform(commandID)
-    }
-
-    @objc private func handleRecentProjectContextMenuItem(_ sender: NSMenuItem) {
-        guard let path = sender.representedObject as? String else {
-            return
-        }
-        appCommandCenter.performRecentProject(path: path)
     }
 
     private func toggleMainWindowFromShortcut() {
