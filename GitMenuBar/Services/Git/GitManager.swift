@@ -415,27 +415,8 @@ class GitManager: ObservableObject {
     }
 
     func updateRemoteUrl() {
-        guard !storedRepoPath.isEmpty else {
-            DispatchQueue.main.async {
-                self.remoteUrl = ""
-            }
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["config", "--get", "remote.origin.url"])
-
-            if !result.failure {
-                let url = GitHubRemoteURLParser.normalizedWebURL(from: result.output)
-
-                DispatchQueue.main.async {
-                    self.remoteUrl = url
-                }
-            } else {
-                DispatchQueue.main.async {
-                    self.remoteUrl = ""
-                }
-            }
+        Task { [weak self] in
+            await self?.updateRemoteUrlAsync()
         }
     }
 
@@ -462,48 +443,11 @@ class GitManager: ObservableObject {
     }
 
     func updateLocalCommitCount(completion: (() -> Void)? = nil) {
-        guard !storedRepoPath.isEmpty else {
-            DispatchQueue.main.async {
-                self.commitCount = 0
+        Task { [weak self] in
+            guard let self else { return }
+            await updateLocalCommitCountAsync()
+            await publishOnMainActor {
                 completion?()
-            }
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Count commits that exist locally but not on remote (ahead of upstream)
-            // uses @{u}..HEAD which calculates commits in HEAD not in upstream
-            let revListResult = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-list", "--count", "@{u}..HEAD"])
-
-            if revListResult.failure {
-                // Fallback: if no upstream configured, check against origin/main directly
-                // (Previous logic, kept as fallback)
-                let revListFallback = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-list", "--count", "HEAD", "^origin/main"])
-
-                if let count = Int(revListFallback.output.trimmingCharacters(in: .whitespacesAndNewlines)), !revListFallback.failure {
-                    DispatchQueue.main.async {
-                        self.commitCount = count
-                        completion?()
-                    }
-                } else {
-                    // Try with master
-                    let revListDefaultBranchFallback = self.executeGitCommand(
-                        in: self.storedRepoPath,
-                        args: ["rev-list", "--count", "HEAD", "^origin/master"]
-                    )
-                    let count = Int(revListDefaultBranchFallback.output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
-
-                    DispatchQueue.main.async {
-                        self.commitCount = count
-                        completion?()
-                    }
-                }
-            } else {
-                let count = Int(revListResult.output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
-                DispatchQueue.main.async {
-                    self.commitCount = count
-                    completion?()
-                }
             }
         }
     }
@@ -542,71 +486,10 @@ class GitManager: ObservableObject {
     }
 
     func updateUncommittedFiles(completion: (() -> Void)? = nil) {
-        guard !storedRepoPath.isEmpty else {
-            DispatchQueue.main.async {
-                self.uncommittedFiles = []
-                self.stagedFiles = []
-                self.changedFiles = []
-                completion?()
-            }
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Split working tree into index (staged) and worktree (changes).
-            // Use -uall so newly created files inside untracked directories are listed per file.
-            let statusResult = self.executeGitCommand(in: self.storedRepoPath, args: ["status", "--porcelain", "-uall"])
-
-            if statusResult.failure {
-                print("Error getting git status: \(statusResult.output)")
-                DispatchQueue.main.async {
-                    self.uncommittedFiles = []
-                    self.stagedFiles = []
-                    self.changedFiles = []
-                    completion?()
-                }
-                return
-            }
-
-            let status = self.workingTreeParser.parsePorcelainStatus(statusResult.output)
-            let stagedDiffs = self.workingTreeParser.parseNumstat(
-                self.executeGitCommand(in: self.storedRepoPath, args: ["diff", "--cached", "--numstat", "--no-renames"]).output
-            )
-            var changedDiffs = self.workingTreeParser.parseNumstat(
-                self.executeGitCommand(in: self.storedRepoPath, args: ["diff", "--numstat", "--no-renames"]).output
-            )
-            let untrackedDiffs = self.workingTreeParser.lineDiffForUntrackedFiles(
-                paths: status.untrackedPaths,
-                repositoryPath: self.storedRepoPath
-            )
-            for (path, diff) in untrackedDiffs {
-                changedDiffs[path] = diff
-            }
-
-            let stagedEntries = status.stagedStatuses.keys
-                .sorted()
-                .map { path in
-                    WorkingTreeFile(
-                        path: path,
-                        lineDiff: stagedDiffs[path] ?? .zero,
-                        status: status.stagedStatuses[path] ?? .modified
-                    )
-                }
-            let changedEntries = status.changedStatuses.keys
-                .sorted()
-                .map { path in
-                    WorkingTreeFile(
-                        path: path,
-                        lineDiff: changedDiffs[path] ?? .zero,
-                        status: status.changedStatuses[path] ?? .modified
-                    )
-                }
-            let merged = Array(Set(status.stagedStatuses.keys).union(status.changedStatuses.keys)).sorted()
-
-            DispatchQueue.main.async {
-                self.stagedFiles = stagedEntries
-                self.changedFiles = changedEntries
-                self.uncommittedFiles = merged
+        Task { [weak self] in
+            guard let self else { return }
+            await updateUncommittedFilesAsync()
+            await publishOnMainActor {
                 completion?()
             }
         }
