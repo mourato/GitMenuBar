@@ -49,27 +49,8 @@ class GitHubAPIClient {
                 throw GitHubAPIError.invalidResponse
             }
 
-            switch httpResponse.statusCode {
-            case 201:
-                // Success
-                let decoder = JSONDecoder()
-                return try decoder.decode(GitHubRepository.self, from: data)
-            case 401:
-                throw GitHubAPIError.unauthorized
-            case 404:
-                throw GitHubAPIError.notFound
-            case 422:
-                // Repository already exists
-                throw GitHubAPIError.conflict
-            case 429:
-                throw GitHubAPIError.rateLimitExceeded
-            default:
-                let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["message"] as? String
-                if let message {
-                    throw GitHubAPIError.unknown(message)
-                }
-                throw GitHubAPIError.unknown("Status code: \(httpResponse.statusCode)")
-            }
+            try validateRepositoryCreationResponse(httpResponse, data: data)
+            return try JSONDecoder().decode(GitHubRepository.self, from: data)
         } catch let error as GitHubAPIError {
             throw error
         } catch {
@@ -337,23 +318,7 @@ class GitHubAPIClient {
                 throw GitHubAPIError.invalidResponse
             }
 
-            switch httpResponse.statusCode {
-            case 204:
-                // Success - repository deleted
-                return
-            case 401:
-                throw GitHubAPIError.unauthorized
-            case 403:
-                throw GitHubAPIError.unknown("Forbidden - token may not have delete_repo scope")
-            case 404:
-                throw GitHubAPIError.notFound
-            default:
-                let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["message"] as? String
-                if let message {
-                    throw GitHubAPIError.unknown(message)
-                }
-                throw GitHubAPIError.unknown("Status code: \(httpResponse.statusCode)")
-            }
+            try validateRepositoryDeletionResponse(httpResponse, data: data)
         } catch let error as GitHubAPIError {
             throw error
         } catch {
@@ -389,30 +354,68 @@ class GitHubAPIClient {
                 throw GitHubAPIError.invalidResponse
             }
 
-            switch httpResponse.statusCode {
-            case 200:
-                // Success
-                let decoder = JSONDecoder()
-                return try decoder.decode(GitHubRepository.self, from: data)
-            case 401:
-                throw GitHubAPIError.unauthorized
-            case 403:
-                throw GitHubAPIError.unknown("Forbidden - token may not have repo scope")
-            case 404:
-                throw GitHubAPIError.notFound
-            case 422:
-                throw GitHubAPIError.unknown("Unprocessable Entity - validation failed")
-            default:
-                let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["message"] as? String
-                if let message {
-                    throw GitHubAPIError.unknown(message)
-                }
-                throw GitHubAPIError.unknown("Status code: \(httpResponse.statusCode)")
-            }
+            try validateRepositoryVisibilityResponse(httpResponse, data: data)
+            return try JSONDecoder().decode(GitHubRepository.self, from: data)
         } catch let error as GitHubAPIError {
             throw error
         } catch {
             throw GitHubAPIError.networkError(error)
         }
+    }
+
+    private func validateRepositoryCreationResponse(_ response: HTTPURLResponse, data: Data) throws {
+        switch response.statusCode {
+        case 201:
+            return
+        case 401:
+            throw GitHubAPIError.unauthorized
+        case 404:
+            throw GitHubAPIError.notFound
+        case 422:
+            throw GitHubAPIError.conflict
+        case 429:
+            throw GitHubAPIError.rateLimitExceeded
+        default:
+            throw unknownAPIError(statusCode: response.statusCode, data: data)
+        }
+    }
+
+    private func validateRepositoryDeletionResponse(_ response: HTTPURLResponse, data: Data) throws {
+        switch response.statusCode {
+        case 204:
+            return
+        case 401:
+            throw GitHubAPIError.unauthorized
+        case 403:
+            throw GitHubAPIError.unknown("Forbidden - token may not have delete_repo scope")
+        case 404:
+            throw GitHubAPIError.notFound
+        default:
+            throw unknownAPIError(statusCode: response.statusCode, data: data)
+        }
+    }
+
+    private func validateRepositoryVisibilityResponse(_ response: HTTPURLResponse, data: Data) throws {
+        switch response.statusCode {
+        case 200:
+            return
+        case 401:
+            throw GitHubAPIError.unauthorized
+        case 403:
+            throw GitHubAPIError.unknown("Forbidden - token may not have repo scope")
+        case 404:
+            throw GitHubAPIError.notFound
+        case 422:
+            throw GitHubAPIError.unknown("Unprocessable Entity - validation failed")
+        default:
+            throw unknownAPIError(statusCode: response.statusCode, data: data)
+        }
+    }
+
+    private func unknownAPIError(statusCode: Int, data: Data) -> GitHubAPIError {
+        if let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["message"] as? String {
+            return .unknown(message)
+        }
+        return .unknown("Status code: \(statusCode)")
     }
 }
