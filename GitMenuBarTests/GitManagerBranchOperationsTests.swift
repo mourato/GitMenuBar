@@ -195,4 +195,24 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertEqual(BranchTrackingStatus.noRemote.description, "No upstream")
         XCTAssertEqual(BranchTrackingStatus.unknown.description, "Unknown")
     }
+
+    /// Locks in the facade wiring: branch state computed by `GitBranchService`
+    /// must be reflected on `GitManager`'s public branch properties via the
+    /// Combine pipe.
+    func testBranchServiceStatePipesToManager() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["branch", "feature/test"], in: repoURL)
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+
+        _ = await gitManager.resolveBranchInfoAsync()
+
+        // Allow the Combine `assign(to:)` pipe a tick to flush.
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertEqual(
+            gitManager.branchInfos,
+            gitManager.branchService.branchInfos,
+            "gitManager.branchInfos should mirror branchService.branchInfos after the pipe"
+        )
+    }
 }
