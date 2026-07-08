@@ -160,6 +160,35 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         )
     }
 
+    func testDeleteBranchOnlyDeletesLocalBranch() async throws {
+        let repoURL = try prepareRepoWithClonedRemote(testName: #function)
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+
+        let pushResult = await gitManager.pushBranchToRemoteAsync(branchName: "feature/to-push")
+        if case let .failure(error) = pushResult {
+            XCTFail("Push to local remote should succeed: \(error.localizedDescription)")
+        }
+
+        let deleteExpectation = expectation(description: "delete local branch")
+        gitManager.deleteBranch(branchName: "feature/to-push") { result in
+            if case let .failure(error) = result {
+                XCTFail("Local branch delete should succeed: \(error.localizedDescription)")
+            }
+            deleteExpectation.fulfill()
+        }
+        wait(for: [deleteExpectation], timeout: 3)
+
+        let localBranches = await gitManager.fetchLocalBranchesAsync()
+        XCTAssertFalse(localBranches.contains("feature/to-push"))
+
+        try runGit(["fetch", "--prune", "origin"], in: repoURL)
+        let remoteBranches = await gitManager.fetchRemoteBranchesAsync()
+        XCTAssertTrue(
+            remoteBranches.contains("feature/to-push"),
+            "Local delete should not remove the remote branch, got: \(remoteBranches)"
+        )
+    }
+
     func testBranchInfoModelProperties() {
         let local = BranchInfo(
             name: "feature/x",

@@ -40,7 +40,9 @@ extension GitBranchService {
             return .failure(NSError(
                 domain: "GitManager",
                 code: 41,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to delete remote branch '\(branchName)': \(result.output)"]
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Failed to delete remote branch '\(branchName)': \(result.output)"
+                ]
             ))
         }
         return .success(())
@@ -48,13 +50,13 @@ extension GitBranchService {
 
     func createBranchFromCurrentHead(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            completion(.failure(branchError(code: 1, description: "No repository path configured")))
             return
         }
 
         let trimmedName = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Branch name cannot be empty"])))
+            completion(.failure(branchError(code: 2, description: "Branch name cannot be empty")))
             return
         }
 
@@ -64,7 +66,10 @@ extension GitBranchService {
 
             if result.failure {
                 DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create branch: \(result.output)"])))
+                    completion(.failure(self.branchError(
+                        code: 3,
+                        description: "Failed to create branch: \(result.output)"
+                    )))
                 }
             } else {
                 print("Successfully created and switched to branch \(trimmedName)")
@@ -79,7 +84,7 @@ extension GitBranchService {
 
     func switchBranch(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            completion(.failure(branchError(code: 1, description: "No repository path configured")))
             return
         }
 
@@ -92,11 +97,17 @@ extension GitBranchService {
 
             // If we have changes, stash them first
             if hasChanges {
-                let stashResult = self.executeGitCommand(in: self.storedRepoPath, args: ["stash", "push", "-u", "-m", "GitMenuBar auto-stash for branch switch"])
+                let stashResult = self.executeGitCommand(
+                    in: self.storedRepoPath,
+                    args: ["stash", "push", "-u", "-m", "GitMenuBar auto-stash for branch switch"]
+                )
 
                 if stashResult.failure {
                     DispatchQueue.main.async {
-                        completion(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to save changes: \(stashResult.output)"])))
+                        completion(.failure(self.branchError(
+                            code: 2,
+                            description: "Failed to save changes: \(stashResult.output)"
+                        )))
                     }
                     return
                 }
@@ -113,7 +124,10 @@ extension GitBranchService {
                     _ = self.executeGitCommand(in: self.storedRepoPath, args: ["stash", "pop"])
                 }
                 DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to switch branch: \(checkoutResult.output)"])))
+                    completion(.failure(self.branchError(
+                        code: 3,
+                        description: "Failed to switch branch: \(checkoutResult.output)"
+                    )))
                 }
                 return
             }
@@ -127,7 +141,11 @@ extension GitBranchService {
                 if popResult.failure {
                     // Stash pop failed - likely due to conflicts
                     DispatchQueue.main.async {
-                        completion(.failure(NSError(domain: "GitManager", code: 4, userInfo: [NSLocalizedDescriptionKey: "Switched branches, but couldn't reapply your changes due to conflicts. Run 'git stash pop' manually to resolve."])))
+                        completion(.failure(self.branchError(
+                            code: 4,
+                            description: "Switched branches, but couldn't reapply your changes due to conflicts. "
+                                + "Run 'git stash pop' manually to resolve."
+                        )))
                     }
                     return
                 }
@@ -145,14 +163,14 @@ extension GitBranchService {
 
     func createBranch(branchName: String, fromBranch: String? = nil, completion: @escaping (Result<Void, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            completion(.failure(branchError(code: 1, description: "No repository path configured")))
             return
         }
 
         // Validate branch name (basic validation)
         let trimmedName = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Branch name cannot be empty"])))
+            completion(.failure(branchError(code: 2, description: "Branch name cannot be empty")))
             return
         }
 
@@ -183,7 +201,7 @@ extension GitBranchService {
                 }
 
                 DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 3, userInfo: [NSLocalizedDescriptionKey: friendlyMessage])))
+                    completion(.failure(self.branchError(code: 3, description: friendlyMessage)))
                 }
             } else {
                 print("Successfully created and switched to branch: \(trimmedName)")
@@ -199,7 +217,7 @@ extension GitBranchService {
 
     func mergeBranch(fromBranch: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            completion(.failure(branchError(code: 1, description: "No repository path configured")))
             return
         }
 
@@ -211,11 +229,17 @@ extension GitBranchService {
                 // Check if it's a merge conflict
                 if result.output.contains("CONFLICT") || result.output.contains("Automatic merge failed") {
                     DispatchQueue.main.async {
-                        completion(.failure(NSError(domain: "GitManager", code: 4, userInfo: [NSLocalizedDescriptionKey: "Merge conflict! Please resolve manually."])))
+                        completion(.failure(self.branchError(
+                            code: 4,
+                            description: "Merge conflict! Please resolve manually."
+                        )))
                     }
                 } else {
                     DispatchQueue.main.async {
-                        completion(.failure(NSError(domain: "GitManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to merge: \(result.output)"])))
+                        completion(.failure(self.branchError(
+                            code: 3,
+                            description: "Failed to merge: \(result.output)"
+                        )))
                     }
                 }
             } else {
@@ -232,13 +256,16 @@ extension GitBranchService {
 
     func deleteBranch(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            completion(.failure(branchError(code: 1, description: "No repository path configured")))
             return
         }
 
         // Don't allow deleting current branch
         if branchName == currentBranch {
-            completion(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cannot delete the currently checked out branch"])))
+            completion(.failure(branchError(
+                code: 2,
+                description: "Cannot delete the currently checked out branch"
+            )))
             return
         }
 
@@ -246,31 +273,17 @@ extension GitBranchService {
             // Try to delete the branch locally first
             let localResult = self.executeGitCommand(in: self.storedRepoPath, args: ["branch", "-D", branchName])
 
-            let localBranchExists = !localResult.failure || !localResult.output.contains("not found")
-
-            if localResult.failure, localBranchExists {
-                // Local deletion failed for a reason other than "not found"
+            if localResult.failure {
                 DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to delete local branch: \(localResult.output)"])))
+                    completion(.failure(self.branchError(
+                        code: 3,
+                        description: "Failed to delete local branch: \(localResult.output)"
+                    )))
                 }
                 return
             }
 
-            if !localResult.failure {
-                print("Successfully deleted local branch: \(branchName)")
-            } else {
-                print("Local branch '\(branchName)' doesn't exist, will delete from remote only")
-            }
-
-            // Also delete from remote (GitHub) if it exists there
-            let remoteResult = self.executeGitCommand(in: self.storedRepoPath, args: ["push", "origin", "--delete", branchName])
-
-            // Don't fail if remote deletion fails (branch might not exist on remote)
-            if remoteResult.failure, !remoteResult.output.contains("remote ref does not exist") {
-                print("Note: Could not delete from remote: \(remoteResult.output)")
-            } else {
-                print("Successfully deleted remote branch: \(branchName)")
-            }
+            print("Successfully deleted local branch: \(branchName)")
 
             // Explicitly refresh branch list to update UI immediately
             DispatchQueue.main.async {
@@ -285,13 +298,13 @@ extension GitBranchService {
 
     func renameBranch(oldName: String, newName: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            completion(.failure(branchError(code: 1, description: "No repository path configured")))
             return
         }
 
         let trimmedNewName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedNewName.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "New branch name cannot be empty"])))
+            completion(.failure(branchError(code: 2, description: "New branch name cannot be empty")))
             return
         }
 
@@ -303,7 +316,10 @@ extension GitBranchService {
 
             if result.failure {
                 DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to rename branch: \(result.output)"])))
+                    completion(.failure(self.branchError(
+                        code: 3,
+                        description: "Failed to rename branch: \(result.output)"
+                    )))
                 }
             } else {
                 print("Successfully renamed branch from \(oldName) to \(trimmedNewName)")
@@ -314,5 +330,13 @@ extension GitBranchService {
                 }
             }
         }
+    }
+
+    private func branchError(code: Int, description: String) -> NSError {
+        NSError(
+            domain: "GitManager",
+            code: code,
+            userInfo: [NSLocalizedDescriptionKey: description]
+        )
     }
 }
