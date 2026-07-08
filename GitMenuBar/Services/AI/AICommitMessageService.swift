@@ -115,6 +115,23 @@ final class AICommitMessageService {
         )
     }
 
+    /// Generate a raw AI response for an arbitrary prompt (no commit-message sanitizing).
+    func generateRawResponse(
+        prompt: String,
+        provider: AIProviderConfig,
+        apiKey: String,
+        model: String
+    ) async throws -> String {
+        let adapter = AIProviderAdapterFactory.makeAdapter(for: provider.type)
+        return try await adapter.generateCommitMessage(
+            config: provider,
+            apiKey: apiKey,
+            model: model,
+            prompt: prompt,
+            session: session
+        )
+    }
+
     private func generateCommitMessage(
         provider: AIProviderConfig,
         apiKey: String,

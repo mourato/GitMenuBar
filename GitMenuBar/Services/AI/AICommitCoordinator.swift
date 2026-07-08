@@ -15,6 +15,7 @@ final class AICommitCoordinator: ObservableObject {
     private let keychainStore: any AIAPIKeyStore
     private let messageService: AICommitMessageService
     private let gitManager: GitManager
+    private let grouper: AICommitGrouperService
 
     init(
         providerStore: AIProviderStore,
@@ -26,6 +27,7 @@ final class AICommitCoordinator: ObservableObject {
         self.keychainStore = keychainStore
         self.messageService = messageService
         self.gitManager = gitManager
+        grouper = AICommitGrouperService(aiService: messageService)
     }
 
     func generateMessage(scopeOverride: DiffScope?) async throws -> String {
@@ -88,6 +90,30 @@ final class AICommitCoordinator: ObservableObject {
             endpointURL: endpointURL,
             apiKey: apiKey
         )
+    }
+
+    func generateAtomicGroups(
+        changedFiles: [WorkingTreeFile],
+        diffPerFile: [String: String]
+    ) async throws -> [AtomicCommitGroup] {
+        generationError = nil
+        let dependencies = try resolvedGenerationDependencies()
+
+        isGenerating = true
+        defer { isGenerating = false }
+
+        do {
+            return try await grouper.generateAtomicGroups(
+                changedFiles: changedFiles,
+                diffPerFile: diffPerFile,
+                provider: dependencies.provider,
+                apiKey: dependencies.apiKey,
+                model: dependencies.model
+            )
+        } catch {
+            generationError = error.localizedDescription
+            throw error
+        }
     }
 
     func apiKey(for providerId: UUID) -> String {
