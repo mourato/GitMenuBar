@@ -1696,17 +1696,25 @@ class GitManager: ObservableObject {
         await branchService.resolveBranchInfoAsync()
     }
 
-    /// Orchestrates the "merge feature branch into the default branch" guided
-    /// flow. The implementation lives in `GitBranchService` (the canonical home
-    /// for branch mutations); this facade delegates to it.
+    /// Merges `featureBranch` into the default branch without deleting anything.
+    /// The implementation lives in `GitBranchService`; this facade delegates to it.
     ///
     /// The caller is responsible for presenting any pre-merge confirmation; this
-    /// method performs the work and refreshes state on success.
-    func mergeToDefaultBranchAsync(
+    /// method performs the work and refreshes state on success. Cleanup is a
+    /// separate step via ``cleanupMergedBranchAsync(featureBranch:cleanupOption:)``.
+    func mergeFeatureIntoDefaultAsync(
+        featureBranch: String
+    ) async -> Result<MergeToDefaultResult, Error> {
+        await branchService.mergeFeatureIntoDefaultAsync(featureBranch: featureBranch)
+    }
+
+    /// Deletes an already-merged feature branch locally and/or remotely. The
+    /// implementation lives in `GitBranchService`; this facade delegates to it.
+    func cleanupMergedBranchAsync(
         featureBranch: String,
         cleanupOption: BranchCleanupOption
     ) async -> Result<MergeToDefaultResult, Error> {
-        await branchService.mergeToDefaultBranchAsync(
+        await branchService.cleanupMergedBranchAsync(
             featureBranch: featureBranch,
             cleanupOption: cleanupOption
         )

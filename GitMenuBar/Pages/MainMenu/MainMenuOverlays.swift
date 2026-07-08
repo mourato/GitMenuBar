@@ -121,7 +121,7 @@ extension MainMenuView {
     }
 
     private func applyConfirmationAlerts<Content: View>(to view: Content) -> some View {
-        view
+        let base = view
             .alert("Restart GitMenuBar?", isPresented: $showRestartConfirmation) {
                 Button("Cancel", role: .cancel) {}
                 Button("Restart") {
@@ -147,29 +147,6 @@ extension MainMenuView {
                 Text(
                     "This will bring all changes from '\(mergeBranchName)' into your current branch "
                         + "'\(mergeTargetBranch)'."
-                )
-            }
-            .confirmationDialog(
-                "Merge into default branch",
-                isPresented: $showMergeCleanupDialog,
-                titleVisibility: .visible
-            ) {
-                Button("Delete Local Only") {
-                    performMergeCleanup(option: .deleteLocal)
-                }
-                Button("Delete Local & Remote") {
-                    performMergeCleanup(option: .deleteLocalAndRemote)
-                }
-                Button("Delete Remote Only") {
-                    performMergeCleanup(option: .deleteRemoteOnly)
-                }
-                Button("Keep Branch", role: .cancel) {
-                    performMergeCleanup(option: .keep)
-                }
-            } message: {
-                Text(
-                    "This merges '\(featureBranchName)' into \(defaultBranchName) and then cleans up "
-                        + "the feature branch as you choose. Uncommitted changes are stashed and restored."
                 )
             }
             .alert("Uncommitted Changes", isPresented: $showDirtySwitchConfirmation) {
@@ -204,6 +181,7 @@ extension MainMenuView {
                     deleteBranchWarningMessage
                 )
             }
+        return applyMergeToDefaultOverlays(to: base)
     }
 
     private func applySheets<Content: View>(to view: Content) -> some View {

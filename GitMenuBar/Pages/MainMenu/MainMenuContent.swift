@@ -130,7 +130,7 @@ extension MainMenuView {
                         showBranchSelector = false
                         featureBranchName = branch
                         defaultBranchName = gitManager.defaultBranchName
-                        showMergeCleanupDialog = true
+                        showMergeToDefaultConfirmation = true
                     },
                     onNewBranch: {
                         showBranchSelector = false

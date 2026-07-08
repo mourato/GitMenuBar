@@ -79,30 +79,6 @@ extension MainMenuView {
         }
     }
 
-    func performMergeCleanup(option: BranchCleanupOption) {
-        let featureBranch = featureBranchName
-        showMergeCleanupDialog = false
-        featureBranchName = ""
-        defaultBranchName = ""
-
-        guard !featureBranch.isEmpty else { return }
-
-        Task {
-            let result = await gitManager.mergeToDefaultBranchAsync(
-                featureBranch: featureBranch,
-                cleanupOption: option
-            )
-            switch result {
-            case .success:
-                break
-            case let .failure(error):
-                await MainActor.run {
-                    mergeError = error.localizedDescription
-                }
-            }
-        }
-    }
-
     func pullToNewBranch() {
         let name = pullToNewBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }

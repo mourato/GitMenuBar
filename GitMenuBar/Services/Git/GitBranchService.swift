@@ -736,15 +736,16 @@ final class GitBranchService: ObservableObject {
         }
     }
 
-    /// Orchestrates the "merge feature branch into the default branch" guided
-    /// flow: stash uncommitted work, switch to the default branch, merge the
-    /// feature branch, then apply the requested cleanup (delete local/remote).
+    /// Merges `featureBranch` into the detected default branch *without* deleting
+    /// anything. Stashes uncommitted work, switches to the default branch, merges,
+    /// then restores the stash. Cleanup is a separate, explicit step via
+    /// ``cleanupMergedBranchAsync(featureBranch:cleanupOption:)`` so the user is
+    /// never forced to pick a destructive option just to merge.
     ///
     /// State is refreshed through `refreshHandler` (the same hook used by every
     /// other branch mutation) so the rest of the app stays in sync.
-    func mergeToDefaultBranchAsync(
-        featureBranch: String,
-        cleanupOption: BranchCleanupOption
+    func mergeFeatureIntoDefaultAsync(
+        featureBranch: String
     ) async -> Result<MergeToDefaultResult, Error> {
         let repositoryPath = storedRepoPath
         guard !repositoryPath.isEmpty else {
@@ -811,7 +812,42 @@ final class GitBranchService: ObservableObject {
             ))
         }
 
-        // 5. Handle cleanup
+        // 5. Restore stash if needed
+        if stashed {
+            _ = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["stash", "pop"])
+            }
+        }
+
+        // 6. Refresh app state through the canonical hook.
+        refreshHandler {}
+
+        return .success(MergeToDefaultResult(
+            didSwitchToDefault: !currentWasDefault,
+            didMerge: true,
+            didDeleteLocal: false,
+            didDeleteRemote: false,
+            defaultBranchName: defaultBranch,
+            featureBranchName: featureBranch
+        ))
+    }
+
+    /// Deletes an *already merged* feature branch locally and/or remotely per
+    /// `cleanupOption`. Intended to run after ``mergeFeatureIntoDefaultAsync``,
+    /// when the current branch is the default and the feature branch is safely
+    /// merged. Never re-merges.
+    ///
+    /// State is refreshed through `refreshHandler` so the rest of the app stays
+    /// in sync.
+    func cleanupMergedBranchAsync(
+        featureBranch: String,
+        cleanupOption: BranchCleanupOption
+    ) async -> Result<MergeToDefaultResult, Error> {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            return .failure(GitExecution.missingRepositoryError())
+        }
+
         let deleteLocal: Bool
         let deleteRemote: Bool
         switch cleanupOption {
@@ -828,7 +864,7 @@ final class GitBranchService: ObservableObject {
         var didDeleteLocal = false
         var didDeleteRemote = false
 
-        if deleteLocal, featureBranch != defaultBranch {
+        if deleteLocal, featureBranch != currentBranch, featureBranch != defaultBranchName {
             let localResult = await runOnBackground {
                 self.executeGitCommand(in: repositoryPath, args: ["branch", "-D", featureBranch])
             }
@@ -846,22 +882,14 @@ final class GitBranchService: ObservableObject {
             didDeleteRemote = !remoteResult.failure
         }
 
-        // 6. Restore stash if needed
-        if stashed {
-            _ = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["stash", "pop"])
-            }
-        }
-
-        // 7. Refresh app state through the canonical hook.
         refreshHandler {}
 
         return .success(MergeToDefaultResult(
-            didSwitchToDefault: !currentWasDefault,
-            didMerge: true,
+            didSwitchToDefault: false,
+            didMerge: false,
             didDeleteLocal: didDeleteLocal,
             didDeleteRemote: didDeleteRemote,
-            defaultBranchName: defaultBranch,
+            defaultBranchName: defaultBranchName,
             featureBranchName: featureBranch
         ))
     }

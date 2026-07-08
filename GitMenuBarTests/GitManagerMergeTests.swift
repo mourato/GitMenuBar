@@ -19,10 +19,7 @@ final class GitManagerMergeTests: XCTestCase {
         try makeFeatureBranch(named: "feature/keep", in: repoURL)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        let result = await gitManager.mergeToDefaultBranchAsync(
-            featureBranch: "feature/keep",
-            cleanupOption: .keep
-        )
+        let result = await gitManager.mergeFeatureIntoDefaultAsync(featureBranch: "feature/keep")
 
         switch result {
         case let .success(mergeResult):
@@ -44,14 +41,14 @@ final class GitManagerMergeTests: XCTestCase {
         try makeFeatureBranch(named: "feature/delete-local", in: repoURL)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        let result = await gitManager.mergeToDefaultBranchAsync(
+        _ = await gitManager.mergeFeatureIntoDefaultAsync(featureBranch: "feature/delete-local")
+        let result = await gitManager.cleanupMergedBranchAsync(
             featureBranch: "feature/delete-local",
             cleanupOption: .deleteLocal
         )
 
         switch result {
         case let .success(mergeResult):
-            XCTAssertTrue(mergeResult.didMerge)
             XCTAssertTrue(mergeResult.didDeleteLocal)
         case let .failure(error):
             XCTFail("Merge + local delete should succeed: \(error.localizedDescription)")
@@ -93,10 +90,7 @@ final class GitManagerMergeTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        let result = await gitManager.mergeToDefaultBranchAsync(
-            featureBranch: "feature/conflict",
-            cleanupOption: .keep
-        )
+        let result = await gitManager.mergeFeatureIntoDefaultAsync(featureBranch: "feature/conflict")
 
         switch result {
         case .success:
@@ -133,7 +127,8 @@ final class GitManagerMergeTests: XCTestCase {
         var succeeded = false
         var lastError: String?
         for _ in 0 ..< 5 {
-            let result = await gitManager.mergeToDefaultBranchAsync(
+            _ = await gitManager.mergeFeatureIntoDefaultAsync(featureBranch: "feature/remote")
+            let result = await gitManager.cleanupMergedBranchAsync(
                 featureBranch: "feature/remote",
                 cleanupOption: .deleteLocalAndRemote
             )
