@@ -24,29 +24,81 @@ enum AppCommandID: Hashable {
     case quit
 
     var fallbackTitle: String {
-        Self.fallbackTitles[self] ?? ""
+        AppCommandCatalog.descriptor(for: self).title
+    }
+}
+
+struct AppCommandDescriptor: Equatable {
+    let title: String
+    let paletteSubtitle: String?
+    let paletteKeywords: [String]
+}
+
+enum AppCommandCatalog {
+    static func descriptor(for commandID: AppCommandID) -> AppCommandDescriptor {
+        descriptors[commandID] ?? AppCommandDescriptor(title: "", paletteSubtitle: nil, paletteKeywords: [])
     }
 
-    private static let fallbackTitles: [AppCommandID: String] = [
-        .openWindow: "Open Window",
-        .showSettings: "Settings…",
-        .showCommandPalette: "Command Palette",
-        .commit: "Commit",
-        .commitAndPush: "Commit & Push",
-        .sync: "Sync Changes",
-        .atomicCommits: "Create Atomic Commits",
-        .branchManagement: "Manage Branches…",
-        .push: "Push Changes",
-        .pull: "Pull Changes",
-        .createBranch: "Create Branch…",
-        .mergeToDefault: "Merge to Default Branch",
-        .chooseRepository: "Choose Repository…",
-        .revealRepositoryInFinder: "Reveal in Finder",
-        .openRepositoryOnGitHub: "Open on GitHub",
-        .showRepositoryOptions: "Repository Options…",
-        .helpRepository: "GitMenuBar on GitHub",
-        .reportIssue: "Report Issue",
-        .quit: "Quit GitMenuBar"
+    private static let descriptors: [AppCommandID: AppCommandDescriptor] = [
+        .openWindow: .init(title: "Open Window", paletteSubtitle: nil, paletteKeywords: ["window", "open"]),
+        .showSettings: .init(title: "Settings…", paletteSubtitle: nil, paletteKeywords: ["settings", "preferences"]),
+        .showCommandPalette: .init(title: "Command Palette", paletteSubtitle: nil, paletteKeywords: ["command", "palette"]),
+        .commit: .init(
+            title: "Commit",
+            paletteSubtitle: "Generate an automatic commit message",
+            paletteKeywords: ["git", "commit", "working tree"]
+        ),
+        .commitAndPush: .init(
+            title: "Commit & Push",
+            paletteSubtitle: "Create a commit and push to remote",
+            paletteKeywords: ["git", "commit", "push", "remote"]
+        ),
+        .sync: .init(
+            title: "Sync Changes",
+            paletteSubtitle: "Synchronize local and remote branches",
+            paletteKeywords: ["git", "sync", "pull", "push"]
+        ),
+        .atomicCommits: .init(
+            title: "Create Atomic Commits",
+            paletteSubtitle: "AI groups changes into logical commits",
+            paletteKeywords: ["atomic", "commit", "ai", "group", "split"]
+        ),
+        .branchManagement: .init(
+            title: "Manage Branches…",
+            paletteSubtitle: "View, create, rename, delete branches",
+            paletteKeywords: ["branch", "manage", "crud", "remote"]
+        ),
+        .push: .init(
+            title: "Push Changes",
+            paletteSubtitle: "Push local commits to remote",
+            paletteKeywords: ["git", "push", "remote"]
+        ),
+        .pull: .init(
+            title: "Pull Changes",
+            paletteSubtitle: "Update from remote",
+            paletteKeywords: ["git", "pull", "update", "remote"]
+        ),
+        .createBranch: .init(
+            title: "Create Branch…",
+            paletteSubtitle: "Create a new branch from current HEAD",
+            paletteKeywords: ["branch", "create", "new"]
+        ),
+        .mergeToDefault: .init(
+            title: "Merge to Default Branch",
+            paletteSubtitle: "Merge current branch into default and clean up",
+            paletteKeywords: ["merge", "default", "main", "master", "branch"]
+        ),
+        .chooseRepository: .init(title: "Choose Repository…", paletteSubtitle: nil, paletteKeywords: ["repository", "open"]),
+        .revealRepositoryInFinder: .init(title: "Reveal in Finder", paletteSubtitle: nil, paletteKeywords: ["finder", "repository"]),
+        .openRepositoryOnGitHub: .init(title: "Open on GitHub", paletteSubtitle: nil, paletteKeywords: ["github", "remote"]),
+        .showRepositoryOptions: .init(title: "Repository Options…", paletteSubtitle: nil, paletteKeywords: ["repository", "options"]),
+        .helpRepository: .init(title: "GitMenuBar on GitHub", paletteSubtitle: nil, paletteKeywords: ["help", "github"]),
+        .reportIssue: .init(title: "Report Issue", paletteSubtitle: nil, paletteKeywords: ["issue", "bug"]),
+        .quit: .init(
+            title: "Quit GitMenuBar",
+            paletteSubtitle: "Close GitMenuBar",
+            paletteKeywords: ["quit", "close", "app"]
+        )
     ]
 }
 
@@ -102,25 +154,25 @@ enum AppCommandResolver {
             && !context.defaultBranchName.isEmpty && !isOnDefaultBranch
 
         let states: [AppCommandID: AppCommandState] = [
-            .openWindow: .init(title: "Open Window", isEnabled: true),
-            .showSettings: .init(title: "Settings…", isEnabled: true),
-            .showCommandPalette: .init(title: "Command Palette", isEnabled: true),
-            .commit: .init(title: "Commit", isEnabled: context.actionState.canCommit),
-            .commitAndPush: .init(title: "Commit & Push", isEnabled: context.actionState.canCommitAndPush),
+            .openWindow: state(.openWindow, isEnabled: true),
+            .showSettings: state(.showSettings, isEnabled: true),
+            .showCommandPalette: state(.showCommandPalette, isEnabled: true),
+            .commit: state(.commit, isEnabled: context.actionState.canCommit),
+            .commitAndPush: state(.commitAndPush, isEnabled: context.actionState.canCommitAndPush),
             .sync: .init(title: context.syncActionTitle, isEnabled: context.actionState.canSync),
-            .atomicCommits: .init(title: "Create Atomic Commits", isEnabled: context.canDoAtomicCommits),
-            .branchManagement: .init(title: "Manage Branches…", isEnabled: context.canShowBranchManagement),
-            .push: .init(title: "Push Changes", isEnabled: context.isAheadOfRemote),
-            .pull: .init(title: "Pull Changes", isEnabled: context.isBehindRemote),
-            .createBranch: .init(title: "Create Branch…", isEnabled: context.canShowBranchManagement),
-            .mergeToDefault: .init(title: "Merge to Default Branch", isEnabled: canMergeToDefault),
-            .chooseRepository: .init(title: "Choose Repository…", isEnabled: true),
-            .revealRepositoryInFinder: .init(title: "Reveal in Finder", isEnabled: hasCurrentRepository),
-            .openRepositoryOnGitHub: .init(title: "Open on GitHub", isEnabled: canOpenRemoteRepository),
-            .showRepositoryOptions: .init(title: "Repository Options…", isEnabled: canShowRepositoryOptions),
-            .helpRepository: .init(title: "GitMenuBar on GitHub", isEnabled: true),
-            .reportIssue: .init(title: "Report Issue", isEnabled: true),
-            .quit: .init(title: "Quit GitMenuBar", isEnabled: true)
+            .atomicCommits: state(.atomicCommits, isEnabled: context.canDoAtomicCommits),
+            .branchManagement: state(.branchManagement, isEnabled: context.canShowBranchManagement),
+            .push: state(.push, isEnabled: context.isAheadOfRemote),
+            .pull: state(.pull, isEnabled: context.isBehindRemote),
+            .createBranch: state(.createBranch, isEnabled: context.canShowBranchManagement),
+            .mergeToDefault: state(.mergeToDefault, isEnabled: canMergeToDefault),
+            .chooseRepository: state(.chooseRepository, isEnabled: true),
+            .revealRepositoryInFinder: state(.revealRepositoryInFinder, isEnabled: hasCurrentRepository),
+            .openRepositoryOnGitHub: state(.openRepositoryOnGitHub, isEnabled: canOpenRemoteRepository),
+            .showRepositoryOptions: state(.showRepositoryOptions, isEnabled: canShowRepositoryOptions),
+            .helpRepository: state(.helpRepository, isEnabled: true),
+            .reportIssue: state(.reportIssue, isEnabled: true),
+            .quit: state(.quit, isEnabled: true)
         ]
 
         let recentProjects = context.recentPaths
@@ -135,6 +187,13 @@ enum AppCommandResolver {
             }
 
         return AppCommandSnapshot(states: states, recentProjects: Array(recentProjects))
+    }
+
+    private static func state(_ commandID: AppCommandID, isEnabled: Bool) -> AppCommandState {
+        AppCommandState(
+            title: AppCommandCatalog.descriptor(for: commandID).title,
+            isEnabled: isEnabled
+        )
     }
 }
 

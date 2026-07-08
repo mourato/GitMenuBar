@@ -17,115 +17,63 @@ enum MainMenuCommandPaletteResolver {
         var items: [MainMenuCommandPaletteItem] = []
 
         if actionState.showsCommit {
-            items.append(
-                MainMenuCommandPaletteItem(
-                    kind: .commit,
-                    section: .actions,
-                    title: "Commit",
-                    subtitle: "Generate an automatic commit message",
-                    keywords: ["git", "commit", "working tree"],
-                    isEnabled: actionState.canCommit
-                )
-            )
+            items.append(item(commandID: .commit, kind: .commit, section: .actions, isEnabled: actionState.canCommit))
         }
 
         if actionState.showsCommitAndPush {
-            items.append(
-                MainMenuCommandPaletteItem(
-                    kind: .commitAndPush,
-                    section: .actions,
-                    title: "Commit & Push",
-                    subtitle: "Create a commit and push to remote",
-                    keywords: ["git", "commit", "push", "remote"],
-                    isEnabled: actionState.canCommitAndPush
-                )
-            )
+            items.append(item(
+                commandID: .commitAndPush,
+                kind: .commitAndPush,
+                section: .actions,
+                isEnabled: actionState.canCommitAndPush
+            ))
         }
 
         if actionState.showsSync {
-            items.append(
-                MainMenuCommandPaletteItem(
-                    kind: .sync,
-                    section: .actions,
-                    title: syncActionTitle,
-                    subtitle: "Synchronize local and remote branches",
-                    keywords: ["git", "sync", "pull", "push"],
-                    isEnabled: actionState.canSync
-                )
-            )
+            items.append(item(
+                commandID: .sync,
+                kind: .sync,
+                section: .actions,
+                titleOverride: syncActionTitle,
+                isEnabled: actionState.canSync
+            ))
         }
 
         if canDoAtomicCommits {
-            items.append(
-                MainMenuCommandPaletteItem(
-                    kind: .atomicCommits,
-                    section: .actions,
-                    title: "Create Atomic Commits",
-                    subtitle: "AI groups changes into logical commits",
-                    keywords: ["atomic", "commit", "ai", "group", "split"],
-                    isEnabled: true
-                )
-            )
+            items.append(item(commandID: .atomicCommits, kind: .atomicCommits, section: .actions, isEnabled: true))
         }
 
         if isAheadOfRemote {
-            items.append(
-                MainMenuCommandPaletteItem(
-                    kind: .push,
-                    section: .actions,
-                    title: "Push Changes",
-                    subtitle: "Push local commits to remote",
-                    keywords: ["git", "push", "remote"],
-                    isEnabled: true
-                )
-            )
+            items.append(item(commandID: .push, kind: .push, section: .actions, isEnabled: true))
         }
 
         if isBehindRemote {
-            items.append(
-                MainMenuCommandPaletteItem(
-                    kind: .pull,
-                    section: .actions,
-                    title: "Pull Changes",
-                    subtitle: "Update from remote",
-                    keywords: ["git", "pull", "update", "remote"],
-                    isEnabled: true
-                )
-            )
+            items.append(item(commandID: .pull, kind: .pull, section: .actions, isEnabled: true))
         }
 
         // Branch section
-        items.append(
-            MainMenuCommandPaletteItem(
-                kind: .branchManagement,
-                section: .branches,
-                title: "Manage Branches\u{2026}",
-                subtitle: "View, create, rename, delete branches",
-                keywords: ["branch", "manage", "crud", "remote"],
-                isEnabled: canShowBranchManagement
-            )
-        )
+        items.append(item(
+            commandID: .branchManagement,
+            kind: .branchManagement,
+            section: .branches,
+            isEnabled: canShowBranchManagement
+        ))
 
-        items.append(
-            MainMenuCommandPaletteItem(
-                kind: .createBranch,
-                section: .branches,
-                title: "Create Branch\u{2026}",
-                subtitle: "Create a new branch from current HEAD",
-                keywords: ["branch", "create", "new"],
-                isEnabled: canShowBranchManagement
-            )
-        )
+        items.append(item(
+            commandID: .createBranch,
+            kind: .createBranch,
+            section: .branches,
+            isEnabled: canShowBranchManagement
+        ))
 
         let isOnDefaultBranch = currentBranch == defaultBranchName
         if !isOnDefaultBranch, !currentBranch.isEmpty, !defaultBranchName.isEmpty {
             items.append(
-                MainMenuCommandPaletteItem(
+                item(
+                    commandID: .mergeToDefault,
                     kind: .mergeToDefault(featureBranch: currentBranch),
                     section: .branches,
-                    title: "Merge '\(currentBranch)' into \(defaultBranchName)",
-                    subtitle: "Merge current branch into default and clean up",
-                    keywords: ["merge", "default", "main", "master", "branch"],
+                    titleOverride: "Merge '\(currentBranch)' into \(defaultBranchName)",
                     isEnabled: true
                 )
             )
@@ -166,16 +114,13 @@ enum MainMenuCommandPaletteResolver {
             )
         )
 
-        items.append(
-            MainMenuCommandPaletteItem(
-                kind: .quitApp,
-                section: .app,
-                title: "Quit App",
-                subtitle: "Close GitMenuBar",
-                keywords: ["quit", "close", "app"],
-                isEnabled: true
-            )
-        )
+        items.append(item(
+            commandID: .quit,
+            kind: .quitApp,
+            section: .app,
+            titleOverride: "Quit App",
+            isEnabled: true
+        ))
 
         return items
     }
@@ -219,5 +164,25 @@ enum MainMenuCommandPaletteResolver {
         default:
             return .executeNow
         }
+    }
+
+    private static func item(
+        commandID: AppCommandID,
+        kind: MainMenuCommandPaletteKind,
+        section: MainMenuCommandPaletteSection,
+        titleOverride: String? = nil,
+        subtitleOverride: String? = nil,
+        keywordsOverride: [String]? = nil,
+        isEnabled: Bool
+    ) -> MainMenuCommandPaletteItem {
+        let descriptor = AppCommandCatalog.descriptor(for: commandID)
+        return MainMenuCommandPaletteItem(
+            kind: kind,
+            section: section,
+            title: titleOverride ?? descriptor.title,
+            subtitle: subtitleOverride ?? descriptor.paletteSubtitle,
+            keywords: keywordsOverride ?? descriptor.paletteKeywords,
+            isEnabled: isEnabled
+        )
     }
 }
