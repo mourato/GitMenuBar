@@ -96,7 +96,7 @@ final class GitManagerAtomicCommitTests: XCTestCase {
         XCTAssertTrue(messages.contains("feat: beta"))
     }
 
-    func testPerformAtomicCommitsAsyncStopsOnFailureAndRefreshes() async throws {
+    func testPerformAtomicCommitsAsyncValidatesPlanBeforeCommitting() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let alphaFile = repoURL.appendingPathComponent("alpha.swift")
         try "base\n".write(to: alphaFile, atomically: true, encoding: .utf8)
@@ -116,6 +116,54 @@ final class GitManagerAtomicCommitTests: XCTestCase {
 
         let commitCount = try runGit(["rev-list", "--count", "HEAD"], in: repoURL)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        XCTAssertEqual(commitCount, "2", "First group should still have committed")
+        XCTAssertEqual(commitCount, "1", "Invalid atomic plans should fail before creating commits")
+    }
+
+    func testPerformAtomicCommitsAsyncRollsBackWhenLaterCommitFails() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let alphaFile = repoURL.appendingPathComponent("alpha.swift")
+        let betaFile = repoURL.appendingPathComponent("beta.swift")
+        try "base\n".write(to: alphaFile, atomically: true, encoding: .utf8)
+        try "base\n".write(to: betaFile, atomically: true, encoding: .utf8)
+
+        let hookURL = repoURL.appendingPathComponent(".git/hooks/pre-commit")
+        try """
+        #!/bin/sh
+        counter=".git/hooks/atomic-counter"
+        count=0
+        if [ -f "$counter" ]; then
+          count=$(cat "$counter")
+        fi
+        count=$((count + 1))
+        echo "$count" > "$counter"
+        if [ "$count" -ge 2 ]; then
+          echo "stop second commit" >&2
+          exit 1
+        fi
+        exit 0
+        """.write(to: hookURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hookURL.path)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        try "base\nalpha\n".write(to: alphaFile, atomically: true, encoding: .utf8)
+        try "base\nbeta\n".write(to: betaFile, atomically: true, encoding: .utf8)
+
+        let groups = [
+            AtomicCommitGroup(files: ["alpha.swift"], message: "feat: alpha"),
+            AtomicCommitGroup(files: ["beta.swift"], message: "feat: beta")
+        ]
+
+        let result = await gitManager.performAtomicCommitsAsync(groups: groups)
+        if case .success = result {
+            XCTFail("Expected second commit to fail")
+        }
+
+        let commitCount = try runGit(["rev-list", "--count", "HEAD"], in: repoURL)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertEqual(commitCount, "1", "Atomic commit rollback should remove partial commits")
+
+        let status = try runGit(["status", "--porcelain"], in: repoURL)
+        XCTAssertTrue(status.contains("alpha.swift"))
+        XCTAssertTrue(status.contains("beta.swift"))
     }
 }

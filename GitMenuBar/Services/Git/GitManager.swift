@@ -225,6 +225,15 @@ class GitManager: ObservableObject {
             ))
         }
 
+        let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedMessage.isEmpty else {
+            return .failure(NSError(
+                domain: "GitManager",
+                code: 33,
+                userInfo: [NSLocalizedDescriptionKey: "Commit message cannot be empty"]
+            ))
+        }
+
         // Reset the staging area to a clean slate before staging the group.
         _ = await runOnBackground {
             self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--", "."])
@@ -243,7 +252,7 @@ class GitManager: ObservableObject {
         }
 
         let commitResult = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["commit", "--no-gpg-sign", "-m", message])
+            self.executeGitCommand(in: repositoryPath, args: ["commit", "--no-gpg-sign", "-m", trimmedMessage])
         }
         guard !commitResult.failure else {
             return .failure(NSError(
@@ -260,9 +269,37 @@ class GitManager: ObservableObject {
     func performAtomicCommitsAsync(
         groups: [AtomicCommitGroup]
     ) async -> Result<Void, Error> {
-        for group in groups {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+
+        let originalHeadResult = await runOnBackground {
+            self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "HEAD"])
+        }
+        guard !originalHeadResult.failure else {
+            return .failure(NSError(
+                domain: "GitManager",
+                code: 34,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to capture current HEAD: \(originalHeadResult.output)"]
+            ))
+        }
+        let originalHead = originalHeadResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        await updateUncommittedFilesAsync()
+
+        let allowedFiles = Set(changedFiles.map(\.path) + stagedFiles.map(\.path) + uncommittedFiles)
+        let plan: AtomicCommitPlan
+        do {
+            plan = try AtomicCommitPlan(groups: groups, allowedFiles: allowedFiles)
+        } catch {
+            return .failure(error)
+        }
+
+        for group in plan.groups {
             let result = await commitAtomicGroupAsync(files: group.files, message: group.message)
             if case let .failure(error) = result {
+                await rollbackAtomicCommits(to: originalHead, repositoryPath: repositoryPath)
                 await refreshAsync()
                 return .failure(error)
             }
@@ -270,6 +307,12 @@ class GitManager: ObservableObject {
 
         await refreshAsync()
         return .success(())
+    }
+
+    private func rollbackAtomicCommits(to originalHead: String, repositoryPath: String) async {
+        await runOnBackground {
+            _ = self.executeGitCommand(in: repositoryPath, args: ["reset", "--mixed", originalHead])
+        }
     }
 
     func commitLocally(

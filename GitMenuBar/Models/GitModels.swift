@@ -234,3 +234,66 @@ struct AtomicCommitGroup: Identifiable, Equatable, Hashable {
         files.map { AtomicCommitGroup(files: [$0.path], message: "chore: update \($0.fileName)") }
     }
 }
+
+enum AtomicCommitPlanValidationError: LocalizedError, Equatable {
+    case emptyPlan
+    case emptyGroup(Int)
+    case emptyMessage(Int)
+    case duplicateFile(String)
+    case unknownFile(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .emptyPlan:
+            return "No atomic commit groups to commit."
+        case let .emptyGroup(index):
+            return "Atomic commit group \(index + 1) has no files."
+        case let .emptyMessage(index):
+            return "Atomic commit group \(index + 1) has an empty commit message."
+        case let .duplicateFile(file):
+            return "File '\(file)' appears in more than one atomic commit group."
+        case let .unknownFile(file):
+            return "File '\(file)' is not part of the current working tree changes."
+        }
+    }
+}
+
+struct AtomicCommitPlan: Equatable {
+    let groups: [AtomicCommitGroup]
+
+    init(groups: [AtomicCommitGroup], allowedFiles: Set<String>) throws {
+        guard !groups.isEmpty else {
+            throw AtomicCommitPlanValidationError.emptyPlan
+        }
+
+        var seenFiles = Set<String>()
+        var validatedGroups: [AtomicCommitGroup] = []
+
+        for (index, group) in groups.enumerated() {
+            let files = group.files
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            guard !files.isEmpty else {
+                throw AtomicCommitPlanValidationError.emptyGroup(index)
+            }
+
+            let message = group.message.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !message.isEmpty else {
+                throw AtomicCommitPlanValidationError.emptyMessage(index)
+            }
+
+            for file in files {
+                guard allowedFiles.contains(file) else {
+                    throw AtomicCommitPlanValidationError.unknownFile(file)
+                }
+                guard seenFiles.insert(file).inserted else {
+                    throw AtomicCommitPlanValidationError.duplicateFile(file)
+                }
+            }
+
+            validatedGroups.append(AtomicCommitGroup(id: group.id, files: files, message: message))
+        }
+
+        self.groups = validatedGroups
+    }
+}
