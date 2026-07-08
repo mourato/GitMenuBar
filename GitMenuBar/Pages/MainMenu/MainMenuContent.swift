@@ -135,6 +135,21 @@ extension MainMenuView {
 
             Spacer()
 
+            if canShowAtomicCommits {
+                Button("Atomic Commits") {
+                    startAtomicCommitFlow()
+                }
+                .buttonStyle(.borderless)
+                .font(MacChromeTypography.detail)
+            }
+
+            Button("Manage…") {
+                showRepositoryOptionsPopover = false
+                showBranchManagement = true
+            }
+            .buttonStyle(.borderless)
+            .font(MacChromeTypography.detail)
+
             Button("Settings") {
                 showRepositoryOptionsPopover = false
                 openSettingsWindow()

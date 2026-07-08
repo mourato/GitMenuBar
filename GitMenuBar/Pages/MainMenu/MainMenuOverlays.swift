@@ -199,6 +199,8 @@ extension MainMenuView {
             .sheet(isPresented: $actionCoordinator.showSyncOptions, content: syncOptionsSheet)
             .sheet(isPresented: $showCreateBranch, content: createBranchSheet)
             .sheet(isPresented: $showPullToNewBranch, content: pullToNewBranchSheet)
+            .sheet(isPresented: $showBranchManagement, content: branchManagementSheet)
+            .sheet(isPresented: $showAtomicCommitSheet, content: atomicCommitSheet)
     }
 
     private func applyCommandPaletteOverlay<Content: View>(to view: Content) -> some View {
@@ -349,6 +351,37 @@ extension MainMenuView {
                 syncError = nil
             },
             onPull: pullToNewBranch
+        )
+    }
+
+    private func branchManagementSheet() -> some View {
+        BranchManagementSheet(gitManager: gitManager)
+    }
+
+    private func atomicCommitSheet() -> some View {
+        AtomicCommitReviewSheet(
+            gitManager: gitManager,
+            generateGroups: { [weak gitManager, weak aiCommitCoordinator] in
+                guard let gitManager,
+                      let coordinator = aiCommitCoordinator else {
+                    return []
+                }
+                let changed = gitManager.changedFiles
+                let diffs = await gitManager.diffForChangedFilesAsync()
+                return try await coordinator.generateAtomicGroups(
+                    changedFiles: changed,
+                    diffPerFile: diffs
+                )
+            },
+            onCancel: {
+                showAtomicCommitSheet = false
+            },
+            onCommit: { groups in
+                showAtomicCommitSheet = false
+                Task {
+                    _ = await gitManager.performAtomicCommitsAsync(groups: groups)
+                }
+            }
         )
     }
 }

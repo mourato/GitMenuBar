@@ -255,6 +255,11 @@ extension MainMenuView {
         selectedCommandPaletteItemID = nil
     }
 
+    func startAtomicCommitFlow() {
+        guard !gitManager.changedFiles.isEmpty else { return }
+        showAtomicCommitSheet = true
+    }
+
     func dismissInlineStatusBanner() {
         guard let source = inlineStatusBannerSource else {
             return

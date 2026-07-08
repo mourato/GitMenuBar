@@ -365,6 +365,10 @@ extension MainMenuView {
         !gitManager.stagedFiles.isEmpty || !gitManager.changedFiles.isEmpty
     }
 
+    var canShowAtomicCommits: Bool {
+        hasWorkingTreeChanges && aiCommitCoordinator.isReadyForGeneration
+    }
+
     var commandPaletteActionState: StatusBarContextMenuActionState {
         StatusBarContextMenuActionState.resolve(
             hasCommitWork: actionCoordinator.hasWorkingTreeChanges,

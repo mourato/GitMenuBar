@@ -30,6 +30,8 @@ struct MainMenuView: View {
     @AppStorage(AppPreferences.Keys.hideCommitMessageField) var hideCommitMessageField = false
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
     @State var showBranchSelector = false
+    @State var showBranchManagement = false
+    @State var showAtomicCommitSheet = false
     @State var isCommitFieldTemporarilyVisible = false
     @State var isCommandPalettePresented = false
     @State var commandPaletteQuery = ""
