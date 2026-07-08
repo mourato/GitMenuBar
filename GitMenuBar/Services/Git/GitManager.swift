@@ -1696,6 +1696,22 @@ class GitManager: ObservableObject {
         await branchService.resolveBranchInfoAsync()
     }
 
+    /// Orchestrates the "merge feature branch into the default branch" guided
+    /// flow. The implementation lives in `GitBranchService` (the canonical home
+    /// for branch mutations); this facade delegates to it.
+    ///
+    /// The caller is responsible for presenting any pre-merge confirmation; this
+    /// method performs the work and refreshes state on success.
+    func mergeToDefaultBranchAsync(
+        featureBranch: String,
+        cleanupOption: BranchCleanupOption
+    ) async -> Result<MergeToDefaultResult, Error> {
+        await branchService.mergeToDefaultBranchAsync(
+            featureBranch: featureBranch,
+            cleanupOption: cleanupOption
+        )
+    }
+
     func checkRemoteStatus(completion: (() -> Void)? = nil) {
         branchService.checkRemoteStatus(completion: completion)
     }

@@ -13,6 +13,7 @@ struct BranchSelectorPopoverView: View {
     let onMergeBranch: (String) -> Void
     let onDeleteBranch: (String) -> Void
     let onRenameBranch: (String) -> Void
+    let onMergeToDefaultBranch: ((String) -> Void)?
     let onNewBranch: () -> Void
 
     private var branchRows: [BranchMenuRowAdapter] {
@@ -77,6 +78,9 @@ struct BranchSelectorPopoverView: View {
                     let mergeAction = row.canMerge ? { onMergeBranch(row.branchName) } : nil
                     let deleteAction = row.canDelete ? { onDeleteBranch(row.branchName) } : nil
                     let renameAction = row.canRename ? { onRenameBranch(row.branchName) } : nil
+                    let mergeToDefaultAction: (() -> Void)? = (
+                        !row.isCurrentBranch && onMergeToDefaultBranch != nil
+                    ) ? { _ = onMergeToDefaultBranch?(row.branchName) } : nil
 
                     BranchRowView(
                         branchName: row.branchName,
@@ -87,7 +91,8 @@ struct BranchSelectorPopoverView: View {
                         },
                         onMerge: mergeAction,
                         onDelete: deleteAction,
-                        onRename: renameAction
+                        onRename: renameAction,
+                        onMergeToDefault: mergeToDefaultAction
                     )
                 }
             }
@@ -118,6 +123,7 @@ struct BranchSelectorPopoverView: View {
         onMergeBranch: { _ in },
         onDeleteBranch: { _ in },
         onRenameBranch: { _ in },
+        onMergeToDefaultBranch: { _ in },
         onNewBranch: {}
     )
 }

@@ -66,6 +66,11 @@ struct MainMenuView: View {
     @State var mergeBranchName = ""
     @State var mergeTargetBranch = ""
 
+    // Merge-to-default cleanup states
+    @State var showMergeCleanupDialog = false
+    @State var featureBranchName = ""
+    @State var defaultBranchName = ""
+
     // Switch confirmation states
     @State var showDirtySwitchConfirmation = false
     @State var pendingSwitchBranch = ""

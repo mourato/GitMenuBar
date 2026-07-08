@@ -198,6 +198,22 @@ struct BranchInfo: Identifiable, Hashable {
     }
 }
 
+struct MergeToDefaultResult: Equatable {
+    let didSwitchToDefault: Bool
+    let didMerge: Bool
+    let didDeleteLocal: Bool
+    let didDeleteRemote: Bool
+    let defaultBranchName: String
+    let featureBranchName: String
+}
+
+enum BranchCleanupOption: String, CaseIterable {
+    case deleteLocal = "Delete Local Only"
+    case deleteLocalAndRemote = "Delete Local & Remote"
+    case deleteRemoteOnly = "Delete Remote Only"
+    case keep = "Keep Branch"
+}
+
 struct AtomicCommitGroup: Identifiable, Equatable, Hashable {
     let id: UUID
     var files: [String]

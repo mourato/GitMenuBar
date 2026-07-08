@@ -149,6 +149,29 @@ extension MainMenuView {
                         + "'\(mergeTargetBranch)'."
                 )
             }
+            .confirmationDialog(
+                "Merge into default branch",
+                isPresented: $showMergeCleanupDialog,
+                titleVisibility: .visible
+            ) {
+                Button("Delete Local Only") {
+                    performMergeCleanup(option: .deleteLocal)
+                }
+                Button("Delete Local & Remote") {
+                    performMergeCleanup(option: .deleteLocalAndRemote)
+                }
+                Button("Delete Remote Only") {
+                    performMergeCleanup(option: .deleteRemoteOnly)
+                }
+                Button("Keep Branch", role: .cancel) {
+                    performMergeCleanup(option: .keep)
+                }
+            } message: {
+                Text(
+                    "This merges '\(featureBranchName)' into \(defaultBranchName) and then cleans up "
+                        + "the feature branch as you choose. Uncommitted changes are stashed and restored."
+                )
+            }
             .alert("Uncommitted Changes", isPresented: $showDirtySwitchConfirmation) {
                 Button("Switch & Carry Over") {
                     gitManager.switchBranch(branchName: pendingSwitchBranch) { result in

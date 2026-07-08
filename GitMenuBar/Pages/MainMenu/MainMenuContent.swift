@@ -126,6 +126,12 @@ extension MainMenuView {
                         renameBranchNewName = branch
                         showRenameBranch = true
                     },
+                    onMergeToDefaultBranch: { branch in
+                        showBranchSelector = false
+                        featureBranchName = branch
+                        defaultBranchName = gitManager.defaultBranchName
+                        showMergeCleanupDialog = true
+                    },
                     onNewBranch: {
                         showBranchSelector = false
                         showCreateBranch = true

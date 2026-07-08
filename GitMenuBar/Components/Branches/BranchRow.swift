@@ -8,6 +8,7 @@ struct BranchRowView: View {
     let onMerge: (() -> Void)?
     let onDelete: (() -> Void)?
     let onRename: (() -> Void)?
+    let onMergeToDefault: (() -> Void)?
     let currentBranchName: String
 
     @State private var isHovered = false
@@ -19,7 +20,8 @@ struct BranchRowView: View {
         onTap: @escaping () -> Void,
         onMerge: (() -> Void)? = nil,
         onDelete: (() -> Void)? = nil,
-        onRename: (() -> Void)? = nil
+        onRename: (() -> Void)? = nil,
+        onMergeToDefault: (() -> Void)? = nil
     ) {
         self.branchName = branchName
         self.isCurrentBranch = isCurrentBranch
@@ -28,6 +30,7 @@ struct BranchRowView: View {
         self.onMerge = onMerge
         self.onDelete = onDelete
         self.onRename = onRename
+        self.onMergeToDefault = onMergeToDefault
     }
 
     var body: some View {
@@ -61,6 +64,13 @@ struct BranchRowView: View {
                         Text("Merge into \(currentBranchName)")
                     }
                     .help("Take changes from \(branchName) and bring them into \(currentBranchName)")
+                }
+
+                if !isCurrentBranch, let onMergeToDefault {
+                    Button(action: onMergeToDefault) {
+                        Text("Merge into default branch")
+                    }
+                    .help("Switch to the default branch and merge \(branchName) into it")
                 }
 
                 Divider()
