@@ -152,3 +152,69 @@ extension Collection where Element == WorkingTreeFile {
         )
     }
 }
+
+enum BranchTrackingStatus: Hashable {
+    case upToDate
+    case ahead(Int)
+    case behind(Int)
+    case diverged(ahead: Int, behind: Int)
+    case noRemote
+    case unknown
+}
+
+extension BranchTrackingStatus {
+    var description: String {
+        switch self {
+        case .upToDate:
+            return "Up to date"
+        case let .ahead(count):
+            return "Ahead by \(count)"
+        case let .behind(count):
+            return "Behind by \(count)"
+        case let .diverged(ahead, behind):
+            return "Diverged: ahead \(ahead), behind \(behind)"
+        case .noRemote:
+            return "No upstream"
+        case .unknown:
+            return "Unknown"
+        }
+    }
+}
+
+struct BranchInfo: Identifiable, Hashable {
+    let name: String
+    let isLocal: Bool
+    let isRemote: Bool
+    let isCurrent: Bool
+    let trackingStatus: BranchTrackingStatus
+    let lastCommitDate: Date?
+
+    var id: String {
+        "\(isLocal ? "local" : "remote")/\(name)"
+    }
+
+    var displayName: String {
+        isRemote ? "origin/\(name)" : name
+    }
+}
+
+struct AtomicCommitGroup: Identifiable, Equatable, Hashable {
+    let id: UUID
+    var files: [String]
+    var message: String
+
+    init(id: UUID = UUID(), files: [String], message: String) {
+        self.id = id
+        self.files = files
+        self.message = message
+    }
+
+    var fileCount: Int {
+        files.count
+    }
+
+    /// One-commit-per-file fallback used when grouping is unavailable.
+    static func fallbackGroups(for files: [WorkingTreeFile]) -> [AtomicCommitGroup] {
+        files.map { AtomicCommitGroup(files: [$0.path], message: "chore: update \($0.fileName)") }
+    }
+}
