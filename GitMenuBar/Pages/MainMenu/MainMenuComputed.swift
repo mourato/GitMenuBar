@@ -383,7 +383,13 @@ extension MainMenuView {
             actionState: commandPaletteActionState,
             syncActionTitle: actionCoordinator.syncActionTitle,
             recentPaths: recentPaths,
-            currentRepoPath: currentRepoPath
+            currentRepoPath: currentRepoPath,
+            currentBranch: gitManager.currentBranch,
+            canDoAtomicCommits: canShowAtomicCommits,
+            isBehindRemote: gitManager.isBehindRemote,
+            isAheadOfRemote: gitManager.isAheadOfRemote,
+            canShowBranchManagement: !currentRepoPath.isEmpty,
+            defaultBranchName: gitManager.defaultBranchName
         )
     }
 

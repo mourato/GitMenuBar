@@ -9,6 +9,12 @@ enum AppCommandID: Hashable {
     case commit
     case commitAndPush
     case sync
+    case atomicCommits
+    case branchManagement
+    case push
+    case pull
+    case createBranch
+    case mergeToDefault
     case chooseRepository
     case revealRepositoryInFinder
     case openRepositoryOnGitHub
@@ -28,6 +34,12 @@ enum AppCommandID: Hashable {
         .commit: "Commit",
         .commitAndPush: "Commit & Push",
         .sync: "Sync Changes",
+        .atomicCommits: "Create Atomic Commits",
+        .branchManagement: "Manage Branches…",
+        .push: "Push Changes",
+        .pull: "Pull Changes",
+        .createBranch: "Create Branch…",
+        .mergeToDefault: "Merge to Default Branch",
         .chooseRepository: "Choose Repository…",
         .revealRepositoryInFinder: "Reveal in Finder",
         .openRepositoryOnGitHub: "Open on GitHub",
@@ -70,6 +82,13 @@ struct AppCommandContext: Equatable {
     let remoteUrl: String
     let recentPaths: [String]
     let isGitHubAuthenticated: Bool
+    let hasWorkingTreeChanges: Bool
+    let canDoAtomicCommits: Bool
+    let isBehindRemote: Bool
+    let isAheadOfRemote: Bool
+    let canShowBranchManagement: Bool
+    let currentBranch: String
+    let defaultBranchName: String
 }
 
 enum AppCommandResolver {
@@ -78,6 +97,10 @@ enum AppCommandResolver {
         let canOpenRemoteRepository = GitHubRemoteURLParser.parse(context.remoteUrl) != nil
         let canShowRepositoryOptions = context.isGitHubAuthenticated && canOpenRemoteRepository
 
+        let isOnDefaultBranch = context.currentBranch == context.defaultBranchName
+        let canMergeToDefault = hasCurrentRepository && !context.currentBranch.isEmpty
+            && !context.defaultBranchName.isEmpty && !isOnDefaultBranch
+
         let states: [AppCommandID: AppCommandState] = [
             .openWindow: .init(title: "Open Window", isEnabled: true),
             .showSettings: .init(title: "Settings…", isEnabled: true),
@@ -85,6 +108,12 @@ enum AppCommandResolver {
             .commit: .init(title: "Commit", isEnabled: context.actionState.canCommit),
             .commitAndPush: .init(title: "Commit & Push", isEnabled: context.actionState.canCommitAndPush),
             .sync: .init(title: context.syncActionTitle, isEnabled: context.actionState.canSync),
+            .atomicCommits: .init(title: "Create Atomic Commits", isEnabled: context.canDoAtomicCommits),
+            .branchManagement: .init(title: "Manage Branches…", isEnabled: context.canShowBranchManagement),
+            .push: .init(title: "Push Changes", isEnabled: context.isAheadOfRemote),
+            .pull: .init(title: "Pull Changes", isEnabled: context.isBehindRemote),
+            .createBranch: .init(title: "Create Branch…", isEnabled: context.canShowBranchManagement),
+            .mergeToDefault: .init(title: "Merge to Default Branch", isEnabled: canMergeToDefault),
             .chooseRepository: .init(title: "Choose Repository…", isEnabled: true),
             .revealRepositoryInFinder: .init(title: "Reveal in Finder", isEnabled: hasCurrentRepository),
             .openRepositoryOnGitHub: .init(title: "Open on GitHub", isEnabled: canOpenRemoteRepository),

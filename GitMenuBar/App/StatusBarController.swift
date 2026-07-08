@@ -16,7 +16,9 @@ final class StatusBarController: ObservableObject {
         static let windowInitialSize = NSSize(width: 440, height: 720)
         static let windowMinimumSize = NSSize(width: 400, height: 640)
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
-        static let appFocusedShortcutNames: [KeyboardShortcuts.Name] = [.commandPalette, .commit, .sync]
+        static let appFocusedShortcutNames: [KeyboardShortcuts.Name] = [
+            .commandPalette, .commit, .sync, .push, .branchManagement, .createBranch
+        ]
     }
 
     private struct WindowOpenTrace {
@@ -189,6 +191,24 @@ final class StatusBarController: ObservableObject {
         KeyboardShortcuts.onKeyDown(for: .sync) { [weak self] in
             Task { @MainActor in
                 self?.handleActionShortcut(.sync)
+            }
+        }
+
+        KeyboardShortcuts.onKeyDown(for: .push) { [weak self] in
+            Task { @MainActor in
+                self?.appCommandCenter.perform(.push)
+            }
+        }
+
+        KeyboardShortcuts.onKeyDown(for: .branchManagement) { [weak self] in
+            Task { @MainActor in
+                self?.appCommandCenter.perform(.branchManagement)
+            }
+        }
+
+        KeyboardShortcuts.onKeyDown(for: .createBranch) { [weak self] in
+            Task { @MainActor in
+                self?.appCommandCenter.perform(.createBranch)
             }
         }
 
@@ -660,6 +680,8 @@ final class StatusBarController: ObservableObject {
     }
 
     private func refreshAppCommands() {
+        let hasWorkingTreeChanges = !gitManager.stagedFiles.isEmpty || !gitManager.changedFiles.isEmpty
+
         let snapshot = AppCommandResolver.resolveSnapshot(
             context: AppCommandContext(
                 actionState: StatusBarContextMenuActionState.resolve(
@@ -672,7 +694,14 @@ final class StatusBarController: ObservableObject {
                 currentRepoPath: currentRepositoryPath() ?? "",
                 remoteUrl: gitManager.remoteUrl,
                 recentPaths: RecentProjectsStore().recentPaths(),
-                isGitHubAuthenticated: githubAuthManager.isAuthenticated
+                isGitHubAuthenticated: githubAuthManager.isAuthenticated,
+                hasWorkingTreeChanges: hasWorkingTreeChanges,
+                canDoAtomicCommits: hasWorkingTreeChanges && aiCommitCoordinator.isReadyForGeneration,
+                isBehindRemote: gitManager.isBehindRemote,
+                isAheadOfRemote: gitManager.isAheadOfRemote,
+                canShowBranchManagement: !(currentRepositoryPath()?.isEmpty ?? true),
+                currentBranch: gitManager.currentBranch,
+                defaultBranchName: gitManager.defaultBranchName
             )
         )
 
@@ -701,6 +730,10 @@ final class StatusBarController: ObservableObject {
             .revealRepositoryInFinder: revealCurrentRepositoryInFinder,
             .openRepositoryOnGitHub: openCurrentRepositoryOnGitHub,
             .showRepositoryOptions: presentRepositoryOptions,
+            .atomicCommits: openMainWindow,
+            .branchManagement: openMainWindow,
+            .createBranch: openMainWindow,
+            .mergeToDefault: openMainWindow,
             .helpRepository: { self.open(urlString: "https://github.com/saihgupr/GitMenuBar") },
             .reportIssue: { self.open(urlString: "https://github.com/saihgupr/GitMenuBar/issues/new/choose") },
             .quit: { NSApplication.shared.terminate(nil) }
@@ -716,6 +749,10 @@ final class StatusBarController: ObservableObject {
             performCommitCommand(shouldPushAfterCommit: true)
         case .sync:
             performSyncCommand()
+        case .push:
+            performPushCommand()
+        case .pull:
+            performPullCommand()
         default:
             return false
         }
@@ -739,6 +776,24 @@ final class StatusBarController: ObservableObject {
     private func performSyncCommand() {
         Task { @MainActor in
             let result = await actionCoordinator.performSync()
+            if result.shouldOpenPopover {
+                presentMainWindowForActionFeedback()
+            }
+        }
+    }
+
+    private func performPushCommand() {
+        Task { @MainActor in
+            let result = await actionCoordinator.performSync()
+            if result.shouldOpenPopover {
+                presentMainWindowForActionFeedback()
+            }
+        }
+    }
+
+    private func performPullCommand() {
+        Task { @MainActor in
+            let result = await actionCoordinator.syncWithRemote(rebase: false)
             if result.shouldOpenPopover {
                 presentMainWindowForActionFeedback()
             }

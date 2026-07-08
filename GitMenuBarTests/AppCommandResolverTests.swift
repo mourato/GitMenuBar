@@ -17,18 +17,25 @@ final class AppCommandResolverTests: XCTestCase {
                 currentRepoPath: "/tmp/current",
                 remoteUrl: "git@github.com:saihgupr/GitMenuBar.git",
                 recentPaths: [],
-                isGitHubAuthenticated: true
+                isGitHubAuthenticated: true,
+                hasWorkingTreeChanges: true,
+                canDoAtomicCommits: false,
+                isBehindRemote: false,
+                isAheadOfRemote: true,
+                canShowBranchManagement: true,
+                currentBranch: "feature",
+                defaultBranchName: "main"
             )
         )
 
-        XCTAssertEqual(snapshot.states[.commit], AppCommandState(title: "Commit", isEnabled: false))
-        XCTAssertEqual(snapshot.states[.sync], AppCommandState(title: "Sync Changes", isEnabled: true))
+        XCTAssertEqual(snapshot.states[AppCommandID.commit], AppCommandState(title: "Commit", isEnabled: false))
+        XCTAssertEqual(snapshot.states[AppCommandID.sync], AppCommandState(title: "Sync Changes", isEnabled: true))
         XCTAssertEqual(
-            snapshot.states[.showRepositoryOptions],
+            snapshot.states[AppCommandID.showRepositoryOptions],
             AppCommandState(title: "Repository Options…", isEnabled: true)
         )
         XCTAssertEqual(
-            snapshot.states[.revealRepositoryInFinder],
+            snapshot.states[AppCommandID.revealRepositoryInFinder],
             AppCommandState(title: "Reveal in Finder", isEnabled: true)
         )
     }
@@ -54,7 +61,14 @@ final class AppCommandResolverTests: XCTestCase {
                     "/tmp/e",
                     "/tmp/f"
                 ],
-                isGitHubAuthenticated: false
+                isGitHubAuthenticated: false,
+                hasWorkingTreeChanges: false,
+                canDoAtomicCommits: false,
+                isBehindRemote: false,
+                isAheadOfRemote: false,
+                canShowBranchManagement: true,
+                currentBranch: "main",
+                defaultBranchName: "main"
             )
         )
 
@@ -64,11 +78,11 @@ final class AppCommandResolverTests: XCTestCase {
             ["/tmp/a", "/tmp/b", "/tmp/c", "/tmp/d", "/tmp/e"]
         )
         XCTAssertEqual(
-            snapshot.states[.showRepositoryOptions],
+            snapshot.states[AppCommandID.showRepositoryOptions],
             AppCommandState(title: "Repository Options…", isEnabled: false)
         )
         XCTAssertEqual(
-            snapshot.states[.openRepositoryOnGitHub],
+            snapshot.states[AppCommandID.openRepositoryOnGitHub],
             AppCommandState(title: "Open on GitHub", isEnabled: false)
         )
     }

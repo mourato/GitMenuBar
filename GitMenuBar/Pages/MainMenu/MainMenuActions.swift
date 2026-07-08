@@ -396,6 +396,32 @@ extension MainMenuView {
             Task {
                 _ = await actionCoordinator.performSync()
             }
+        case .atomicCommits:
+            startAtomicCommitFlow()
+        case .push:
+            Task {
+                _ = await actionCoordinator.performSync()
+            }
+        case .pull:
+            Task {
+                _ = await actionCoordinator.syncWithRemote(rebase: useRebase)
+            }
+        case .branchManagement:
+            showBranchManagement = true
+        case .createBranch:
+            showCreateBranch = true
+        case let .mergeToDefault(featureBranch):
+            featureBranchName = featureBranch
+            defaultBranchName = gitManager.defaultBranchName
+            showMergeCleanupDialog = true
+        case .switchToBranchList:
+            showBranchSelector = true
+        case let .switchBranch(branchName):
+            gitManager.switchBranch(branchName: branchName) { result in
+                if case let .failure(error) = result {
+                    branchSwitchError = error.localizedDescription
+                }
+            }
         case let .recentProject(path):
             switchRepository(path: path)
         case .restartApp:

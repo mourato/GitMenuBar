@@ -3,6 +3,7 @@ import SwiftUI
 
 enum MainMenuCommandPaletteSection: String, CaseIterable {
     case actions
+    case branches
     case recentProjects
     case app
 
@@ -10,6 +11,8 @@ enum MainMenuCommandPaletteSection: String, CaseIterable {
         switch self {
         case .actions:
             return "Actions"
+        case .branches:
+            return "Branches"
         case .recentProjects:
             return "Recent Projects"
         case .app:
@@ -22,6 +25,14 @@ enum MainMenuCommandPaletteKind: Hashable {
     case commit
     case commitAndPush
     case sync
+    case atomicCommits
+    case push
+    case pull
+    case branchManagement
+    case createBranch
+    case mergeToDefault(featureBranch: String)
+    case switchToBranchList
+    case switchBranch(branchName: String)
     case recentProject(path: String)
     case restartApp
     case quitApp
@@ -34,6 +45,22 @@ enum MainMenuCommandPaletteKind: Hashable {
             return "action.commitAndPush"
         case .sync:
             return "action.sync"
+        case .atomicCommits:
+            return "action.atomicCommits"
+        case .push:
+            return "action.push"
+        case .pull:
+            return "action.pull"
+        case .branchManagement:
+            return "branch.management"
+        case .createBranch:
+            return "branch.create"
+        case .mergeToDefault:
+            return "branch.mergeToDefault"
+        case .switchToBranchList:
+            return "branch.switchToBranchList"
+        case let .switchBranch(branchName):
+            return "branch.switch.\(branchName)"
         case let .recentProject(path):
             return "recent.\(path)"
         case .restartApp:

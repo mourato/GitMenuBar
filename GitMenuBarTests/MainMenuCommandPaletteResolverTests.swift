@@ -14,7 +14,13 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
             actionState: actionState,
             syncActionTitle: "Sync Changes",
             recentPaths: [],
-            currentRepoPath: ""
+            currentRepoPath: "",
+            currentBranch: "main",
+            canDoAtomicCommits: false,
+            isBehindRemote: false,
+            isAheadOfRemote: false,
+            canShowBranchManagement: false,
+            defaultBranchName: "main"
         )
 
         XCTAssertEqual(
@@ -51,7 +57,13 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
             actionState: actionState,
             syncActionTitle: "Sync Changes",
             recentPaths: recents,
-            currentRepoPath: "/tmp/current"
+            currentRepoPath: "/tmp/current",
+            currentBranch: "main",
+            canDoAtomicCommits: false,
+            isBehindRemote: false,
+            isAheadOfRemote: false,
+            canShowBranchManagement: false,
+            defaultBranchName: "main"
         )
 
         let recentProjectItems = items.filter { $0.section == .recentProjects }
@@ -126,6 +138,164 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         )
         XCTAssertEqual(
             MainMenuCommandPaletteResolver.executionDecision(for: .quitApp),
+            .executeNow
+        )
+    }
+
+    func testResolveItemsIncludesAtomicCommitsWhenAvailable() {
+        let actionState = StatusBarContextMenuActionState.resolve(
+            hasCommitWork: false, hasSyncWork: false, canAutoCommit: false, canSync: false
+        )
+
+        let items = MainMenuCommandPaletteResolver.resolveItems(
+            actionState: actionState,
+            syncActionTitle: "",
+            recentPaths: [],
+            currentRepoPath: "/tmp/repo",
+            currentBranch: "main",
+            canDoAtomicCommits: true,
+            isBehindRemote: false,
+            isAheadOfRemote: false,
+            canShowBranchManagement: true,
+            defaultBranchName: "main"
+        )
+
+        XCTAssertNotNil(items.first(where: { $0.kind == .atomicCommits }))
+        XCTAssertNotNil(items.first(where: { $0.kind == .branchManagement }))
+        XCTAssertNotNil(items.first(where: { $0.kind == .createBranch }))
+        XCTAssertNotNil(items.first(where: { $0.kind == .switchToBranchList }))
+    }
+
+    func testResolveItemsShowsMergeToDefaultOnlyWhenOffDefaultBranch() {
+        let actionState = StatusBarContextMenuActionState.resolve(
+            hasCommitWork: false, hasSyncWork: false, canAutoCommit: false, canSync: false
+        )
+
+        let itemsOnFeature = MainMenuCommandPaletteResolver.resolveItems(
+            actionState: actionState,
+            syncActionTitle: "",
+            recentPaths: [],
+            currentRepoPath: "/tmp/repo",
+            currentBranch: "feature",
+            canDoAtomicCommits: false,
+            isBehindRemote: false,
+            isAheadOfRemote: false,
+            canShowBranchManagement: true,
+            defaultBranchName: "main"
+        )
+
+        XCTAssertNotNil(itemsOnFeature.first(where: {
+            if case .mergeToDefault = $0.kind { return true }
+            return false
+        }))
+
+        let itemsOnMain = MainMenuCommandPaletteResolver.resolveItems(
+            actionState: actionState,
+            syncActionTitle: "",
+            recentPaths: [],
+            currentRepoPath: "/tmp/repo",
+            currentBranch: "main",
+            canDoAtomicCommits: false,
+            isBehindRemote: false,
+            isAheadOfRemote: false,
+            canShowBranchManagement: true,
+            defaultBranchName: "main"
+        )
+
+        XCTAssertNil(itemsOnMain.first {
+            if case .mergeToDefault = $0.kind { return true }
+            return false
+        })
+    }
+
+    func testResolveItemsIncludesPushAndPullBasedOnRemoteState() {
+        let actionState = StatusBarContextMenuActionState.resolve(
+            hasCommitWork: false, hasSyncWork: false, canAutoCommit: false, canSync: false
+        )
+
+        let itemsAhead = MainMenuCommandPaletteResolver.resolveItems(
+            actionState: actionState,
+            syncActionTitle: "",
+            recentPaths: [],
+            currentRepoPath: "/tmp/repo",
+            currentBranch: "main",
+            canDoAtomicCommits: false,
+            isBehindRemote: false,
+            isAheadOfRemote: true,
+            canShowBranchManagement: true,
+            defaultBranchName: "main"
+        )
+
+        XCTAssertNotNil(itemsAhead.first(where: { $0.kind == .push }))
+        XCTAssertNil(itemsAhead.first(where: { $0.kind == .pull }))
+
+        let itemsBehind = MainMenuCommandPaletteResolver.resolveItems(
+            actionState: actionState,
+            syncActionTitle: "",
+            recentPaths: [],
+            currentRepoPath: "/tmp/repo",
+            currentBranch: "main",
+            canDoAtomicCommits: false,
+            isBehindRemote: true,
+            isAheadOfRemote: false,
+            canShowBranchManagement: true,
+            defaultBranchName: "main"
+        )
+
+        XCTAssertNil(itemsBehind.first(where: { $0.kind == .push }))
+        XCTAssertNotNil(itemsBehind.first(where: { $0.kind == .pull }))
+    }
+
+    func testResolveItemsBranchesSection() {
+        let actionState = StatusBarContextMenuActionState.resolve(
+            hasCommitWork: false, hasSyncWork: false, canAutoCommit: false, canSync: false
+        )
+
+        let items = MainMenuCommandPaletteResolver.resolveItems(
+            actionState: actionState,
+            syncActionTitle: "",
+            recentPaths: [],
+            currentRepoPath: "/tmp/repo",
+            currentBranch: "main",
+            canDoAtomicCommits: false,
+            isBehindRemote: false,
+            isAheadOfRemote: false,
+            canShowBranchManagement: true,
+            defaultBranchName: "main"
+        )
+
+        let branchItems = items.filter { $0.section == .branches }
+        XCTAssertFalse(branchItems.isEmpty)
+        XCTAssertTrue(branchItems.allSatisfy { $0.section == .branches })
+    }
+
+    func testExecutionDecisionForNewKinds() {
+        XCTAssertEqual(
+            MainMenuCommandPaletteResolver.executionDecision(for: .atomicCommits),
+            .executeNow
+        )
+        XCTAssertEqual(
+            MainMenuCommandPaletteResolver.executionDecision(for: .branchManagement),
+            .executeNow
+        )
+        XCTAssertEqual(
+            MainMenuCommandPaletteResolver.executionDecision(for: .createBranch),
+            .executeNow
+        )
+        XCTAssertEqual(
+            MainMenuCommandPaletteResolver.executionDecision(for: .mergeToDefault(featureBranch: "test")),
+            .executeNow
+        )
+        XCTAssertEqual(
+            MainMenuCommandPaletteResolver.executionDecision(for: .push),
+            .executeNow
+        )
+        XCTAssertEqual(
+            MainMenuCommandPaletteResolver.executionDecision(for: .pull),
+            .executeNow
+        )
+        XCTAssertEqual(
+            MainMenuCommandPaletteResolver.executionDecision(for: .switchToBranchList),
             .executeNow
         )
     }
