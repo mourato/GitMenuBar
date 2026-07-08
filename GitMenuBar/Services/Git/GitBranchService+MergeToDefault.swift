@@ -134,9 +134,22 @@ extension GitBranchService {
         var didDeleteLocal = false
         var didDeleteRemote = false
 
-        if deleteLocal, featureBranch != currentBranch, featureBranch != defaultBranchName {
+        if deleteLocal {
+            guard featureBranch != currentBranch, featureBranch != defaultBranchName else {
+                return .failure(mergeCleanupError(
+                    code: 22,
+                    description: "Cannot delete the current or default branch."
+                ))
+            }
+
             let localResult = await runOnBackground {
                 self.executeGitCommand(in: repositoryPath, args: ["branch", "-D", featureBranch])
+            }
+            guard !localResult.failure else {
+                return .failure(mergeCleanupError(
+                    code: 23,
+                    description: "Failed to delete local branch '\(featureBranch)': \(localResult.output)"
+                ))
             }
             didDeleteLocal = !localResult.failure
         }
@@ -148,6 +161,13 @@ extension GitBranchService {
                     args: ["push", "origin", "--delete", featureBranch],
                     useAuth: true
                 )
+            }
+            guard !remoteResult.failure else {
+                refreshHandler {}
+                return .failure(mergeCleanupError(
+                    code: 24,
+                    description: "Failed to delete remote branch '\(featureBranch)': \(remoteResult.output)"
+                ))
             }
             didDeleteRemote = !remoteResult.failure
         }
@@ -162,6 +182,14 @@ extension GitBranchService {
             defaultBranchName: defaultBranchName,
             featureBranchName: featureBranch
         ))
+    }
+
+    private func mergeCleanupError(code: Int, description: String) -> NSError {
+        NSError(
+            domain: "GitManager",
+            code: code,
+            userInfo: [NSLocalizedDescriptionKey: description]
+        )
     }
 
     private func hasUncommittedChanges() -> Bool {

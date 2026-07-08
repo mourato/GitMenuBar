@@ -104,6 +104,25 @@ final class GitManagerMergeTests: XCTestCase {
         }
     }
 
+    func testMergeCleanupRemoteDeleteFailureReturnsFailure() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try makeFeatureBranch(named: "feature/no-remote", in: repoURL)
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+
+        _ = await gitManager.mergeFeatureIntoDefaultAsync(featureBranch: "feature/no-remote")
+        let result = await gitManager.cleanupMergedBranchAsync(
+            featureBranch: "feature/no-remote",
+            cleanupOption: .deleteRemoteOnly
+        )
+
+        switch result {
+        case .success:
+            XCTFail("Remote cleanup should fail when no remote is configured")
+        case let .failure(error):
+            XCTAssertTrue(error.localizedDescription.contains("Failed to delete remote branch"))
+        }
+    }
+
     /// Uses a bare clone as a local remote so the push/delete of the remote
     /// branch is reliable under concurrent test execution (no object transfer).
     func testMergeToDefaultBranchDeleteLocalAndRemote() async throws {
