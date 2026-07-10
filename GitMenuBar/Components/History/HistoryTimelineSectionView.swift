@@ -200,6 +200,24 @@ private struct HistoryTimelineRowView: View {
                 NSCursor.pop()
             }
         }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if let commitURL {
+                Button {
+                    NSWorkspace.shared.open(commitURL)
+                } label: {
+                    Label("Open on GitHub", systemImage: "arrow.up.forward.app")
+                }
+                .tint(.accentColor)
+            }
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            Button {
+                onEditCommitMessage()
+            } label: {
+                Label("Edit Message", systemImage: "pencil")
+            }
+            .tint(.orange)
+        }
         .pressable()
     }
 

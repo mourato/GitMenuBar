@@ -73,7 +73,7 @@ typography, spatial continuity, multimodal feedback, architecture, and gestures.
 | 011 | Tipografia Adaptativa com Dynamic Type | P1 | M | — | DONE |
 | 012 | Continuidade Espacial e Feedback Multimodal | P1 | S | — | DONE |
 | 013 | Extrair MainMenuView em Sub-Views Focais | P2 | L | — | DONE |
-| 014 | Gestos de Interação Direta (swipe e drag) | P3 | L | 013 (recomendado) | TODO |
+| 014 | Gestos de Interação Direta (swipe e drag) | P3 | L | 013 (recomendado) | DONE |
 | 015 | Optimize agent delivery gates for faster feedback | P1 | M | — | DONE |
 
 ### Recomendação de execução

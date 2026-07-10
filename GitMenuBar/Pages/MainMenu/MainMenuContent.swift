@@ -256,6 +256,9 @@ extension MainMenuView {
                 .scrollDisabled(isCommandPalettePresented)
                 .frame(maxHeight: 520)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .refreshable {
+                    await gitManager.refreshAsync(includeReflogHistory: false)
+                }
 
                 footerSection
             }

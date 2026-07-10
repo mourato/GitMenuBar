@@ -84,6 +84,19 @@ struct WorkingTreeFileRowView: View {
                 onReveal?()
             }
         }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(action: onAction) {
+                Label(actionHelp, systemImage: actionIcon)
+            }
+            .tint(.accentColor)
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            if let onDiscard {
+                Button(role: .destructive, action: onDiscard) {
+                    Label("Discard", systemImage: "arrow.uturn.backward")
+                }
+            }
+        }
         .pressable()
     }
 
