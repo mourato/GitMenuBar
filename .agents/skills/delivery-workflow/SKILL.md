@@ -15,8 +15,9 @@ Use this skill when the task involves reproducing a build/test/lint failure, rou
 - `make build-release`: Release build through `scripts/run-build.sh --configuration Release`
 - `make test`: XCTest flow through `scripts/run-tests-xcode.sh`
 - `make lint`: SwiftFormat + SwiftLint checks through `scripts/lint.sh`
-- `make lint-changed`: SwiftFormat + SwiftLint on files changed since HEAD through `scripts/lint.sh`
+- `make lint-changed`: SwiftFormat + SwiftLint on changed tracked and untracked Swift files through `scripts/lint.sh`
 - `make lint-fix`: auto-fix pass through `scripts/lint-fix.sh`
+- `make agent-check`: `lint-changed` + Debug build
 - `make dmg`: Release build plus DMG packaging through `scripts/create-dmg.sh`
 
 ## Log Locations
@@ -38,6 +39,15 @@ Lint runs first — it is cheap and fails fast. The `make test` command already 
 - Menu bar or window behavior changed: manually verify status item, activation, dismissal, and repo/branch actions.
 - Credentials or AI provider flows changed: include secure-storage and migration checks.
 - Packaging changed: run `make build-release`, `make dmg`, and validate the DMG manually.
+
+## Recommended Sequence
+
+1. During edits: `make agent-check`
+2. When behavior changes: add/run targeted tests where available
+3. Before merge/push: `make lint && make test`
+4. For packaging: `make build-release && make dmg`
+
+Mandatory tests in pre-commit are intentionally avoided because they make small agent iterations slower and duplicate the merge gate.
 
 ## Triage Flow
 

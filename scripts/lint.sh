@@ -16,8 +16,10 @@ if ! command -v swiftlint >/dev/null 2>&1; then
 fi
 
 if [[ $# -gt 0 ]]; then
+    echo "Linting targeted Swift paths..."
     TARGETS=("$@")
 else
+    echo "Linting full Swift targets..."
     TARGETS=(GitMenuBar GitMenuBarTests)
 fi
 
