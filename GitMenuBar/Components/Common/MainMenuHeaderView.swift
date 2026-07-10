@@ -98,6 +98,9 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
                 }
             }
         }
+        .padding(.horizontal, MacChromeMetrics.panelPadding)
+        .padding(.vertical, 6)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: MacChromeMetrics.cornerRadius, style: .continuous))
     }
 }
 

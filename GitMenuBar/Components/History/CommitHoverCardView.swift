@@ -21,12 +21,13 @@ struct CommitHoverCardView: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(nsColor: .controlBackgroundColor))
+                .fill(.thickMaterial)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
         )
+        .shadow(color: Color.black.opacity(0.12), radius: 20, x: 0, y: 10)
     }
 
     private var header: some View {

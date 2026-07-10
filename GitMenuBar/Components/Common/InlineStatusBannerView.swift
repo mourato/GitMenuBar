@@ -45,7 +45,12 @@ struct InlineStatusBannerView: View {
         }
         .padding(.horizontal, MacChromeMetrics.panelPadding)
         .padding(.vertical, MacChromeMetrics.compactSpacing)
-        .background(backgroundColor, in: RoundedRectangle(cornerRadius: MacChromeMetrics.cornerRadius))
+        .background(
+            banner.style == .info
+                ? AnyShapeStyle(.thinMaterial)
+                : AnyShapeStyle(backgroundColor),
+            in: RoundedRectangle(cornerRadius: MacChromeMetrics.cornerRadius)
+        )
         .overlay(
             RoundedRectangle(cornerRadius: MacChromeMetrics.cornerRadius)
                 .strokeBorder(borderColor, lineWidth: colorSchemeContrast == .increased ? 1.5 : 1)

@@ -208,7 +208,8 @@ extension MainMenuView {
         view.overlay {
             if isCommandPalettePresented && presentationModel.route == .main {
                 ZStack {
-                    Color(nsColor: .windowBackgroundColor).opacity(0.28)
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
                         .ignoresSafeArea()
                         .onTapGesture {
                             closeCommandPalette()
