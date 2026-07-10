@@ -9,10 +9,10 @@ struct NewBranchButton: View {
         Button(action: onTap) {
             HStack {
                 Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 10))
+                    .font(.caption2)
                     .foregroundColor(.accentColor)
                 Text("New Branch")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.caption.weight(.medium))
                 Spacer()
             }
             .padding(.horizontal, 12)

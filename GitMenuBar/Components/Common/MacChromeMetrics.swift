@@ -96,6 +96,20 @@ enum MacChromeTypography {
     static var monospacedCaption: Font {
         .system(.caption, design: .monospaced)
     }
+
+    static func tracking(for font: Font) -> CGFloat {
+        switch font {
+        case .largeTitle: return -1.0
+        case .title, .title2: return -0.5
+        case .headline: return 0.0
+        case .body: return 0.1
+        case .callout: return 0.1
+        case .subheadline: return 0.15
+        case .footnote: return 0.2
+        case .caption, .caption2: return 0.3
+        default: return 0.0
+        }
+    }
 }
 
 enum MacChromePalette {

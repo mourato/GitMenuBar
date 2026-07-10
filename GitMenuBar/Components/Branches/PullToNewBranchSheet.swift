@@ -9,16 +9,16 @@ struct PullToNewBranchSheet: View {
     var body: some View {
         VStack(spacing: 16) {
             Text("Pull to New Branch")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.headline.weight(.semibold))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Branch name:")
-                    .font(.system(size: 12))
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
 
                 TextField("branch-name", text: $branchName)
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.subheadline.monospaced())
                     .onSubmit(onPull)
 
                 if let errorMessage {

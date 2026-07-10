@@ -278,10 +278,10 @@ extension MainMenuView {
     private func syncOptionsSheet() -> some View {
         VStack(spacing: 16) {
             Text("Sync with Remote")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.headline.weight(.semibold))
 
             Text(syncOptionsSubtitle)
-                .font(.system(size: 12))
+                .font(.subheadline)
                 .foregroundColor(.secondary)
 
             VStack(alignment: .leading, spacing: 12) {

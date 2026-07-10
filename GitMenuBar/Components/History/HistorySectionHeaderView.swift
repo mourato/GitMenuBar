@@ -16,11 +16,11 @@ struct HistorySectionHeaderView: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(MacChromeTypography.captionStrong)
                         .foregroundColor(.secondary)
 
                     Text("History")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(MacChromeTypography.body)
                 }
             }
             .buttonStyle(.plain)

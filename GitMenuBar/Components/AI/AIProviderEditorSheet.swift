@@ -85,7 +85,7 @@ struct AIProviderEditorSheet: View {
 
             if let validationError {
                 Text(validationError)
-                    .font(.system(size: 11))
+                    .font(.caption)
                     .foregroundColor(.red)
             }
 

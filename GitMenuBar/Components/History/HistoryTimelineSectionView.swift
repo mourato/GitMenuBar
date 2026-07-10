@@ -35,7 +35,7 @@ struct HistoryTimelineSectionView: View {
             }
 
             Text(isLoading ? "Loading history…" : "No commits yet")
-                .font(.system(size: 11))
+                .font(MacChromeTypography.caption)
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
@@ -46,7 +46,7 @@ struct HistoryTimelineSectionView: View {
             ForEach(sections) { section in
                 VStack(alignment: .leading, spacing: 6) {
                     Text(section.title)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(MacChromeTypography.sectionLabel)
                         .foregroundColor(.secondary)
 
                     VStack(spacing: 0) {
@@ -104,14 +104,14 @@ private struct HistoryTimelineRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(commit.subject)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(MacChromeTypography.body)
                         .foregroundColor(titleColor)
                         .lineLimit(1)
                         .truncationMode(.tail)
 
                     if isFutureCommit {
                         Text("Future")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(MacChromeTypography.captionStrong)
                             .foregroundColor(.blue)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
@@ -122,7 +122,7 @@ private struct HistoryTimelineRowView: View {
                     Spacer(minLength: 0)
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(MacChromeTypography.captionStrong)
                         .foregroundColor(.secondary)
                 }
             }

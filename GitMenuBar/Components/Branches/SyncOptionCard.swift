@@ -19,9 +19,9 @@ struct SyncOptionCard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.subheadline.weight(.medium))
                     Text(subtitle)
-                        .font(.system(size: 10))
+                        .font(.caption2)
                         .foregroundColor(.secondary)
                 }
                 Spacer()

@@ -46,18 +46,18 @@ struct CreateRepoContentView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Image(systemName: "folder")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.subheadline.weight(.medium))
                         .foregroundColor(.secondary)
                     Text("Folder")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.subheadline.weight(.medium))
                 }
 
                 HStack {
                     Image(systemName: "folder.fill")
-                        .font(.system(size: 10))
+                        .font(.caption2)
                         .foregroundColor(.secondary)
                     Text(URL(fileURLWithPath: folderPath).lastPathComponent)
-                        .font(.system(size: 11))
+                        .font(.caption)
                         .foregroundColor(.primary)
                     Spacer()
                 }
@@ -71,15 +71,15 @@ struct CreateRepoContentView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Image(systemName: "text.cursor")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.subheadline.weight(.medium))
                         .foregroundColor(.secondary)
                     Text("Repository Name")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.subheadline.weight(.medium))
                 }
 
                 TextField("my-awesome-project", text: $repoName)
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 12))
+                    .font(.subheadline)
             }
 
             // Visibility section
@@ -89,10 +89,10 @@ struct CreateRepoContentView: View {
             if showError {
                 HStack {
                     Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 11))
+                        .font(.caption)
                         .foregroundColor(.red)
                     Text(errorMessage)
-                        .font(.system(size: 11))
+                        .font(.caption)
                         .foregroundColor(.red)
                     Spacer()
                 }

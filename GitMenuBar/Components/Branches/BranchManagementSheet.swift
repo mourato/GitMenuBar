@@ -183,7 +183,7 @@ struct BranchManagementSheet: View {
     private var header: some View {
         HStack {
             Text("Branch Management")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.headline.weight(.semibold))
             Spacer()
             Button(action: { dismiss() }) {
                 Image(systemName: "xmark.circle.fill")

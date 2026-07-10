@@ -22,7 +22,7 @@ struct WorkingTreeLineDiffView: View {
                 .fixedSize(horizontal: true, vertical: false)
                 .foregroundColor(removedCount > 0 ? .red : .secondary)
         }
-        .font(.system(size: 12, weight: .medium))
+        .font(MacChromeTypography.captionStrong)
         .monospacedDigit()
         .fixedSize(horizontal: true, vertical: false)
     }
@@ -47,7 +47,7 @@ struct WorkingTreeFileRowView: View {
             fileLabel
 
             Text(file.status.symbol)
-                .font(.system(size: 13, weight: .semibold))
+                .font(MacChromeTypography.body.weight(.semibold))
                 .foregroundColor(Color(nsColor: file.status.foregroundColor))
                 .frame(width: WorkingTreeLayoutMetrics.statusColumnWidth, alignment: .trailing)
         }
@@ -90,7 +90,7 @@ struct WorkingTreeFileRowView: View {
     private var fileLabel: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(file.fileName)
-                .font(.system(size: 13, weight: .regular))
+                .font(MacChromeTypography.body)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .layoutPriority(1)
@@ -98,7 +98,7 @@ struct WorkingTreeFileRowView: View {
 
             if !file.directoryPath.isEmpty {
                 Text(file.directoryPath)
-                    .font(.system(size: 11, weight: .light))
+                    .font(MacChromeTypography.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -118,7 +118,7 @@ struct WorkingTreeFileRowView: View {
                     if let onOpen = onOpen {
                         Button(action: onOpen) {
                             Image(systemName: "doc")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(MacChromeTypography.captionStrong)
                                 .foregroundColor(Color.primary)
                                 .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
                                 .contentShape(Rectangle())
@@ -131,7 +131,7 @@ struct WorkingTreeFileRowView: View {
                     if let onDiscard = onDiscard {
                         Button(action: onDiscard) {
                             Image(systemName: "arrow.uturn.backward")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(MacChromeTypography.captionStrong)
                                 .foregroundColor(Color.primary)
                                 .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
                                 .contentShape(Rectangle())
@@ -143,7 +143,7 @@ struct WorkingTreeFileRowView: View {
 
                     Button(action: onAction) {
                         Image(systemName: actionIcon)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(MacChromeTypography.captionStrong)
                             .foregroundColor(Color.primary)
                             .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
                             .contentShape(Rectangle()) // makes the whole frame clickable

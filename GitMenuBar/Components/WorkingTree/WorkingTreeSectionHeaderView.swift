@@ -22,11 +22,11 @@ struct WorkingTreeSectionHeaderView: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(MacChromeTypography.captionStrong)
                         .foregroundColor(.secondary)
 
                     Text(title)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(MacChromeTypography.body)
                 }
             }
             .buttonStyle(.plain)
@@ -46,7 +46,7 @@ struct WorkingTreeSectionHeaderView: View {
                     if let onDiscardAll {
                         Button(action: onDiscardAll) {
                             Image(systemName: "arrow.uturn.backward")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(MacChromeTypography.captionStrong)
                                 .foregroundColor(.primary)
                                 .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
                                 .contentShape(Rectangle())
@@ -58,7 +58,7 @@ struct WorkingTreeSectionHeaderView: View {
 
                     Button(action: onAction) {
                         Image(systemName: actionIcon)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(MacChromeTypography.captionStrong)
                             .foregroundColor(.primary)
                             .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
                             .contentShape(Rectangle())

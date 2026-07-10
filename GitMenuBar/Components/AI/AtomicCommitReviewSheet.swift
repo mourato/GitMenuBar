@@ -31,7 +31,7 @@ struct AtomicCommitReviewSheet: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Review Atomic Commits")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.headline.weight(.semibold))
             Text("Grouped changes into logical commits. Edit messages, move files between groups, then create the commits.")
                 .font(MacChromeTypography.caption)
                 .foregroundStyle(.secondary)
@@ -56,7 +56,7 @@ struct AtomicCommitReviewSheet: View {
         VStack(spacing: 12) {
             Spacer()
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 28))
+                .font(.largeTitle)
                 .foregroundStyle(.orange)
             Text(message)
                 .font(MacChromeTypography.body)
@@ -136,7 +136,7 @@ struct AtomicCommitReviewSheet: View {
 
             TextField("Commit message", text: $groups[index].message)
                 .textFieldStyle(.roundedBorder)
-                .font(.system(size: 12, design: .monospaced))
+                .font(.subheadline.monospaced())
 
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(groups[index].files, id: \.self) { file in

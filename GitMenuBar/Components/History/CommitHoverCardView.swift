@@ -33,7 +33,7 @@ struct CommitHoverCardView: View {
     private var header: some View {
         HStack(alignment: .top, spacing: 10) {
             Text(authorInitials)
-                .font(.system(size: 12, weight: .bold))
+                .font(.body.weight(.bold))
                 .foregroundColor(.white)
                 .frame(width: 24, height: 24)
                 .background(Color.accentColor)
@@ -41,10 +41,10 @@ struct CommitHoverCardView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(commit.authorName)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
 
                 Text(timestampLine)
-                    .font(.system(size: 10))
+                    .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -56,7 +56,7 @@ struct CommitHoverCardView: View {
 
     private var subject: some View {
         Text(commit.subject)
-            .font(.system(size: 14, weight: .semibold))
+            .font(.headline.weight(.semibold))
             .foregroundColor(.primary)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -64,7 +64,7 @@ struct CommitHoverCardView: View {
     private var bodyText: some View {
         ScrollView {
             Text(commit.body)
-                .font(.system(size: 12))
+                .font(.subheadline)
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
@@ -75,12 +75,12 @@ struct CommitHoverCardView: View {
     private var footer: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(statsSummary)
-                .font(.system(size: 11))
+                .font(.caption)
                 .foregroundColor(.secondary)
 
             HStack(spacing: 8) {
                 Text(commit.shortHash)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundColor(.accentColor)
 
                 Spacer()
@@ -90,7 +90,7 @@ struct CommitHoverCardView: View {
                         NSWorkspace.shared.open(commitURL)
                     }
                     .buttonStyle(.link)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.caption.weight(.medium))
                 }
             }
         }

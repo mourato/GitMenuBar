@@ -39,13 +39,13 @@ struct GitHubConnectionSection: View {
                 VStack(spacing: 8) {
                     VStack(spacing: 4) {
                         Text(githubAuthManager.userCode)
-                            .font(.system(size: 20, weight: .semibold, design: .monospaced))
+                            .font(.title.weight(.semibold).monospacedDigit())
                             .foregroundColor(.primary)
                             .kerning(2)
 
                         HStack(spacing: 4) {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 10))
+                                .font(.caption2)
                                 .foregroundColor(.accentColor)
                             Text("Copied to clipboard")
                                 .font(.caption)
@@ -84,7 +84,7 @@ struct GitHubConnectionSection: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text("Not connected")
-                    .font(.system(size: 11))
+                    .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
                 Button("Connect") {

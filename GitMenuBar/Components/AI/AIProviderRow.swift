@@ -10,10 +10,10 @@ struct AIProviderRowView: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(provider.name)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.caption.weight(.semibold))
 
                 Text("\(provider.type.displayName) · \(provider.selectedModel)")
-                    .font(.system(size: 10))
+                    .font(.caption2)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -23,7 +23,7 @@ struct AIProviderRowView: View {
 
             if isDefault {
                 Text("Default")
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.caption2.weight(.medium))
                     .foregroundColor(.blue)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -33,12 +33,12 @@ struct AIProviderRowView: View {
 
             Button("Edit", action: onEdit)
                 .buttonStyle(.borderless)
-                .font(.system(size: 11))
+                .font(.caption)
                 .focusable(false)
 
             Button("Delete", action: onDelete)
                 .buttonStyle(.borderless)
-                .font(.system(size: 11))
+                .font(.caption)
                 .foregroundColor(.red)
                 .focusable(false)
         }

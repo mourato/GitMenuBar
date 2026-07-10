@@ -18,7 +18,7 @@ struct RenameBranchSheet: View {
 
                 TextField("new-branch-name", text: $newBranchName)
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.subheadline.monospaced())
                     .onSubmit(onRename)
 
                 if let errorMessage {

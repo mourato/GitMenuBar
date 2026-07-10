@@ -10,16 +10,16 @@ struct CreateBranchSheet: View {
     var body: some View {
         VStack(spacing: 16) {
             Text("Create New Branch")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.headline.weight(.semibold))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Branch Name")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.caption.weight(.medium))
                     .foregroundColor(.secondary)
 
                 TextField("feature/new-feature", text: $branchName)
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.subheadline.monospaced())
                     .onSubmit {
                         if !branchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             onCreate()
@@ -28,12 +28,12 @@ struct CreateBranchSheet: View {
 
                 if let errorMessage {
                     Text(errorMessage)
-                        .font(.system(size: 10))
+                        .font(.caption2)
                         .foregroundColor(.red)
                 }
 
                 Text("Will branch from: \(currentBranch)")
-                    .font(.system(size: 10))
+                    .font(.caption2)
                     .foregroundColor(.secondary)
             }
 

@@ -66,9 +66,9 @@ struct CommitDetailPageView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.caption2.weight(.semibold))
                     Text("Back")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.subheadline.weight(.medium))
                 }
             }
             .buttonStyle(.plain)
@@ -77,10 +77,10 @@ struct CommitDetailPageView: View {
 
             HStack(spacing: 6) {
                 Image(systemName: "clock")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.caption2.weight(.semibold))
                     .foregroundColor(.blue)
                 Text("Commit Details")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
             }
         }
     }
@@ -93,21 +93,21 @@ struct CommitDetailPageView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 2) {
                         Text(commit.authorName)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.subheadline.weight(.semibold))
                         Text(commit.authorEmail)
-                            .font(.system(size: 11))
+                            .font(.caption)
                             .foregroundColor(.secondary)
                     }
 
                     Text(timestampLine(for: commit))
-                        .font(.system(size: 11))
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 Spacer(minLength: 0)
 
                 if actionSet?.isFutureCommit == true {
                     Text("Future")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.caption2.weight(.semibold))
                         .foregroundColor(.blue)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
@@ -121,13 +121,13 @@ struct CommitDetailPageView: View {
     private func titleSection(commit: Commit) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(commit.subject)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.title3.weight(.semibold))
                 .foregroundColor(.primary)
                 .fixedSize(horizontal: false, vertical: true)
 
             if !commit.body.isEmpty {
                 Text(commit.body)
-                    .font(.system(size: 12))
+                    .font(.subheadline)
                     .foregroundColor(.primary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -137,7 +137,7 @@ struct CommitDetailPageView: View {
     private func statsSection(commit: Commit) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(statsSummary(for: commit))
-                .font(.system(size: 11))
+                .font(.caption)
                 .foregroundColor(.secondary)
 
             HStack(spacing: 4) {
@@ -192,11 +192,11 @@ struct CommitDetailPageView: View {
                 .buttonStyle(.borderless)
                 .disabled(!(actionSet?.canRestore ?? false))
             }
-            .font(.system(size: 11, weight: .medium))
+            .font(.caption.weight(.medium))
 
             if commit.isMergeCommit {
                 Text("Editing merge commits is not supported yet.")
-                    .font(.system(size: 10))
+                    .font(.caption2)
                     .foregroundColor(.secondary)
             }
         }
@@ -205,11 +205,11 @@ struct CommitDetailPageView: View {
     private func changedFilesSection(commit: Commit) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Changed Files")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.subheadline.weight(.semibold))
 
             if commit.changedFiles.isEmpty {
                 Text("No file list available for this commit.")
-                    .font(.system(size: 11))
+                    .font(.caption)
                     .foregroundColor(.secondary)
             } else {
                 VStack(spacing: 8) {
@@ -224,7 +224,7 @@ struct CommitDetailPageView: View {
     private var missingCommitSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Commit not available in current history view.")
-                .font(.system(size: 12, weight: .medium))
+                .font(.subheadline.weight(.medium))
                 .foregroundColor(.secondary)
 
             Button("Back to History") {
@@ -270,7 +270,7 @@ struct CommitDetailPageView: View {
 
     private func initialsBadge(for commit: Commit) -> some View {
         Text(authorInitials(for: commit))
-            .font(.system(size: 12, weight: .bold))
+            .font(.subheadline.weight(.bold))
             .foregroundColor(.white)
             .frame(width: 24, height: 24)
             .background(Color.accentColor)
@@ -337,13 +337,13 @@ private struct CommitChangedFileRowView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "doc.text")
-                .font(.system(size: 11, weight: .medium))
+                .font(.caption.weight(.medium))
                 .foregroundColor(.secondary)
                 .frame(width: 14, alignment: .center)
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(file.fileName)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.caption.weight(.medium))
                     .foregroundColor(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -351,7 +351,7 @@ private struct CommitChangedFileRowView: View {
 
                 if !file.directoryPath.isEmpty {
                     Text(file.directoryPath)
-                        .font(.system(size: 10, weight: .light))
+                        .font(.caption2.weight(.light))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -372,7 +372,7 @@ private struct CommitChangedFileRowView: View {
                         .foregroundColor(.red)
                 }
             }
-            .font(.system(size: 10, weight: .medium))
+            .font(.caption2.weight(.medium))
         }
     }
 }

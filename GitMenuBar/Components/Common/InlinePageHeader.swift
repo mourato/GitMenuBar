@@ -10,10 +10,10 @@ struct InlinePageHeader: View {
         HStack {
             HStack(spacing: 6) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.headline.weight(.semibold))
                     .foregroundColor(.blue)
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.headline.weight(.semibold))
             }
 
             Spacer()

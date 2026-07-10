@@ -11,16 +11,16 @@ struct AISettingsSectionView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.subheadline.weight(.medium))
                     .foregroundColor(.secondary)
                 Text("AI Commit Generation")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .font(.subheadline.weight(.medium))
             }
             .padding(.top, 4)
 
             if aiProviderStore.providers.isEmpty {
                 Text("No AI providers configured yet.")
-                    .font(.system(size: 11))
+                    .font(.caption)
                     .foregroundColor(.secondary)
             } else {
                 VStack(spacing: 6) {
@@ -72,7 +72,7 @@ struct AISettingsSectionView: View {
     private var defaultProviderPicker: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Default Provider")
-                .font(.system(size: 11, weight: .medium))
+                .font(.caption.weight(.medium))
 
             Picker(
                 "Default Provider",
@@ -93,7 +93,7 @@ struct AISettingsSectionView: View {
     private var defaultModelPicker: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Default Model")
-                .font(.system(size: 11, weight: .medium))
+                .font(.caption.weight(.medium))
 
             if let provider = aiProviderStore.defaultProvider {
                 let models = provider.availableModels.isEmpty
@@ -126,7 +126,7 @@ struct AISettingsSectionView: View {
                         )
                     )
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 11))
+                    .font(.caption)
                 }
             }
         }
