@@ -47,9 +47,9 @@ Use `.agents/SKILLS_INDEX.md` as the local skill registry.
 
 Primary skills in this repo:
 
-- `build-macos-apps`
-- `quality-assurance`
-- `macos-development`
+- `delivery-workflow`
+- `macos-app-engineering`
 - `menubar`
 - `swift-conventions`
 - `code-quality`
+- `thermo-nuclear-code-quality-review`

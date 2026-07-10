@@ -6,12 +6,10 @@ The catalog is organized by responsibility so agents can trigger the narrowest u
 
 | Skill                       | Location                                    | Use When                                                                                                                |
 | --------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `build-macos-apps`          | `.agents/skills/build-macos-apps/`          | Reproducing build, test, lint, or packaging failures and tracing them through local scripts/logs                        |
-| `quality-assurance`         | `.agents/skills/quality-assurance/`         | Defining verification scope, merge gates, and manual checks for a change                                                |
-| `release-management`        | `.agents/skills/release-management/`        | Preparing a release, validating DMGs, and checking release readiness                                                    |
-| `macos-development`         | `.agents/skills/macos-development/`         | Working on SwiftUI/AppKit lifecycle, platform services, window ownership, and bridge boundaries                         |
+| `delivery-workflow`         | `.agents/skills/delivery-workflow/`         | Command routing, verification scope, merge gate, logs, git evidence, and manual sign-off for a change                   |
+| `macos-app-engineering`     | `.agents/skills/macos-app-engineering/`     | Ordinary SwiftUI/AppKit implementation and native macOS design acceptance for GitMenuBar UI                             |
 | `menubar`                   | `.agents/skills/menubar/`                   | Changing `NSStatusItem`, popovers, app activation, and menu bar specific behavior                                       |
-| `macos-design-guidelines`   | `.agents/skills/macos-design-guidelines/`   | Applying macOS HIG rules for menus, windows, keyboard, popovers, and accessibility                                      |
+| `release-management`        | `.agents/skills/release-management/`        | Preparing a release, validating DMGs, and checking release readiness                                                    |
 | `swift-conventions`         | `.agents/skills/swift-conventions/`         | Enforcing local Swift style, previews, naming, and safe structure in diffs                                              |
 | `swift-concurrency`         | `.agents/skills/swift-concurrency/`         | Diagnosing data races, actor isolation, `Sendable` issues, async/await refactors, and Swift 6 migration                 |
 | `code-quality`              | `.agents/skills/code-quality/`              | Refactors, deduplication, removal of dead code, and keeping architecture coherent                                       |
@@ -26,12 +24,10 @@ The catalog is organized by responsibility so agents can trigger the narrowest u
 
 ## Catalog Notes
 
-- `build-macos-apps` is for reproduction and script routing; it is not the merge gate skill.
-- `quality-assurance` owns verification depth and manual sign-off scope.
-- `macos-development`, `menubar`, and `macos-design-guidelines` are intentionally separate:
-  - `macos-development`: runtime and implementation mechanics
-  - `menubar`: status item and popover invariants
-  - `macos-design-guidelines`: HIG and desktop UX rules
+- `delivery-workflow` owns command routing, verification depth, merge gate, logs, git evidence, and manual sign-off.
+- `macos-app-engineering` owns ordinary SwiftUI/AppKit implementation and native design acceptance.
+- `menubar` remains separate because GitMenuBar's status item and popover behavior are product-critical.
+- `release-management` remains separate for release and DMG readiness.
 - `swift-conventions` covers code shape; `code-quality` covers architectural cleanliness and removal/simplification work.
 - `test-strategy` is repo-specific verification guidance; `swift-testing-expert` is framework-level guidance for modern Swift Testing APIs and XCTest migration.
 - `performance-profiling` covers app-level bottlenecks across GitMenuBar; `swiftui-performance-audit` is the narrow skill for SwiftUI invalidation, rendering, and profiling evidence.

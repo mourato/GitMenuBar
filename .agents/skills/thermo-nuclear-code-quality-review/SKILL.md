@@ -1,7 +1,6 @@
 ---
 name: thermo-nuclear-code-quality-review
 description: Run an extremely strict maintainability review for abstraction quality, giant files, and spaghetti-condition growth. Use for a thermo-nuclear code quality review, thermonuclear review, deep code quality audit, or especially harsh maintainability review.
-disable-model-invocation: true
 ---
 
 # Thermo-Nuclear Code Quality Review
@@ -13,15 +12,12 @@ Use this skill as the strictest maintainability review mode for structural quali
 ## Scope Boundary
 
 - This skill owns unusually strict code-quality review prompts and approval bars.
-- This skill is the mandatory structural maintainability pass for every `../code-review/SKILL.md` review.
+- This skill is the mandatory structural maintainability pass for every code review.
 - It does not replace `../code-quality/SKILL.md` for everyday readability/refactoring guidance.
-- It does not own semáforo review formatting; use `../code-review/SKILL.md` for the final findings format and severity framing.
 
 ## When to Use
 
-Use this skill when the user asks for a thermo-nuclear code quality review, thermonuclear review, deep code quality audit, or especially harsh maintainability review.
-
-Also use this skill whenever `../code-review/SKILL.md` is used. A normal "code review" in Prisma must include this structural pass.
+Use this skill when the user asks for a thermo-nuclear code quality review, thermonuclear review, deep code quality audit, code review, or especially harsh maintainability review.
 
 Use this skill for an unusually strict review focused on implementation quality, maintainability, abstraction quality, and codebase health.
 
@@ -179,6 +175,18 @@ Prioritize findings in this order:
 5. File-size and decomposition concerns
 6. Modularity and abstraction issues
 7. Legibility and maintainability concerns
+
+### Output Format
+
+- Findings first, ordered by severity, with file/line references.
+- Then open questions.
+- Then a short summary only if useful.
+
+### Severity Labels
+
+- **Critical**: breaks behavior, safety, data integrity, or merge readiness.
+- **Medium**: should fix before merge.
+- **Minor**: optional cleanup or style.
 
 Do not flood the review with low-value nits if there are larger structural issues.
 Prefer a smaller number of high-conviction comments over a long list of cosmetic notes.
