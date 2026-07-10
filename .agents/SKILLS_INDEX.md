@@ -12,6 +12,7 @@ The catalog is organized by responsibility so agents can trigger the narrowest u
 | `release-management`        | `.agents/skills/release-management/`        | Preparing a release, validating DMGs, and checking release readiness                                                    |
 | `swift-conventions`         | `.agents/skills/swift-conventions/`         | Enforcing local Swift style, previews, naming, and safe structure in diffs                                              |
 | `swift-concurrency`         | `.agents/skills/swift-concurrency/`         | Diagnosing data races, actor isolation, `Sendable` issues, async/await refactors, and Swift 6 migration                 |
+| `benchmarking`              | `.agents/skills/benchmarking/`              | Latency budgets, metric collection, regression detection, and performance gate automation for Git operations and UI     |
 | `code-quality`              | `.agents/skills/code-quality/`              | Refactors, deduplication, removal of dead code, and keeping architecture coherent                                       |
 | `performance-profiling`     | `.agents/skills/performance-profiling/`     | Investigating startup cost, menu latency, rendering churn, memory growth, and expensive Git operations                  |
 | `security-credentials`      | `.agents/skills/security-credentials/`      | Handling GitHub tokens, AI API keys, keychain access, migrations, and sensitive logging concerns                        |
