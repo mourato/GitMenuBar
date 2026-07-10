@@ -45,10 +45,50 @@ extension MainMenuView {
 
             if showsWorkingTreeSections {
                 if hasStagedFiles {
-                    stagedSection
+                    WorkingTreeSectionView(
+                        title: "Staged",
+                        summary: stagedSummary,
+                        files: stagedRowAdapters,
+                        isCollapsed: $isStagedSectionCollapsed,
+                        selectedItemID: selectedMainItemID,
+                        onSelect: { selectMainItem($0) },
+                        onStageToggle: { unstageFile(path: $0) },
+                        onOpen: { gitManager.openFile(path: $0) },
+                        onDiscard: { path, status in
+                            discardFilePath = path
+                            discardFileStatus = status
+                            showDiscardConfirmation = true
+                        },
+                        onReveal: { gitManager.revealInFinder(path: $0) },
+                        onAction: unstageAllFiles,
+                        onDiscardAll: nil,
+                        actionIcon: "minus.circle",
+                        actionHelp: "Unstage all files"
+                    )
                 }
                 if hasUnstagedFiles {
-                    unstagedSection
+                    WorkingTreeSectionView(
+                        title: "Unstaged",
+                        summary: unstagedSummary,
+                        files: unstagedRowAdapters,
+                        isCollapsed: $isUnstagedSectionCollapsed,
+                        selectedItemID: selectedMainItemID,
+                        onSelect: { selectMainItem($0) },
+                        onStageToggle: { stageFile(path: $0) },
+                        onOpen: { gitManager.openFile(path: $0) },
+                        onDiscard: { path, status in
+                            discardFilePath = path
+                            discardFileStatus = status
+                            showDiscardConfirmation = true
+                        },
+                        onReveal: { gitManager.revealInFinder(path: $0) },
+                        onAction: stageAllFiles,
+                        onDiscardAll: {
+                            showDiscardAllConfirmation = true
+                        },
+                        actionIcon: "plus.circle",
+                        actionHelp: "Stage all files"
+                    )
                 }
                 Divider()
                     .padding(.top, 2)
@@ -58,111 +98,88 @@ extension MainMenuView {
     }
 
     private var footerSection: some View {
-        HStack {
-            BottomBranchSelectorView(
-                currentBranch: gitManager.currentBranch,
-                commitCount: gitManager.commitCount,
-                isRemoteAhead: gitManager.isRemoteAhead,
-                behindCount: gitManager.behindCount,
-                isDetachedHead: gitManager.isDetachedHead,
-                onTap: {
-                    showRepositoryOptionsPopover = false
-                    showBranchSelector.toggle()
-                }
-            )
-            .popover(isPresented: $showBranchSelector) {
-                BranchSelectorPopoverView(
-                    isDetachedHead: gitManager.isDetachedHead,
-                    isRemoteAhead: gitManager.isRemoteAhead,
-                    behindCount: gitManager.behindCount,
-                    availableBranches: gitManager.availableBranches,
-                    currentBranch: gitManager.currentBranch,
-                    onCreateBranchFromDetached: {
-                        showBranchSelector = false
-                        showCreateBranch = true
-                    },
-                    onQuickPull: {
-                        showBranchSelector = false
-                        useRebase = false
-                        syncWithRemote()
-                    },
-                    onSelectBranch: { branch in
-                        showBranchSelector = false
-                        guard branch != gitManager.currentBranch else { return }
+        BranchManagementControlsView(
+            currentBranch: gitManager.currentBranch,
+            availableBranches: gitManager.availableBranches,
+            commitCount: gitManager.commitCount,
+            isRemoteAhead: gitManager.isRemoteAhead,
+            behindCount: gitManager.behindCount,
+            isDetachedHead: gitManager.isDetachedHead,
+            canShowAtomicCommits: canShowAtomicCommits,
+            onBranchTap: {
+                showRepositoryOptionsPopover = false
+                showBranchSelector.toggle()
+            },
+            onSelectBranch: { branch in
+                showBranchSelector = false
+                guard branch != gitManager.currentBranch else { return }
 
-                        if hasWorkingTreeChanges {
-                            pendingSwitchBranch = branch
-                            showDirtySwitchConfirmation = true
-                        } else {
-                            gitManager.switchBranch(branchName: branch) { result in
-                                if case let .failure(error) = result {
-                                    branchSwitchError = error.localizedDescription
-                                }
-                            }
+                if hasWorkingTreeChanges {
+                    pendingSwitchBranch = branch
+                    showDirtySwitchConfirmation = true
+                } else {
+                    gitManager.switchBranch(branchName: branch) { result in
+                        if case let .failure(error) = result {
+                            branchSwitchError = error.localizedDescription
                         }
-                    },
-                    onMergeBranch: { branch in
-                        showBranchSelector = false
-                        if gitManager.currentBranch == "main" || gitManager.currentBranch == "master" {
-                            mergeBranchName = branch
-                            mergeTargetBranch = gitManager.currentBranch
-                            showMergeConfirmation = true
-                        } else {
-                            gitManager.mergeBranch(fromBranch: branch) { result in
-                                if case let .failure(error) = result {
-                                    mergeError = error.localizedDescription
-                                }
-                            }
-                        }
-                    },
-                    onDeleteBranch: { branch in
-                        showBranchSelector = false
-                        branchNameToDelete = branch
-                        showBranchDeleteConfirmation = true
-                    },
-                    onRenameBranch: { branch in
-                        showBranchSelector = false
-                        oldBranchName = branch
-                        renameBranchNewName = branch
-                        showRenameBranch = true
-                    },
-                    onMergeToDefaultBranch: { branch in
-                        showBranchSelector = false
-                        featureBranchName = branch
-                        defaultBranchName = gitManager.defaultBranchName
-                        showMergeToDefaultConfirmation = true
-                    },
-                    onNewBranch: {
-                        showBranchSelector = false
-                        showCreateBranch = true
                     }
-                )
-            }
-
-            Spacer()
-
-            if canShowAtomicCommits {
-                Button("Atomic Commits") {
-                    startAtomicCommitFlow()
                 }
-                .buttonStyle(.borderless)
-                .font(MacChromeTypography.detail)
-            }
-
-            Button("Manage…") {
+            },
+            onMergeBranch: { branch in
+                showBranchSelector = false
+                if gitManager.currentBranch == "main" || gitManager.currentBranch == "master" {
+                    mergeBranchName = branch
+                    mergeTargetBranch = gitManager.currentBranch
+                    showMergeConfirmation = true
+                } else {
+                    gitManager.mergeBranch(fromBranch: branch) { result in
+                        if case let .failure(error) = result {
+                            mergeError = error.localizedDescription
+                        }
+                    }
+                }
+            },
+            onCreateBranchFromDetached: {
+                showBranchSelector = false
+                showCreateBranch = true
+            },
+            onQuickPull: {
+                showBranchSelector = false
+                useRebase = false
+                syncWithRemote()
+            },
+            onDeleteBranch: { branch in
+                showBranchSelector = false
+                branchNameToDelete = branch
+                showBranchDeleteConfirmation = true
+            },
+            onRenameBranch: { branch in
+                showBranchSelector = false
+                oldBranchName = branch
+                renameBranchNewName = branch
+                showRenameBranch = true
+            },
+            onMergeToDefaultBranch: { branch in
+                showBranchSelector = false
+                featureBranchName = branch
+                defaultBranchName = gitManager.defaultBranchName
+                showMergeToDefaultConfirmation = true
+            },
+            onNewBranch: {
+                showBranchSelector = false
+                showCreateBranch = true
+            },
+            onAtomicCommits: startAtomicCommitFlow,
+            onManage: {
                 showRepositoryOptionsPopover = false
                 showBranchManagement = true
-            }
-            .buttonStyle(.borderless)
-            .font(MacChromeTypography.detail)
-
-            Button("Settings") {
+            },
+            onSettings: {
                 showRepositoryOptionsPopover = false
                 openSettingsWindow()
-            }
-            .buttonStyle(.borderless)
-            .font(MacChromeTypography.detail)
-        }
+            },
+            showBranchSelector: $showBranchSelector
+        )
     }
 
     var mainView: some View {
@@ -214,7 +231,7 @@ extension MainMenuView {
                     }
                 )
 
-                CommitComposerSectionView(
+                CommitWorkflowView(
                     commentText: $commentText,
                     isCommentFieldFocused: $isCommentFieldFocused,
                     showsCommentField: showsCommentField,
@@ -229,14 +246,17 @@ extension MainMenuView {
                         Task {
                             await performPrimaryAction()
                         }
-                    }
+                    },
+                    onDidCommit: {
+                        if hideCommitMessageField {
+                            isCommitFieldTemporarilyVisible = false
+                        }
+                    },
+                    onRequestFocus: requestCommitFieldFocus,
+                    focusCommitFieldToken: presentationModel.focusCommitFieldToken,
+                    actionCoordinator: actionCoordinator,
+                    commitHistoryEditCoordinator: commitHistoryEditCoordinator
                 )
-                .onAppear {
-                    requestCommitFieldFocus()
-                }
-                .onChange(of: presentationModel.focusCommitFieldToken) { _ in
-                    requestCommitFieldFocus()
-                }
 
                 ScrollView(.vertical, showsIndicators: !isCommandPalettePresented) {
                     mainScrollContent
@@ -277,142 +297,39 @@ extension MainMenuView {
         )
     }
 
-    private var stagedSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            WorkingTreeSectionHeaderView(
-                title: "Staged",
-                summary: stagedSummary,
-                isCollapsed: $isStagedSectionCollapsed,
-                actionIcon: "minus.circle",
-                actionHelp: "Unstage all files",
-                showsAction: !gitManager.stagedFiles.isEmpty,
-                onAction: unstageAllFiles
-            )
-
-            if !isStagedSectionCollapsed {
-                VStack(spacing: 3) {
-                    ForEach(stagedRowAdapters) { row in
-                        WorkingTreeFileRowView(
-                            file: row.file,
-                            actionIcon: "minus.circle",
-                            actionHelp: row.actions.primaryLabel,
-                            isSelected: selectedMainItemID == row.id,
-                            onSelect: {
-                                selectMainItem(row.id)
-                            },
-                            onAction: { unstageFile(path: row.file.path) },
-                            onOpen: { gitManager.openFile(path: row.file.path) },
-                            onDiscard: {
-                                selectMainItem(row.id)
-                                discardFilePath = row.file.path
-                                discardFileStatus = row.file.status
-                                showDiscardConfirmation = true
-                            },
-                            onReveal: { gitManager.revealInFinder(path: row.file.path) }
-                        )
-                    }
-                }
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
-    }
-
-    private var unstagedSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            WorkingTreeSectionHeaderView(
-                title: "Unstaged",
-                summary: unstagedSummary,
-                isCollapsed: $isUnstagedSectionCollapsed,
-                actionIcon: "plus.circle",
-                actionHelp: "Stage all files",
-                showsAction: !gitManager.changedFiles.isEmpty,
-                onAction: stageAllFiles,
-                onDiscardAll: {
-                    showDiscardAllConfirmation = true
-                }
-            )
-
-            if !isUnstagedSectionCollapsed {
-                VStack(spacing: 3) {
-                    ForEach(unstagedRowAdapters) { row in
-                        WorkingTreeFileRowView(
-                            file: row.file,
-                            actionIcon: "plus.circle",
-                            actionHelp: row.actions.primaryLabel,
-                            isSelected: selectedMainItemID == row.id,
-                            onSelect: {
-                                selectMainItem(row.id)
-                            },
-                            onAction: { stageFile(path: row.file.path) },
-                            onOpen: { gitManager.openFile(path: row.file.path) },
-                            onDiscard: {
-                                selectMainItem(row.id)
-                                discardFilePath = row.file.path
-                                discardFileStatus = row.file.status
-                                showDiscardConfirmation = true
-                            },
-                            onReveal: { gitManager.revealInFinder(path: row.file.path) }
-                        )
-                    }
-                }
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
-    }
-
     private var historySection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HistorySectionHeaderView(
-                commitCount: gitManager.commitHistory.count,
-                isCollapsed: $isHistorySectionCollapsed
-            )
-
-            if !isHistorySectionCollapsed {
-                HistoryTimelineSectionView(
-                    sections: historyTimelineSections,
-                    selectedItemID: selectedMainItemID,
-                    isLoading: presentationModel.refreshState.isRefreshing,
-                    animationNamespace: animationNamespace,
-                    onSelectRow: { row in
-                        selectMainItem(row.id)
-                    },
-                    onActivateCommit: { row in
-                        selectMainItem(row.id)
-                        presentationModel.showHistoryDetail(commitID: row.commit.id)
-                    },
-                    onRestoreCommit: { row in
-                        guard row.actions.canRestore else { return }
-                        gitManager.resetToCommit(row.commit.id)
-                    },
-                    onEditCommitMessage: { row in
-                        Task {
-                            await startManualCommitMessageEdit(for: row.commit)
-                        }
-                    },
-                    onGenerateCommitMessage: { row in
-                        Task {
-                            await startAutomaticCommitMessageEdit(for: row.commit)
-                        }
-                    }
-                )
-                .transition(.opacity.combined(with: .move(edge: .top)))
-
-                if gitManager.canLoadMoreCommitHistory {
-                    HStack {
-                        Spacer()
-
-                        Button("Load 25 more") {
-                            gitManager.loadMoreCommitHistory(batchSize: 25)
-                        }
-                        .buttonStyle(.link)
-                        .font(MacChromeTypography.detail)
-                        .disabled(presentationModel.refreshState.isRefreshing)
-                    }
-                    .padding(.top, 2)
+        HistorySectionView(
+            sections: historyTimelineSections,
+            selectedItemID: selectedMainItemID,
+            isLoading: presentationModel.refreshState.isRefreshing,
+            canLoadMore: gitManager.canLoadMoreCommitHistory,
+            animationNamespace: animationNamespace,
+            onSelectRow: { row in
+                selectMainItem(row.id)
+            },
+            onActivateCommit: { row in
+                selectMainItem(row.id)
+                presentationModel.showHistoryDetail(commitID: row.commit.id)
+            },
+            onRestoreCommit: { row in
+                guard row.actions.canRestore else { return }
+                gitManager.resetToCommit(row.commit.id)
+            },
+            onEditCommitMessage: { row in
+                Task {
+                    await startManualCommitMessageEdit(for: row.commit)
                 }
-            }
-        }
-        .padding(.top, 2)
+            },
+            onGenerateCommitMessage: { row in
+                Task {
+                    await startAutomaticCommitMessageEdit(for: row.commit)
+                }
+            },
+            onLoadMore: {
+                gitManager.loadMoreCommitHistory(batchSize: 25)
+            },
+            isCollapsed: $isHistorySectionCollapsed
+        )
     }
 
     private func requestCommitFieldFocus() {

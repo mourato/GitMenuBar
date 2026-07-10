@@ -83,7 +83,6 @@ struct MainMenuView: View {
     @State var showBranchDeleteConfirmation = false
     @State var branchNameToDelete = ""
 
-    // Discard confirmation states
     @State var showDiscardConfirmation = false
     @State var discardFilePath: String?
     @State var discardFileStatus: WorkingTreeFileStatus?
@@ -160,28 +159,34 @@ struct MainMenuView: View {
         }
         .adaptiveMotion()
         .animation(.spring(response: 0.35, dampingFraction: 1.0), value: presentationModel.route)
-        .alert("Delete Repository?", isPresented: $showDeleteConfirmation) {
-            Button("Cancel", role: .cancel) {}
-            Button("Delete", role: .destructive) {
-                deleteRepository()
-            }
-            .keyboardShortcut(.defaultAction)
-            .disabled(isDeleting)
-        } message: {
-            Text("This will permanently delete the repository from GitHub. This action cannot be undone.")
-        }
-        .alert(repositoryActionSet.visibilityConfirmationTitle, isPresented: $showVisibilityConfirmation) {
-            Button("Cancel", role: .cancel) {}
-            Button(repositoryActionSet.visibilityActionTitle) {
-                toggleRepoVisibility()
-            }
-            .keyboardShortcut(.defaultAction)
-        } message: {
-            Text(repositoryActionSet.visibilityConfirmationMessage)
-        }
-        .alert("Discard Changes?", isPresented: $showDiscardConfirmation) {
-            Button("Cancel", role: .cancel) {}
-            Button("Discard", role: .destructive) {
+        .confirmationDialogs(
+            showDeleteConfirmation: $showDeleteConfirmation,
+            showVisibilityConfirmation: $showVisibilityConfirmation,
+            showDiscardConfirmation: $showDiscardConfirmation,
+            showDiscardAllConfirmation: $showDiscardAllConfirmation,
+            showRestartConfirmation: $showRestartConfirmation,
+            showMergeConfirmation: $showMergeConfirmation,
+            showDirtySwitchConfirmation: $showDirtySwitchConfirmation,
+            showBranchDeleteConfirmation: $showBranchDeleteConfirmation,
+            showMergeToDefaultConfirmation: $showMergeToDefaultConfirmation,
+            showMergeCleanupDialog: $showMergeCleanupDialog,
+            showRemoteCleanupConfirmation: $showRemoteCleanupConfirmation,
+            isDeleting: isDeleting,
+            isTogglingVisibility: isTogglingVisibility,
+            visibilityConfirmationTitle: repositoryActionSet.visibilityConfirmationTitle,
+            visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
+            visibilityConfirmationMessage: repositoryActionSet.visibilityConfirmationMessage,
+            mergeBranchName: mergeBranchName,
+            mergeTargetBranch: mergeTargetBranch,
+            pendingSwitchBranch: pendingSwitchBranch,
+            branchNameToDelete: branchNameToDelete,
+            deleteBranchWarningMessage: deleteBranchWarningMessage,
+            featureBranchName: featureBranchName,
+            defaultBranchName: defaultBranchName,
+            pendingCleanupOption: pendingCleanupOption,
+            onDeleteRepository: deleteRepository,
+            onToggleVisibility: toggleRepoVisibility,
+            onDiscardConfirm: {
                 if let path = discardFilePath, let status = discardFileStatus {
                     gitManager.discardFileChanges(path: path, status: status) { result in
                         if case let .failure(error) = result {
@@ -189,28 +194,69 @@ struct MainMenuView: View {
                         }
                     }
                 }
-            }
-            .keyboardShortcut(.defaultAction)
-        } message: {
-            if let path = discardFilePath {
-                Text("Are you sure you want to discard changes in '\(path)'? This action cannot be undone.")
-            } else {
-                Text("Are you sure you want to discard these changes? This action cannot be undone.")
-            }
-        }
-        .alert("Discard All Unstaged Changes?", isPresented: $showDiscardAllConfirmation) {
-            Button("Cancel", role: .cancel) {}
-            Button("Discard All", role: .destructive) {
+                discardFilePath = nil
+                discardFileStatus = nil
+            },
+            onDiscardAll: {
                 gitManager.discardAllUnstagedChanges { result in
                     if case let .failure(error) = result {
                         discardError = error.localizedDescription
                     }
                 }
+            },
+            onRestart: restartApplication,
+            onMerge: {
+                gitManager.mergeBranch(fromBranch: mergeBranchName) { result in
+                    if case let .failure(error) = result {
+                        mergeError = error.localizedDescription
+                    }
+                }
+            },
+            onCancelMerge: {
+                mergeBranchName = ""
+                mergeTargetBranch = ""
+            },
+            onDirtySwitch: {
+                gitManager.switchBranch(branchName: pendingSwitchBranch) { result in
+                    if case let .failure(error) = result {
+                        branchSwitchError = error.localizedDescription
+                    }
+                }
+                pendingSwitchBranch = ""
+            },
+            onCancelDirtySwitch: {
+                pendingSwitchBranch = ""
+            },
+            onDeleteBranch: {
+                gitManager.deleteBranch(branchName: branchNameToDelete) { result in
+                    if case let .failure(error) = result {
+                        deleteBranchError = error.localizedDescription
+                    }
+                }
+                branchNameToDelete = ""
+            },
+            onCancelDeleteBranch: {
+                branchNameToDelete = ""
+            },
+            onMergeToDefault: performMergeToDefault,
+            onCancelMergeToDefault: {
+                featureBranchName = ""
+                defaultBranchName = ""
+            },
+            onMergeCleanupDeleteLocal: { performMergeCleanup(option: .deleteLocal) },
+            onMergeCleanupDeleteLocalAndRemote: { requestRemoteCleanupConfirmation(option: .deleteLocalAndRemote) },
+            onMergeCleanupDeleteRemoteOnly: { requestRemoteCleanupConfirmation(option: .deleteRemoteOnly) },
+            onMergeCleanupKeep: dismissMergeCleanup,
+            onRemoteCleanupDelete: {
+                if let option = pendingCleanupOption {
+                    performMergeCleanup(option: option)
+                }
+                pendingCleanupOption = nil
+            },
+            onRemoteCleanupCancel: {
+                pendingCleanupOption = nil
             }
-            .keyboardShortcut(.defaultAction)
-        } message: {
-            Text("Are you sure you want to discard all unstaged changes? This action cannot be undone.")
-        }
+        )
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
         .padding(.horizontal, MacChromeMetrics.windowPadding)
         .padding(.bottom, MacChromeMetrics.windowPadding)
