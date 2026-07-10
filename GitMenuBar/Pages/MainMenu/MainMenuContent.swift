@@ -54,11 +54,7 @@ extension MainMenuView {
                         onSelect: { selectMainItem($0) },
                         onStageToggle: { unstageFile(path: $0) },
                         onOpen: { gitManager.openFile(path: $0) },
-                        onDiscard: { path, status in
-                            discardFilePath = path
-                            discardFileStatus = status
-                            showDiscardConfirmation = true
-                        },
+                        onDiscard: requestDiscard,
                         onReveal: { gitManager.revealInFinder(path: $0) },
                         onAction: unstageAllFiles,
                         onDiscardAll: nil,
@@ -76,11 +72,7 @@ extension MainMenuView {
                         onSelect: { selectMainItem($0) },
                         onStageToggle: { stageFile(path: $0) },
                         onOpen: { gitManager.openFile(path: $0) },
-                        onDiscard: { path, status in
-                            discardFilePath = path
-                            discardFileStatus = status
-                            showDiscardConfirmation = true
-                        },
+                        onDiscard: requestDiscard,
                         onReveal: { gitManager.revealInFinder(path: $0) },
                         onAction: stageAllFiles,
                         onDiscardAll: {
@@ -330,6 +322,12 @@ extension MainMenuView {
             },
             isCollapsed: $isHistorySectionCollapsed
         )
+    }
+
+    private func requestDiscard(path: String, status: WorkingTreeFileStatus) {
+        discardFilePath = path
+        discardFileStatus = status
+        showDiscardConfirmation = true
     }
 
     private func requestCommitFieldFocus() {
