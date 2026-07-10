@@ -27,12 +27,18 @@ private enum CommitDetailPagePreviewData {
     )
 }
 
+private struct CommitDetailPreviewNamespace {
+    @Namespace var animationNamespace
+}
+
 #Preview("Commit Detail") {
-    CommitDetailPageView(
+    let previewNS = CommitDetailPreviewNamespace()
+    return CommitDetailPageView(
         commit: CommitDetailPagePreviewData.commit,
         currentHash: "abcdef1234567890",
         remoteUrl: "https://github.com/example/repo.git",
         isCommitInFuture: { _ in false },
+        animationNamespace: previewNS.animationNamespace,
         onBack: {},
         onRestoreCommit: { _ in },
         onEditCommitMessage: { _ in },
@@ -48,11 +54,13 @@ private enum CommitDetailPagePreviewData {
 }
 
 #Preview("Commit Detail - Missing Commit") {
-    CommitDetailPageView(
+    let previewNS = CommitDetailPreviewNamespace()
+    return CommitDetailPageView(
         commit: nil,
         currentHash: "abcdef1234567890",
         remoteUrl: "https://github.com/example/repo.git",
         isCommitInFuture: { _ in false },
+        animationNamespace: previewNS.animationNamespace,
         onBack: {},
         onRestoreCommit: { _ in },
         onEditCommitMessage: { _ in },

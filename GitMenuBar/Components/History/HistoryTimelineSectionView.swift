@@ -11,6 +11,7 @@ struct HistoryTimelineSectionView: View {
     let sections: [HistoryTimelineSectionModel]
     let selectedItemID: MainMenuSelectableItem?
     let isLoading: Bool
+    let animationNamespace: Namespace.ID
     let onSelectRow: (HistoryRowAdapter) -> Void
     let onActivateCommit: (HistoryRowAdapter) -> Void
     let onRestoreCommit: (HistoryRowAdapter) -> Void
@@ -59,6 +60,7 @@ struct HistoryTimelineSectionView: View {
                                 isSelected: selectedItemID == timelineRow.row.id,
                                 showsTopConnector: timelineRow.showsTopConnector,
                                 showsBottomConnector: timelineRow.showsBottomConnector,
+                                animationNamespace: animationNamespace,
                                 onSelect: {
                                     onSelectRow(timelineRow.row)
                                 },
@@ -89,6 +91,7 @@ private struct HistoryTimelineRowView: View {
     let isSelected: Bool
     let showsTopConnector: Bool
     let showsBottomConnector: Bool
+    let animationNamespace: Namespace.ID
     let onSelect: () -> Void
     let onActivate: () -> Void
     let onRestoreCommit: () -> Void
@@ -108,6 +111,7 @@ private struct HistoryTimelineRowView: View {
                         .foregroundColor(titleColor)
                         .lineLimit(1)
                         .truncationMode(.tail)
+                        .matchedGeometryEffect(id: "commit-\(commit.id)", in: animationNamespace)
 
                     if isFutureCommit {
                         Text("Future")
@@ -351,6 +355,7 @@ private struct HistoryTimelineRowView: View {
         sections: HistoryTimelineSectionModel.build(from: previewRows),
         selectedItemID: .historyCommit(id: "abcdef1234567890"),
         isLoading: false,
+        animationNamespace: Namespace().wrappedValue,
         onSelectRow: { _ in },
         onActivateCommit: { _ in },
         onRestoreCommit: { _ in },

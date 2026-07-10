@@ -176,6 +176,7 @@ extension MainMenuView {
                     onShowRepositoryOptions: {
                         requestRepositoryOptionsPopoverPresentation()
                     },
+                    animationNamespace: animationNamespace,
                     projectSelectorContent: {
                         ProjectSelectorPopoverView(
                             recentPaths: recentPaths,
@@ -192,6 +193,7 @@ extension MainMenuView {
                                 requestRepositoryOptionsPopoverPresentation()
                             } : nil
                         )
+                        .matchedGeometryEffect(id: "projectSelector", in: animationNamespace)
                     },
                     projectContextMenu: {
                         if canPresentRepositoryOptions {
@@ -370,6 +372,7 @@ extension MainMenuView {
                     sections: historyTimelineSections,
                     selectedItemID: selectedMainItemID,
                     isLoading: presentationModel.refreshState.isRefreshing,
+                    animationNamespace: animationNamespace,
                     onSelectRow: { row in
                         selectMainItem(row.id)
                     },

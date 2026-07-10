@@ -6,6 +6,7 @@
 import SwiftUI
 
 struct MainMenuView: View {
+    @Namespace var animationNamespace
     @State var commentText = ""
     @State var showDeleteConfirmation = false
     @State var isDeleting = false
@@ -135,6 +136,7 @@ struct MainMenuView: View {
                     currentHash: gitManager.currentHash,
                     remoteUrl: gitManager.remoteUrl,
                     isCommitInFuture: isCommitInFuture,
+                    animationNamespace: animationNamespace,
                     onBack: {
                         presentationModel.showMain()
                     },

@@ -7,6 +7,7 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
     @Binding var showRepositoryOptionsPopover: Bool
     let showsRepositoryOptionsButton: Bool
     let onShowRepositoryOptions: () -> Void
+    let animationNamespace: Namespace.ID
     let projectSelectorContent: () -> PopoverContent
     let projectContextMenu: () -> ContextMenuContent
     let repositoryOptionsContent: () -> RepoOptionsContent
@@ -20,6 +21,7 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
         showRepositoryOptionsPopover: Binding<Bool>,
         showsRepositoryOptionsButton: Bool,
         onShowRepositoryOptions: @escaping () -> Void,
+        animationNamespace: Namespace.ID,
         @ViewBuilder projectSelectorContent: @escaping () -> PopoverContent,
         @ViewBuilder projectContextMenu: @escaping () -> ContextMenuContent,
         @ViewBuilder repositoryOptionsContent: @escaping () -> RepoOptionsContent
@@ -29,6 +31,7 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
         _showRepositoryOptionsPopover = showRepositoryOptionsPopover
         self.showsRepositoryOptionsButton = showsRepositoryOptionsButton
         self.onShowRepositoryOptions = onShowRepositoryOptions
+        self.animationNamespace = animationNamespace
         self.projectSelectorContent = projectSelectorContent
         self.projectContextMenu = projectContextMenu
         self.repositoryOptionsContent = repositoryOptionsContent
@@ -54,6 +57,7 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
                     RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous)
                         .fill(isProjectHovered ? MacChromePalette.hoverFill() : Color.clear)
                 )
+                .matchedGeometryEffect(id: "projectSelector", in: animationNamespace)
             })
             .buttonStyle(.plain)
             .contentShape(Rectangle())
@@ -104,13 +108,19 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
     }
 }
 
+private struct MainMenuHeaderPreviewNamespace {
+    @Namespace var animationNamespace
+}
+
 #Preview("Main Menu Header") {
-    MainMenuHeaderView(
+    let previewNS = MainMenuHeaderPreviewNamespace()
+    return MainMenuHeaderView(
         currentProjectName: "gitmenubar",
         showProjectSelector: .constant(false),
         showRepositoryOptionsPopover: .constant(false),
         showsRepositoryOptionsButton: true,
         onShowRepositoryOptions: {},
+        animationNamespace: previewNS.animationNamespace,
         projectSelectorContent: {
             Text("Projects")
                 .padding()

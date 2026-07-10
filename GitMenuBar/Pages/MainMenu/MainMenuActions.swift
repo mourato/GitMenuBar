@@ -24,6 +24,7 @@ extension MainMenuView {
 
         let result = await actionCoordinator.performCommit(commentText: commentText)
         if result.didCommit {
+            HapticFeedback.perform(.levelChange)
             commentText = ""
             if hideCommitMessageField {
                 isCommitFieldTemporarilyVisible = false
@@ -36,19 +37,26 @@ extension MainMenuView {
             await submitComment()
             return
         }
-
-        _ = await actionCoordinator.performSync()
+        handleSyncResult(await actionCoordinator.performSync())
     }
 
     func syncRepository() {
         Task {
-            _ = await actionCoordinator.performSync()
+            handleSyncResult(await actionCoordinator.performSync())
         }
     }
 
     func syncWithRemote() {
         Task {
-            _ = await actionCoordinator.syncWithRemote(rebase: useRebase)
+            handleSyncResult(await actionCoordinator.syncWithRemote(rebase: useRebase))
+        }
+    }
+
+    private func handleSyncResult(_ result: MainMenuSyncExecutionResult) {
+        if result == .synced {
+            HapticFeedback.perform(.levelChange)
+        } else if result == .failed {
+            HapticFeedback.perform(.generic)
         }
     }
 
@@ -97,34 +105,27 @@ extension MainMenuView {
     }
 
     func stageFile(path: String) {
-        gitManager.stageFile(path: path) { result in
-            if case let .failure(error) = result {
-                syncError = error.localizedDescription
-            }
-        }
+        gitManager.stageFile(path: path) { handleFileActionResult($0) }
     }
 
     func stageAllFiles() {
-        gitManager.stageAllChanges { result in
-            if case let .failure(error) = result {
-                syncError = error.localizedDescription
-            }
-        }
+        gitManager.stageAllChanges { handleFileActionResult($0) }
     }
 
     func unstageFile(path: String) {
-        gitManager.unstageFile(path: path) { result in
-            if case let .failure(error) = result {
-                syncError = error.localizedDescription
-            }
-        }
+        gitManager.unstageFile(path: path) { handleFileActionResult($0) }
     }
 
     func unstageAllFiles() {
-        gitManager.unstageAllChanges { result in
-            if case let .failure(error) = result {
-                syncError = error.localizedDescription
-            }
+        gitManager.unstageAllChanges { handleFileActionResult($0) }
+    }
+
+    private func handleFileActionResult(_ result: Result<Void, Error>) {
+        switch result {
+        case .success:
+            HapticFeedback.perform(.generic)
+        case let .failure(error):
+            syncError = error.localizedDescription
         }
     }
 

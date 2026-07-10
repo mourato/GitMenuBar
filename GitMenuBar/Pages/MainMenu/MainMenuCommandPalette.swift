@@ -284,7 +284,7 @@ struct MainMenuCommandPaletteView: View {
 
     private func execute(_ item: MainMenuCommandPaletteItem) {
         guard item.isEnabled else {
-            NSSound.beep()
+            HapticFeedback.perform(.generic)
             return
         }
 
@@ -293,7 +293,7 @@ struct MainMenuCommandPaletteView: View {
 
     private func executeSelectedOrFirstVisibleItem() {
         guard let item = resolveItemToExecuteOnEnter() else {
-            NSSound.beep()
+            HapticFeedback.perform(.generic)
             return
         }
 
