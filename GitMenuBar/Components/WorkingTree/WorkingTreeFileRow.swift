@@ -84,6 +84,7 @@ struct WorkingTreeFileRowView: View {
                 onReveal?()
             }
         }
+        .pressable()
     }
 
     private var fileLabel: some View {

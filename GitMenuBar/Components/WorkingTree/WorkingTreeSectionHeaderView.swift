@@ -16,7 +16,9 @@ struct WorkingTreeSectionHeaderView: View {
     var body: some View {
         HStack(spacing: 8) {
             Button {
-                isCollapsed.toggle()
+                withAnimation(.spring(response: 0.3, dampingFraction: 1.0)) {
+                    isCollapsed.toggle()
+                }
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")

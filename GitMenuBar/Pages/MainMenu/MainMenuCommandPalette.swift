@@ -269,18 +269,10 @@ struct MainMenuCommandPaletteView: View {
                 return
             }
 
-            // SwiftUI ScrollView.scrollTo can miss the target on the first
-            // attempt when the layout hasn't settled yet. The second scroll
-            // without animation ensures the item is visible even if the first
-            // animation-targeted scroll lands at the wrong offset.
             DispatchQueue.main.async {
-                withAnimation(.easeInOut(duration: 0.15)) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 1.0)) {
                     performScroll()
                 }
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
-                performScroll()
             }
             return
         }

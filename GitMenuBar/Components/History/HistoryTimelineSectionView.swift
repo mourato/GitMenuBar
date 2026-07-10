@@ -196,6 +196,7 @@ private struct HistoryTimelineRowView: View {
                 NSCursor.pop()
             }
         }
+        .pressable()
     }
 
     private func copyToPasteboard(_ value: String) {

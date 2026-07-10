@@ -125,8 +125,10 @@ struct MainMenuView: View {
                 )
                 .environmentObject(gitManager)
                 .environmentObject(githubAuthManager)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             case .main:
                 mainView
+                    .transition(.opacity)
             case let .historyDetail(commitID):
                 CommitDetailPageView(
                     commit: gitManager.commitHistory.first(where: { $0.id == commitID }),
@@ -151,8 +153,11 @@ struct MainMenuView: View {
                         }
                     }
                 )
+                .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
         }
+        .adaptiveMotion()
+        .animation(.spring(response: 0.35, dampingFraction: 1.0), value: presentationModel.route)
         .alert("Delete Repository?", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {

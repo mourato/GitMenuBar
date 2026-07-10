@@ -310,6 +310,7 @@ extension MainMenuView {
                         )
                     }
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
@@ -352,6 +353,7 @@ extension MainMenuView {
                         )
                     }
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
@@ -390,6 +392,7 @@ extension MainMenuView {
                         }
                     }
                 )
+                .transition(.opacity.combined(with: .move(edge: .top)))
 
                 if gitManager.canLoadMoreCommitHistory {
                     HStack {

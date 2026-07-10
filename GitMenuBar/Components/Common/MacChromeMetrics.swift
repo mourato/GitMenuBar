@@ -1,6 +1,58 @@
 import CoreGraphics
 import SwiftUI
 
+// MARK: - Press feedback
+
+struct PressableButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.15, dampingFraction: 1.0), value: configuration.isPressed)
+    }
+}
+
+extension View {
+    func pressable() -> some View {
+        modifier(PressableModifier())
+    }
+}
+
+private struct PressableModifier: ViewModifier {
+    @GestureState private var isPressed = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPressed ? 0.98 : 1.0)
+            .animation(.spring(response: 0.15, dampingFraction: 1.0), value: isPressed)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .updating($isPressed) { _, state, _ in state = true }
+            )
+    }
+}
+
+// MARK: - Adaptive motion
+
+struct AdaptiveMotionModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .transaction { transaction in
+                if reduceMotion {
+                    transaction.animation = nil
+                    transaction.disablesAnimations = true
+                }
+            }
+    }
+}
+
+extension View {
+    func adaptiveMotion() -> some View {
+        modifier(AdaptiveMotionModifier())
+    }
+}
+
 enum MacChromeMetrics {
     static let compactSpacing: CGFloat = 8
     static let sectionSpacing: CGFloat = 12
