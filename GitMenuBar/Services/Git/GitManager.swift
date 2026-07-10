@@ -9,8 +9,6 @@ import Foundation
 
 // swiftlint:disable type_body_length file_length
 class GitManager: ObservableObject {
-    private static let defaultCommitHistoryLimit = 25
-
     private struct RepositoryWipeError: Error {
         let code: Int
         let description: String
@@ -36,7 +34,7 @@ class GitManager: ObservableObject {
     @Published var remoteBranchName: String = ""
     @Published var behindCount: Int = 0
     @Published var isPrivate: Bool = false
-    @Published private(set) var commitHistoryLimit = GitManager.defaultCommitHistoryLimit
+    @Published private(set) var commitHistoryLimit = 25
 
     /// Token provider for authenticated git operations (push/pull)
     var tokenProvider: (() -> String?)? {
@@ -50,30 +48,38 @@ class GitManager: ObservableObject {
 
     private let repositoryContext: GitRepositoryContext
     private let commandRunner: GitCommandRunner
-    private let commitHistoryParser: CommitHistoryParser
     private let workingTreeParser: WorkingTreeParser
     let branchService: GitBranchService
-    private var includesReflogCommitsInHistory = false
+    let atomicCommitService: GitAtomicCommitService
+    let commitHistoryService: GitCommitHistoryService
 
     init(repositoryPathOverride: String? = nil) {
         repositoryContext = GitRepositoryContext(overridePath: repositoryPathOverride)
         commandRunner = GitCommandRunner()
-        commitHistoryParser = CommitHistoryParser(runner: commandRunner)
         workingTreeParser = WorkingTreeParser(runner: commandRunner)
         let branchService = GitBranchService(
             repositoryContext: repositoryContext,
             commandRunner: commandRunner
         )
         self.branchService = branchService
+        atomicCommitService = GitAtomicCommitService(
+            repositoryContext: repositoryContext,
+            commandRunner: commandRunner
+        )
+        commitHistoryService = GitCommitHistoryService(
+            repositoryContext: repositoryContext,
+            commandRunner: commandRunner
+        )
         self.branchService.refreshHandler = { [weak self] block in
             self?.refresh(completion: block)
         }
         pipeBranchServiceState()
+        pipeCommitHistoryServiceState()
         updateLocalCommitCount()
         updateUncommittedFiles()
         updateBranchInfo()
         updateRemoteUrl()
-        fetchCommitHistory(includeReflog: false)
+        commitHistoryService.fetchCommitHistory(includeReflog: false)
         fetchBranches()
     }
 
@@ -90,6 +96,11 @@ class GitManager: ObservableObject {
         branchService.$currentHash.assign(to: &$currentHash)
         branchService.$isDetachedHead.assign(to: &$isDetachedHead)
         branchService.$lastActiveBranch.assign(to: &$lastActiveBranch)
+    }
+
+    private func pipeCommitHistoryServiceState() {
+        commitHistoryService.$commitHistory.assign(to: &$commitHistory)
+        commitHistoryService.$commitHistoryLimit.assign(to: &$commitHistoryLimit)
     }
 
     private var storedRepoPath: String {
@@ -110,7 +121,7 @@ class GitManager: ObservableObject {
     }
 
     var canLoadMoreCommitHistory: Bool {
-        !commitHistory.isEmpty && commitHistory.count >= commitHistoryLimit
+        commitHistoryService.canLoadMoreCommitHistory
     }
 
     func refreshAsync(includeReflogHistory: Bool? = nil) async {
@@ -188,23 +199,7 @@ class GitManager: ObservableObject {
 
     /// Returns a map of changed file path -> diff string for all changed files.
     func diffForChangedFilesAsync() async -> [String: String] {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else { return [:] }
-
-        return await runOnBackground {
-            var result: [String: String] = [:]
-            let files = self.changedFiles.map(\.path)
-            for file in files {
-                let diffResult = self.executeGitCommand(
-                    in: repositoryPath,
-                    args: ["diff", "--", file]
-                )
-                if !diffResult.failure {
-                    result[file] = diffResult.output
-                }
-            }
-            return result
-        }
+        await atomicCommitService.diffForChangedFilesAsync(changedFiles: changedFiles)
     }
 
     /// Stage specific files and commit with the given message.
@@ -212,107 +207,22 @@ class GitManager: ObservableObject {
         files: [String],
         message: String
     ) async -> Result<Void, Error> {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else {
-            return .failure(makeMissingRepositoryError())
-        }
-
-        guard !files.isEmpty else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 30,
-                userInfo: [NSLocalizedDescriptionKey: "No files to commit"]
-            ))
-        }
-
-        let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedMessage.isEmpty else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 33,
-                userInfo: [NSLocalizedDescriptionKey: "Commit message cannot be empty"]
-            ))
-        }
-
-        // Reset the staging area to a clean slate before staging the group.
-        _ = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--", "."])
-        }
-
-        let stageArgs = ["add", "--"] + files
-        let stageResult = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: stageArgs)
-        }
-        guard !stageResult.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 31,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to stage files: \(stageResult.output)"]
-            ))
-        }
-
-        let commitResult = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["commit", "--no-gpg-sign", "-m", trimmedMessage])
-        }
-        guard !commitResult.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 32,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to commit: \(commitResult.output)"]
-            ))
-        }
-
-        return .success(())
+        await atomicCommitService.commitAtomicGroupAsync(files: files, message: message)
     }
 
     /// Execute the full atomic commit sequence for a list of groups.
     func performAtomicCommitsAsync(
         groups: [AtomicCommitGroup]
     ) async -> Result<Void, Error> {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else {
-            return .failure(makeMissingRepositoryError())
-        }
-
-        let originalHeadResult = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "HEAD"])
-        }
-        guard !originalHeadResult.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 34,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to capture current HEAD: \(originalHeadResult.output)"]
-            ))
-        }
-        let originalHead = originalHeadResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
-
         await updateUncommittedFilesAsync()
-
-        let allowedFiles = Set(changedFiles.map(\.path) + stagedFiles.map(\.path) + uncommittedFiles)
-        let plan: AtomicCommitPlan
-        do {
-            plan = try AtomicCommitPlan(groups: groups, allowedFiles: allowedFiles)
-        } catch {
-            return .failure(error)
-        }
-
-        for group in plan.groups {
-            let result = await commitAtomicGroupAsync(files: group.files, message: group.message)
-            if case let .failure(error) = result {
-                await rollbackAtomicCommits(to: originalHead, repositoryPath: repositoryPath)
-                await refreshAsync()
-                return .failure(error)
-            }
-        }
-
+        let result = await atomicCommitService.performAtomicCommitsAsync(
+            groups: groups,
+            changedFiles: changedFiles,
+            stagedFiles: stagedFiles,
+            uncommittedFiles: uncommittedFiles
+        )
         await refreshAsync()
-        return .success(())
-    }
-
-    private func rollbackAtomicCommits(to originalHead: String, repositoryPath: String) async {
-        await runOnBackground {
-            _ = self.executeGitCommand(in: repositoryPath, args: ["reset", "--mixed", originalHead])
-        }
+        return result
     }
 
     func commitLocally(
@@ -1053,81 +963,23 @@ class GitManager: ObservableObject {
     }
 
     func isMergeCommit(_ hash: String, completion: @escaping (Result<Bool, Error>) -> Void) {
-        guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.resolveMergeCommitStatus(for: hash)
-            DispatchQueue.main.async {
-                completion(result)
-            }
-        }
+        commitHistoryService.isMergeCommit(hash, completion: completion)
     }
 
     func isCommitPublishedToUpstream(_ hash: String, completion: @escaping (Result<Bool, Error>) -> Void) {
-        guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.resolveCommitPublishedStatus(for: hash)
-            DispatchQueue.main.async {
-                completion(result)
-            }
-        }
+        commitHistoryService.isCommitPublishedToUpstream(hash, completion: completion)
     }
 
     func isCommitPublishedToUpstreamAsync(_ hash: String) async throws -> Bool {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else {
-            throw makeMissingRepositoryError()
-        }
-
-        let result = await runOnBackground {
-            self.resolveCommitPublishedStatus(for: hash)
-        }
-
-        switch result {
-        case let .success(isPublished):
-            return isPublished
-        case let .failure(error):
-            throw error
-        }
+        try await commitHistoryService.isCommitPublishedToUpstreamAsync(hash)
     }
 
     func diffForCommit(_ hash: String, completion: @escaping (Result<String, Error>) -> Void) {
-        guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.resolveDiffForCommit(hash)
-            DispatchQueue.main.async {
-                completion(result)
-            }
-        }
+        commitHistoryService.diffForCommit(hash, completion: completion)
     }
 
     func diffForCommitAsync(_ hash: String) async throws -> String {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else {
-            throw makeMissingRepositoryError()
-        }
-
-        let result = await runOnBackground {
-            self.resolveDiffForCommit(hash)
-        }
-
-        switch result {
-        case let .success(diff):
-            return diff
-        case let .failure(error):
-            throw error
-        }
+        try await commitHistoryService.diffForCommitAsync(hash)
     }
 
     func rewriteCommitMessage(
@@ -1164,9 +1016,7 @@ class GitManager: ObservableObject {
             )
         }
 
-        let mergeStatus = await runOnBackground {
-            self.resolveMergeCommitStatus(for: commitHash)
-        }
+        let mergeStatus = await commitHistoryService.checkIsMergeCommitAsync(commitHash)
         switch mergeStatus {
         case let .failure(error):
             throw error
@@ -1264,51 +1114,6 @@ class GitManager: ObservableObject {
             self.updateBranchInfo()
             print("Reset to last commit")
         }
-    }
-
-    private func resolveMergeCommitStatus(for hash: String) -> Result<Bool, Error> {
-        let result = executeGitCommand(in: storedRepoPath, args: ["rev-list", "--parents", "-n", "1", hash])
-        guard !result.failure else {
-            return .failure(NSError(domain: "GitManager", code: 5, userInfo: [NSLocalizedDescriptionKey: "Failed to inspect commit: \(result.output)"]))
-        }
-
-        let hashes = result.output
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .split(separator: " ", omittingEmptySubsequences: true)
-
-        return .success(hashes.count > 2)
-    }
-
-    private func resolveCommitPublishedStatus(for hash: String) -> Result<Bool, Error> {
-        let upstreamResult = executeGitCommand(in: storedRepoPath, args: ["rev-parse", "--verify", "@{u}"])
-        if upstreamResult.failure {
-            return .success(false)
-        }
-
-        let containsResult = executeGitCommand(
-            in: storedRepoPath,
-            args: ["merge-base", "--is-ancestor", hash, "@{u}"]
-        )
-
-        return .success(!containsResult.failure)
-    }
-
-    private func resolveDiffForCommit(_ hash: String) -> Result<String, Error> {
-        let result = executeGitCommand(
-            in: storedRepoPath,
-            args: ["show", "--format=", "--no-renames", "--no-ext-diff", hash]
-        )
-
-        guard !result.failure else {
-            return .failure(NSError(domain: "GitManager", code: 6, userInfo: [NSLocalizedDescriptionKey: "Failed to load commit diff: \(result.output)"]))
-        }
-
-        let diff = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !diff.isEmpty else {
-            return .failure(NSError(domain: "GitManager", code: 7, userInfo: [NSLocalizedDescriptionKey: "No diff found for the selected commit."]))
-        }
-
-        return .success(diff)
     }
 
     private func amendHeadCommitMessage(_ newMessage: String) -> Result<Void, Error> {
@@ -1425,65 +1230,15 @@ class GitManager: ObservableObject {
     }
 
     func fetchCommitHistory(limit: Int? = nil, includeReflog: Bool? = nil) {
-        let resolvedLimit = max(1, limit ?? commitHistoryLimit)
-        let resolvedIncludeReflog = includeReflog ?? includesReflogCommitsInHistory
-
-        guard !storedRepoPath.isEmpty else {
-            DispatchQueue.main.async {
-                self.includesReflogCommitsInHistory = resolvedIncludeReflog
-                self.commitHistoryLimit = resolvedLimit
-                self.commitHistory = []
-            }
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            let commits = self.commitHistoryParser.fetchCommitHistory(
-                in: self.storedRepoPath,
-                limit: resolvedLimit,
-                includeReflog: resolvedIncludeReflog
-            )
-
-            DispatchQueue.main.async {
-                self.includesReflogCommitsInHistory = resolvedIncludeReflog
-                self.commitHistoryLimit = resolvedLimit
-                self.commitHistory = commits
-            }
-        }
+        commitHistoryService.fetchCommitHistory(limit: limit, includeReflog: includeReflog)
     }
 
     func fetchCommitHistoryAsync(limit: Int? = nil, includeReflog: Bool? = nil) async {
-        let resolvedLimit = max(1, limit ?? commitHistoryLimit)
-        let resolvedIncludeReflog = includeReflog ?? includesReflogCommitsInHistory
-        let repositoryPath = storedRepoPath
-
-        guard !repositoryPath.isEmpty else {
-            await publishOnMainActor {
-                self.includesReflogCommitsInHistory = resolvedIncludeReflog
-                self.commitHistoryLimit = resolvedLimit
-                self.commitHistory = []
-            }
-            return
-        }
-
-        let commits = await runOnBackground {
-            self.commitHistoryParser.fetchCommitHistory(
-                in: repositoryPath,
-                limit: resolvedLimit,
-                includeReflog: resolvedIncludeReflog
-            )
-        }
-
-        await publishOnMainActor {
-            self.includesReflogCommitsInHistory = resolvedIncludeReflog
-            self.commitHistoryLimit = resolvedLimit
-            self.commitHistory = commits
-        }
+        await commitHistoryService.fetchCommitHistoryAsync(limit: limit, includeReflog: includeReflog)
     }
 
-    func loadMoreCommitHistory(batchSize: Int = GitManager.defaultCommitHistoryLimit) {
-        let nextLimit = commitHistoryLimit + max(1, batchSize)
-        fetchCommitHistory(limit: nextLimit)
+    func loadMoreCommitHistory(batchSize: Int = 25) {
+        commitHistoryService.loadMoreCommitHistory(batchSize: batchSize)
     }
 
     func resetToCommit(_ hash: String) {
