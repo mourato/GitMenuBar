@@ -149,11 +149,3 @@ enum MacChromePalette {
         Color.accentColor.opacity(contrast == .increased ? 0.22 : 0.12)
     }
 }
-
-// MARK: - Haptic feedback
-
-enum HapticFeedback {
-    static func perform(_ pattern: NSHapticFeedbackManager.FeedbackPattern) {
-        NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .default)
-    }
-}
