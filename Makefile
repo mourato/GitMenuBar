@@ -1,4 +1,4 @@
-.PHONY: help build build-release test lint lint-fix dmg clean setup
+.PHONY: help build build-release test lint lint-changed lint-fix dmg clean setup
 
 PROJECT_DIR := $(shell pwd)
 
@@ -9,6 +9,7 @@ help:
 	@echo "make build-release Build Release app"
 	@echo "make test          Run XCTest suite"
 	@echo "make lint          Run SwiftFormat/SwiftLint checks"
+	@echo "make lint-changed  Lint only files changed since HEAD"
 	@echo "make lint-fix      Auto-fix format/lint issues"
 	@echo "make dmg           Build and package DMG"
 	@echo "make clean         Remove generated artifacts"
@@ -25,6 +26,9 @@ test:
 
 lint:
 	@./scripts/lint.sh
+
+lint-changed:
+	@./scripts/lint.sh $$(git diff --name-only --diff-filter=ACMR HEAD -- '*.swift')
 
 lint-fix:
 	@./scripts/lint-fix.sh

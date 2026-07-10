@@ -41,4 +41,4 @@ Use this rule order:
 
 - Keep file moves and behavioral changes in separate commits when possible.
 - Validate each slice with `make build && make test`.
-- Before merge, run `make build && make test && make lint`.
+- Before merge, run `make lint && make test` (lint is cheap and fails fast; test already builds).

@@ -20,6 +20,7 @@ If a tradeoff is required, choose **correctness and robustness** over short-term
 - `make build-release`
 - `make test`
 - `make lint`
+- `make lint-changed`
 - `make lint-fix`
 - `make dmg`
 - `make clean`
@@ -31,7 +32,9 @@ If a tradeoff is required, choose **correctness and robustness** over short-term
 - Keep changes small and validated incrementally.
 - When working from a branch, PR, or local diff, inspect the touched files first and treat lint findings in modified code as mandatory work for the same change.
 - Resolve critical lint violations in the diff before running full-project verification; do not defer issues introduced or exposed by the current change.
-- Before merge, run: `make build && make test && make lint`.
+- Use `make lint-changed` for fast incremental linting of only modified files during development.
+- Before merge, run: `make lint && make test`.
+  Lint runs first — it is cheap and fails fast. The `make test` command already compiles the project via `build-for-testing`, so a separate `make build` is redundant.
 - When UI/logic/assets become unused, sanitize in the same PR: remove orphan files, dead helpers, and stale resources safely.
 - Treat code sanitization as mandatory maintenance, not optional cleanup; include objective evidence (`rg`, target wiring, runtime path) for each removal.
 

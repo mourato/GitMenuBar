@@ -5,8 +5,6 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${PROJECT_ROOT}"
 
-SOURCES=(GitMenuBar GitMenuBarTests)
-
 if ! command -v swiftformat >/dev/null 2>&1; then
     echo "SwiftFormat not installed. Run: brew install swiftformat" >&2
     exit 1
@@ -17,10 +15,16 @@ if ! command -v swiftlint >/dev/null 2>&1; then
     exit 1
 fi
 
+if [[ $# -gt 0 ]]; then
+    TARGETS=("$@")
+else
+    TARGETS=(GitMenuBar GitMenuBarTests)
+fi
+
 echo "Running SwiftFormat (lint mode)..."
-swiftformat --lint --config .swiftformat "${SOURCES[@]}"
+swiftformat --lint --config .swiftformat "${TARGETS[@]}"
 
 echo "Running SwiftLint..."
-swiftlint lint --config .swiftlint.yml "${SOURCES[@]}"
+swiftlint lint --config .swiftlint.yml "${TARGETS[@]}"
 
 echo "Lint checks passed"

@@ -15,6 +15,7 @@ Use this skill when the task involves reproducing a build/test/lint failure, rou
 - `make build-release`: Release build through `scripts/run-build.sh --configuration Release`
 - `make test`: XCTest flow through `scripts/run-tests-xcode.sh`
 - `make lint`: SwiftFormat + SwiftLint checks through `scripts/lint.sh`
+- `make lint-changed`: SwiftFormat + SwiftLint on files changed since HEAD through `scripts/lint.sh`
 - `make lint-fix`: auto-fix pass through `scripts/lint-fix.sh`
 - `make dmg`: Release build plus DMG packaging through `scripts/create-dmg.sh`
 
@@ -27,7 +28,8 @@ Use this skill when the task involves reproducing a build/test/lint failure, rou
 
 ### Merge Gate
 
-Minimum before merge: `make build && make test && make lint`
+Minimum before merge: `make lint && make test`.
+Lint runs first — it is cheap and fails fast. The `make test` command already compiles the project via `build-for-testing`, so a separate `make build` is redundant.
 
 ### Scope Matrix
 
