@@ -11,16 +11,21 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         )
 
         let items = MainMenuCommandPaletteResolver.resolveItems(
-            actionState: actionState,
-            syncActionTitle: "Sync Changes",
-            recentPaths: [],
-            currentRepoPath: "",
-            currentBranch: "main",
-            canDoAtomicCommits: false,
-            isBehindRemote: false,
-            isAheadOfRemote: false,
-            canShowBranchManagement: false,
-            defaultBranchName: "main"
+            context: AppCommandContext(
+                actionState: actionState,
+                syncActionTitle: "Sync Changes",
+                currentRepoPath: "",
+                remoteUrl: "",
+                recentPaths: [],
+                isGitHubAuthenticated: false,
+                hasWorkingTreeChanges: true,
+                canDoAtomicCommits: false,
+                isBehindRemote: false,
+                isAheadOfRemote: false,
+                canShowBranchManagement: false,
+                currentBranch: "main",
+                defaultBranchName: "main"
+            )
         )
 
         XCTAssertEqual(
@@ -54,16 +59,21 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         ]
 
         let items = MainMenuCommandPaletteResolver.resolveItems(
-            actionState: actionState,
-            syncActionTitle: "Sync Changes",
-            recentPaths: recents,
-            currentRepoPath: "/tmp/current",
-            currentBranch: "main",
-            canDoAtomicCommits: false,
-            isBehindRemote: false,
-            isAheadOfRemote: false,
-            canShowBranchManagement: false,
-            defaultBranchName: "main"
+            context: AppCommandContext(
+                actionState: actionState,
+                syncActionTitle: "Sync Changes",
+                currentRepoPath: "/tmp/current",
+                remoteUrl: "",
+                recentPaths: recents,
+                isGitHubAuthenticated: false,
+                hasWorkingTreeChanges: false,
+                canDoAtomicCommits: false,
+                isBehindRemote: false,
+                isAheadOfRemote: false,
+                canShowBranchManagement: false,
+                currentBranch: "main",
+                defaultBranchName: "main"
+            )
         )
 
         let recentProjectItems = items.filter { $0.section == .recentProjects }
@@ -148,16 +158,21 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         )
 
         let items = MainMenuCommandPaletteResolver.resolveItems(
-            actionState: actionState,
-            syncActionTitle: "",
-            recentPaths: [],
-            currentRepoPath: "/tmp/repo",
-            currentBranch: "main",
-            canDoAtomicCommits: true,
-            isBehindRemote: false,
-            isAheadOfRemote: false,
-            canShowBranchManagement: true,
-            defaultBranchName: "main"
+            context: AppCommandContext(
+                actionState: actionState,
+                syncActionTitle: "",
+                currentRepoPath: "/tmp/repo",
+                remoteUrl: "",
+                recentPaths: [],
+                isGitHubAuthenticated: false,
+                hasWorkingTreeChanges: false,
+                canDoAtomicCommits: true,
+                isBehindRemote: false,
+                isAheadOfRemote: false,
+                canShowBranchManagement: true,
+                currentBranch: "main",
+                defaultBranchName: "main"
+            )
         )
 
         XCTAssertNotNil(items.first(where: { $0.kind == .atomicCommits }))
@@ -172,16 +187,21 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         )
 
         let itemsOnFeature = MainMenuCommandPaletteResolver.resolveItems(
-            actionState: actionState,
-            syncActionTitle: "",
-            recentPaths: [],
-            currentRepoPath: "/tmp/repo",
-            currentBranch: "feature",
-            canDoAtomicCommits: false,
-            isBehindRemote: false,
-            isAheadOfRemote: false,
-            canShowBranchManagement: true,
-            defaultBranchName: "main"
+            context: AppCommandContext(
+                actionState: actionState,
+                syncActionTitle: "",
+                currentRepoPath: "/tmp/repo",
+                remoteUrl: "",
+                recentPaths: [],
+                isGitHubAuthenticated: false,
+                hasWorkingTreeChanges: false,
+                canDoAtomicCommits: false,
+                isBehindRemote: false,
+                isAheadOfRemote: false,
+                canShowBranchManagement: true,
+                currentBranch: "feature",
+                defaultBranchName: "main"
+            )
         )
 
         XCTAssertNotNil(itemsOnFeature.first(where: {
@@ -190,16 +210,21 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         }))
 
         let itemsOnMain = MainMenuCommandPaletteResolver.resolveItems(
-            actionState: actionState,
-            syncActionTitle: "",
-            recentPaths: [],
-            currentRepoPath: "/tmp/repo",
-            currentBranch: "main",
-            canDoAtomicCommits: false,
-            isBehindRemote: false,
-            isAheadOfRemote: false,
-            canShowBranchManagement: true,
-            defaultBranchName: "main"
+            context: AppCommandContext(
+                actionState: actionState,
+                syncActionTitle: "",
+                currentRepoPath: "/tmp/repo",
+                remoteUrl: "",
+                recentPaths: [],
+                isGitHubAuthenticated: false,
+                hasWorkingTreeChanges: false,
+                canDoAtomicCommits: false,
+                isBehindRemote: false,
+                isAheadOfRemote: false,
+                canShowBranchManagement: true,
+                currentBranch: "main",
+                defaultBranchName: "main"
+            )
         )
 
         XCTAssertNil(itemsOnMain.first {
@@ -214,32 +239,42 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         )
 
         let itemsAhead = MainMenuCommandPaletteResolver.resolveItems(
-            actionState: actionState,
-            syncActionTitle: "",
-            recentPaths: [],
-            currentRepoPath: "/tmp/repo",
-            currentBranch: "main",
-            canDoAtomicCommits: false,
-            isBehindRemote: false,
-            isAheadOfRemote: true,
-            canShowBranchManagement: true,
-            defaultBranchName: "main"
+            context: AppCommandContext(
+                actionState: actionState,
+                syncActionTitle: "",
+                currentRepoPath: "/tmp/repo",
+                remoteUrl: "",
+                recentPaths: [],
+                isGitHubAuthenticated: false,
+                hasWorkingTreeChanges: false,
+                canDoAtomicCommits: false,
+                isBehindRemote: false,
+                isAheadOfRemote: true,
+                canShowBranchManagement: true,
+                currentBranch: "main",
+                defaultBranchName: "main"
+            )
         )
 
         XCTAssertNotNil(itemsAhead.first(where: { $0.kind == .push }))
         XCTAssertNil(itemsAhead.first(where: { $0.kind == .pull }))
 
         let itemsBehind = MainMenuCommandPaletteResolver.resolveItems(
-            actionState: actionState,
-            syncActionTitle: "",
-            recentPaths: [],
-            currentRepoPath: "/tmp/repo",
-            currentBranch: "main",
-            canDoAtomicCommits: false,
-            isBehindRemote: true,
-            isAheadOfRemote: false,
-            canShowBranchManagement: true,
-            defaultBranchName: "main"
+            context: AppCommandContext(
+                actionState: actionState,
+                syncActionTitle: "",
+                currentRepoPath: "/tmp/repo",
+                remoteUrl: "",
+                recentPaths: [],
+                isGitHubAuthenticated: false,
+                hasWorkingTreeChanges: false,
+                canDoAtomicCommits: false,
+                isBehindRemote: true,
+                isAheadOfRemote: false,
+                canShowBranchManagement: true,
+                currentBranch: "main",
+                defaultBranchName: "main"
+            )
         )
 
         XCTAssertNil(itemsBehind.first(where: { $0.kind == .push }))
@@ -252,16 +287,21 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         )
 
         let items = MainMenuCommandPaletteResolver.resolveItems(
-            actionState: actionState,
-            syncActionTitle: "",
-            recentPaths: [],
-            currentRepoPath: "/tmp/repo",
-            currentBranch: "main",
-            canDoAtomicCommits: false,
-            isBehindRemote: false,
-            isAheadOfRemote: false,
-            canShowBranchManagement: true,
-            defaultBranchName: "main"
+            context: AppCommandContext(
+                actionState: actionState,
+                syncActionTitle: "",
+                currentRepoPath: "/tmp/repo",
+                remoteUrl: "",
+                recentPaths: [],
+                isGitHubAuthenticated: false,
+                hasWorkingTreeChanges: false,
+                canDoAtomicCommits: false,
+                isBehindRemote: false,
+                isAheadOfRemote: false,
+                canShowBranchManagement: true,
+                currentBranch: "main",
+                defaultBranchName: "main"
+            )
         )
 
         let branchItems = items.filter { $0.section == .branches }

@@ -380,16 +380,21 @@ extension MainMenuView {
 
     var commandPaletteAllItems: [MainMenuCommandPaletteItem] {
         MainMenuCommandPaletteResolver.resolveItems(
-            actionState: commandPaletteActionState,
-            syncActionTitle: actionCoordinator.syncActionTitle,
-            recentPaths: recentPaths,
-            currentRepoPath: currentRepoPath,
-            currentBranch: gitManager.currentBranch,
-            canDoAtomicCommits: canShowAtomicCommits,
-            isBehindRemote: gitManager.isBehindRemote,
-            isAheadOfRemote: gitManager.isAheadOfRemote,
-            canShowBranchManagement: !currentRepoPath.isEmpty,
-            defaultBranchName: gitManager.defaultBranchName
+            context: AppCommandContext(
+                actionState: commandPaletteActionState,
+                syncActionTitle: actionCoordinator.syncActionTitle,
+                currentRepoPath: currentRepoPath,
+                remoteUrl: gitManager.remoteUrl,
+                recentPaths: recentPaths,
+                isGitHubAuthenticated: githubAuthManager.isAuthenticated,
+                hasWorkingTreeChanges: hasWorkingTreeChanges,
+                canDoAtomicCommits: canShowAtomicCommits,
+                isBehindRemote: gitManager.isBehindRemote,
+                isAheadOfRemote: gitManager.isAheadOfRemote,
+                canShowBranchManagement: !currentRepoPath.isEmpty,
+                currentBranch: gitManager.currentBranch,
+                defaultBranchName: gitManager.defaultBranchName
+            )
         )
     }
 

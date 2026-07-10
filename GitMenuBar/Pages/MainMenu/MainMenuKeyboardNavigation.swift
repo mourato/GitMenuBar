@@ -12,6 +12,9 @@ extension MainMenuView {
 
     private var shouldHandleMainKeyboardShortcuts: Bool {
         guard presentationModel.route == .main,
+              // When the command palette is presented, MainMenuCommandPaletteView
+              // installs its own local key monitor that handles arrow/enter/escape.
+              // This guard prevents the main monitor from competing with it.
               !isCommandPalettePresented,
               !showBranchSelector,
               !showCreateBranch,

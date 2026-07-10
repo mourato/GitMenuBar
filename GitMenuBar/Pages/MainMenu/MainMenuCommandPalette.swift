@@ -269,6 +269,10 @@ struct MainMenuCommandPaletteView: View {
                 return
             }
 
+            // SwiftUI ScrollView.scrollTo can miss the target on the first
+            // attempt when the layout hasn't settled yet. The second scroll
+            // without animation ensures the item is visible even if the first
+            // animation-targeted scroll lands at the wrong offset.
             DispatchQueue.main.async {
                 withAnimation(.easeInOut(duration: 0.15)) {
                     performScroll()
@@ -306,14 +310,9 @@ struct MainMenuCommandPaletteView: View {
     }
 
     private func resolveItemToExecuteOnEnter() -> MainMenuCommandPaletteItem? {
-        let selectedItem = selectedItemID.flatMap { id in
+        selectedItemID.flatMap { id in
             items.first(where: { $0.id == id })
         }
-        if let selectedItem {
-            return selectedItem
-        }
-
-        return items.first
     }
 
     private func installLocalKeyMonitor() {
@@ -335,30 +334,38 @@ struct MainMenuCommandPaletteView: View {
         self.localKeyEventMonitor = nil
     }
 
+    private enum KeyCode: UInt16 {
+        case escape = 53
+        case downArrow = 125
+        case upArrow = 126
+        case `return` = 36
+        case enter = 76
+    }
+
     private func handleKeyEvent(_ event: NSEvent) -> Bool {
-        switch event.keyCode {
-        case 53: // Escape
+        guard let keyCode = KeyCode(rawValue: event.keyCode) else {
+            return false
+        }
+
+        switch keyCode {
+        case .escape:
             onClose()
-            return true
-        case 125: // Down
+        case .downArrow:
             selectedItemID = MainMenuCommandPaletteResolver.nextSelectionID(
                 currentID: selectedItemID,
                 items: items,
                 direction: 1
             )
-            return true
-        case 126: // Up
+        case .upArrow:
             selectedItemID = MainMenuCommandPaletteResolver.nextSelectionID(
                 currentID: selectedItemID,
                 items: items,
                 direction: -1
             )
-            return true
-        case 36, 76: // Return, Enter
+        case .return, .enter:
             executeSelectedOrFirstVisibleItem()
-            return true
-        default:
-            return false
         }
+
+        return true
     }
 }

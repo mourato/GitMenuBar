@@ -226,7 +226,7 @@ extension MainMenuView {
 
         commandPaletteQuery = ""
         selectedCommandPaletteItemID = MainMenuCommandPaletteResolver.defaultSelectionID(
-            for: commandPaletteAllItems
+            for: commandPaletteVisibleItems
         )
         isCommandPalettePresented = true
     }

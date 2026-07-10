@@ -1,53 +1,44 @@
 import Foundation
 
 enum MainMenuCommandPaletteResolver {
-    // swiftlint:disable:next function_parameter_count function_body_length
+    // swiftlint:disable:next function_body_length
     static func resolveItems(
-        actionState: StatusBarContextMenuActionState,
-        syncActionTitle: String,
-        recentPaths: [String],
-        currentRepoPath: String,
-        currentBranch: String,
-        canDoAtomicCommits: Bool,
-        isBehindRemote: Bool,
-        isAheadOfRemote: Bool,
-        canShowBranchManagement: Bool,
-        defaultBranchName: String
+        context: AppCommandContext
     ) -> [MainMenuCommandPaletteItem] {
         var items: [MainMenuCommandPaletteItem] = []
 
-        if actionState.showsCommit {
-            items.append(item(commandID: .commit, kind: .commit, section: .actions, isEnabled: actionState.canCommit))
+        if context.actionState.showsCommit {
+            items.append(item(commandID: .commit, kind: .commit, section: .actions, isEnabled: context.actionState.canCommit))
         }
 
-        if actionState.showsCommitAndPush {
+        if context.actionState.showsCommitAndPush {
             items.append(item(
                 commandID: .commitAndPush,
                 kind: .commitAndPush,
                 section: .actions,
-                isEnabled: actionState.canCommitAndPush
+                isEnabled: context.actionState.canCommitAndPush
             ))
         }
 
-        if actionState.showsSync {
+        if context.actionState.showsSync {
             items.append(item(
                 commandID: .sync,
                 kind: .sync,
                 section: .actions,
-                titleOverride: syncActionTitle,
-                isEnabled: actionState.canSync
+                titleOverride: context.syncActionTitle,
+                isEnabled: context.actionState.canSync
             ))
         }
 
-        if canDoAtomicCommits {
+        if context.canDoAtomicCommits {
             items.append(item(commandID: .atomicCommits, kind: .atomicCommits, section: .actions, isEnabled: true))
         }
 
-        if isAheadOfRemote {
+        if context.isAheadOfRemote {
             items.append(item(commandID: .push, kind: .push, section: .actions, isEnabled: true))
         }
 
-        if isBehindRemote {
+        if context.isBehindRemote {
             items.append(item(commandID: .pull, kind: .pull, section: .actions, isEnabled: true))
         }
 
@@ -56,24 +47,24 @@ enum MainMenuCommandPaletteResolver {
             commandID: .branchManagement,
             kind: .branchManagement,
             section: .branches,
-            isEnabled: canShowBranchManagement
+            isEnabled: context.canShowBranchManagement
         ))
 
         items.append(item(
             commandID: .createBranch,
             kind: .createBranch,
             section: .branches,
-            isEnabled: canShowBranchManagement
+            isEnabled: context.canShowBranchManagement
         ))
 
-        let isOnDefaultBranch = currentBranch == defaultBranchName
-        if !isOnDefaultBranch, !currentBranch.isEmpty, !defaultBranchName.isEmpty {
+        let isOnDefaultBranch = context.currentBranch == context.defaultBranchName
+        if !isOnDefaultBranch, !context.currentBranch.isEmpty, !context.defaultBranchName.isEmpty {
             items.append(
                 item(
                     commandID: .mergeToDefault,
-                    kind: .mergeToDefault(featureBranch: currentBranch),
+                    kind: .mergeToDefault(featureBranch: context.currentBranch),
                     section: .branches,
-                    titleOverride: "Merge '\(currentBranch)' into \(defaultBranchName)",
+                    titleOverride: "Merge '\(context.currentBranch)' into \(context.defaultBranchName)",
                     isEnabled: true
                 )
             )
@@ -86,11 +77,11 @@ enum MainMenuCommandPaletteResolver {
                 title: "Switch Branch\u{2026}",
                 subtitle: "Check out a different branch",
                 keywords: ["switch", "checkout", "branch"],
-                isEnabled: canShowBranchManagement
+                isEnabled: context.canShowBranchManagement
             )
         )
 
-        for path in recentPaths.filter({ $0 != currentRepoPath }).prefix(5) {
+        for path in context.recentPaths.filter({ $0 != context.currentRepoPath }).prefix(5) {
             items.append(
                 MainMenuCommandPaletteItem(
                     kind: .recentProject(path: path),
