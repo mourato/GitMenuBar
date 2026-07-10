@@ -248,18 +248,6 @@ struct MainMenuCommandPaletteView: View {
     }
 
     private func synchronizeSelectionWithVisibleItems() {
-        guard !items.isEmpty else {
-            selectedItemID = nil
-            return
-        }
-
-        let selectionStillVisible = selectedItemID.map { id in
-            items.contains(where: { $0.id == id })
-        } ?? false
-        if selectionStillVisible {
-            return
-        }
-
         selectedItemID = MainMenuCommandPaletteResolver.defaultSelectionID(for: items)
     }
 
