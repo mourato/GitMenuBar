@@ -1,5 +1,14 @@
 # Plan 004: Merge feature branch into default branch with cleanup options
 
+## Execution profile
+
+- **Recommended profile**: `implementer`
+- **Risk/lane**: `High/Full`
+- **Parallelizable**: no; this plan is serial unless a named independent workstream is added during reclassification.
+- **Reviewer required**: yes; the plan has high-risk architectural, operational, or integration impact.
+- **Rationale**: Fluxo destrutivo de Git com limpeza e recuperação de falhas.
+- **Escalate when**: Qualquer mudança em persistência, credenciais, concorrência, release ou comandos fora do fluxo planejado.
+
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and

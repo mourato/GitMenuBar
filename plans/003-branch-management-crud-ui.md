@@ -1,5 +1,14 @@
 # Plan 003: Implement dedicated branch management CRUD UI
 
+## Execution profile
+
+- **Recommended profile**: `implementer`
+- **Risk/lane**: `Medium/Full`
+- **Parallelizable**: no; this plan is serial unless a named independent workstream is added during reclassification.
+- **Reviewer required**: yes; the plan has high-risk architectural, operational, or integration impact.
+- **Rationale**: UI nova integrada a operações Git e múltiplos estados; exige revisão de comportamento e arquitetura.
+- **Escalate when**: Se tocar persistência, credenciais, concorrência, release ou alterar o contrato público de GitManager.
+
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and

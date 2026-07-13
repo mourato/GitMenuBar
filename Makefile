@@ -1,4 +1,4 @@
-.PHONY: help build build-release test lint lint-changed lint-fix agent-check dmg clean setup
+.PHONY: help build build-release test lint lint-changed lint-fix agent-check guidance-check dmg clean setup
 
 PROJECT_DIR := $(shell pwd)
 
@@ -12,6 +12,7 @@ help:
 	@echo "make lint-changed  Lint only files changed since HEAD"
 	@echo "make lint-fix      Auto-fix format/lint issues"
 	@echo "make agent-check   Lint changed Swift files and build Debug app"
+	@echo "make guidance-check Validate agent guidance, plans, and skill references"
 	@echo "make dmg           Build and package DMG"
 	@echo "make clean         Remove generated artifacts"
 	@echo "make setup         Install local dev dependencies"
@@ -37,6 +38,9 @@ lint-changed:
 	fi
 
 agent-check: lint-changed build
+
+guidance-check:
+	@./scripts/validate-agent-guidance.sh
 
 lint-fix:
 	@./scripts/lint-fix.sh

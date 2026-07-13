@@ -1,5 +1,14 @@
 # Plan 014: Gestos de Interação Direta (swipe e drag)
 
+## Execution profile
+
+- **Recommended profile**: `implementer`
+- **Risk/lane**: `Medium/Full`
+- **Parallelizable**: no; this plan is serial unless a named independent workstream is added during reclassification.
+- **Reviewer required**: no; the scope does not require a separate review by default.
+- **Rationale**: Interações de UI ambíguas, mas confinadas a componentes definidos.
+- **Escalate when**: Se tocar persistência, concorrência, status item ou múltiplos fluxos não listados.
+
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and

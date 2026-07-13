@@ -1,5 +1,14 @@
 # Plan 015: Optimize agent delivery gates for faster feedback
 
+## Execution profile
+
+- **Recommended profile**: `implementer`
+- **Risk/lane**: `High/Full`
+- **Parallelizable**: no; this plan is serial unless a named independent workstream is added during reclassification.
+- **Reviewer required**: yes; the plan has high-risk architectural, operational, or integration impact.
+- **Rationale**: Altera gates, scripts e política de entrega; uma falha pode mascarar regressões.
+- **Escalate when**: Se alterar CI, release, configuração global, modelos ou comandos oficiais fora do escopo.
+
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and

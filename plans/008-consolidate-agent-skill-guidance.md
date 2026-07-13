@@ -1,5 +1,14 @@
 # Plan 008: Consolidate agent skill guidance into fewer stronger owners
 
+## Execution profile
+
+- **Recommended profile**: `implementer`
+- **Risk/lane**: `Medium/Full`
+- **Parallelizable**: no; this plan is serial unless a named independent workstream is added during reclassification.
+- **Reviewer required**: no; the scope does not require a separate review by default.
+- **Rationale**: Mudança documental delimitada, mas ambígua por envolver roteamento e catálogo.
+- **Escalate when**: Se incluir código de produto, configuração global, modelos ou novos executores.
+
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
@@ -19,6 +28,11 @@
 > drift instead of applying this plan mechanically.
 
 ## Status
+
+> Historical note: this plan was completed before the global Codex skill
+> routing contract. Its local `improve` and `thermo` copies are superseded by
+> `global:improve`, `global:thermo-nuclear-code-quality-review`, and the
+> project-only profile declared in `AGENTS.md`.
 
 - **Priority**: P1
 - **Effort**: M

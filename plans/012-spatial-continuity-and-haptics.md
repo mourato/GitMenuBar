@@ -1,5 +1,14 @@
 # Plan 012: Continuidade Espacial e Feedback Multimodal
 
+## Execution profile
+
+- **Recommended profile**: `implementer`
+- **Risk/lane**: `Medium/Full`
+- **Parallelizable**: no; this plan is serial unless a named independent workstream is added during reclassification.
+- **Reviewer required**: no; the scope does not require a separate review by default.
+- **Rationale**: Integra animações e feedback em superfícies delimitadas; exige julgamento de interação.
+- **Escalate when**: Se introduzir sincronização concorrente, novo estado persistente ou ciclo de vida global.
+
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and

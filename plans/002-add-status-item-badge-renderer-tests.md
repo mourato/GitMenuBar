@@ -1,5 +1,14 @@
 # Plan 002: Add status item badge renderer tests
 
+## Execution profile
+
+- **Recommended profile**: `implementer-fast`
+- **Risk/lane**: `Low/Fast`
+- **Parallelizable**: no; this plan is serial unless a named independent workstream is added during reclassification.
+- **Reviewer required**: no; the scope does not require a separate review by default.
+- **Rationale**: Testes determinísticos de um renderer isolado.
+- **Escalate when**: Se o escopo alcançar ciclo de vida do status item ou AppKit não isolado.
+
 > Executor instructions: follow the steps, run every verification command, and stop on drift. Include a code review step before committing.
 >
 > Drift check: `git diff --stat dbdd40e..HEAD -- GitMenuBar/App GitMenuBarTests`

@@ -1,5 +1,14 @@
 # Plan 006: Expand command palette with all major actions
 
+## Execution profile
+
+- **Recommended profile**: `implementer`
+- **Risk/lane**: `High/Full`
+- **Parallelizable**: no; this plan is serial unless a named independent workstream is added during reclassification.
+- **Reviewer required**: yes; the plan has high-risk architectural, operational, or integration impact.
+- **Rationale**: Integra vários comandos e superfícies de UI; risco arquitetural e de roteamento.
+- **Escalate when**: Se o diff deixar de ser limitado à paleta e seus adaptadores.
+
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and

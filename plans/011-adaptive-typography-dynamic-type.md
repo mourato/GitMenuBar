@@ -1,5 +1,14 @@
 # Plan 011: Tipografia Adaptativa com Dynamic Type e Tracking
 
+## Execution profile
+
+- **Recommended profile**: `implementer`
+- **Risk/lane**: `Medium/Full`
+- **Parallelizable**: no; this plan is serial unless a named independent workstream is added during reclassification.
+- **Reviewer required**: no; the scope does not require a separate review by default.
+- **Rationale**: Mudança visual com efeitos em layout e legibilidade que requer validação contextual.
+- **Escalate when**: Se tocar navegação, persistência, acessibilidade sistêmica ou várias telas fora do escopo.
+
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and

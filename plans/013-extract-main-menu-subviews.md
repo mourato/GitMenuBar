@@ -1,5 +1,14 @@
 # Plan 013: Extrair sub-views focais da MainMenuView
 
+## Execution profile
+
+- **Recommended profile**: `implementer`
+- **Risk/lane**: `High/Full`
+- **Parallelizable**: no; this plan is serial unless a named independent workstream is added during reclassification.
+- **Reviewer required**: yes; the plan has high-risk architectural, operational, or integration impact.
+- **Rationale**: Extração arquitetural de uma superfície central e sensível do menu bar.
+- **Escalate when**: Se alterar ownership do status item, popover, navegação ou contratos de estado.
+
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and

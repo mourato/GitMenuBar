@@ -1,5 +1,14 @@
 # Plan 009: Adicionar feedback de pressão, springs e suporte a Reduce Motion
 
+## Execution profile
+
+- **Recommended profile**: `implementer-fast`
+- **Risk/lane**: `Low/Fast`
+- **Parallelizable**: no; this plan is serial unless a named independent workstream is added during reclassification.
+- **Reviewer required**: no; the scope does not require a separate review by default.
+- **Rationale**: Mudança UI determinística e delimitada, com escopo explícito.
+- **Escalate when**: Se alterar arquitetura de estado, gestos, persistência ou comportamento fora das views listadas.
+
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and

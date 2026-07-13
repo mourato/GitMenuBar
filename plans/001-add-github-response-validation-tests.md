@@ -1,5 +1,14 @@
 # Plan 001: Add GitHub response validation tests
 
+## Execution profile
+
+- **Recommended profile**: `implementer-fast`
+- **Risk/lane**: `Low/Fast`
+- **Parallelizable**: no; this plan is serial unless a named independent workstream is added during reclassification.
+- **Reviewer required**: no; the scope does not require a separate review by default.
+- **Rationale**: Testes determinísticos e limitados a validação de respostas.
+- **Escalate when**: Se o teste exigir mudança de produção ou integração externa.
+
 > Executor instructions: follow the steps, run every verification command, and stop on drift. Include a code review step before committing.
 >
 > Drift check: `git diff --stat dbdd40e..HEAD -- GitMenuBar/Services/GitHub GitMenuBarTests`
