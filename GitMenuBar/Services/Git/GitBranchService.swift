@@ -26,6 +26,7 @@ final class GitBranchService: ObservableObject {
     @Published var currentHash: String = ""
     @Published var isDetachedHead: Bool = false
     @Published var lastActiveBranch: String = ""
+    @Published var worktreeSnapshot: GitWorktreeSnapshot?
 
     private let repositoryContext: GitRepositoryContext
     private let commandRunner: GitCommandRunner

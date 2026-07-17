@@ -46,7 +46,7 @@ The UI needs one coherent repository snapshot rather than separate branch and wo
 
 In scope:
 
-- GitMenuBar/Models/GitModels.swift
+- GitMenuBar/Models/WorktreeCleanupModels.swift
 - GitMenuBar/Services/Git/GitBranchService+Worktrees.swift
 - GitMenuBar/Services/Git/WorktreeCleanupAnalyzer.swift
 - GitMenuBar/Services/Git/GitBranchService.swift

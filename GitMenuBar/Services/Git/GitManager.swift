@@ -26,6 +26,7 @@ class GitManager: ObservableObject {
     @Published var isDetachedHead: Bool = false
     @Published var currentHash: String = ""
     @Published var lastActiveBranch: String = ""
+    @Published var worktreeSnapshot: GitWorktreeSnapshot?
     @Published var availableBranches: [String] = []
     @Published var branchInfos: [BranchInfo] = []
     @Published var defaultBranchName: String = "main"
@@ -96,6 +97,7 @@ class GitManager: ObservableObject {
         branchService.$currentHash.assign(to: &$currentHash)
         branchService.$isDetachedHead.assign(to: &$isDetachedHead)
         branchService.$lastActiveBranch.assign(to: &$lastActiveBranch)
+        branchService.$worktreeSnapshot.assign(to: &$worktreeSnapshot)
     }
 
     private func pipeCommitHistoryServiceState() {
@@ -1492,6 +1494,10 @@ class GitManager: ObservableObject {
 
     func resolveBranchInfoAsync() async -> [BranchInfo] {
         await branchService.resolveBranchInfoAsync()
+    }
+
+    func resolveWorktreeSnapshotAsync() async -> Result<GitWorktreeSnapshot, Error> {
+        await branchService.resolveWorktreeSnapshotAsync()
     }
 
     /// Merges `featureBranch` into the default branch without deleting anything.
