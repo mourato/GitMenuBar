@@ -14,6 +14,7 @@ struct HistorySectionView: View {
     let onLoadMore: () -> Void
 
     @Binding var isCollapsed: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -34,7 +35,7 @@ struct HistorySectionView: View {
                     onEditCommitMessage: onEditCommitMessage,
                     onGenerateCommitMessage: onGenerateCommitMessage
                 )
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
 
                 if canLoadMore {
                     HStack {
@@ -80,7 +81,7 @@ struct HistorySectionView: View {
                     committedAt: Date().addingTimeInterval(-3600),
                     stats: CommitStats(filesChanged: 1, insertions: 10, deletions: 0),
                     changedFiles: []
-                ),
+                )
             ].enumerated().map { index, commit in
                 HistoryRowAdapter(
                     commit: commit,

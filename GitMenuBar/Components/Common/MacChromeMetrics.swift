@@ -4,10 +4,15 @@ import SwiftUI
 // MARK: - Press feedback
 
 struct PressableButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.15, dampingFraction: 1.0), value: configuration.isPressed)
+            .animation(
+                MacChromeMotion.adaptive(MacChromeMotion.press, usesReducedMotion: reduceMotion),
+                value: configuration.isPressed
+            )
     }
 }
 
@@ -19,11 +24,15 @@ extension View {
 
 private struct PressableModifier: ViewModifier {
     @GestureState private var isPressed = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         content
             .scaleEffect(isPressed ? 0.98 : 1.0)
-            .animation(.spring(response: 0.15, dampingFraction: 1.0), value: isPressed)
+            .animation(
+                MacChromeMotion.adaptive(MacChromeMotion.press, usesReducedMotion: reduceMotion),
+                value: isPressed
+            )
             .simultaneousGesture(
                 DragGesture(minimumDistance: 0)
                     .updating($isPressed) { _, state, _ in state = true }
@@ -40,8 +49,7 @@ struct AdaptiveMotionModifier: ViewModifier {
         content
             .transaction { transaction in
                 if reduceMotion {
-                    transaction.animation = nil
-                    transaction.disablesAnimations = true
+                    transaction.animation = MacChromeMotion.reduceMotion
                 }
             }
     }

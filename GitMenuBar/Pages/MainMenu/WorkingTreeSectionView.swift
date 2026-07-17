@@ -15,6 +15,7 @@ struct WorkingTreeSectionView: View {
     let onDiscardAll: (() -> Void)?
     let actionIcon: String
     let actionHelp: String
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -50,7 +51,7 @@ struct WorkingTreeSectionView: View {
                         )
                     }
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
             }
         }
     }
@@ -70,7 +71,7 @@ struct WorkingTreeSectionView: View {
                 path: "GitMenuBar/Features/MainMenu/MainMenuView.swift",
                 lineDiff: LineDiffStats(added: 5, removed: 2),
                 status: .modified
-            )),
+            ))
         ],
         isCollapsed: .constant(false),
         selectedItemID: nil,

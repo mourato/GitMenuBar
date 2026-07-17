@@ -6,11 +6,14 @@ struct HistorySectionHeaderView: View {
 
     @State private var isHovered = false
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 8) {
             Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 1.0)) {
+                withAnimation(
+                    MacChromeMotion.adaptive(MacChromeMotion.settle, usesReducedMotion: reduceMotion)
+                ) {
                     isCollapsed.toggle()
                 }
             } label: {

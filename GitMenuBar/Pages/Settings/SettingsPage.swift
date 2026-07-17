@@ -280,7 +280,11 @@ struct ShortcutsSettingsPaneView: View {
         }
         .alert("Wipe Failed", isPresented: .init(
             get: { wipeError != nil },
-            set: { if !$0 { wipeError = nil } }
+            set: {
+                if !$0 {
+                    wipeError = nil
+                }
+            }
         )) {
             Button("OK", role: .cancel) {}
         } message: {

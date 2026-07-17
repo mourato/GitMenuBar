@@ -12,11 +12,14 @@ struct WorkingTreeSectionHeaderView: View {
 
     @State private var isHovered = false
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 8) {
             Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 1.0)) {
+                withAnimation(
+                    MacChromeMotion.adaptive(MacChromeMotion.settle, usesReducedMotion: reduceMotion)
+                ) {
                     isCollapsed.toggle()
                 }
             } label: {
@@ -81,7 +84,11 @@ struct WorkingTreeSectionHeaderView: View {
         .cornerRadius(4)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(MacChromePalette.neutralBorder(contrast: colorSchemeContrast).opacity(colorSchemeContrast == .increased ? 1 : 0), lineWidth: 1)
+                .stroke(
+                    MacChromePalette.neutralBorder(contrast: colorSchemeContrast)
+                        .opacity(colorSchemeContrast == .increased ? 1 : 0),
+                    lineWidth: 1
+                )
         )
         .contentShape(Rectangle())
         .onHover { inside in
