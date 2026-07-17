@@ -198,6 +198,62 @@ struct BranchInfo: Identifiable, Hashable {
     }
 }
 
+enum GitWorktreeWorkingTreeState: Hashable {
+    case clean
+    case dirty
+    case unknown
+}
+
+struct GitWorktreeInfo: Identifiable, Hashable {
+    let path: String
+    let headHash: String
+    let branchName: String?
+    let isMainWorktree: Bool
+    let lockReason: String?
+    let pruneReason: String?
+    let workingTreeState: GitWorktreeWorkingTreeState
+
+    init(
+        path: String,
+        headHash: String,
+        branchName: String?,
+        isMainWorktree: Bool = false,
+        lockReason: String? = nil,
+        pruneReason: String? = nil,
+        workingTreeState: GitWorktreeWorkingTreeState = .unknown
+    ) {
+        self.path = path
+        self.headHash = headHash
+        self.branchName = branchName
+        self.isMainWorktree = isMainWorktree
+        self.lockReason = lockReason
+        self.pruneReason = pruneReason
+        self.workingTreeState = workingTreeState
+    }
+
+    var id: String {
+        path
+    }
+
+    var isDetached: Bool {
+        branchName == nil
+    }
+}
+
+enum GitWorktreeParserError: LocalizedError, Equatable {
+    case missingPath(recordIndex: Int)
+    case missingHead(recordIndex: Int)
+
+    var errorDescription: String? {
+        switch self {
+        case let .missingPath(recordIndex):
+            return "Worktree record \(recordIndex + 1) is missing its path."
+        case let .missingHead(recordIndex):
+            return "Worktree record \(recordIndex + 1) is missing its HEAD."
+        }
+    }
+}
+
 struct MergeToDefaultResult: Equatable {
     let didSwitchToDefault: Bool
     let didMerge: Bool
