@@ -9,6 +9,7 @@ struct BottomBranchSelectorView: View {
     let isDetachedHead: Bool
     let onTap: () -> Void
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: onTap) {
@@ -31,10 +32,24 @@ struct BottomBranchSelectorView: View {
             .frame(minHeight: 28)
             .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
-            .animation(nil, value: currentBranch)
-            .animation(nil, value: commitCount)
+            .animation(
+                MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                value: currentBranch
+            )
+            .animation(
+                MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                value: commitCount
+            )
+            .animation(
+                MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                value: isRemoteAhead
+            )
+            .animation(
+                MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                value: behindCount
+            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableButtonStyle())
         .accessibilityLabel("Current branch \(currentBranch)")
         .accessibilityHint("Shows branch selection and sync actions.")
         .onHover { inside in
@@ -57,7 +72,9 @@ struct BottomBranchSelectorView: View {
     private func statusBadge(symbol: String, count: Int, style: BadgeStyle) -> some View {
         HStack(spacing: 4) {
             Image(systemName: symbol)
+                .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
             Text("\(count)")
+                .contentTransition(reduceMotion ? .identity : .numericText())
         }
         .font(MacChromeTypography.captionStrong)
         .foregroundStyle(style.foregroundColor)

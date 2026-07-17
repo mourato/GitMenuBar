@@ -27,12 +27,13 @@ struct WorkingTreeSectionHeaderView: View {
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
                         .font(MacChromeTypography.captionStrong)
                         .foregroundColor(.secondary)
+                        .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
 
                     Text(title)
                         .font(MacChromeTypography.body)
                 }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableButtonStyle())
             .accessibilityLabel("\(title) section")
             .accessibilityHint(isCollapsed ? "Expands the section." : "Collapses the section.")
 
@@ -54,7 +55,7 @@ struct WorkingTreeSectionHeaderView: View {
                                 .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
                                 .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressableButtonStyle())
                         .help("Discard All")
                         .accessibilityLabel("Discard all files in \(title)")
                     }
@@ -66,7 +67,7 @@ struct WorkingTreeSectionHeaderView: View {
                             .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableButtonStyle())
                     .help(actionHelp)
                     .accessibilityLabel(actionHelp)
                 }
@@ -77,6 +78,11 @@ struct WorkingTreeSectionHeaderView: View {
             Text(summary.fileCountText)
                 .font(.caption.weight(.medium))
                 .foregroundColor(.secondary)
+                .contentTransition(reduceMotion ? .identity : .numericText())
+                .animation(
+                    MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                    value: summary.fileCount
+                )
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 4)
@@ -91,6 +97,10 @@ struct WorkingTreeSectionHeaderView: View {
                 )
         )
         .contentShape(Rectangle())
+        .animation(
+            MacChromeMotion.adaptive(MacChromeMotion.micro, usesReducedMotion: reduceMotion),
+            value: isHovered
+        )
         .onHover { inside in
             isHovered = inside
         }

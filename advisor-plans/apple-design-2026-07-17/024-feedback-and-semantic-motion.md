@@ -63,6 +63,7 @@ In scope:
 - `GitMenuBar/Components/History/HistorySectionHeaderView.swift`
 - `GitMenuBar/Components/WorkingTree/WorkingTreeSectionHeaderView.swift`
 - `GitMenuBar/Components/Projects/RecentProjectsSection.swift`
+- `GitMenuBar/Components/Projects/RecentPathRow.swift`
 - `GitMenuBar/Components/Branches/BottomBranchSelector.swift`
 - `GitMenuBar/Components/Common/MacChromeMetrics.swift` only for the shared
   press API established by plan 021
@@ -113,13 +114,20 @@ disabled/static under Reduce Motion while retaining the changed value.
 
 ## Done criteria
 
-- [ ] Interactive primary controls provide touch-down feedback.
-- [ ] Swipe and double-click behavior remain unchanged.
-- [ ] Raw motion values in scope are replaced by named tokens or documented exceptions.
-- [ ] Numeric and semantic icon changes use content transitions where useful.
-- [ ] Reduce Motion retains readable state changes.
-- [ ] `make agent-check` and `make lint && make test` pass.
-- [ ] No worktree-plan source files are modified.
+- [x] Interactive primary controls provide touch-down feedback.
+- [x] Swipe and double-click behavior remain unchanged by code-path review;
+  interactive acceptance remains documented below.
+- [x] Raw motion values in scope are replaced by named tokens or documented exceptions.
+- [x] Numeric and semantic icon changes use content transitions where useful.
+- [x] Reduce Motion retains readable state changes.
+- [x] `make agent-check` and `make lint && make test` pass.
+- [x] No worktree-plan source files are modified.
+
+## Validation note
+
+The current execution environment has no desktop UI harness. The manual
+macOS acceptance checklist in `024-code-review.md` remains to be exercised
+interactively.
 
 ## STOP conditions
 
@@ -133,4 +141,3 @@ disabled/static under Reduce Motion while retaining the changed value.
 Every future interactive row must state whether it uses a ButtonStyle or a
 gesture-based press modifier and how that choice interacts with swipe,
 double-click, VoiceOver, and keyboard focus.
-

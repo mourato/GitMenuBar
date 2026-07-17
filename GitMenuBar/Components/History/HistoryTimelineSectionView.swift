@@ -99,6 +99,7 @@ private struct HistoryTimelineRowView: View {
     let onGenerateCommitMessage: () -> Void
 
     @State private var isHovered = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
@@ -142,6 +143,10 @@ private struct HistoryTimelineRowView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .contentShape(RoundedRectangle(cornerRadius: 8))
+        .animation(
+            MacChromeMotion.adaptive(MacChromeMotion.micro, usesReducedMotion: reduceMotion),
+            value: isHovered
+        )
         .onTapGesture {
             onSelect()
         }
