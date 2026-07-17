@@ -1,6 +1,6 @@
 ---
 name: apple-design
-description: Apple's approach to interface design, fluid movement and physics — translated to Swift, SwiftUI and UIKit. Use when building or reviewing gesture-oriented UI, spring animations, drag/swipe/sheet interactions, momentum and interruptible transitions, translucent materials and depth, typography (Dynamic Type, tracking, leading), reduce motion, or the design fundamentals (feedback, spatial consistency, containment) behind interfaces in Apple style.
+description: Apple's approach to interface design, fluid movement and physics — translated to Swift, SwiftUI and UIKit. Use when building or reviewing GitMenuBar or Apple-platform UI involving gesture-oriented UI, spring animations, drag/swipe/sheet interactions, motion tokens, momentum and interruptible transitions, translucent materials and depth, typography (Dynamic Type, tracking, leading), reduce motion, or the design fundamentals (feedback, spatial consistency, containment) behind interfaces in Apple style.
 ---
 
 # Apple Design (Swift / SwiftUI / UIKit)
@@ -16,6 +16,10 @@ The common thread: **an interface feels alive when motion starts from the curren
 An interface is fluid when it behaves like the physical world: responds instantly, moves continuously, carries momentum, resists at boundaries, and can be redirected mid-motion. Everything below is a way to get closer to that.
 
 Apple frames design as serving four human needs: **safety/predictability, understanding, accomplishment, and delight.** Each rule here serves one of them.
+
+## GitMenuBar motion profile
+
+When working in GitMenuBar, read [the project motion reference](references/gitmenubar-motion.md) before designing, implementing, or reviewing animation. Apply its tokens and context rules as the project default; document any deliberate exception in the change and keep accessibility behavior intact.
 
 ## 1. Response — eliminate latency
 

@@ -7,6 +7,7 @@ The catalog is organized by responsibility so agents can trigger the narrowest u
 | Skill                       | Location                                    | Use When                                                                                                                |
 | --------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `delivery-workflow`         | `.agents/skills/delivery-workflow/`         | Command routing, verification scope, merge gate, logs, git evidence, and manual sign-off for a change                   |
+| `apple-design`              | `.agents/skills/apple-design/`              | Reviewing and implementing Apple-style motion, gestures, transitions, materials, haptics, and Reduce Motion behavior   |
 | `macos-app-engineering`     | `.agents/skills/macos-app-engineering/`     | Ordinary SwiftUI/AppKit implementation and native macOS design acceptance for GitMenuBar UI                             |
 | `menubar`                   | `.agents/skills/menubar/`                   | Changing `NSStatusItem`, popovers, app activation, and menu bar specific behavior                                       |
 | `release-management`        | `.agents/skills/release-management/`        | Preparing a release, validating DMGs, and checking release readiness                                                    |
@@ -27,6 +28,7 @@ The catalog is organized by responsibility so agents can trigger the narrowest u
 ## Catalog Notes
 
 - `delivery-workflow` owns command routing, verification depth, merge gate, logs, git evidence, and manual sign-off.
+- `apple-design` owns motion tokens, interaction physics, spatial continuity, materials/depth, haptics, and Reduce Motion guidance.
 - `macos-app-engineering` owns ordinary SwiftUI/AppKit implementation and native design acceptance.
 - `menubar` remains separate because GitMenuBar's status item and popover behavior are product-critical.
 - `release-management` remains separate for release and DMG readiness.

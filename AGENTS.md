@@ -79,6 +79,7 @@ repository's rules to the global thermo review.
 Primary skills in this repo:
 
 - `delivery-workflow`
+- `apple-design`
 - `macos-app-engineering`
 - `menubar`
 - `swift-conventions`
