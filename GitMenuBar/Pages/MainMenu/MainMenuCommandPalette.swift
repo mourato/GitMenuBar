@@ -284,7 +284,7 @@ struct MainMenuCommandPaletteView: View {
 
     private func execute(_ item: MainMenuCommandPaletteItem) {
         guard item.isEnabled else {
-            HapticFeedback.perform(.generic)
+            HapticFeedback.actionUnavailable()
             return
         }
 
@@ -293,7 +293,7 @@ struct MainMenuCommandPaletteView: View {
 
     private func executeSelectedOrFirstVisibleItem() {
         guard let item = resolveItemToExecuteOnEnter() else {
-            HapticFeedback.perform(.generic)
+            HapticFeedback.actionUnavailable()
             return
         }
 

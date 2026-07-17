@@ -74,7 +74,7 @@ struct BranchManagementSheet: View {
             footer
         }
         .frame(width: 560)
-        .macPanelSurface(cornerRadius: MacChromeMetrics.largeCornerRadius)
+        .macPanelSurface(cornerRadius: MacChromeMetrics.largeCornerRadius, material: .regular)
         .onAppear(perform: reloadData)
         .onChange(of: mode) { _, _ in
             query = ""

@@ -37,7 +37,8 @@ runtime wiring.
 ## Current state
 
 - `MacPanelSurface.swift:13-35` is the correct Reduce Transparency pattern, but
-  no caller passes an explicit `.thin` or `.thick` material weight.
+  callers should make the hierarchy explicit instead of relying on the default
+  `.regular` weight.
 - `InlineStatusBannerView.swift:48-52`, `MainMenuHeaderView.swift:107`, and
   `CommitHoverCardView.swift:22-30` use materials outside the shared fallback.
 - `MacChromeMetrics.swift:100-112` defines tracking but no production call site
@@ -66,11 +67,14 @@ In scope:
 - `GitMenuBar/Components/Common/HapticFeedback.swift`
 - `GitMenuBar/Components/History/CommitHoverCardView.swift` only if it is
   confirmed unused, otherwise wire it through its real hover path
+- `GitMenuBar/Components/History/HistoryTimelineDateFormatter.swift` when
+  extracting the formatter that remains used by history production views
 - `GitMenuBar/Pages/MainMenu/MainMenuActions.swift`
 - `GitMenuBar/App/AppCommandCenter.swift` only for consistent disabled-command
   feedback
 - Current UI call sites that use fixed typography/spacing, with previews
   updated for accessibility text sizes
+- `GitMenuBar/Components/Projects/RecentPathRow.swift` for scaled row spacing
 
 Out of scope:
 
@@ -139,14 +143,42 @@ those plans first.
 
 ## Done criteria
 
-- [ ] All translucent production surfaces have an explicit adaptive fallback.
-- [ ] Material weights reflect hierarchy and are actually exercised.
-- [ ] Typography adapts to large text without clipping or fixed-size regressions.
-- [ ] Tracking/scaled metrics are either used intentionally or removed.
-- [ ] Haptic/sound feedback is semantic, causal, and non-duplicated.
-- [ ] Orphaned components/helpers are removed only with `rg`/target evidence.
-- [ ] `make agent-check`, `make lint && make test`, and `make guidance-check` pass.
-- [ ] No files from the active worktree sequence are modified unexpectedly.
+- [x] All translucent production surfaces have an explicit adaptive fallback.
+- [x] Material weights reflect hierarchy and are actually exercised.
+- [x] Typography adapts to large text without clipping or fixed-size regressions.
+- [x] Tracking/scaled metrics are either used intentionally or removed.
+- [x] Haptic/sound feedback is semantic, causal, and non-duplicated.
+- [x] Orphaned components/helpers are removed only with `rg`/target evidence.
+- [x] `make agent-check`, `make lint && make test`, and `make guidance-check` pass.
+- [x] No files from the active worktree sequence are modified unexpectedly.
+
+## Implementation evidence
+
+- `MacPanelSurface` now handles Reduce Transparency with an opaque control
+  background and callers explicitly choose `.thin`, `.regular`, or `.thick`.
+- Info banners and the main menu header use the shared adaptive surface path;
+  the command palette retains its own documented opaque fallback.
+- History and working-tree section labels use shared tracking, while recent
+  path rows scale their minimum height and include a large-text preview.
+- Commit, sync, stage/unstage, and unavailable-command feedback uses semantic
+  haptic helpers. The AppKit default performer can suppress feedback when the
+  current hardware or user settings do not support it, and no `NSSound.beep()`
+  path remains.
+- `rg` found no production `CommitHoverCardView` reference. Its unused source
+  and preview were removed; `HistoryTimelineDateFormatter` was extracted into
+  its own file because history detail and timeline views still use it. The
+  synchronized Xcode source group and successful build confirm target wiring.
+
+## Validation
+
+- `make agent-check`: passed.
+- `make lint && make test`: passed; existing non-serious lint warnings remain,
+  with no changed-path errors.
+- `make guidance-check`: passed.
+- `git diff --check`: passed.
+- Manual desktop acceptance of Light/Dark, increased contrast, Reduce
+  Transparency, large Dynamic Type, and haptic hardware remains outside the
+  CLI environment and is documented as a follow-up sign-off.
 
 ## STOP conditions
 
@@ -160,4 +192,3 @@ those plans first.
 Every new material surface must state its Reduce Transparency fallback. Every
 new haptic must name the causal event and why it deserves feedback. Keep dead
 code cleanup in the same change as the abstraction that made it obsolete.
-

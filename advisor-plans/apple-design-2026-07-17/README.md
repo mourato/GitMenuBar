@@ -28,7 +28,7 @@ this directory.
 | 022 | Animate AppKit main-window presentation safely | P1 | M | 021 | DONE |
 | 023 | Restore SwiftUI route and origin continuity | P1 | M | 021 | DONE |
 | 024 | Complete press feedback and semantic content motion | P2 | M | 021 | DONE |
-| 025 | Finish adaptive surfaces, typography, haptics, and sanitization | P2 | M | 021–024 | TODO |
+| 025 | Finish adaptive surfaces, typography, haptics, and sanitization | P2 | M | 021–024 | DONE |
 
 Plans 022 and 023 touch separate implementation surfaces, but they are kept
 serial to reduce merge and visual-regression risk. Plan 025 is last because it

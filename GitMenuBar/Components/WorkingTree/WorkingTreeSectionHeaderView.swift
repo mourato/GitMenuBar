@@ -31,6 +31,7 @@ struct WorkingTreeSectionHeaderView: View {
 
                     Text(title)
                         .font(MacChromeTypography.body)
+                        .tracking(MacChromeTypography.tracking(for: .subheadline))
                 }
             }
             .buttonStyle(PressableButtonStyle())

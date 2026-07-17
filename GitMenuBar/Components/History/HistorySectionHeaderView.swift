@@ -25,6 +25,7 @@ struct HistorySectionHeaderView: View {
 
                     Text("History")
                         .font(MacChromeTypography.body)
+                        .tracking(MacChromeTypography.tracking(for: .subheadline))
                 }
             }
             .buttonStyle(PressableButtonStyle())

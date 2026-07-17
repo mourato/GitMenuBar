@@ -105,7 +105,7 @@ struct BranchSelectorPopoverView: View {
         }
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
-        .macPanelSurface()
+        .macPanelSurface(material: .thin)
         .frame(width: 300, height: 360)
     }
 }

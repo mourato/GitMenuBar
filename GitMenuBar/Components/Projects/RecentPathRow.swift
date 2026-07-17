@@ -8,6 +8,7 @@ struct RecentPathRowView: View {
 
     @State private var isHovered = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .body) private var rowHeight: CGFloat = 28
 
     var body: some View {
         Button(action: onTap) {
@@ -23,7 +24,7 @@ struct RecentPathRowView: View {
                 Spacer()
             }
             .padding(.horizontal, 8)
-            .frame(minHeight: 28)
+            .frame(minHeight: rowHeight)
             .background(isHovered ? MacChromePalette.hoverFill() : Color(nsColor: .controlBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
         }
@@ -51,4 +52,15 @@ struct RecentPathRowView: View {
     )
     .padding()
     .frame(width: 320)
+}
+
+#Preview("Recent Path Row – Large Text") {
+    RecentPathRowView(
+        displayText: "A very long repository name that should truncate safely",
+        fullPath: "~/Documents/Projects/a-very-long-repository-name",
+        onTap: {}
+    )
+    .padding()
+    .frame(width: 320)
+    .dynamicTypeSize(.accessibility2)
 }

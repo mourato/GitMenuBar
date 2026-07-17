@@ -1,4 +1,3 @@
-import AppKit
 import KeyboardShortcuts
 import SwiftUI
 
@@ -215,7 +214,7 @@ final class AppCommandCenter: ObservableObject {
 
     func perform(_ commandID: AppCommandID) {
         guard state(for: commandID).isEnabled else {
-            NSSound.beep()
+            HapticFeedback.actionUnavailable()
             return
         }
 
