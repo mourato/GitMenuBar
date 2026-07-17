@@ -143,7 +143,7 @@ extension GitBranchService {
             }
 
             let localResult = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["branch", "-D", featureBranch])
+                self.executeGitCommand(in: repositoryPath, args: ["branch", "--delete", featureBranch])
             }
             guard !localResult.failure else {
                 return .failure(mergeCleanupError(

@@ -189,6 +189,34 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         )
     }
 
+    func testDeleteBranchDoesNotDeleteUnmergedBranch() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["checkout", "-b", "feature/unmerged"], in: repoURL)
+        try "unmerged\n".write(
+            to: repoURL.appendingPathComponent("unmerged.txt"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try runGit(["add", "."], in: repoURL)
+        try runGit(["commit", "-m", "feat: unmerged"], in: repoURL)
+        try runGit(["checkout", "main"], in: repoURL)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let result: Result<Void, Error> = await withCheckedContinuation { continuation in
+            gitManager.deleteBranch(branchName: "feature/unmerged") {
+                continuation.resume(returning: $0)
+            }
+        }
+
+        switch result {
+        case .success:
+            XCTFail("An unmerged branch must not be deleted.")
+        case let .failure(error):
+            XCTAssertTrue(error.localizedDescription.contains("not fully merged"))
+        }
+        XCTAssertTrue(try runGit(["show-ref", "--verify", "refs/heads/feature/unmerged"], in: repoURL).contains("feature/unmerged"))
+    }
+
     func testBranchInfoModelProperties() {
         let local = BranchInfo(
             name: "feature/x",

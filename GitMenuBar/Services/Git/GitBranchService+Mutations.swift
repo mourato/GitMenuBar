@@ -271,7 +271,7 @@ extension GitBranchService {
 
         DispatchQueue.global(qos: .userInitiated).async {
             // Try to delete the branch locally first
-            let localResult = self.executeGitCommand(in: self.storedRepoPath, args: ["branch", "-D", branchName])
+            let localResult = self.executeGitCommand(in: self.storedRepoPath, args: ["branch", "--delete", branchName])
 
             if localResult.failure {
                 DispatchQueue.main.async {

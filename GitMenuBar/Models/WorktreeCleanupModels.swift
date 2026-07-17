@@ -75,3 +75,78 @@ struct GitWorktreeSnapshot: Hashable {
     let worktrees: [GitWorktreeCleanupInfo]
     let branches: [GitBranchCleanupInfo]
 }
+
+enum GitCleanupTarget: Hashable, Identifiable {
+    case localBranch(GitBranchCleanupInfo)
+    case worktree(GitWorktreeCleanupInfo)
+    case remoteBranch(GitBranchCleanupInfo)
+
+    var id: String {
+        switch self {
+        case let .localBranch(info):
+            return "local-branch/\(info.id)"
+        case let .worktree(info):
+            return "worktree/\(info.id)"
+        case let .remoteBranch(info):
+            return "remote-branch/\(info.id)"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case let .localBranch(info):
+            return "Local branch \(info.reference.name)"
+        case let .worktree(info):
+            return "Worktree \(info.worktree.path)"
+        case let .remoteBranch(info):
+            return "Remote branch origin/\(info.reference.name)"
+        }
+    }
+}
+
+enum GitCleanupItemResultStatus: Hashable {
+    case succeeded
+    case skipped(reason: String)
+    case failed(reason: String)
+
+    var isSuccess: Bool {
+        self == .succeeded
+    }
+}
+
+struct GitCleanupItemResult: Identifiable, Hashable {
+    let target: GitCleanupTarget
+    let status: GitCleanupItemResultStatus
+
+    var id: String {
+        target.id
+    }
+}
+
+struct GitCleanupBatchResult: Hashable {
+    let items: [GitCleanupItemResult]
+
+    var succeededCount: Int {
+        items.filter { $0.status.isSuccess }.count
+    }
+
+    var skippedCount: Int {
+        items.filter {
+            if case .skipped = $0.status {
+                return true
+            } else {
+                return false
+            }
+        }.count
+    }
+
+    var failedCount: Int {
+        items.filter {
+            if case .failed = $0.status {
+                return true
+            } else {
+                return false
+            }
+        }.count
+    }
+}

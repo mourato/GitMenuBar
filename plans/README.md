@@ -160,7 +160,7 @@ executors must preserve them and perform the drift check before editing.
 | 016 | Add Git worktree models and porcelain parsing | P1 | M | — | DONE |
 | 017 | Add worktree snapshots and conservative cleanup analysis | P1 | L | 016 | DONE |
 | 018 | Add the Branches, Worktrees, and Cleanup visualizer | P1 | L | 017 | DONE |
-| 019 | Implement revalidated safe cleanup for branches and worktrees | P0 | L | 018 | TODO |
+| 019 | Implement revalidated safe cleanup for branches and worktrees | P0 | L | 018 | DONE |
 | 020 | Harden worktree cleanup with integration tests and documentation | P1 | M | 019 | TODO |
 
 ### Dependency notes
