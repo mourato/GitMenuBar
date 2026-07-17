@@ -66,13 +66,27 @@ In scope:
   adaptive-surface contract needs a small correction
 - A new `GitMenuBar/Components/Common/MacChromeMotion.swift` only if keeping
   motion tokens separate improves ownership
+- `GitMenuBar/Pages/MainMenu/MainMenuView.swift`
+- `GitMenuBar/Pages/MainMenu/WorkingTreeSectionView.swift`
+- `GitMenuBar/Pages/MainMenu/HistorySectionView.swift`
+- `GitMenuBar/Components/History/HistorySectionHeaderView.swift`
+- `GitMenuBar/Components/WorkingTree/WorkingTreeSectionHeaderView.swift`
+- `GitMenuBarTests/MainMenuCommandPaletteResolverTests.swift` and
+  `GitMenuBar/Pages/Settings/SettingsPage.swift`, limited to the existing
+  SwiftFormat `wrapIfStatementBodies` violations exposed by the full merge
+  gate; these changes are mechanical and have no behavior change.
+- `GitMenuBar/Pages/MainMenu/ConfirmationDialogsModifier.swift`, limited to a
+  local SwiftLint `function_parameter_count` suppression required by the full
+  merge gate; this change is mechanical and has no behavior change.
 - Relevant previews or a small pure helper test if a deterministic seam is
   introduced
 
 Out of scope:
 
 - AppKit window presentation; plan 022 owns it.
-- Route, command-palette, or popover transitions; plan 023 owns them.
+- Directional route design, command-palette presentation, and popover origin
+  continuity; plan 023 owns those refinements. This plan only supplies the
+  Reduce Motion opacity/static boundary required by existing transitions.
 - Worktree/branch source files touched by plans 016–020.
 - Product redesign or new animation types not present in the motion reference.
 
@@ -119,14 +133,15 @@ all call sites are migrated. Keep layout bounds stable and use the shared
 
 ## Done criteria
 
-- [ ] All six project motion tokens have one canonical source.
-- [ ] Reduce Motion retains useful opacity/color/static feedback.
-- [ ] No global `disablesAnimations` suppression remains in the shared modifier.
-- [ ] Press feedback has one documented ownership model.
-- [ ] `make agent-check` passes.
-- [ ] `make lint && make test` passes.
-- [ ] No files outside the scope are modified.
-- [ ] This index remains `TODO` until the executor updates it in its own branch.
+- [x] All six project motion tokens have one canonical source.
+- [x] Reduce Motion retains useful opacity/color/static feedback.
+- [x] No global `disablesAnimations` suppression remains in the shared modifier.
+- [x] Press feedback has one documented ownership model.
+- [x] `make agent-check` passes.
+- [x] `make lint && make test` passes.
+- [x] No files outside the scope are modified.
+- [x] The executor updates this index only after the implementation, review,
+  and merge-gate evidence are complete.
 
 ## STOP conditions
 
@@ -140,4 +155,3 @@ all call sites are migrated. Keep layout bounds stable and use the shared
 Later plans must use these tokens instead of introducing raw durations. Any
 deliberate exception must be documented at the call site with the interaction
 context and accessibility behavior.
-

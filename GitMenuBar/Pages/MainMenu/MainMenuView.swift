@@ -25,6 +25,7 @@ struct MainMenuView: View {
     @EnvironmentObject var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
     @EnvironmentObject var shortcutActionBridge: MainMenuShortcutActionBridge
     @EnvironmentObject var presentationModel: MainMenuPresentationModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isUnstagedSectionCollapsed) var isUnstagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isHistorySectionCollapsed) var isHistorySectionCollapsed = false
@@ -125,7 +126,7 @@ struct MainMenuView: View {
                 )
                 .environmentObject(gitManager)
                 .environmentObject(githubAuthManager)
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .bottom)))
             case .main:
                 mainView
                     .transition(.opacity)
@@ -154,11 +155,14 @@ struct MainMenuView: View {
                         }
                     }
                 )
-                .transition(.opacity.combined(with: .move(edge: .trailing)))
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .trailing)))
             }
         }
         .adaptiveMotion()
-        .animation(.spring(response: 0.35, dampingFraction: 1.0), value: presentationModel.route)
+        .animation(
+            MacChromeMotion.adaptive(MacChromeMotion.route, usesReducedMotion: reduceMotion),
+            value: presentationModel.route
+        )
         .confirmationDialogs(
             showDeleteConfirmation: $showDeleteConfirmation,
             showVisibilityConfirmation: $showVisibilityConfirmation,

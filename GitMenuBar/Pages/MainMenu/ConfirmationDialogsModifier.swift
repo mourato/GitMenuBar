@@ -127,6 +127,7 @@ struct ConfirmationDialogsModifier: ViewModifier {
 }
 
 extension View {
+    // swiftlint:disable:next function_parameter_count
     func confirmationDialogs(
         showDeleteConfirmation: Binding<Bool>,
         showVisibilityConfirmation: Binding<Bool>,

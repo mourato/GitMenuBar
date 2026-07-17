@@ -205,7 +205,9 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         )
 
         XCTAssertNotNil(itemsOnFeature.first(where: {
-            if case .mergeToDefault = $0.kind { return true }
+            if case .mergeToDefault = $0.kind {
+                return true
+            }
             return false
         }))
 
@@ -228,7 +230,9 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         )
 
         XCTAssertNil(itemsOnMain.first {
-            if case .mergeToDefault = $0.kind { return true }
+            if case .mergeToDefault = $0.kind {
+                return true
+            }
             return false
         })
     }
