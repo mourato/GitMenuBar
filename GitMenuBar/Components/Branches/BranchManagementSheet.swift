@@ -6,9 +6,13 @@ struct BranchManagementSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var branchInfos: [BranchInfo] = []
+    @State private var worktreeSnapshot: GitWorktreeSnapshot?
     @State private var isLoading = false
     @State private var query: String = ""
     @State private var errorMessage: String?
+    @State private var worktreeErrorMessage: String?
+    @State private var mode: BranchManagementMode = .branches
+    @State private var selectedCleanupIDs: Set<String> = []
 
     @State private var showCreateBranch = false
     @State private var newBranchName: String = ""
@@ -23,42 +27,9 @@ struct BranchManagementSheet: View {
 
     @State private var operationError: String?
 
-    private var localInfos: [BranchInfo] {
-        filteredInfos { $0.isLocal }
-    }
-
-    private var remoteInfos: [BranchInfo] {
-        filteredInfos { $0.isRemote }
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             header
-
-            Divider()
-
-            VStack(spacing: 10) {
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField("Filter branches", text: $query)
-                        .textFieldStyle(.plain)
-                        .font(MacChromeTypography.body)
-                    if !query.isEmpty {
-                        Button(action: { query = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color(nsColor: .controlBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
 
             Divider()
 
@@ -68,37 +39,38 @@ struct BranchManagementSheet: View {
                     .controlSize(.regular)
                 Spacer()
             } else {
-                ScrollView(.vertical, showsIndicators: true) {
-                    VStack(alignment: .leading, spacing: 14) {
-                        sectionHeader("Local Branches", infos: localInfos)
-                        if localInfos.isEmpty {
-                            emptyHint
-                        } else {
-                            ForEach(localInfos) { row(for: $0) }
-                        }
-
-                        sectionHeader("Remote Branches", infos: remoteInfos)
-                        if remoteInfos.isEmpty {
-                            emptyHint
-                        } else {
-                            ForEach(remoteInfos) { row(for: $0) }
-                        }
-                    }
-                    .padding(16)
-                }
-                .frame(maxHeight: 420)
+                BranchManagementListView(
+                    mode: $mode,
+                    query: $query,
+                    branchInfos: branchInfos,
+                    worktreeSnapshot: worktreeSnapshot,
+                    worktreeErrorMessage: worktreeErrorMessage,
+                    selectedCleanupIDs: $selectedCleanupIDs,
+                    onRevealWorktree: revealWorktree,
+                    onCopyPath: copyPath,
+                    onDismissError: { worktreeErrorMessage = nil },
+                    branchRow: row
+                )
             }
 
             Divider()
 
             footer
         }
-        .frame(width: 460)
+        .frame(width: 560)
         .macPanelSurface(cornerRadius: MacChromeMetrics.largeCornerRadius)
         .onAppear(perform: reloadData)
+        .onChange(of: mode) { _, _ in
+            query = ""
+            selectedCleanupIDs = []
+        }
         .alert("Delete Local Branch?", isPresented: Binding(
             get: { deleteLocalName != nil },
-            set: { if !$0 { deleteLocalName = nil } }
+            set: {
+                if !$0 {
+                    deleteLocalName = nil
+                }
+            }
         )) {
             Button("Delete", role: .destructive) {
                 guard let name = deleteLocalName else { return }
@@ -113,7 +85,11 @@ struct BranchManagementSheet: View {
         }
         .alert("Delete Remote Branch?", isPresented: Binding(
             get: { deleteRemoteName != nil },
-            set: { if !$0 { deleteRemoteName = nil } }
+            set: {
+                if !$0 {
+                    deleteRemoteName = nil
+                }
+            }
         )) {
             Button("Delete", role: .destructive) {
                 guard let name = deleteRemoteName else { return }
@@ -128,7 +104,11 @@ struct BranchManagementSheet: View {
         }
         .alert("Merge into Current Branch?", isPresented: Binding(
             get: { mergeSourceName != nil },
-            set: { if !$0 { mergeSourceName = nil } }
+            set: {
+                if !$0 {
+                    mergeSourceName = nil
+                }
+            }
         )) {
             Button("Merge") {
                 guard let name = mergeSourceName else { return }
@@ -143,7 +123,11 @@ struct BranchManagementSheet: View {
         }
         .alert("Operation Failed", isPresented: Binding(
             get: { operationError != nil },
-            set: { if !$0 { operationError = nil } }
+            set: {
+                if !$0 {
+                    operationError = nil
+                }
+            }
         )) {
             Button("OK", role: .cancel) { operationError = nil }
         } message: {
@@ -185,7 +169,9 @@ struct BranchManagementSheet: View {
             Text("Branch Management")
                 .font(.headline.weight(.semibold))
             Spacer()
-            Button(action: { dismiss() }) {
+            Button {
+                dismiss()
+            } label: {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.secondary)
             }
@@ -205,28 +191,25 @@ struct BranchManagementSheet: View {
 
             Spacer()
 
-            Button(action: { showCreateBranch = true }) {
-                Label("New Branch…", systemImage: "plus")
+            if mode == .branches {
+                Button {
+                    showCreateBranch = true
+                } label: {
+                    Label("New Branch…", systemImage: "plus")
+                }
+                .buttonStyle(.borderedProminent)
+            } else if mode == .cleanup {
+                Button("Clean Up Selected") {}
+                    .buttonStyle(.borderedProminent)
+                    .disabled(true)
+                    .help("Cleanup actions will be enabled in a later phase.")
+                    .accessibilityHint("Cleanup is not available yet.")
             }
-            .buttonStyle(.borderedProminent)
         }
         .padding(16)
     }
 
-    private func sectionHeader(_ title: String, infos _: [BranchInfo]) -> some View {
-        Text(title)
-            .font(MacChromeTypography.sectionLabel)
-            .foregroundStyle(.secondary)
-    }
-
-    private var emptyHint: some View {
-        Text("No branches match your filter.")
-            .font(MacChromeTypography.caption)
-            .foregroundStyle(.secondary)
-            .padding(.leading, 4)
-    }
-
-    private func row(for branch: BranchInfo) -> some View {
+    private func row(for branch: BranchInfo) -> BranchManagementRowView {
         BranchManagementRowView(
             branch: branch,
             onSwitch: { performSwitch(branch) },
@@ -243,28 +226,37 @@ struct BranchManagementSheet: View {
         )
     }
 
-    private func filteredInfos(matching predicate: (BranchInfo) -> Bool) -> [BranchInfo] {
-        branchInfos
-            .filter(predicate)
-            .filter { query.isEmpty || $0.displayName.localizedCaseInsensitiveContains(query) }
-            .sorted { lhs, rhs in
-                if lhs.isCurrent != rhs.isCurrent {
-                    return lhs.isCurrent
-                }
-                return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
-            }
-    }
-
     private func reloadData() {
         isLoading = true
         errorMessage = nil
+        worktreeErrorMessage = nil
         Task {
-            _ = await gitManager.resolveBranchInfoAsync()
+            async let branchResult = gitManager.resolveBranchInfoAsync()
+            async let snapshotResult = gitManager.resolveWorktreeSnapshotAsync()
+            _ = await branchResult
+            let resolvedSnapshot = await snapshotResult
             await MainActor.run {
                 self.branchInfos = gitManager.branchInfos
+                switch resolvedSnapshot {
+                case let .success(snapshot):
+                    self.worktreeSnapshot = snapshot
+                    self.selectedCleanupIDs = []
+                case let .failure(error):
+                    self.worktreeSnapshot = nil
+                    self.worktreeErrorMessage = error.localizedDescription
+                }
                 self.isLoading = false
             }
         }
+    }
+
+    private func revealWorktree(_ path: String) {
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+    }
+
+    private func copyPath(_ path: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(path, forType: .string)
     }
 
     private func performSwitch(_ branch: BranchInfo) {
