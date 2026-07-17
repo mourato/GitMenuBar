@@ -145,3 +145,41 @@ typography, spatial continuity, multimodal feedback, architecture, and gestures.
 - Keep the current `make lint-changed` as-is: rejected because the current
   target misses untracked Swift files and falls back to full lint when no
   changed tracked Swift files exist.
+
+## Worktrees and safe cleanup — 2026-07-17
+
+Plans 016–020 turn the proposed worktree viewer and cleanup workflow into
+incremental implementation slices. They were written against commit b56c93d.
+The working tree had unrelated changes when these plans were authored;
+executors must preserve them and perform the drift check before editing.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 016 | Add Git worktree models and porcelain parsing | P1 | M | — | TODO |
+| 017 | Add worktree snapshots and conservative cleanup analysis | P1 | L | 016 | TODO |
+| 018 | Add the Branches, Worktrees, and Cleanup visualizer | P1 | L | 017 | TODO |
+| 019 | Implement revalidated safe cleanup for branches and worktrees | P0 | L | 018 | TODO |
+| 020 | Harden worktree cleanup with integration tests and documentation | P1 | M | 019 | TODO |
+
+### Dependency notes
+
+- Plan 016 is the pure parser/model foundation and must land before service work.
+- Plan 017 defines the immutable snapshot and eligibility contract consumed by
+  the UI; it must precede Plan 018.
+- Plan 018 intentionally adds no destructive action. Plan 019 is the only plan
+  that wires deletion and must use the snapshot contract.
+- Plan 020 is the final integration, documentation, accessibility, and manual
+  sign-off gate.
+
+### Safety invariants
+
+- Merged means the branch tip is reachable from the selected local default
+  branch; it does not mean that a GitHub Pull Request is merged.
+- Unknown, dirty, locked, current, protected, stale, or checked-out-elsewhere
+  items are never eligible for automatic cleanup.
+- Safe cleanup must use non-force branch/worktree operations and process one
+  repository mutation at a time.
+- Remote deletion is a separate explicit choice and is based on local
+  remote-tracking refs unless the user explicitly fetches first.
