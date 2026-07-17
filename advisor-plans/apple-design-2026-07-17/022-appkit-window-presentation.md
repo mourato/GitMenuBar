@@ -110,14 +110,22 @@ be ordered out or detached by the fade implementation.
 
 ## Done criteria
 
-- [ ] Main window fades in after positioning.
-- [ ] Main window orders out only after the close fade completes.
-- [ ] Reopening during a close cannot be invalidated by a stale completion.
-- [ ] Reduce Motion has a non-vestibular path.
-- [ ] Existing auto-hide, sheet, shortcut, and status-item behavior is preserved.
-- [ ] `make agent-check` passes.
-- [ ] `make lint && make test` passes.
-- [ ] No unrelated files are modified.
+- [x] Main window fades in after positioning.
+- [x] Main window orders out only after the close fade completes.
+- [x] Reopening during a close cannot be invalidated by a stale completion.
+- [x] Reduce Motion has a non-vestibular path.
+- [x] Existing auto-hide, sheet, shortcut, and status-item behavior is preserved
+  by code-path review; interactive acceptance remains documented below.
+- [x] `make agent-check` passes.
+- [x] `make lint && make test` passes.
+- [x] No unrelated files are modified.
+
+## Validation note
+
+The current execution environment has no desktop UI harness. The manual
+macOS acceptance checklist in `022-code-review.md` remains to be exercised
+interactively; no automated timing test was added because real AppKit sleeps
+would be flaky.
 
 ## STOP conditions
 
@@ -132,4 +140,3 @@ be ordered out or detached by the fade implementation.
 Keep capture/overlay synchronization paths unanimated if they are introduced
 later. Any new AppKit panel should reuse this lifecycle contract rather than
 calling `orderOut` from an animation-independent callback.
-
