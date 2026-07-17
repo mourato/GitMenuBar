@@ -6,13 +6,16 @@ struct BranchManagementSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var branchInfos: [BranchInfo] = []
-    @State private var worktreeSnapshot: GitWorktreeSnapshot?
+    @State var worktreeSnapshot: GitWorktreeSnapshot?
     @State private var isLoading = false
     @State private var query: String = ""
     @State private var errorMessage: String?
     @State private var worktreeErrorMessage: String?
     @State private var mode: BranchManagementMode = .branches
-    @State private var selectedCleanupIDs: Set<String> = []
+    @State var selectedCleanupIDs: Set<String> = []
+    @State var showCleanupConfirmation = false
+    @State var isCleanupRunning = false
+    @State var cleanupResultMessage: String?
 
     @State private var showCreateBranch = false
     @State private var newBranchName: String = ""
@@ -26,6 +29,19 @@ struct BranchManagementSheet: View {
     @State private var mergeSourceName: String?
 
     @State private var operationError: String?
+
+    var selectedCleanupTargets: [GitCleanupTarget] {
+        guard let worktreeSnapshot else { return [] }
+        let branchTargets = worktreeSnapshot.branches
+            .filter { !$0.reference.isRemote && $0.isEligible }
+            .filter { selectedCleanupIDs.contains(GitCleanupTarget.localBranch($0).id) }
+            .map(GitCleanupTarget.localBranch)
+        let worktreeTargets = worktreeSnapshot.worktrees
+            .filter(\.status.isEligible)
+            .filter { selectedCleanupIDs.contains(GitCleanupTarget.worktree($0).id) }
+            .map(GitCleanupTarget.worktree)
+        return branchTargets + worktreeTargets
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -162,6 +178,30 @@ struct BranchManagementSheet: View {
                 onRename: performRenameBranch
             )
         }
+        .sheet(isPresented: $showCleanupConfirmation) {
+            CleanupConfirmationView(
+                targets: selectedCleanupTargets,
+                onCancel: { showCleanupConfirmation = false },
+                onConfirm: performCleanup
+            )
+        }
+        .alert(
+            "Cleanup Results",
+            isPresented: Binding(
+                get: { cleanupResultMessage != nil },
+                set: {
+                    if !$0 {
+                        cleanupResultMessage = nil
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) { cleanupResultMessage = nil }
+        } message: {
+            if let cleanupResultMessage {
+                Text(cleanupResultMessage)
+            }
+        }
     }
 
     private var header: some View {
@@ -199,11 +239,16 @@ struct BranchManagementSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
             } else if mode == .cleanup {
-                Button("Clean Up Selected") {}
-                    .buttonStyle(.borderedProminent)
-                    .disabled(true)
-                    .help("Cleanup actions will be enabled in a later phase.")
-                    .accessibilityHint("Cleanup is not available yet.")
+                Button("Clean Up Selected") {
+                    showCleanupConfirmation = true
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isLoading || isCleanupRunning || selectedCleanupTargets.isEmpty)
+                .help(
+                    selectedCleanupTargets.isEmpty
+                        ? "Select an eligible branch or worktree first."
+                        : "Review the selected cleanup items."
+                )
             }
         }
         .padding(16)
@@ -226,7 +271,7 @@ struct BranchManagementSheet: View {
         )
     }
 
-    private func reloadData() {
+    func reloadData() {
         isLoading = true
         errorMessage = nil
         worktreeErrorMessage = nil

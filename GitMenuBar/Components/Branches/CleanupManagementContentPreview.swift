@@ -24,7 +24,9 @@ import SwiftUI
         errorMessage: nil,
         query: "",
         selectedIDs: .constant([]),
-        onDismissError: {}
+        onDismissError: {},
+        onReveal: { _ in },
+        onCopyPath: { _ in }
     )
     .frame(width: 560)
 }

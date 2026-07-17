@@ -1500,6 +1500,13 @@ class GitManager: ObservableObject {
         await branchService.resolveWorktreeSnapshotAsync()
     }
 
+    func performCleanupAsync(
+        targets: [GitCleanupTarget],
+        snapshot: GitWorktreeSnapshot
+    ) async -> Result<GitCleanupBatchResult, Error> {
+        await branchService.performCleanupAsync(targets: targets, snapshot: snapshot)
+    }
+
     /// Merges `featureBranch` into the default branch without deleting anything.
     /// The implementation lives in `GitBranchService`; this facade delegates to it.
     ///

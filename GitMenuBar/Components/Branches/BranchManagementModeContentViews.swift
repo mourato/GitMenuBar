@@ -120,7 +120,9 @@ struct BranchManagementListView: View {
                     errorMessage: worktreeErrorMessage,
                     query: query,
                     selectedIDs: $selectedCleanupIDs,
-                    onDismissError: onDismissError
+                    onDismissError: onDismissError,
+                    onReveal: onRevealWorktree,
+                    onCopyPath: onCopyPath
                 )
             }
         }
@@ -179,7 +181,6 @@ struct WorktreeManagementContentView: View {
     let onReveal: (String) -> Void
     let onCopyPath: (String) -> Void
     let onDismissError: () -> Void
-
     private var filteredWorktrees: [GitWorktreeCleanupInfo] {
         guard let snapshot else { return [] }
         return snapshot.worktrees
@@ -229,6 +230,8 @@ struct CleanupManagementContentView: View {
     let query: String
     @Binding var selectedIDs: Set<String>
     let onDismissError: () -> Void
+    let onReveal: (String) -> Void
+    let onCopyPath: (String) -> Void
 
     private var localInfos: [GitBranchCleanupInfo] {
         guard let snapshot else { return [] }
@@ -280,6 +283,13 @@ struct CleanupManagementContentView: View {
                         cleanupRow(info)
                     }
                 }
+                CleanupWorktreeListView(
+                    snapshot: snapshot,
+                    query: query,
+                    selectedIDs: $selectedIDs,
+                    onReveal: onReveal,
+                    onCopyPath: onCopyPath
+                )
             }
             .padding(16)
         } else {
@@ -333,12 +343,13 @@ struct CleanupManagementContentView: View {
                 Toggle(
                     "Select \(info.reference.name)",
                     isOn: Binding(
-                        get: { selectedIDs.contains(info.id) },
+                        get: { selectedIDs.contains(GitCleanupTarget.localBranch(info).id) },
                         set: { selected in
+                            let id = GitCleanupTarget.localBranch(info).id
                             if selected {
-                                selectedIDs.insert(info.id)
+                                selectedIDs.insert(id)
                             } else {
-                                selectedIDs.remove(info.id)
+                                selectedIDs.remove(id)
                             }
                         }
                     )
@@ -378,41 +389,5 @@ struct CleanupManagementContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(cleanupAccessibilityLabel(for: info))
-    }
-
-    private func cleanupAccessibilityLabel(for info: GitBranchCleanupInfo) -> String {
-        let reason: String
-        switch info.status {
-        case .mergedIntoDefault:
-            reason = "merged into the default branch"
-        case .notMerged:
-            reason = "not merged into the default branch"
-        case .protected:
-            reason = "protected branch"
-        case .current:
-            reason = "current branch"
-        case let .checkedOutElsewhere(path):
-            reason = "checked out elsewhere at \(path)"
-        case let .unknown(reason: value):
-            reason = "unknown status: \(value)"
-        }
-        return "\(info.reference.name), \(reason), \(info.isEligible ? "eligible for cleanup" : "cleanup unavailable")"
-    }
-
-    private func statusDetail(for status: GitBranchCleanupStatus) -> String? {
-        switch status {
-        case .mergedIntoDefault:
-            return "Tip is reachable from the default branch."
-        case .notMerged:
-            return "Tip is not reachable from the default branch."
-        case .protected:
-            return "Protected branch cannot be cleaned up."
-        case .current:
-            return "Current branch cannot be cleaned up."
-        case .checkedOutElsewhere:
-            return nil
-        case let .unknown(reason):
-            return "Status unavailable: \(reason)"
-        }
     }
 }
