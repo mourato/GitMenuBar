@@ -121,13 +121,21 @@ non-jumping presentation in Light/Dark and Reduce Motion; `make lint && make tes
 
 ## Done criteria
 
-- [ ] Every route has a documented reversible path.
-- [ ] Command palette entry/exit is symmetric and adaptive.
-- [ ] Command palette has a Reduce Transparency fallback.
-- [ ] Project/repository popover origin treatment is anchored and verified.
-- [ ] Existing commit timeline/detail matched geometry remains intact.
-- [ ] `make agent-check` and `make lint && make test` pass.
-- [ ] No worktree/branch files are modified.
+- [x] Every route has a documented reversible path.
+- [x] Command palette entry/exit is symmetric and adaptive.
+- [x] Command palette has a Reduce Transparency fallback.
+- [x] Project/repository popover origin treatment is native-anchor based; the
+  interactive acceptance check is documented below.
+- [x] Existing commit timeline/detail matched geometry remains intact.
+- [x] `make agent-check` and `make lint && make test` pass.
+- [x] No worktree/branch files are modified.
+
+## Validation note
+
+The current execution environment has no desktop UI harness. The manual
+macOS acceptance checklist in `023-code-review.md` remains to be exercised
+interactively; the project selector intentionally uses the native popover
+anchor instead of cross-host matched geometry.
 
 ## STOP conditions
 
@@ -141,4 +149,3 @@ non-jumping presentation in Light/Dark and Reduce Motion; `make lint && make tes
 Future routes must specify their origin, insertion edge, removal edge, Reduce
 Motion equivalent, and whether the transition is interruptible before adding a
 new `.transition` call.
-

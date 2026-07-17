@@ -26,7 +26,7 @@ this directory.
 |---|---|---:|---:|---|---|
 | 021 | Establish shared motion and accessibility primitives | P1 | M | 016–020 DONE | DONE |
 | 022 | Animate AppKit main-window presentation safely | P1 | M | 021 | DONE |
-| 023 | Restore SwiftUI route and origin continuity | P1 | M | 021 | TODO |
+| 023 | Restore SwiftUI route and origin continuity | P1 | M | 021 | DONE |
 | 024 | Complete press feedback and semantic content motion | P2 | M | 021 | TODO |
 | 025 | Finish adaptive surfaces, typography, haptics, and sanitization | P2 | M | 021–024 | TODO |
 

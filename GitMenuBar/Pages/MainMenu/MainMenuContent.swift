@@ -185,7 +185,6 @@ extension MainMenuView {
                     onShowRepositoryOptions: {
                         requestRepositoryOptionsPopoverPresentation()
                     },
-                    animationNamespace: animationNamespace,
                     projectSelectorContent: {
                         ProjectSelectorPopoverView(
                             recentPaths: recentPaths,
@@ -202,7 +201,6 @@ extension MainMenuView {
                                 requestRepositoryOptionsPopoverPresentation()
                             } : nil
                         )
-                        .matchedGeometryEffect(id: "projectSelector", in: animationNamespace)
                     },
                     projectContextMenu: {
                         if canPresentRepositoryOptions {

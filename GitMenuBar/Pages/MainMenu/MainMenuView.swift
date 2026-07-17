@@ -25,7 +25,8 @@ struct MainMenuView: View {
     @EnvironmentObject var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
     @EnvironmentObject var shortcutActionBridge: MainMenuShortcutActionBridge
     @EnvironmentObject var presentationModel: MainMenuPresentationModel
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) var reduceTransparency
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isUnstagedSectionCollapsed) var isUnstagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isHistorySectionCollapsed) var isHistorySectionCollapsed = false
@@ -126,10 +127,10 @@ struct MainMenuView: View {
                 )
                 .environmentObject(gitManager)
                 .environmentObject(githubAuthManager)
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .bottom)))
+                .transition(routeTransition)
             case .main:
                 mainView
-                    .transition(.opacity)
+                    .transition(routeTransition)
             case let .historyDetail(commitID):
                 CommitDetailPageView(
                     commit: gitManager.commitHistory.first(where: { $0.id == commitID }),
@@ -155,13 +156,17 @@ struct MainMenuView: View {
                         }
                     }
                 )
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .trailing)))
+                .transition(routeTransition)
             }
         }
         .adaptiveMotion()
         .animation(
             MacChromeMotion.adaptive(MacChromeMotion.route, usesReducedMotion: reduceMotion),
             value: presentationModel.route
+        )
+        .animation(
+            MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+            value: isCommandPalettePresented
         )
         .confirmationDialogs(
             showDeleteConfirmation: $showDeleteConfirmation,
@@ -344,6 +349,33 @@ struct MainMenuView: View {
         }
         .onChange(of: keyboardSelectableItems) { _ in
             synchronizeSelectedMainItem()
+        }
+    }
+}
+
+extension MainMenuView {
+    private var routeTransition: AnyTransition {
+        MainMenuRouteTransition.transition(for: presentationModel.route, reduceMotion: reduceMotion)
+    }
+}
+
+private enum MainMenuRouteTransition {
+    static func transition(for route: MainMenuRoute, reduceMotion: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+
+        switch route {
+        case .main:
+            return .opacity
+        case .createRepo:
+            return .asymmetric(
+                insertion: .opacity.combined(with: .move(edge: .bottom)),
+                removal: .opacity.combined(with: .move(edge: .bottom))
+            )
+        case .historyDetail:
+            return .asymmetric(
+                insertion: .opacity.combined(with: .move(edge: .trailing)),
+                removal: .opacity.combined(with: .move(edge: .trailing))
+            )
         }
     }
 }

@@ -35,8 +35,7 @@ extension MainMenuView {
         view.overlay {
             if isCommandPalettePresented && presentationModel.route == .main {
                 ZStack {
-                    Rectangle()
-                        .fill(.ultraThinMaterial)
+                    commandPaletteScrim
                         .ignoresSafeArea()
                         .onTapGesture {
                             closeCommandPalette()
@@ -51,9 +50,21 @@ extension MainMenuView {
                         onSelectItem: executeCommandPaletteItem
                     )
                     .accessibilityAddTraits(.isModal)
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
                     .zIndex(1)
                 }
+                .transition(.opacity)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var commandPaletteScrim: some View {
+        if reduceTransparency {
+            Color(nsColor: .windowBackgroundColor)
+        } else {
+            Rectangle()
+                .fill(.ultraThinMaterial)
         }
     }
 
