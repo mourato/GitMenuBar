@@ -21,12 +21,13 @@ struct HistorySectionHeaderView: View {
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
                         .font(MacChromeTypography.captionStrong)
                         .foregroundColor(.secondary)
+                        .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
 
                     Text("History")
                         .font(MacChromeTypography.body)
                 }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableButtonStyle())
             .accessibilityLabel("History section")
             .accessibilityHint(isCollapsed ? "Expands commit history." : "Collapses commit history.")
 
@@ -35,6 +36,11 @@ struct HistorySectionHeaderView: View {
             Text("\(commitCount)")
                 .font(.caption.weight(.medium))
                 .foregroundColor(.secondary)
+                .contentTransition(reduceMotion ? .identity : .numericText())
+                .animation(
+                    MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                    value: commitCount
+                )
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 4)
@@ -45,6 +51,10 @@ struct HistorySectionHeaderView: View {
                 .stroke(Color.secondary.opacity(colorSchemeContrast == .increased ? 0.45 : 0), lineWidth: 1)
         )
         .contentShape(Rectangle())
+        .animation(
+            MacChromeMotion.adaptive(MacChromeMotion.micro, usesReducedMotion: reduceMotion),
+            value: isHovered
+        )
         .onHover { inside in
             isHovered = inside
         }

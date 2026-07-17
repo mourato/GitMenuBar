@@ -11,16 +11,28 @@ struct WorkingTreeLineDiffView: View {
     let addedCount: Int
     let removedCount: Int
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
             Text("+\(addedCount)")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .foregroundColor(addedCount > 0 ? .green : .secondary)
+                .contentTransition(reduceMotion ? .identity : .numericText())
+                .animation(
+                    MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                    value: addedCount
+                )
             Text("-\(removedCount)")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .foregroundColor(removedCount > 0 ? .red : .secondary)
+                .contentTransition(reduceMotion ? .identity : .numericText())
+                .animation(
+                    MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                    value: removedCount
+                )
         }
         .font(MacChromeTypography.captionStrong)
         .monospacedDigit()
@@ -41,6 +53,7 @@ struct WorkingTreeFileRowView: View {
 
     @State private var isHovered = false
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 8) {
@@ -57,6 +70,10 @@ struct WorkingTreeFileRowView: View {
         .cornerRadius(4)
         .padding(.horizontal, -4) // Offset the internal padding so the row maintains its original width while letting the background expand
         .contentShape(Rectangle())
+        .animation(
+            MacChromeMotion.adaptive(MacChromeMotion.micro, usesReducedMotion: reduceMotion),
+            value: isHovered
+        )
         .onTapGesture {
             onSelect?()
         }

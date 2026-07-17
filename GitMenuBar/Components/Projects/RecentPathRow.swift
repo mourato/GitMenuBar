@@ -7,6 +7,7 @@ struct RecentPathRowView: View {
     let onTap: () -> Void
 
     @State private var isHovered = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: onTap) {
@@ -26,7 +27,11 @@ struct RecentPathRowView: View {
             .background(isHovered ? MacChromePalette.hoverFill() : Color(nsColor: .controlBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableButtonStyle())
+        .animation(
+            MacChromeMotion.adaptive(MacChromeMotion.micro, usesReducedMotion: reduceMotion),
+            value: isHovered
+        )
         .onHover { inside in
             isHovered = inside
             if inside {

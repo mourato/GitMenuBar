@@ -6,6 +6,8 @@ struct RecentProjectsSection: View {
     @Binding var showFullPathInRecents: Bool
     let onSelectPath: (String) -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         if !recentPaths.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
@@ -16,7 +18,7 @@ struct RecentProjectsSection: View {
 
                     Spacer()
 
-                    Toggle("Show full path", isOn: $showFullPathInRecents.animation(.easeInOut(duration: 0.2)))
+                    Toggle("Show full path", isOn: $showFullPathInRecents)
                         .toggleStyle(.checkbox)
                         .font(MacChromeTypography.caption)
                 }
@@ -36,6 +38,10 @@ struct RecentProjectsSection: View {
                 }
             }
             .padding(.top, 4)
+            .animation(
+                MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                value: showFullPathInRecents
+            )
         }
     }
 }
