@@ -18,6 +18,7 @@ struct InlineStatusBannerView: View {
 
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.legibilityWeight) private var legibilityWeight
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         HStack(alignment: .top, spacing: MacChromeMetrics.compactSpacing) {
@@ -47,7 +48,7 @@ struct InlineStatusBannerView: View {
         .padding(.vertical, MacChromeMetrics.compactSpacing)
         .background(
             banner.style == .info
-                ? AnyShapeStyle(.thinMaterial)
+                ? infoBackground
                 : AnyShapeStyle(backgroundColor),
             in: RoundedRectangle(cornerRadius: MacChromeMetrics.cornerRadius)
         )
@@ -55,6 +56,14 @@ struct InlineStatusBannerView: View {
             RoundedRectangle(cornerRadius: MacChromeMetrics.cornerRadius)
                 .strokeBorder(borderColor, lineWidth: colorSchemeContrast == .increased ? 1.5 : 1)
         )
+    }
+
+    private var infoBackground: AnyShapeStyle {
+        if reduceTransparency {
+            return AnyShapeStyle(Color(nsColor: .controlBackgroundColor))
+        }
+
+        return AnyShapeStyle(.thinMaterial)
     }
 
     private var iconName: String {
@@ -113,4 +122,18 @@ struct InlineStatusBannerView: View {
     )
     .padding()
     .frame(width: 380)
+}
+
+#Preview("Inline Status Banner – Large Text") {
+    InlineStatusBannerView(
+        banner: InlineStatusBanner(
+            title: "Sync Failed",
+            message: "The remote rejected the push because the branch is behind origin/main.",
+            style: .error
+        ),
+        onDismiss: {}
+    )
+    .padding()
+    .frame(width: 380)
+    .dynamicTypeSize(.accessibility2)
 }

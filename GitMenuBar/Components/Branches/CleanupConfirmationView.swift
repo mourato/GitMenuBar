@@ -79,7 +79,7 @@ struct CleanupConfirmationView: View {
         }
         .padding(20)
         .frame(width: 460)
-        .macPanelSurface(cornerRadius: MacChromeMetrics.largeCornerRadius)
+        .macPanelSurface(cornerRadius: MacChromeMetrics.largeCornerRadius, material: .regular)
         .accessibilityElement(children: .contain)
     }
 

@@ -24,7 +24,7 @@ struct AtomicCommitReviewSheet: View {
         }
         .padding(20)
         .frame(width: 520)
-        .macPanelSurface(cornerRadius: MacChromeMetrics.largeCornerRadius)
+        .macPanelSurface(cornerRadius: MacChromeMetrics.largeCornerRadius, material: .thick)
         .onAppear(perform: generateIfNeeded)
     }
 

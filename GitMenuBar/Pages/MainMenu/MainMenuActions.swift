@@ -24,7 +24,7 @@ extension MainMenuView {
 
         let result = await actionCoordinator.performCommit(commentText: commentText)
         if result.didCommit {
-            HapticFeedback.perform(.levelChange)
+            HapticFeedback.actionSucceeded()
             commentText = ""
             if hideCommitMessageField {
                 isCommitFieldTemporarilyVisible = false
@@ -54,9 +54,9 @@ extension MainMenuView {
 
     private func handleSyncResult(_ result: MainMenuSyncExecutionResult) {
         if result == .synced {
-            HapticFeedback.perform(.levelChange)
+            HapticFeedback.actionSucceeded()
         } else if result == .failed {
-            HapticFeedback.perform(.generic)
+            HapticFeedback.actionFailed()
         }
     }
 
@@ -123,7 +123,7 @@ extension MainMenuView {
     private func handleFileActionResult(_ result: Result<Void, Error>) {
         switch result {
         case .success:
-            HapticFeedback.perform(.generic)
+            HapticFeedback.actionSucceeded()
         case let .failure(error):
             syncError = error.localizedDescription
         }

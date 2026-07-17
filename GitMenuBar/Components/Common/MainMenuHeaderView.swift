@@ -100,7 +100,7 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
         }
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: MacChromeMetrics.cornerRadius, style: .continuous))
+        .macPanelSurface(cornerRadius: MacChromeMetrics.cornerRadius, material: .thin)
     }
 }
 
