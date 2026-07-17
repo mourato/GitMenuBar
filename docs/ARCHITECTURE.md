@@ -42,3 +42,22 @@ Use this rule order:
 - Keep file moves and behavioral changes in separate commits when possible.
 - Validate each slice with `make build && make test`.
 - Before merge, run `make lint && make test` (lint is cheap and fails fast; test already builds).
+
+## Worktree and cleanup semantics
+
+- A working tree is the files and Git status for one checkout.
+- A worktree is one checkout managed by `git worktree`; linked worktrees have
+  their own directory while sharing the repository's object database and refs.
+- A branch is considered merged only when its tip is reachable from the
+  selected local default branch. Remote status uses the last fetched
+  remote-tracking refs and does not imply a network fetch.
+- Only local branches and clean, linked, attached worktrees can be eligible
+  for safe cleanup. Unknown, dirty, locked, prunable, detached, current,
+  protected, stale, or checked-out-elsewhere state is never eligible.
+- Deleting a local branch, removing a worktree directory, and deleting a
+  remote branch are separate explicit targets. Remote deletion requires an
+  explicit selection and a fresh validation of the remote-tracking ref.
+- Cleanup revalidates each item immediately before mutation, runs serially,
+  skips unsafe or stale items individually, and reports every outcome. It
+  never force-removes a worktree, stashes changes, checks out another branch,
+  or mutates the current worktree implicitly.
