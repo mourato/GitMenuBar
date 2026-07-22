@@ -24,7 +24,7 @@ copy layout. The current routing above supersedes that layout.
 ## 2026-07-10 Agent Skill Consolidation Scope
 
 - Effort: standard, focused on reducing overlapping local agent guidance so a smaller executor model can apply future updates without reconciling duplicate skills.
-- Audited: `AGENTS.md`, `.agents/SKILLS_INDEX.md`, `build-macos-apps`, `quality-assurance`, `macos-development`, `macos-design-guidelines`, `menubar`, `thermo-nuclear-code-quality-review`, `code-quality`, `swift-conventions`, `test-strategy`, `Makefile`, and `scripts/`.
+- Audited: `AGENTS.md`, `.agents/docs/skill-routing.md`, `build-macos-apps`, `quality-assurance`, `macos-development`, `macos-design-guidelines`, `menubar`, `thermo-nuclear-code-quality-review`, `code-quality`, `swift-conventions`, `test-strategy`, `Makefile`, and `scripts/`.
 - Not audited: app Swift source behavior, runtime menu-bar behavior, CI logs, release signing internals, external skill implementation quality, and full product UX.
 - Reuse decision: consolidate only the high-confidence overlaps into `delivery-workflow` and `macos-app-engineering`, and make `thermo-nuclear-code-quality-review` self-contained. Keep `menubar`, `release-management`, `test-strategy`, `security-credentials`, `performance-profiling`, `accessibility-audit`, `swift-conventions`, `code-quality`, and installed external skills separate.
 

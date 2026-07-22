@@ -67,7 +67,7 @@ The desired end state is smaller and easier to route:
 Relevant files and their roles:
 
 - `AGENTS.md` - top-level agent policy and primary skill list.
-- `.agents/SKILLS_INDEX.md` - local skill registry and routing notes.
+- `.agents/docs/skill-routing.md` - local problem routing notes.
 - `.agents/skills/quality-assurance/SKILL.md` - merge gate and verification
   scope guidance.
 - `.agents/skills/build-macos-apps/SKILL.md` - command routing and log triage.
@@ -108,7 +108,8 @@ Current primary skills, from `AGENTS.md:44-55`:
 ```markdown
 ## Skills
 
-Use `.agents/SKILLS_INDEX.md` as the local skill registry.
+Use `AGENTS.md`, the individual skill descriptions, and
+`.agents/docs/skill-routing.md` as the local skill guidance.
 
 Primary skills in this repo:
 
@@ -120,7 +121,7 @@ Primary skills in this repo:
 - `code-quality`
 ```
 
-Current skill registry overlap, from `.agents/SKILLS_INDEX.md:9-14`:
+Current skill routing overlap, from the local skill guidance:
 
 ```markdown
 | `build-macos-apps`          | `.agents/skills/build-macos-apps/`          | Reproducing build, test, lint, or packaging failures and tracing them through local scripts/logs                        |
@@ -132,7 +133,7 @@ Current skill registry overlap, from `.agents/SKILLS_INDEX.md:9-14`:
 ```
 
 Current catalog notes explicitly keep the overlap separate, from
-`.agents/SKILLS_INDEX.md:29-34`:
+the local skill guidance:
 
 ```markdown
 - `build-macos-apps` is for reproduction and script routing; it is not the merge gate skill.
@@ -291,7 +292,7 @@ Use these local skills if available:
 **In scope**:
 
 - `AGENTS.md`
-- `.agents/SKILLS_INDEX.md`
+- `.agents/docs/skill-routing.md`
 - `.agents/skills/build-macos-apps/` (delete after migration)
 - `.agents/skills/quality-assurance/` (delete after migration)
 - `.agents/skills/macos-development/` (delete after migration)
@@ -507,7 +508,7 @@ Update `AGENTS.md`:
   mention in one line that strict code review uses
   `thermo-nuclear-code-quality-review`.
 
-Update `.agents/SKILLS_INDEX.md`:
+Update the local skill descriptions and routing guide:
 
 - Remove rows for the four deleted skills.
 - Add rows for `delivery-workflow` and `macos-app-engineering`.
@@ -526,7 +527,7 @@ Update `README.md` only if it references any deleted skill name.
 **Verify**:
 
 ```bash
-rg -n "build-macos-apps|quality-assurance|macos-development|macos-design-guidelines" AGENTS.md .agents/SKILLS_INDEX.md README.md
+rg -n "build-macos-apps|quality-assurance|macos-development|macos-design-guidelines" AGENTS.md .agents/docs/skill-routing.md README.md
 ```
 
 Expected result: no output. If a historical mention is intentionally retained,
@@ -633,7 +634,7 @@ All must hold:
 - [ ] The four superseded skill directories are deleted:
       `build-macos-apps`, `quality-assurance`, `macos-development`, and
       `macos-design-guidelines`.
-- [ ] `AGENTS.md` and `.agents/SKILLS_INDEX.md` route active work through the
+- [ ] `AGENTS.md` and `.agents/docs/skill-routing.md` route active work through the
       new skill names.
 - [ ] `thermo-nuclear-code-quality-review` no longer references missing
       `code-review`, Prisma, or `disable-model-invocation`.
