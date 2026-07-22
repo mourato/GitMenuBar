@@ -24,14 +24,11 @@ require_file() {
 }
 
 require_file AGENTS.md
-require_file .agents/SKILLS_INDEX.md
 require_file .agents/review-profiles/thermo-gitmenubar.md
 require_text AGENTS.md '## Execution Policy'
 require_text AGENTS.md 'Every implementation plan must contain an `## Execution profile` section'
 require_text AGENTS.md 'global:improve'
 require_text AGENTS.md 'global:thermo-nuclear-code-quality-review'
-require_text .agents/SKILLS_INDEX.md 'global:improve'
-require_text .agents/SKILLS_INDEX.md 'global:thermo-nuclear-code-quality-review'
 
 shopt -s nullglob
 plans=("$ROOT"/plans/*.md)
@@ -67,7 +64,7 @@ while IFS=$'\t' read -r file link; do
     error "$file has broken Markdown link: $link"
   fi
 done < <(perl -ne 'while (/\]\(([^)]+)\)/g) { print "$ARGV\t$1\n" }' \
-  "$ROOT/AGENTS.md" "$ROOT/.agents/SKILLS_INDEX.md" "$ROOT/.agents/review-profiles/thermo-gitmenubar.md" "$ROOT/plans/README.md" "$ROOT/plans"/*.md)
+  "$ROOT/AGENTS.md" "$ROOT/.agents/review-profiles/thermo-gitmenubar.md" "$ROOT/plans/README.md" "$ROOT/plans"/*.md)
 
 if ((errors > 0)); then
   echo "guidance-check: failed with $errors error(s)" >&2

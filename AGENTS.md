@@ -63,7 +63,8 @@ If a tradeoff is required, choose **correctness and robustness** over short-term
 
 ## Skills
 
-Use `.agents/SKILLS_INDEX.md` as the local taxonomy and routing registry.
+Choose the narrowest relevant skill from its description. Keep routing policy
+in this file and domain-specific guidance in the owning skill.
 
 Global skills are referenced with the `global:<name>` form and must not be
 copied into `.agents/skills/`. The canonical global routes are:
