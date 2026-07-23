@@ -162,7 +162,7 @@ executors must preserve them and perform the drift check before editing.
 | 018 | Add the Branches, Worktrees, and Cleanup visualizer | P1 | L | 017 | DONE |
 | 019 | Implement revalidated safe cleanup for branches and worktrees | P0 | L | 018 | DONE |
 | 020 | Harden worktree cleanup with integration tests and documentation | P1 | M | 019 | DONE |
-| 021 | Adopt global macOS skill cores with a GitMenuBar overlay | P1 | M | global Plan 004 | TODO |
+| 021 | Adopt global macOS skill cores with a GitMenuBar overlay | P1 | M | global Plan 004 | DONE |
 
 ### Dependency notes
 
