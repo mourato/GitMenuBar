@@ -13,14 +13,7 @@ final class DirectoryPickerService {
         }
 
         let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.title = title
-        panel.prompt = prompt
-        panel.worksWhenModal = false
-        preparePanel?(panel)
+        configurePanel(panel, title: title, prompt: prompt, preparePanel: preparePanel)
 
         DispatchQueue.main.async {
             panel.makeKeyAndOrderFront(nil)
@@ -30,5 +23,22 @@ final class DirectoryPickerService {
         panel.begin { result in
             completion(result == .OK ? panel.url?.path : nil)
         }
+    }
+
+    func configurePanel(
+        _ panel: NSOpenPanel,
+        title: String,
+        prompt: String,
+        preparePanel: ((NSOpenPanel) -> Void)? = nil
+    ) {
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.title = title
+        panel.prompt = prompt
+        panel.worksWhenModal = false
+        preparePanel?(panel)
+        panel.showsHiddenFiles = true
     }
 }

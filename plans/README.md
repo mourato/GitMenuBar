@@ -197,3 +197,31 @@ The delivery sequence is mandatory: isolated branch → validation and review �
 commit → push/PR → merge → pull `main` → prune local and remote branches and
 temporary worktrees. Do not remove an unmerged branch or worktree with
 unrelated work.
+
+## Repository picker hidden directories — 2026-07-23
+
+Plan [022](022-show-hidden-directories-in-repository-picker.md) addresses the
+shared `NSOpenPanel` default that hides directories beginning with a period.
+The selected behavior is to show hidden items always in GitMenuBar's repository
+picker, without adding a user preference or changing Finder's global setting.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 022 | Show hidden directories in the repository picker | P1 | S | — | DONE |
+
+### Dependency notes
+
+- Plan 022 is independent of Plans 016–021 and can execute as a small,
+  serialized change because it touches the shared picker service and its test.
+
+### Findings considered and rejected
+
+- Add a user preference for hidden items: rejected because the requested
+  behavior is unconditional and the picker is specifically for choosing
+  repositories.
+- Change Finder's global hidden-file preference: rejected because GitMenuBar
+  should control only its own repository picker.
+- Add a separate path-entry flow for dot-prefixed directories: rejected because
+  the existing `NSOpenPanel` can expose these directories directly.
