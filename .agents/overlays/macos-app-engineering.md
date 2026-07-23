@@ -11,7 +11,5 @@ precedence: project
   repository and branch workflows, settings, and worktree cleanup surfaces.
 - Keep lifecycle and UI ownership explicit; `menubar` owns status-item,
   activation, popover dismissal, and menu-bar invariants.
-- New UI-rendering Swift files require a `#Preview`; preserve keyboard access,
-  VoiceOver, Light/Dark appearance, and system accessibility settings.
-- Do not change Swift, Xcode, assets, tests, or runtime behavior for this
-  guidance migration.
+- Repository, branch, settings, and worktree-cleanup surfaces remain within
+  their existing feature ownership boundaries.

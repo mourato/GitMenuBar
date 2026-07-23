@@ -9,8 +9,8 @@ It contains no generic review checklist and no model configuration.
   safety before convenience.
 - Treat `NSStatusItem` ownership, status-item click behavior, popover/window
   dismissal, repository switching, branch actions, commit flow, and sync flow
-  as product-critical behavior. Load `.agents/skills/menubar/SKILL.md` when a
-  diff touches those paths.
+  as product-critical behavior. Load `global:menubar` followed by
+  `.agents/overlays/menubar.md` when a diff touches those paths.
 - Require a `#Preview` for every new Swift file that renders UI, including
   `View`, `NSViewRepresentable`, and `NSViewControllerRepresentable` files.
 - Do not accept orphaned UI, logic, assets, or stale resources introduced by a
@@ -20,7 +20,7 @@ It contains no generic review checklist and no model configuration.
 
 ## Routing boundary
 
-Use `.agents/skills/delivery-workflow/SKILL.md` for risk lanes, command
-routing, validation depth, logs, and Git evidence. Use the narrowest domain
-skill for technical behavior. This profile only adds GitMenuBar-specific
-acceptance criteria to the global thermo review.
+Use `global:delivery-workflow` followed by `.agents/overlays/delivery-workflow.md`
+for risk lanes, command routing, validation depth, logs, and Git evidence. Use
+the narrowest domain skill for technical behavior. This profile only adds
+GitMenuBar-specific acceptance criteria to the global thermo review.

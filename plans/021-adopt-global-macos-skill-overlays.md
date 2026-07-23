@@ -63,6 +63,8 @@ skill implementation.
 
 - Update `AGENTS.md` with the explicit global-core/overlay contract and the
   GitMenuBar precedence rules.
+- Update `.agents/review-profiles/thermo-gitmenubar.md` so product review
+  routing uses the global cores and GitMenuBar overlays.
 - Add `.agents/overlays/` with seven project overlay documents named after the
   global skill they customize. Each overlay must declare its project identity,
   parent global skill, and local precedence.
@@ -72,6 +74,8 @@ skill implementation.
   unique GitMenuBar facts and references have been preserved.
 - Add this plan to `plans/README.md` and record the dependency on the global
   plan.
+- Extend `scripts/validate-agent-guidance.sh` to enforce overlay metadata,
+  no-shadow routing, stale-path absence, and overlay link resolution.
 
 ### Out of scope
 
@@ -119,9 +123,11 @@ overlay must be the only local customization layer.
    the global parent skill. Keep provider/runtime settings out of them.
 6. Remove the seven duplicate generic skill directories, retaining all
    specialist skills and the relocated overlay reference.
-7. Update `plans/README.md` with Plan 021's status, dependency, and the
+7. Update the review profile and guidance validator so future routing changes
+   cannot silently point at deleted generic skills.
+8. Update `plans/README.md` with Plan 021's status, dependency, and the
    explicit commit → push → merge → cleanup delivery sequence.
-8. Run the verification commands below. Have the reviewer inspect the diff,
+9. Run the verification commands below. Have the reviewer inspect the diff,
    especially deleted files, overlay references, and `AGENTS.md` precedence.
 
 ## Verification and test plan
@@ -146,7 +152,15 @@ test ! -d .agents/skills/delivery-workflow
 test ! -d .agents/skills/macos-app-engineering
 test ! -d .agents/skills/menubar
 test ! -d .agents/skills/swift-conventions
-rg -n "global|overlay|GitMenuBar|make guidance-check" AGENTS.md .agents/overlays
+for skill in accessibility-audit apple-design code-quality delivery-workflow macos-app-engineering menubar swift-conventions; do
+  test -f ".agents/overlays/$skill.md"
+  rg -q "^kind: project-overlay$" ".agents/overlays/$skill.md"
+  rg -q "^extends: $skill$" ".agents/overlays/$skill.md"
+  rg -q '^project: GitMenuBar$' ".agents/overlays/$skill.md"
+  rg -q '^precedence: project$' ".agents/overlays/$skill.md"
+done
+rg -n "global|overlay|GitMenuBar|make guidance-check" AGENTS.md .agents/overlays .agents/review-profiles
+make guidance-check
 ```
 
 `make lint && make test` is a merge gate even though the change is guidance-
@@ -194,6 +208,9 @@ work.
   overlays are discoverable without same-name local shadow copies.
 - GitMenuBar-specific motion guidance and all specialist skills are preserved.
 - `AGENTS.md` explains loading order, precedence, and the no-copy rule.
+- The GitMenuBar review profile routes through global cores and overlays.
+- `scripts/validate-agent-guidance.sh` checks overlay metadata, no-shadow
+  routing, stale deleted-skill paths, and overlay links.
 - `make guidance-check`, `make lint`, `make test`, and `git diff --check` pass.
 - The reviewed commit is pushed, merged, and the merged branch/worktree
   cleanup is complete locally and remotely.
