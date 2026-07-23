@@ -71,20 +71,39 @@ copied into `.agents/skills/`. The canonical global routes are:
 
 - `global:improve` for read-only audits and implementation plans
 - `global:thermo-nuclear-code-quality-review` for strict reviews
+- `global:accessibility-audit`
+- `global:apple-design`
+- `global:code-quality`
+- `global:delivery-workflow`
+- `global:macos-app-engineering`
+- `global:menubar`
+- `global:swift-conventions`
 
-`delivery-workflow` owns risk lanes, validation, gates, and Git mechanics.
-Domain skills own GitMenuBar technical invariants. The project-only review
-profile at `.agents/review-profiles/thermo-gitmenubar.md` adds only this
-repository's rules to the global thermo review.
+When one of the seven macOS global skills is active, load its global core
+first, then the matching optional project overlay at
+`.agents/overlays/<skill-name>.md`, then any applicable specialist local skill.
+Overlays use `kind: project-overlay`, `extends: <global-skill-name>`,
+`project: GitMenuBar`, and `precedence: project`. Their rules win only for
+GitMenuBar facts and explicit exceptions; global safety, privacy, and
+repository-integrity rules remain authoritative.
+
+Same-name local copies of global skills are forbidden: `.agents/overlays/` is
+the only project customization layer for these seven cores. Independent
+specialist skills retain their own names and triggers. `delivery-workflow`
+owns risk lanes, validation, gates, and Git mechanics. Domain overlays and
+skills own GitMenuBar technical invariants. The project-only review profile at
+`.agents/review-profiles/thermo-gitmenubar.md` adds only this repository's
+rules to the global thermo review.
 
 Primary skills in this repo:
 
-- `delivery-workflow`
-- `apple-design`
-- `macos-app-engineering`
-- `menubar`
-- `swift-conventions`
-- `code-quality`
+- `global:accessibility-audit` + `.agents/overlays/accessibility-audit.md`
+- `global:apple-design` + `.agents/overlays/apple-design.md`
+- `global:code-quality` + `.agents/overlays/code-quality.md`
+- `global:delivery-workflow` + `.agents/overlays/delivery-workflow.md`
+- `global:macos-app-engineering` + `.agents/overlays/macos-app-engineering.md`
+- `global:menubar` + `.agents/overlays/menubar.md`
+- `global:swift-conventions` + `.agents/overlays/swift-conventions.md`
 - `thermo-nuclear-code-quality-review`
 
 Run `make guidance-check` after changing plans, routing, or skill metadata. It
