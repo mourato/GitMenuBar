@@ -75,7 +75,8 @@ skill implementation.
 - Add this plan to `plans/README.md` and record the dependency on the global
   plan.
 - Extend `scripts/validate-agent-guidance.sh` to enforce overlay metadata,
-  no-shadow routing, stale-path absence, and overlay link resolution.
+  positive global-core/overlay route pairs, no-shadow routing, stale-path
+  absence, overlay link resolution, and a negative swapped-overlay check.
 
 ### Out of scope
 
@@ -163,6 +164,9 @@ rg -n "global|overlay|GitMenuBar|make guidance-check" AGENTS.md .agents/overlays
 make guidance-check
 ```
 
+The guidance validator also mutates an isolated temporary AGENTS fixture with
+one overlay route swapped and must reject that fixture.
+
 `make lint && make test` is a merge gate even though the change is guidance-
 only: the repository policy requires the normal project gate before delivery.
 If either command fails for a pre-existing reason, record the exact failure,
@@ -210,7 +214,8 @@ work.
 - `AGENTS.md` explains loading order, precedence, and the no-copy rule.
 - The GitMenuBar review profile routes through global cores and overlays.
 - `scripts/validate-agent-guidance.sh` checks overlay metadata, no-shadow
-  routing, stale deleted-skill paths, and overlay links.
+  routing, positive global-core/overlay pairs, stale deleted-skill paths,
+  overlay links, and swapped-overlay negative coverage.
 - `make guidance-check`, `make lint`, `make test`, and `git diff --check` pass.
 - The reviewed commit is pushed, merged, and the merged branch/worktree
   cleanup is complete locally and remotely.

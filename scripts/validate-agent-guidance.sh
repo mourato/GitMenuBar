@@ -40,6 +40,44 @@ overlay_names=(
   swift-conventions
 )
 
+route_pair_present() {
+  local file="$1"
+  local global_skill="$2"
+  local overlay="$3"
+  rg -Fq -- "\`$global_skill\` + \`$overlay\`" "$file"
+}
+
+profile_route_present() {
+  local file="$1"
+  local global_skill="$2"
+  local overlay="$3"
+  rg -Fq -- "\`$global_skill\` to \`$overlay\`" "$file"
+}
+
+for name in "${overlay_names[@]}"; do
+  if ! route_pair_present "$ROOT/AGENTS.md" "global:$name" ".agents/overlays/$name.md"; then
+    error "AGENTS.md is missing route pair: global:$name -> .agents/overlays/$name.md"
+  fi
+done
+
+profile="$ROOT/.agents/review-profiles/thermo-gitmenubar.md"
+for pair in \
+  'global:menubar|.agents/overlays/menubar.md' \
+  'global:delivery-workflow|.agents/overlays/delivery-workflow.md'; do
+  IFS='|' read -r global_skill overlay <<< "$pair"
+  if ! profile_route_present "$profile" "$global_skill" "$overlay"; then
+    error ".agents/review-profiles/thermo-gitmenubar.md is missing route pair: $global_skill -> $overlay"
+  fi
+done
+
+route_fixture="$(mktemp)"
+trap 'rm -f "$route_fixture"' EXIT
+sed 's#`global:menubar` + `.agents/overlays/menubar.md`#`global:menubar` + `.agents/overlays/apple-design.md`#' \
+  "$ROOT/AGENTS.md" > "$route_fixture"
+if route_pair_present "$route_fixture" 'global:menubar' '.agents/overlays/menubar.md'; then
+  error "route-pair negative check accepted a swapped overlay"
+fi
+
 for name in "${overlay_names[@]}"; do
   overlay="$ROOT/.agents/overlays/$name.md"
   if [[ ! -f "$overlay" ]]; then
