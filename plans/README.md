@@ -162,6 +162,7 @@ executors must preserve them and perform the drift check before editing.
 | 018 | Add the Branches, Worktrees, and Cleanup visualizer | P1 | L | 017 | DONE |
 | 019 | Implement revalidated safe cleanup for branches and worktrees | P0 | L | 018 | DONE |
 | 020 | Harden worktree cleanup with integration tests and documentation | P1 | M | 019 | DONE |
+| 021 | Adopt global macOS skill cores with a GitMenuBar overlay | P1 | M | global Plan 004 | TODO |
 
 ### Dependency notes
 
@@ -183,3 +184,16 @@ executors must preserve them and perform the drift check before editing.
   repository mutation at a time.
 - Remote deletion is a separate explicit choice and is based on local
   remote-tracking refs unless the user explicitly fetches first.
+
+## Global macOS skill overlay adoption — 2026-07-23
+
+Plan [021](021-adopt-global-macos-skill-overlays.md) migrates the seven
+shared macOS skill cores to the global source of truth and keeps GitMenuBar
+specificity in explicit overlays. It must execute only after global Plan 004
+has merged. Specialist Git, release, performance, security, concurrency, and
+test skills remain local.
+
+The delivery sequence is mandatory: isolated branch → validation and review →
+commit → push/PR → merge → pull `main` → prune local and remote branches and
+temporary worktrees. Do not remove an unmerged branch or worktree with
+unrelated work.
