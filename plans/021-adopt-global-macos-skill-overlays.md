@@ -1,6 +1,6 @@
 # Plan 021: Adopt global macOS skill cores with a GitMenuBar overlay
 
-Status: TODO
+Status: DONE — merged to `main` as `61dff55` via PR #1.
 Priority: P1
 Effort: M
 Risk: MEDIUM
