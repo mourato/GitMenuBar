@@ -166,10 +166,6 @@ extension MainMenuView {
                 showRepositoryOptionsPopover = false
                 showBranchManagement = true
             },
-            onSettings: {
-                showRepositoryOptionsPopover = false
-                openSettingsWindow()
-            },
             showBranchSelector: $showBranchSelector
         )
     }
@@ -184,6 +180,11 @@ extension MainMenuView {
                     showsRepositoryOptionsButton: canPresentRepositoryOptions,
                     onShowRepositoryOptions: {
                         requestRepositoryOptionsPopoverPresentation()
+                    },
+                    onOpenSettings: {
+                        showProjectSelector = false
+                        showRepositoryOptionsPopover = false
+                        openSettingsWindow()
                     },
                     projectSelectorContent: {
                         ProjectSelectorPopoverView(
