@@ -3,6 +3,7 @@ import SwiftUI
 
 struct CommitDetailPageView: View {
     @EnvironmentObject var githubAuthManager: GitHubAuthManager
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     let commit: Commit?
     let currentHash: String
@@ -30,14 +31,14 @@ struct CommitDetailPageView: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: WorkbenchMetrics.panelPadding) {
             header
 
             Divider()
 
             if let commit {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
                         metadataSection(commit: commit)
                         titleSection(commit: commit)
                         statsSection(commit: commit)
@@ -48,7 +49,7 @@ struct CommitDetailPageView: View {
                     }
                 }
                 .frame(maxHeight: 520)
-                .frame(width: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 missingCommitSection
             }
@@ -61,160 +62,149 @@ struct CommitDetailPageView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
             Button {
                 onBack()
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: WorkbenchMetrics.microSpacing) {
                     Image(systemName: "chevron.left")
-                        .font(.caption2.weight(.semibold))
+                        .font(WorkbenchTypography.captionStrong)
                     Text("Back")
-                        .font(.subheadline.weight(.medium))
+                        .font(WorkbenchTypography.detail)
                 }
             }
-            .buttonStyle(.plain)
+            .workbenchGhost()
 
-            Spacer()
+            Spacer(minLength: WorkbenchMetrics.compactSpacing)
 
-            HStack(spacing: 6) {
+            HStack(spacing: WorkbenchMetrics.chipSpacing) {
                 Image(systemName: "clock")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundColor(.blue)
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityHidden(true)
                 Text("Commit Details")
-                    .font(.subheadline.weight(.semibold))
+                    .font(WorkbenchTypography.sectionLabel)
             }
+            .accessibilityElement(children: .combine)
         }
     }
 
     private func metadataSection(commit: Commit) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
-                authorIdentityBadge(for: commit)
+        HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
+            authorIdentityBadge(for: commit)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 2) {
-                        Text(commit.authorName)
-                            .font(.subheadline.weight(.semibold))
-                        Text(commit.authorEmail)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-
-                    Text(timestampLine(for: commit))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                HStack(spacing: WorkbenchMetrics.microSpacing) {
+                    Text(commit.authorName)
+                        .font(WorkbenchTypography.detail.weight(.semibold))
+                    Text(commit.authorEmail)
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
                 }
-                Spacer(minLength: 0)
 
-                if actionSet?.isFutureCommit == true {
-                    Text("Future")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundColor(.blue)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.12))
-                        .clipShape(Capsule())
-                }
+                Text(timestampLine(for: commit))
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            if actionSet?.isFutureCommit == true {
+                Text("Future")
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.horizontal, WorkbenchMetrics.chipSpacing)
+                    .padding(.vertical, WorkbenchMetrics.microSpacing)
+                    .background(WorkbenchPalette.accentFill(contrast: colorSchemeContrast))
+                    .clipShape(Capsule())
+                    .accessibilityLabel("Future commit")
             }
         }
     }
 
     private func titleSection(commit: Commit) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
             Text(commit.subject)
-                .font(.title3.weight(.semibold))
-                .foregroundColor(.primary)
+                .font(WorkbenchTypography.windowTitle)
+                .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
                 .matchedGeometryEffect(id: "commit-\(commit.id)", in: animationNamespace)
 
             if !commit.body.isEmpty {
                 Text(commit.body)
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
+                    .font(WorkbenchTypography.detail)
+                    .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
     private func statsSection(commit: Commit) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
             Text(statsSummary(for: commit))
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.secondary)
 
-            HStack(spacing: 4) {
-                Button("Open on GitHub") {
-                    if let commitURL = actionSet?.commitURL {
-                        NSWorkspace.shared.open(commitURL)
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+                HStack(spacing: WorkbenchMetrics.sectionSpacing) {
+                    Button("Open on GitHub") {
+                        if let commitURL = actionSet?.commitURL {
+                            NSWorkspace.shared.open(commitURL)
+                        }
                     }
+                    .workbenchGhost()
+                    .disabled(!(actionSet?.canOpenOnGitHub ?? false))
+
+                    Button("Copy Hash") {
+                        copyToPasteboard(commit.id)
+                    }
+                    .workbenchGhost()
+
+                    Button("Copy Message") {
+                        copyToPasteboard(commit.subject)
+                    }
+                    .workbenchGhost()
                 }
-                .buttonStyle(.link)
-                .disabled(!(actionSet?.canOpenOnGitHub ?? false))
 
-                Text("•")
-                    .foregroundColor(.secondary)
+                HStack(spacing: WorkbenchMetrics.sectionSpacing) {
+                    Button("Generate Message with AI") {
+                        onGenerateCommitMessage(commit)
+                    }
+                    .workbenchGhost()
+                    .disabled(!(actionSet?.canGenerateMessage ?? false))
 
-                Button("Copy Hash") {
-                    copyToPasteboard(commit.id)
+                    Button("Edit Message Manually") {
+                        onEditCommitMessage(commit)
+                    }
+                    .workbenchGhost()
+                    .disabled(!(actionSet?.canEditMessage ?? false))
                 }
-                .buttonStyle(.link)
 
-                Text("•")
-                    .foregroundColor(.secondary)
-
-                Button("Copy Message") {
-                    copyToPasteboard(commit.subject)
-                }
-                .buttonStyle(.link)
-
-                Text("•")
-                    .foregroundColor(.secondary)
-
-                Button("Generate Message with AI") {
-                    onGenerateCommitMessage(commit)
-                }
-                .buttonStyle(.link)
-                .disabled(!(actionSet?.canGenerateMessage ?? false))
-
-                Text("•")
-                    .foregroundColor(.secondary)
-
-                Button("Edit Message Manually") {
-                    onEditCommitMessage(commit)
-                }
-                .buttonStyle(.link)
-                .disabled(!(actionSet?.canEditMessage ?? false))
-
-                Text("•")
-                    .foregroundColor(.secondary)
-
-                Button("Reset to Here") {
+                Button("Reset to Here", role: .destructive) {
                     onRestoreCommit(commit)
                 }
-                .buttonStyle(.borderless)
                 .disabled(!(actionSet?.canRestore ?? false))
             }
-            .font(.caption.weight(.medium))
 
             if commit.isMergeCommit {
                 Text("Editing merge commits is not supported yet.")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
 
     private func changedFilesSection(commit: Commit) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
             Text("Changed Files")
-                .font(.subheadline.weight(.semibold))
+                .font(WorkbenchTypography.sectionLabel)
 
             if commit.changedFiles.isEmpty {
                 Text("No file list available for this commit.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: WorkbenchMetrics.compactSpacing) {
                     ForEach(commit.changedFiles) { file in
                         CommitChangedFileRowView(file: file)
                     }
@@ -224,17 +214,16 @@ struct CommitDetailPageView: View {
     }
 
     private var missingCommitSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
             Text("Commit not available in current history view.")
-                .font(.subheadline.weight(.medium))
-                .foregroundColor(.secondary)
+                .font(WorkbenchTypography.detail)
+                .foregroundStyle(.secondary)
 
             Button("Back to History") {
                 onBack()
             }
-            .buttonStyle(.borderless)
+            .workbenchGhost()
         }
-        .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -264,7 +253,7 @@ struct CommitDetailPageView: View {
                 }
             }
             .frame(width: 24, height: 24)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
         } else {
             initialsBadge(for: commit)
         }
@@ -272,11 +261,11 @@ struct CommitDetailPageView: View {
 
     private func initialsBadge(for commit: Commit) -> some View {
         Text(authorInitials(for: commit))
-            .font(.subheadline.weight(.bold))
-            .foregroundColor(.white)
+            .font(WorkbenchTypography.detail.weight(.bold))
+            .foregroundStyle(.white)
             .frame(width: 24, height: 24)
             .background(Color.accentColor)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
     }
 
     @MainActor
@@ -337,44 +326,38 @@ private struct CommitChangedFileRowView: View {
     let file: CommitFileChange
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
             Image(systemName: "doc.text")
-                .font(.caption.weight(.medium))
-                .foregroundColor(.secondary)
+                .font(WorkbenchTypography.captionStrong)
+                .foregroundStyle(.secondary)
                 .frame(width: 14, alignment: .center)
+                .accessibilityHidden(true)
 
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.chipSpacing) {
                 Text(file.fileName)
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(.primary)
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .layoutPriority(1)
 
                 if !file.directoryPath.isEmpty {
                     Text(file.directoryPath)
-                        .font(.caption2.weight(.light))
-                        .foregroundColor(.secondary)
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .layoutPriority(0)
                 }
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: WorkbenchMetrics.compactSpacing)
 
-            HStack(spacing: 6) {
-                if file.lineDiff.added > 0 {
-                    Text("+\(file.lineDiff.added)")
-                        .foregroundColor(.green)
-                }
-
-                if file.lineDiff.removed > 0 {
-                    Text("-\(file.lineDiff.removed)")
-                        .foregroundColor(.red)
-                }
-            }
-            .font(.caption2.weight(.medium))
+            WorkingTreeLineDiffView(
+                addedCount: file.lineDiff.added,
+                removedCount: file.lineDiff.removed
+            )
         }
+        .accessibilityElement(children: .combine)
     }
 }
