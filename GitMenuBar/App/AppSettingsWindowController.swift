@@ -87,11 +87,13 @@ final class AppSettingsWindowController {
         )
 
         configureWindowSizing()
+        configureWindowShell()
         observeAppearancePreferenceChanges()
     }
 
     func show() {
         windowController.show(pane: .gitMenuBarGeneral)
+        configureWindowShell()
         applyConfiguredAppearance()
         NSApp.activate(ignoringOtherApps: true)
         windowController.window?.makeKeyAndOrderFront(nil)
@@ -121,6 +123,11 @@ final class AppSettingsWindowController {
 
         window.styleMask.insert(.resizable)
         window.contentMinSize = Constants.minimumContentSize
+    }
+
+    private func configureWindowShell() {
+        guard let contentView = windowController.window?.contentView else { return }
+        WorkbenchWindowChrome.installShell(in: contentView)
     }
 }
 

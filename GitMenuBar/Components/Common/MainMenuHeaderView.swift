@@ -1,25 +1,86 @@
 import AppKit
 import SwiftUI
 
-struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOptionsContent: View>: View {
+struct MainMenuProjectSelectorControl<PopoverContent: View, ContextMenuContent: View>: View {
     let currentProjectName: String
     @Binding var showProjectSelector: Bool
-    @Binding var showRepositoryOptionsPopover: Bool
-    let showsRepositoryOptionsButton: Bool
-    let onShowRepositoryOptions: () -> Void
-    let onOpenSettings: () -> Void
+    let isInteractionDisabled: Bool
     let projectSelectorContent: () -> PopoverContent
     let projectContextMenu: () -> ContextMenuContent
-    let repositoryOptionsContent: () -> RepoOptionsContent
 
     @State private var isProjectHovered = false
 
     init(
         currentProjectName: String,
         showProjectSelector: Binding<Bool>,
+        isInteractionDisabled: Bool = false,
+        @ViewBuilder projectSelectorContent: @escaping () -> PopoverContent,
+        @ViewBuilder projectContextMenu: @escaping () -> ContextMenuContent
+    ) {
+        self.currentProjectName = currentProjectName
+        _showProjectSelector = showProjectSelector
+        self.isInteractionDisabled = isInteractionDisabled
+        self.projectSelectorContent = projectSelectorContent
+        self.projectContextMenu = projectContextMenu
+    }
+
+    var body: some View {
+        Button(action: { showProjectSelector.toggle() }, label: {
+            HStack(spacing: WorkbenchMetrics.chipSpacing) {
+                Text(currentProjectName)
+                    .font(WorkbenchTypography.windowTitle)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundStyle(.primary)
+                Image(systemName: "chevron.down")
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
+                    .fill(isProjectHovered ? WorkbenchPalette.hoverFill() : Color.clear)
+            )
+        })
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+        .controlSize(.small)
+        .disabled(isInteractionDisabled)
+        .opacity(isInteractionDisabled ? 0.5 : 1)
+        .accessibilityLabel("Current repository")
+        .accessibilityHint("Opens the recent repository picker.")
+        .onHover { inside in
+            guard !isInteractionDisabled else { return }
+            isProjectHovered = inside
+            if inside {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
+        .contextMenu(menuItems: projectContextMenu)
+        .popover(isPresented: $showProjectSelector) {
+            projectSelectorContent()
+        }
+    }
+}
+
+struct MainMenuHeaderToolbarContent<PopoverContent: View, ContextMenuContent: View, RepoOptionsContent: View>: ToolbarContent {
+    let currentProjectName: String
+    @Binding var showProjectSelector: Bool
+    @Binding var showRepositoryOptionsPopover: Bool
+    let isCommandPalettePresented: Bool
+    let onOpenSettings: () -> Void
+    let projectSelectorContent: () -> PopoverContent
+    let projectContextMenu: () -> ContextMenuContent
+    let repositoryOptionsContent: () -> RepoOptionsContent
+
+    init(
+        currentProjectName: String,
+        showProjectSelector: Binding<Bool>,
         showRepositoryOptionsPopover: Binding<Bool>,
-        showsRepositoryOptionsButton: Bool,
-        onShowRepositoryOptions: @escaping () -> Void,
+        isCommandPalettePresented: Bool,
         onOpenSettings: @escaping () -> Void,
         @ViewBuilder projectSelectorContent: @escaping () -> PopoverContent,
         @ViewBuilder projectContextMenu: @escaping () -> ContextMenuContent,
@@ -28,103 +89,90 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
         self.currentProjectName = currentProjectName
         _showProjectSelector = showProjectSelector
         _showRepositoryOptionsPopover = showRepositoryOptionsPopover
-        self.showsRepositoryOptionsButton = showsRepositoryOptionsButton
-        self.onShowRepositoryOptions = onShowRepositoryOptions
+        self.isCommandPalettePresented = isCommandPalettePresented
         self.onOpenSettings = onOpenSettings
         self.projectSelectorContent = projectSelectorContent
         self.projectContextMenu = projectContextMenu
         self.repositoryOptionsContent = repositoryOptionsContent
     }
 
-    var body: some View {
-        HStack(spacing: WorkbenchMetrics.compactSpacing) {
-            Button(action: { showProjectSelector.toggle() }, label: {
-                HStack(spacing: WorkbenchMetrics.chipSpacing) {
-                    Text(currentProjectName)
-                        .font(WorkbenchTypography.windowTitle)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .foregroundStyle(.primary)
-                    Image(systemName: "chevron.down")
-                        .font(WorkbenchTypography.captionStrong)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
-                        .fill(isProjectHovered ? WorkbenchPalette.hoverFill() : Color.clear)
+    var body: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            HStack(spacing: 0) {
+                MainMenuProjectSelectorControl(
+                    currentProjectName: currentProjectName,
+                    showProjectSelector: $showProjectSelector,
+                    isInteractionDisabled: isCommandPalettePresented,
+                    projectSelectorContent: projectSelectorContent,
+                    projectContextMenu: projectContextMenu
                 )
-            })
-            .buttonStyle(.plain)
-            .contentShape(Rectangle())
-            .controlSize(.small)
-            .accessibilityLabel("Current repository")
-            .accessibilityHint("Opens the recent repository picker.")
-            .onHover { inside in
-                isProjectHovered = inside
-                if inside {
-                    NSCursor.pointingHand.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
-            .contextMenu(menuItems: projectContextMenu)
-            .popover(isPresented: $showProjectSelector) {
-                projectSelectorContent()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            if showsRepositoryOptionsButton {
-                MainMenuHeaderIconButton(
-                    systemImage: "ellipsis.circle",
-                    accessibilityLabel: "Repository options",
-                    accessibilityHint: "Shows repository visibility and deletion actions.",
-                    action: onShowRepositoryOptions
-                )
-                .popover(isPresented: $showRepositoryOptionsPopover, arrowEdge: .top) {
-                    repositoryOptionsContent()
-                }
+                Color.clear
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+                    .popover(isPresented: $showRepositoryOptionsPopover, arrowEdge: .top) {
+                        repositoryOptionsContent()
+                    }
             }
+        }
 
+        ToolbarItem(placement: .primaryAction) {
             MainMenuHeaderIconButton(
                 systemImage: "gearshape",
                 accessibilityLabel: "Settings",
                 accessibilityHint: "Opens GitMenuBar settings.",
                 action: onOpenSettings
             )
+            .disabled(isCommandPalettePresented)
+            .opacity(isCommandPalettePresented ? 0.5 : 1)
         }
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity)
-        .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.cornerRadius, material: .thin)
     }
 }
 
-#Preview("Main Menu Header") {
-    return MainMenuHeaderView(
+#Preview("Main Menu Project Selector") {
+    MainMenuProjectSelectorControl(
         currentProjectName: "gitmenubar",
         showProjectSelector: .constant(false),
-        showRepositoryOptionsPopover: .constant(false),
-        showsRepositoryOptionsButton: true,
-        onShowRepositoryOptions: {},
-        onOpenSettings: {},
         projectSelectorContent: {
             Text("Projects")
                 .padding()
         },
         projectContextMenu: {
             Button("Repository Options…") {}
-        },
-        repositoryOptionsContent: {
-            RepositoryOptionsPopoverView(
-                visibilityStatusDescription: "This repository is currently private.",
-                visibilityActionTitle: "Make Public",
-                onToggleVisibility: {},
-                onDeleteRepository: {}
-            )
         }
     )
     .padding()
     .frame(width: 400)
+}
+
+#Preview("Main Menu Header Toolbar") {
+    NavigationStack {
+        Text("Main menu content")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .toolbar {
+                MainMenuHeaderToolbarContent(
+                    currentProjectName: "gitmenubar",
+                    showProjectSelector: .constant(false),
+                    showRepositoryOptionsPopover: .constant(false),
+                    isCommandPalettePresented: false,
+                    onOpenSettings: {},
+                    projectSelectorContent: {
+                        Text("Projects")
+                            .padding()
+                    },
+                    projectContextMenu: {
+                        Button("Repository Options…") {}
+                    },
+                    repositoryOptionsContent: {
+                        RepositoryOptionsPopoverView(
+                            visibilityStatusDescription: "This repository is currently private.",
+                            visibilityActionTitle: "Make Public",
+                            onToggleVisibility: {},
+                            onDeleteRepository: {}
+                        )
+                    }
+                )
+            }
+    }
+    .frame(width: 400, height: 240)
 }

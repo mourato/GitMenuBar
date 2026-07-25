@@ -1,34 +1,82 @@
+import AppKit
 import SwiftUI
 
 struct UsageQuotaStripView: View {
     @EnvironmentObject private var usageQuotaStore: UsageQuotaStore
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         let snapshots = usageQuotaStore.visibleSnapshots
         if usageQuotaStore.showAIUsageQuotas, !snapshots.isEmpty {
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(snapshots) { snapshot in
-                    UsageQuotaProviderRow(snapshot: snapshot)
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(snapshots.enumerated()), id: \.element.id) { index, snapshot in
+                    if index > 0 {
+                        Rectangle()
+                            .fill(Color.primary.opacity(0.06))
+                            .frame(height: 1)
+                            .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+                    }
+
+                    UsageQuotaProviderCard(snapshot: snapshot)
+                        .padding(.vertical, WorkbenchMetrics.compactSpacing)
                 }
             }
-            .padding(.horizontal, WorkbenchMetrics.windowPadding)
+            .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+            .overlay {
+                RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
+                    .strokeBorder(groupBorderColor, lineWidth: 1)
+            }
             .padding(.vertical, WorkbenchMetrics.compactSpacing)
+            // Quota cards are informational only — never imply clickability via the pointer.
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.arrow.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
             .task {
                 usageQuotaStore.refresh(reason: .contentAppeared)
             }
         }
     }
+
+    private var groupBorderColor: Color {
+        Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.12)
+    }
 }
 
-private struct UsageQuotaProviderRow: View {
+private struct UsageQuotaProviderCard: View {
     let snapshot: UsageQuotaSnapshot
 
     var body: some View {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+            headerRow
+
+            if let window = snapshot.primaryDisplayWindow {
+                UsageQuotaProgressBar(percent: window.remainingPercent)
+                metaRow(for: window)
+            } else if let creditsText = creditsLineText {
+                Text(creditsText)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let weekly = secondaryWeeklyWindow {
+                weeklyRow(weekly)
+            }
+        }
+        .opacity(snapshot.isStale ? 0.72 : 1)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(accessibilityValue)
+    }
+
+    private var headerRow: some View {
         HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.compactSpacing) {
             Text(snapshot.displayName)
                 .font(WorkbenchTypography.captionStrong)
                 .foregroundStyle(snapshot.isStale ? .secondary : .primary)
-                .frame(minWidth: 52, alignment: .leading)
 
             if let window = snapshot.primaryDisplayWindow {
                 Text(window.intervalChip)
@@ -41,37 +89,73 @@ private struct UsageQuotaProviderRow: View {
                             .fill(Color.primary.opacity(0.06))
                     )
                     .accessibilityHidden(true)
-
-                UsageQuotaPercentBadge(
-                    percent: window.remainingPercent,
-                    resetAt: window.resetAt
-                )
             }
 
             Spacer(minLength: 0)
 
-            if let weekly = snapshot.weeklyWindow,
-               snapshot.primaryDisplayWindow?.label != weekly.label
-               || snapshot.primaryDisplayWindow?.remainingPercent != weekly.remainingPercent {
-                Text("\(weekly.intervalChip) \(weekly.remainingPercent)%")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
+            if let window = snapshot.primaryDisplayWindow {
+                UsageQuotaPercentLabel(percent: window.remainingPercent)
             }
+        }
+    }
 
-            if let resetCreditsAvailable = snapshot.resetCreditsAvailable {
-                Text(resetCreditsLabel(resetCreditsAvailable))
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
-            } else if let creditValueText = snapshot.creditValueText {
-                Text(creditValueText)
+    private func metaRow(for window: UsageWindow) -> some View {
+        HStack(spacing: WorkbenchMetrics.sectionSpacing) {
+            metaItem(
+                systemImage: "gauge.with.dots.needle.33percent",
+                text: UsageQuotaFormatting.resetCountdown(until: window.resetAt)
+            )
+
+            metaItem(
+                systemImage: "clock",
+                text: UsageQuotaFormatting.resetClockTime(until: window.resetAt)
+            )
+
+            Spacer(minLength: 0)
+
+            if let creditsText = creditsLineText {
+                Text(creditsText)
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             }
         }
-        .opacity(snapshot.isStale ? 0.72 : 1)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityValue(accessibilityValue)
+    }
+
+    private func metaItem(systemImage: String, text: String) -> some View {
+        HStack(spacing: WorkbenchMetrics.microSpacing) {
+            Image(systemName: systemImage)
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+
+            Text(text)
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func weeklyRow(_ weekly: UsageWindow) -> some View {
+        Text("\(weekly.intervalChip) \(weekly.remainingPercent)%")
+            .font(WorkbenchTypography.caption)
+            .foregroundStyle(.secondary)
+    }
+
+    private var secondaryWeeklyWindow: UsageWindow? {
+        guard let weekly = snapshot.weeklyWindow,
+              let primary = snapshot.primaryDisplayWindow else {
+            return nil
+        }
+        if primary.label != weekly.label || primary.remainingPercent != weekly.remainingPercent {
+            return weekly
+        }
+        return nil
+    }
+
+    private var creditsLineText: String? {
+        if let resetCreditsAvailable = snapshot.resetCreditsAvailable {
+            return resetCreditsLabel(resetCreditsAvailable)
+        }
+        return snapshot.creditValueText
     }
 
     private func resetCreditsLabel(_ count: Int) -> String {
@@ -89,12 +173,18 @@ private struct UsageQuotaProviderRow: View {
         var parts: [String] = []
         if let window = snapshot.primaryDisplayWindow {
             parts.append("resets in \(UsageQuotaFormatting.resetCountdown(until: window.resetAt))")
+            let clockTime = UsageQuotaFormatting.resetClockTime(until: window.resetAt)
+            if clockTime != "—" {
+                parts.append("next reset at \(clockTime)")
+            }
         }
-        if let weekly = snapshot.weeklyWindow {
+        if let weekly = secondaryWeeklyWindow {
             parts.append("\(weekly.intervalChip) \(weekly.remainingPercent) percent")
         }
         if let resetCreditsAvailable = snapshot.resetCreditsAvailable {
             parts.append(resetCreditsLabel(resetCreditsAvailable))
+        } else if let creditValueText = snapshot.creditValueText {
+            parts.append(creditValueText)
         }
         if snapshot.isStale {
             parts.append("stale")
@@ -106,12 +196,11 @@ private struct UsageQuotaProviderRow: View {
     }
 }
 
-private struct UsageQuotaPercentBadge: View {
+private struct UsageQuotaPercentLabel: View {
     let percent: Int
-    let resetAt: Date?
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: WorkbenchMetrics.microSpacing) {
             Circle()
                 .fill(trafficLightColor)
                 .frame(width: 6, height: 6)
@@ -120,15 +209,36 @@ private struct UsageQuotaPercentBadge: View {
             Text("\(percent)%")
                 .font(WorkbenchTypography.captionStrong)
                 .foregroundStyle(trafficLightColor)
-
-            Text(UsageQuotaFormatting.resetCountdown(until: resetAt))
-                .font(WorkbenchTypography.caption)
-                .foregroundStyle(.secondary)
         }
     }
 
     private var trafficLightColor: Color {
-        switch UsageQuotaFormatting.trafficLightColor(for: percent) {
+        UsageQuotaTrafficLightColor.swiftUI(for: percent)
+    }
+}
+
+private struct UsageQuotaProgressBar: View {
+    let percent: Int
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule(style: .continuous)
+                    .fill(Color.primary.opacity(0.08))
+
+                Capsule(style: .continuous)
+                    .fill(UsageQuotaTrafficLightColor.swiftUI(for: percent))
+                    .frame(width: max(0, geometry.size.width * CGFloat(percent) / 100))
+            }
+        }
+        .frame(height: 4)
+        .accessibilityHidden(true)
+    }
+}
+
+private enum UsageQuotaTrafficLightColor {
+    static func swiftUI(for remainingPercent: Int) -> Color {
+        switch UsageQuotaFormatting.trafficLightColor(for: remainingPercent) {
         case .green:
             return .green
         case .amber:
@@ -139,65 +249,147 @@ private struct UsageQuotaPercentBadge: View {
     }
 }
 
-#Preview("Usage Quota Strip") {
-    let defaults = UserDefaults(suiteName: "UsageQuotaStripPreview")!
-    defaults.removePersistentDomain(forName: "UsageQuotaStripPreview")
-    let snapshot = UsageQuotaSnapshot(
-        providerID: .codex,
-        displayName: "Codex",
-        sessionWindow: UsageWindow(
-            remainingPercent: 62,
-            resetAt: Date().addingTimeInterval(8100),
-            label: "5h",
-            durationSeconds: 5 * 3600
-        ),
-        weeklyWindow: UsageWindow(
-            remainingPercent: 88,
-            resetAt: Date().addingTimeInterval(86400 * 3),
-            label: "7d",
-            durationSeconds: 7 * 86400
-        ),
-        resetCreditsAvailable: 2,
-        isAvailable: true,
-        statusNote: "chatgpt usage api"
-    )
-    let store = UsageQuotaStore(
-        defaults: defaults,
-        providers: [PreviewUsageQuotaProvider(snapshot: snapshot)]
-    )
-    store.showAIUsageQuotas = true
+// MARK: - Previews
 
-    return UsageQuotaStripView()
-        .environmentObject(store)
-        .frame(width: 380)
+#Preview("Usage Quota Strip") {
+    UsageQuotaStripPreviewHarness(
+        snapshots: [
+            PreviewUsageQuotaSnapshotFactory.codex(
+                remainingPercent: 62,
+                resetInterval: 8100,
+                weeklyPercent: 88,
+                resetCreditsAvailable: 2
+            )
+        ]
+    )
+}
+
+#Preview("Usage Quota Strip – High") {
+    UsageQuotaStripPreviewHarness(
+        snapshots: [
+            PreviewUsageQuotaSnapshotFactory.codex(
+                remainingPercent: 95,
+                resetInterval: 3600,
+                weeklyPercent: 95
+            )
+        ]
+    )
+}
+
+#Preview("Usage Quota Strip – Low") {
+    UsageQuotaStripPreviewHarness(
+        snapshots: [
+            PreviewUsageQuotaSnapshotFactory.cursor(
+                remainingPercent: 8,
+                resetInterval: 7200
+            )
+        ]
+    )
 }
 
 #Preview("Usage Quota Strip – Stale") {
-    let defaults = UserDefaults(suiteName: "UsageQuotaStripStalePreview")!
-    defaults.removePersistentDomain(forName: "UsageQuotaStripStalePreview")
-    let snapshot = UsageQuotaSnapshot(
-        providerID: .cursor,
-        displayName: "Cursor",
-        sessionWindow: UsageWindow(
-            remainingPercent: 33,
-            resetAt: Date().addingTimeInterval(86400 * 20),
-            label: "Plan",
-            durationSeconds: 30 * 86400
-        ),
-        weeklyWindow: nil,
-        isAvailable: true,
-        isStale: true,
-        statusNote: "cursor usage-summary api"
+    UsageQuotaStripPreviewHarness(
+        snapshots: [
+            PreviewUsageQuotaSnapshotFactory.cursor(
+                remainingPercent: 33,
+                resetInterval: 86400 * 20,
+                isStale: true
+            )
+        ]
     )
-    let store = UsageQuotaStore(
-        defaults: defaults,
-        providers: [PreviewUsageQuotaProvider(snapshot: snapshot)]
-    )
-    store.showAIUsageQuotas = true
+}
 
-    return UsageQuotaStripView()
-        .environmentObject(store)
-        .frame(width: 380)
+#Preview("Usage Quota Strip – Dual Provider") {
+    UsageQuotaStripPreviewHarness(
+        snapshots: [
+            PreviewUsageQuotaSnapshotFactory.codex(
+                remainingPercent: 62,
+                resetInterval: 8100,
+                weeklyPercent: 88,
+                resetCreditsAvailable: 2
+            ),
+            PreviewUsageQuotaSnapshotFactory.cursor(
+                remainingPercent: 41,
+                resetInterval: 86400 * 12
+            )
+        ]
+    )
+}
+
+private struct UsageQuotaStripPreviewHarness: View {
+    let snapshots: [UsageQuotaSnapshot]
+
+    var body: some View {
+        let defaults = UserDefaults(suiteName: previewDefaultsName)!
+        defaults.removePersistentDomain(forName: previewDefaultsName)
+        let store = UsageQuotaStore(
+            defaults: defaults,
+            providers: snapshots.map { PreviewUsageQuotaProvider(snapshot: $0) }
+        )
+        store.showAIUsageQuotas = true
+
+        return UsageQuotaStripView()
+            .environmentObject(store)
+            .frame(width: 380)
+    }
+
+    private var previewDefaultsName: String {
+        "UsageQuotaStripPreview-\(snapshots.map(\.providerID.rawValue).joined(separator: "-"))"
+    }
+}
+
+private enum PreviewUsageQuotaSnapshotFactory {
+    static func codex(
+        remainingPercent: Int,
+        resetInterval: TimeInterval,
+        weeklyPercent: Int? = nil,
+        resetCreditsAvailable: Int? = nil,
+        isStale: Bool = false
+    ) -> UsageQuotaSnapshot {
+        UsageQuotaSnapshot(
+            providerID: .codex,
+            displayName: "Codex",
+            sessionWindow: UsageWindow(
+                remainingPercent: remainingPercent,
+                resetAt: Date().addingTimeInterval(resetInterval),
+                label: "5h",
+                durationSeconds: 5 * 3600
+            ),
+            weeklyWindow: weeklyPercent.map { percent in
+                UsageWindow(
+                    remainingPercent: percent,
+                    resetAt: Date().addingTimeInterval(86400 * 3),
+                    label: "7d",
+                    durationSeconds: 7 * 86400
+                )
+            },
+            resetCreditsAvailable: resetCreditsAvailable,
+            isAvailable: true,
+            isStale: isStale,
+            statusNote: "chatgpt usage api"
+        )
+    }
+
+    static func cursor(
+        remainingPercent: Int,
+        resetInterval: TimeInterval,
+        isStale: Bool = false
+    ) -> UsageQuotaSnapshot {
+        UsageQuotaSnapshot(
+            providerID: .cursor,
+            displayName: "Cursor",
+            sessionWindow: UsageWindow(
+                remainingPercent: remainingPercent,
+                resetAt: Date().addingTimeInterval(resetInterval),
+                label: "Plan",
+                durationSeconds: 30 * 86400
+            ),
+            weeklyWindow: nil,
+            isAvailable: true,
+            isStale: isStale,
+            statusNote: "cursor usage-summary api"
+        )
+    }
 }
 
 private struct PreviewUsageQuotaProvider: UsageQuotaProviding {

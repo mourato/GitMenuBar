@@ -18,6 +18,7 @@ final class StatusBarController: ObservableObject {
         static let windowPresentationDuration: TimeInterval = 0.20
         static let windowPresentationReducedMotionDuration: TimeInterval = 0.01
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
+        static let mainWindowToolbarIdentifier = NSToolbar.Identifier("GitMenuBar.MainWindowToolbar")
         static let appFocusedShortcutNames: [KeyboardShortcuts.Name] = [
             .commandPalette, .commit, .sync, .push, .branchManagement, .createBranch
         ]
@@ -43,7 +44,6 @@ final class StatusBarController: ObservableObject {
 
     var statusItem: NSStatusItem?
     private var mainWindow: NSWindow?
-    private var hostingController: NSHostingController<AnyView>?
     var contextMenu: NSMenu?
     private var badgeRefreshTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -309,8 +309,9 @@ final class StatusBarController: ObservableObject {
         window.setFrameAutosaveName(Constants.windowAutosaveName)
         hasPositionedWindowInitially = window.setFrameUsingName(Constants.windowAutosaveName, force: false)
 
-        let hostingController = NSHostingController(rootView: makeRootView())
-        window.contentViewController = hostingController
+        let contentController = WorkbenchWindowChrome.makeHostedContentController(rootView: makeRootView())
+        window.contentViewController = contentController
+        WorkbenchWindowChrome.configureTransparentWindow(window)
 
         windowDelegate.onShouldClose = { [weak self] in
             self?.hideMainWindow()
@@ -325,7 +326,6 @@ final class StatusBarController: ObservableObject {
 
         window.delegate = windowDelegate
 
-        self.hostingController = hostingController
         mainWindow = window
     }
 
@@ -335,6 +335,16 @@ final class StatusBarController: ObservableObject {
         window.titlebarAppearsTransparent = true
         window.titlebarSeparatorStyle = .none
         window.isMovableByWindowBackground = true
+        configureMainWindowToolbar(window)
+    }
+
+    private func configureMainWindowToolbar(_ window: NSWindow) {
+        let toolbar = NSToolbar(identifier: Constants.mainWindowToolbarIdentifier)
+        toolbar.displayMode = .iconOnly
+        toolbar.allowsUserCustomization = false
+        toolbar.autosavesConfiguration = false
+        window.toolbar = toolbar
+        window.toolbarStyle = .unifiedCompact
     }
 
     private func makeRootView() -> AnyView {

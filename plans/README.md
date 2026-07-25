@@ -254,7 +254,8 @@ Planned against commit `278eb3e`.
 ### Findings considered and rejected
 
 - UX option B/C (status-item accent or Mimir-like dedicated quota chrome):
-  deferred; v1 is Git-first compact strip only.
+  deferred at v1; **Mimir-like main-panel cards revived as Plan 033** (still no
+  status-item glyphs).
 - Extending `AIProviderStore` for quotas: rejected; commit providers and usage
   monitors are different domains.
 - Shipping Cursor in the same change as Codex foundation: rejected to keep the
@@ -299,3 +300,37 @@ History/WT header chrome parity. Planned against commit `bb03dcc`.
 - Mass confirmation-dialog restyle: deferred (opportunistic pattern only).
 - Keep `MacChrome*` with documentation-only aliases: rejected (ADR 0001).
 - Layered shadows as default elevation: rejected in favor of materials + borders.
+
+## Main window chrome & quota enrichment — 2026-07-25
+
+Locked via grill. Docs: `.interface-design/system.md`, 
+`docs/adr/0002-window-shell-material-and-titlebar-chrome.md`.
+Planned against commit `7ade5a9`.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 030 | Full-window command palette scrim (material + dim) | P1 | S | — | DONE (`904af68`) |
+| 031 | Titlebar-aligned header; Repository Options on current Projects row | P1 | M | 030 (seq) | DONE (`578e4e6`) |
+| 032 | Window-level material shell for main panel + Settings | P1 | M | 031 | DONE (`9afedb3`) |
+| 033 | Mimir-style usage quota provider cards | P2 | M | 032 (soft) | DONE |
+
+### Dependency notes
+
+- **030** relocates the palette overlay outside `windowPadding` and enriches the scrim.
+- **031** embeds header controls for traffic-light alignment; moves ellipsis into Projects (current row only); removes header plate.
+- **032** adds window vibrancy/material for main + Settings; softens Settings GitHub plates; keep popover/sheet materials.
+- **033** upgrades the compact quota strip to cards (bar + countdown + time-only clock) for Codex and Cursor; no status-item glyphs.
+- Recommended order: 030 → 031 → 032 → 033. Reviewer required on 031 and 032.
+
+### Findings considered and rejected (this wave)
+
+- SwiftUI-only approximate header alignment: rejected (ADR 0002).
+- Repository Options on non-current rows / switch-then-open: rejected.
+- Nested options popover while Projects stays open: rejected; close then anchor to project control.
+- Main-panel-only material shell (defer Settings): rejected for this wave.
+- Mint-only quota accent (ignore traffic-light thresholds): rejected.
+- Status-item quota glyphs (UX option B): still deferred.
+- Collapsing weekly quota row behind disclosure: rejected; show when it differs.
+- Hard-capping quota region height / one-provider carousel: rejected; natural height for 1–2 cards.
