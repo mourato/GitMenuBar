@@ -344,7 +344,7 @@ Planned against commit `b558d22`. Visual reference: Vozinha Form *ideas* only (n
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 034 | Settings Form surface + General canary | P1 | M | 032 (DONE) | IN PROGRESS |
+| 034 | Settings Form surface + General canary | P1 | M | 032 (DONE) | DONE (`a725756`) |
 | 035 | Migrate Git/AI/Shortcuts to Form + destination map | P1 | M | 034 | TODO |
 
 ### Dependency notes
