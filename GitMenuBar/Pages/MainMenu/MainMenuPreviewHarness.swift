@@ -10,6 +10,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
     @StateObject private var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
     @StateObject private var shortcutActionBridge = MainMenuShortcutActionBridge()
     @StateObject private var presentationModel = MainMenuPresentationModel()
+    @StateObject private var usageQuotaStore = UsageQuotaStore()
 
     private let width: CGFloat
     private let content: Content
@@ -61,6 +62,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
             .environmentObject(commitHistoryEditCoordinator)
             .environmentObject(shortcutActionBridge)
             .environmentObject(presentationModel)
+            .environmentObject(usageQuotaStore)
             .frame(width: width)
     }
 }

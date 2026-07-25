@@ -225,3 +225,40 @@ picker, without adding a user preference or changing Finder's global setting.
   should control only its own repository picker.
 - Add a separate path-entry flow for dot-prefixed directories: rejected because
   the existing `NSOpenPanel` can expose these directories directly.
+
+## AI usage quotas (Codex + Cursor) — 2026-07-25
+
+Track Codex and Cursor usage limits inside GitMenuBar as a **secondary**
+surface (UX option A: Settings toggles + compact main-panel strip only; no
+status-item quota glyphs). Codex is adapted from the MIT Mimir reference;
+Cursor is **not** in Mimir and follows community local-token + dashboard API
+patterns. Existing `AIProvider*` commit-generation code stays separate.
+
+Planned against commit `278eb3e`.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 023 | AI usage quota foundation with Codex + compact strip (UX A) | P2 | L | — | DONE (e7de5d7) |
+| 024 | Cursor usage quota provider | P2 | M | 023 | DONE (9e6d087) |
+
+### Dependency notes
+
+- Plan 023 owns the `UsageQuota*` domain, Codex ladder, opt-in Settings, and
+  main-panel strip. It must land before Cursor.
+- Plan 024 only adds a `UsageQuotaProviding` implementation, Settings toggle,
+  and fixtures; it must not change status-item badge behavior.
+- Reviewer required on both plans (local credential reads + undocumented APIs).
+
+### Findings considered and rejected
+
+- UX option B/C (status-item accent or Mimir-like dedicated quota chrome):
+  deferred; v1 is Git-first compact strip only.
+- Extending `AIProviderStore` for quotas: rejected; commit providers and usage
+  monitors are different domains.
+- Shipping Cursor in the same change as Codex foundation: rejected to keep the
+  first merge reviewable and to isolate the higher-fragility Cursor SQLite/API
+  surface.
+- Persisting refreshed Codex tokens back to `auth.json` in Plan 023: rejected
+  pending explicit security design if live refresh requires it.

@@ -23,6 +23,7 @@ final class AppSettingsWindowController {
         githubAuthManager: GitHubAuthManager,
         aiProviderStore: AIProviderStore,
         aiCommitCoordinator: AICommitCoordinator,
+        usageQuotaStore: UsageQuotaStore,
         onSetAutoHideSuspended: @escaping (Bool) -> Void,
         onRequestCreateRepo: @escaping (String) -> Void
     ) {
@@ -53,6 +54,7 @@ final class AppSettingsWindowController {
                     .environmentObject(githubAuthManager)
                     .environmentObject(aiProviderStore)
                     .environmentObject(aiCommitCoordinator)
+                    .environmentObject(usageQuotaStore)
             }
         )
         let shortcutsPane = Settings.Pane(
