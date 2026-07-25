@@ -92,6 +92,25 @@ final class UsageQuotaStoreTests: XCTestCase {
         XCTAssertTrue(store.snapshots.isEmpty)
     }
 
+    func testProviderTimeoutYieldsUnavailableWithoutHanging() async {
+        let provider = HangingUsageQuotaProvider()
+        let store = UsageQuotaStore(
+            defaults: defaults,
+            snapshotStore: snapshotStore,
+            providers: [provider]
+        )
+        store.showAIUsageQuotas = true
+
+        // Store uses an 8s provider timeout; wait slightly beyond that.
+        await waitUntil(timeout: 10) {
+            store.snapshots.contains { $0.statusNote == "refresh timed out" }
+        }
+
+        XCTAssertEqual(store.snapshots.count, 1)
+        XCTAssertEqual(store.snapshots.first?.statusNote, "refresh timed out")
+        XCTAssertTrue(store.visibleSnapshots.isEmpty)
+    }
+
     private func makeStore(provider: FakeUsageQuotaProvider) -> UsageQuotaStore {
         UsageQuotaStore(
             defaults: defaults,
@@ -101,8 +120,8 @@ final class UsageQuotaStoreTests: XCTestCase {
     }
 
     private func waitUntil(
-        _ predicate: @escaping () -> Bool,
-        timeout: TimeInterval = 2
+        timeout: TimeInterval = 2,
+        _ predicate: @escaping () -> Bool
     ) async {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
@@ -153,5 +172,14 @@ private final class FakeUsageQuotaProvider: UsageQuotaProviding, @unchecked Send
     func fetchSnapshot() async -> UsageQuotaSnapshot {
         fetchCount += 1
         return snapshot
+    }
+}
+
+private struct HangingUsageQuotaProvider: UsageQuotaProviding {
+    let id: UsageProviderID = .codex
+
+    func fetchSnapshot() async -> UsageQuotaSnapshot {
+        try? await Task.sleep(nanoseconds: 60_000_000_000)
+        return .unavailable(providerID: .codex, statusNote: "should not finish")
     }
 }

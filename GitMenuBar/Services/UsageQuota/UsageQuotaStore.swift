@@ -91,11 +91,13 @@ final class UsageQuotaStore: ObservableObject {
         invalidateRefreshTimer()
         guard showAIUsageQuotas else { return }
 
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: Constants.refreshInterval, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: Constants.refreshInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.refresh(reason: .timer)
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        refreshTimer = timer
     }
 
     private func invalidateRefreshTimer() {
@@ -170,12 +172,17 @@ final class UsageQuotaStore: ObservableObject {
                 return nil
             }
 
-            for await result in group {
-                if let result {
-                    group.cancelAll()
-                    return result
+            defer { group.cancelAll() }
+
+            // First completed child wins: a non-nil snapshot from the provider, or
+            // nil from the timeout task. Skipping nil used to ignore timeouts entirely.
+            if let first = await group.next() {
+                if let snapshot = first {
+                    return snapshot
                 }
+                return .unavailable(providerID: provider.id, statusNote: "refresh timed out")
             }
+
             return .unavailable(providerID: provider.id, statusNote: "refresh timed out")
         }
     }
