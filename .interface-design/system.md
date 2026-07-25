@@ -184,6 +184,57 @@ Opt out app-wide via `UIDesignRequiresCompatibility` in `Info.plist` for now (se
 
 ---
 
+## Settings Form surface (locked direction)
+
+Visual/IA reference: Vozinha’s native grouped `Form` contract (**ideas only** — recreate with Workbench tokens; do not copy source). Window shell from Plan 032 stays authoritative.
+
+### Intent
+
+| | |
+|---|---|
+| **Who** | Same workbench developer; opens Settings briefly mid-flow |
+| **Verb** | Find a preference → change it → dismiss |
+| **Feel** | Native macOS grouped Form on the existing material shell — calm, dense, not a second big app |
+
+### Chrome & delivery
+
+- **Keep** `sindresorhus/Settings` toolbar panes for now. Form primitives must stay **chrome-agnostic** so a later sidebar/custom shell swap is cheap.
+- **Staged plans:** **034** (`plans/034-settings-form-surface-and-general-canary.md`) — `SettingsFormPage` + `SettingsFormSectionHeader` + layout policy; migrate **General** as canary. **035** (`plans/035-settings-form-migrate-panes-and-ia.md`) — migrate Git / AI / Shortcuts and apply the destination map below.
+- Retire custom `SettingsSection` as callers migrate (no parallel forever API).
+
+### Destination map (035)
+
+| Pane | Owns |
+|---|---|
+| **General** | Login, auto-hide, mouse-monitor, appearance, **Quit** |
+| **Git** | Commit-field hide, repo path, recents, GitHub, **Wipe** (Danger zone) |
+| **AI** | Providers + usage quotas (replaces thin **Quotas** pane) |
+| **Shortcuts** | Keyboard shortcuts only |
+
+### Form × shell contract
+
+- One `.formStyle(.grouped)` `Form` per pane via `SettingsFormPage`.
+- Native `Section`s; shared `SettingsFormSectionHeader` (title + optional SF Symbol).
+- Exactly **one** vertical scroll owner (the Form).
+- `.scrollContentBackground(.hidden)` so the window material shell shows through.
+- **No** new nested `workbenchPanelSurface` plates inside Settings panes; grouping comes from native sections.
+- Scalars (`Toggle`, `Picker`, `LabeledContent`) use visible native labels.
+- Complex blocks (repo path, recents, GitHub auth, AI provider list): **hybrid** — live inside a `Section` as custom subviews; editors stay sheets.
+- Quit / Wipe are Form `Section` rows (destructive styling for Wipe), not a separate footer chrome kit.
+
+### Geometry
+
+- Target min width **~520–600**; drop the forced tall `420×700` min height in favor of content-driven / shorter default.
+
+### Out of scope until a later plan
+
+- Settings search
+- Sidebar / retiring the Settings package
+- Expandable / drill-down row kit (Vozinha flatten primitives)
+- Aggressive single-pane flatten beyond the destination map above
+
+---
+
 ## Section headers
 
 Working Tree and History headers must share the same chrome primitive (padding, hover fill from `WorkbenchPalette`, radius, chevron+title type, count meta). History does not grow Stage actions — only visual/structural parity (Plan 028).
@@ -206,6 +257,7 @@ Respect Reduce Motion and Reduce Transparency (solid control backgrounds when re
 - Marketing / landing visuals
 - Status-item quota glyphs / UX option B status accents
 - Repository Options for non-current recent projects (no switch-then-open)
+- Settings search, Settings sidebar chrome, expandable/drill-down Settings rows (see Settings Form surface)
 
 ---
 
