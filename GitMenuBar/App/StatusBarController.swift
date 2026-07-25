@@ -311,7 +311,7 @@ final class StatusBarController: ObservableObject {
 
         let contentController = WorkbenchWindowChrome.makeHostedContentController(rootView: makeRootView())
         window.contentViewController = contentController
-        WorkbenchWindowChrome.configureWindow(window)
+        WorkbenchWindowChrome.configureTransparentWindow(window)
 
         windowDelegate.onShouldClose = { [weak self] in
             self?.hideMainWindow()
