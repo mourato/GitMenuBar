@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct UsageQuotaStripView: View {
@@ -13,17 +14,27 @@ struct UsageQuotaStripView: View {
                         Rectangle()
                             .fill(Color.primary.opacity(0.06))
                             .frame(height: 1)
+                            .padding(.horizontal, WorkbenchMetrics.compactSpacing)
                     }
 
                     UsageQuotaProviderCard(snapshot: snapshot)
+                        .padding(.vertical, WorkbenchMetrics.compactSpacing)
                 }
             }
-            .padding(WorkbenchMetrics.compactSpacing)
+            .padding(.horizontal, WorkbenchMetrics.compactSpacing)
             .overlay {
                 RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
                     .strokeBorder(groupBorderColor, lineWidth: 1)
             }
             .padding(.vertical, WorkbenchMetrics.compactSpacing)
+            // Quota cards are informational only — never imply clickability via the pointer.
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.arrow.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
             .task {
                 usageQuotaStore.refresh(reason: .contentAppeared)
             }

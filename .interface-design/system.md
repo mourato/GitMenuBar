@@ -169,9 +169,15 @@ Current vertical order (do not invent a new IA without a plan):
 
 When quotas are enabled and snapshots exist, show provider cards (Codex and/or Cursor):
 
-- Primary: provider name, interval chip, traffic-light colored remaining `%`, progress bar matching that %, countdown with icon, locale-aware **time-only** next-cycle clock with icon (`resetAt`).
+- Primary: provider name, interval chip, traffic-light colored remaining `%`, progress bar matching that %, countdown with icon, locale-aware **time-only** next-cycle clock with icon (`resetAt`); reset credits trail the meta row when present.
 - Secondary weekly row when weekly differs from primary (same dedupe rule as the former strip).
+- Group hairline border + divider between providers with vertical padding so content does not touch the rule.
+- Informational only: arrow cursor (never pointing-hand) unless a control gains a real action.
 - Natural height for 1–2 providers; no status-item quota glyphs.
+
+### Liquid Glass
+
+Opt out app-wide via `UIDesignRequiresCompatibility` in `Info.plist` for now (see ADR 0002). Future escape hatch: borderless `NSPanel` overlay like Mimir/Codex Bar if the compatibility flag is retired.
 
 **This wave does not** demote footer Ghost actions or redesign Commit-vs-footer focal hierarchy. Footer weight stays as today; button *variants* may still apply so Ghost is consistent.
 
