@@ -76,7 +76,7 @@ Base unit **8**. Prefer metrics over literals:
 | `sectionSpacing` | 12 | Within a card/popover group |
 | `groupSpacing` | 20 | Between major panel zones |
 | `panelPadding` | 16 | Popover / overlay inset |
-| `windowPadding` | 20 | Settings / window panes |
+| `windowPadding` | 12 | Settings / window panes |
 
 Micro values **4** and **6** are allowed only as named metrics (e.g. `microSpacing`, `chipSpacing`) — do not sprinkle raw magic numbers in views.
 
@@ -161,7 +161,8 @@ Current vertical order (do not invent a new IA without a plan):
 
 ### Header chrome
 
-- Single horizontal line with native traffic lights, project selector (hugs label), and Settings gear (trailing). Visually separated; **no** header `workbenchPanelSurface` plate.
+- Single horizontal line with native traffic lights (leading), project selector (principal / centered), and Settings gear (trailing). Visually separated across the full titlebar width; **no** header `workbenchPanelSurface` plate.
+- Main body adds top `sectionSpacing` under the titlebar so the first content control is not tight against the header.
 - Repository Options (ellipsis) lives on the **current** project row inside the Projects popover only (hidden when options unavailable or row is not current). Keep project-button context menu + status-item / command-center entry points; remove header ellipsis and the popover footer “Repository Options…” duplicate.
 - Opening row options: close Projects, then present Repository Options anchored to the project-selector control (existing pending-presentation flow).
 

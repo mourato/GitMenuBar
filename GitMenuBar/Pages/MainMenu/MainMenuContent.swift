@@ -214,6 +214,7 @@ extension MainMenuView {
 
                 UsageQuotaStripView()
             }
+            .padding(.top, WorkbenchMetrics.sectionSpacing)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .toolbar {
                 MainMenuHeaderToolbarContent(

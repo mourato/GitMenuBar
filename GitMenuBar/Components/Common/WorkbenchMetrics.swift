@@ -68,7 +68,7 @@ enum WorkbenchMetrics {
     static let sectionSpacing: CGFloat = 12
     static let groupSpacing: CGFloat = 20
     static let panelPadding: CGFloat = 16
-    static let windowPadding: CGFloat = 20
+    static let windowPadding: CGFloat = 12
     static let headerVerticalPadding: CGFloat = 2
     static let microCornerRadius: CGFloat = 6
     static let rowCornerRadius: CGFloat = 8

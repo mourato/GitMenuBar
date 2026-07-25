@@ -97,7 +97,7 @@ struct MainMenuHeaderToolbarContent<PopoverContent: View, ContextMenuContent: Vi
     }
 
     var body: some ToolbarContent {
-        ToolbarItem(placement: .navigation) {
+        ToolbarItem(placement: .principal) {
             HStack(spacing: 0) {
                 MainMenuProjectSelectorControl(
                     currentProjectName: currentProjectName,
