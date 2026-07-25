@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct RecentPathRowView: View {
@@ -6,8 +5,6 @@ struct RecentPathRowView: View {
     let fullPath: String
     let onTap: () -> Void
 
-    @State private var isHovered = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .body) private var rowHeight: CGFloat = 28
 
     var body: some View {
@@ -23,24 +20,9 @@ struct RecentPathRowView: View {
                     .help(fullPath)
                 Spacer()
             }
-            .padding(.horizontal, 8)
             .frame(minHeight: rowHeight)
-            .background(isHovered ? WorkbenchPalette.hoverFill() : Color(nsColor: .controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         }
-        .buttonStyle(PressableButtonStyle())
-        .animation(
-            WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
-            value: isHovered
-        )
-        .onHover { inside in
-            isHovered = inside
-            if inside {
-                NSCursor.pointingHand.push()
-            } else {
-                NSCursor.pop()
-            }
-        }
+        .workbenchRow()
     }
 }
 

@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct BranchRowView: View {
@@ -10,8 +9,6 @@ struct BranchRowView: View {
     let onRename: (() -> Void)?
     let onMergeToDefault: (() -> Void)?
     let currentBranchName: String
-
-    @State private var isHovered = false
 
     init(
         branchName: String,
@@ -34,23 +31,20 @@ struct BranchRowView: View {
     }
 
     var body: some View {
-        HStack {
-            Text(branchName)
-                .font(WorkbenchTypography.body)
-            Spacer()
-            if isCurrentBranch {
-                Image(systemName: "checkmark")
-                    .font(WorkbenchTypography.captionStrong)
-                    .foregroundStyle(Color.accentColor)
+        Button(action: onTap) {
+            HStack {
+                Text(branchName)
+                    .font(WorkbenchTypography.body)
+                Spacer()
+                if isCurrentBranch {
+                    Image(systemName: "checkmark")
+                        .font(WorkbenchTypography.captionStrong)
+                        .foregroundStyle(Color.accentColor)
+                }
             }
+            .frame(minHeight: WorkbenchMetrics.iconHitTarget)
         }
-        .padding(.horizontal, 12)
-        .frame(minHeight: WorkbenchMetrics.iconHitTarget)
-        .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onTap)
-        .accessibilityElement(children: .combine)
+        .workbenchRow(isSelected: isCurrentBranch)
         .accessibilityLabel(isCurrentBranch ? "\(branchName), current branch" : branchName)
         .accessibilityHint("Opens branch actions.")
         .contextMenu {
@@ -81,14 +75,6 @@ struct BranchRowView: View {
                     }
                     .help("Permanently remove the branch \(branchName)")
                 }
-            }
-        }
-        .onHover { inside in
-            isHovered = inside
-            if inside {
-                NSCursor.pointingHand.push()
-            } else {
-                NSCursor.pop()
             }
         }
     }

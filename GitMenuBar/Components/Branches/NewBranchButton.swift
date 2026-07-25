@@ -1,9 +1,7 @@
-import AppKit
 import SwiftUI
 
 struct NewBranchButton: View {
     let onTap: () -> Void
-    @State private var isHovered = false
 
     var body: some View {
         Button(action: onTap) {
@@ -15,20 +13,8 @@ struct NewBranchButton: View {
                     .font(.caption.weight(.medium))
                 Spacer()
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .onHover { inside in
-            isHovered = inside
-            if inside {
-                NSCursor.pointingHand.push()
-            } else {
-                NSCursor.pop()
-            }
-        }
+        .workbenchRow()
     }
 }
 

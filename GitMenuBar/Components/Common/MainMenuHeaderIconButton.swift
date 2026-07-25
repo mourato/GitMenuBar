@@ -7,25 +7,15 @@ struct MainMenuHeaderIconButton: View {
     let accessibilityHint: String
     let action: () -> Void
 
-    @State private var isHovered = false
-
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(WorkbenchTypography.body)
-                .frame(width: WorkbenchMetrics.iconHitTarget, height: WorkbenchMetrics.iconHitTarget)
-                .background(
-                    RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
-                        .fill(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
-                )
         }
-        .buttonStyle(.plain)
+        .workbenchIcon()
         .controlSize(.small)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint(accessibilityHint)
-        .onHover { inside in
-            isHovered = inside
-        }
     }
 }
 
