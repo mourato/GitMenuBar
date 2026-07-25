@@ -39,8 +39,6 @@ extension MainMenuView {
                 createRepoSuggestionBanner(path: suggestionPath)
             }
 
-            UsageQuotaStripView()
-
             if presentationModel.refreshState.isRefreshing && !hasWorkingTreeChanges {
                 loadingStateView
             }
@@ -261,6 +259,8 @@ extension MainMenuView {
                 }
 
                 footerSection
+
+                UsageQuotaStripView()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .onExitCommand {

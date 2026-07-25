@@ -46,7 +46,8 @@ final class CursorUsageParsingTests: XCTestCase {
 
         XCTAssertEqual(snapshot?.providerID, .cursor)
         XCTAssertEqual(snapshot?.sessionWindow?.remainingPercent, 25)
-        XCTAssertEqual(snapshot?.sessionWindow?.label, "Plan")
+        XCTAssertEqual(snapshot?.sessionWindow?.intervalChip, "30d")
+        XCTAssertEqual(snapshot?.sessionWindow?.durationSeconds, 30 * 86_400)
         XCTAssertEqual(snapshot?.creditValueText, "$5.00 left")
         XCTAssertEqual(snapshot?.statusNote, "cursor usage-summary api")
 

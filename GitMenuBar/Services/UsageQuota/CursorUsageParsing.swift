@@ -44,6 +44,12 @@ enum CursorUsageParsing {
         }
 
         let creditValueText = creditValueText(fromPlan: plan, isUnlimited: isUnlimited)
+        let cycleStart = parseISO8601Date(root["billingCycleStart"])
+        let durationSeconds: Int? = {
+            guard let cycleStart, let billingCycleEnd else { return nil }
+            let seconds = Int(billingCycleEnd.timeIntervalSince(cycleStart))
+            return seconds > 0 ? seconds : nil
+        }()
 
         return UsageQuotaSnapshot(
             providerID: .cursor,
@@ -51,7 +57,8 @@ enum CursorUsageParsing {
             sessionWindow: UsageWindow(
                 remainingPercent: remainingPercent,
                 resetAt: billingCycleEnd,
-                label: "Plan"
+                label: UsageQuotaFormatting.intervalLabel(durationSeconds: durationSeconds, fallback: "Plan"),
+                durationSeconds: durationSeconds
             ),
             weeklyWindow: nil,
             creditValueText: creditValueText,

@@ -6,11 +6,13 @@ struct UsageQuotaStripView: View {
     var body: some View {
         let snapshots = usageQuotaStore.visibleSnapshots
         if usageQuotaStore.showAIUsageQuotas, !snapshots.isEmpty {
-            VStack(alignment: .leading, spacing: MacChromeMetrics.compactSpacing) {
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(snapshots) { snapshot in
                     UsageQuotaProviderRow(snapshot: snapshot)
                 }
             }
+            .padding(.horizontal, MacChromeMetrics.windowPadding)
+            .padding(.vertical, MacChromeMetrics.compactSpacing)
             .task {
                 usageQuotaStore.refresh(reason: .contentAppeared)
             }
@@ -26,47 +28,73 @@ private struct UsageQuotaProviderRow: View {
             Text(snapshot.displayName)
                 .font(MacChromeTypography.captionStrong)
                 .foregroundStyle(snapshot.isStale ? .secondary : .primary)
+                .frame(minWidth: 52, alignment: .leading)
 
-            if let session = snapshot.sessionWindow {
+            if let window = snapshot.primaryDisplayWindow {
+                Text(window.intervalChip)
+                    .font(MacChromeTypography.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.primary.opacity(0.06))
+                    )
+                    .accessibilityHidden(true)
+
                 UsageQuotaPercentBadge(
-                    percent: session.remainingPercent,
-                    resetAt: session.resetAt
+                    percent: window.remainingPercent,
+                    resetAt: window.resetAt
                 )
             }
 
             Spacer(minLength: 0)
 
-            if let weekly = snapshot.weeklyWindow {
-                Text("Weekly \(weekly.remainingPercent)%")
+            if let weekly = snapshot.weeklyWindow,
+               snapshot.primaryDisplayWindow?.label != weekly.label
+               || snapshot.primaryDisplayWindow?.remainingPercent != weekly.remainingPercent {
+                Text("\(weekly.intervalChip) \(weekly.remainingPercent)%")
                     .font(MacChromeTypography.caption)
                     .foregroundStyle(.secondary)
             }
 
-            if let creditValueText = snapshot.creditValueText {
+            if let resetCreditsAvailable = snapshot.resetCreditsAvailable {
+                Text(resetCreditsLabel(resetCreditsAvailable))
+                    .font(MacChromeTypography.caption)
+                    .foregroundStyle(.secondary)
+            } else if let creditValueText = snapshot.creditValueText {
                 Text(creditValueText)
                     .font(MacChromeTypography.caption)
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.horizontal, MacChromeMetrics.panelPadding)
-        .padding(.vertical, MacChromeMetrics.compactSpacing)
         .opacity(snapshot.isStale ? 0.72 : 1)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(accessibilityValue)
     }
 
+    private func resetCreditsLabel(_ count: Int) -> String {
+        count == 1 ? "1 reset" : "\(count) resets"
+    }
+
     private var accessibilityLabel: String {
-        guard let session = snapshot.sessionWindow else {
+        guard let window = snapshot.primaryDisplayWindow else {
             return "\(snapshot.displayName) usage unavailable"
         }
-        return "\(snapshot.displayName) usage \(session.remainingPercent) percent remaining"
+        return "\(snapshot.displayName) \(window.intervalChip) usage \(window.remainingPercent) percent remaining"
     }
 
     private var accessibilityValue: String {
         var parts: [String] = []
-        if let session = snapshot.sessionWindow {
-            parts.append("resets in \(UsageQuotaFormatting.resetCountdown(until: session.resetAt))")
+        if let window = snapshot.primaryDisplayWindow {
+            parts.append("resets in \(UsageQuotaFormatting.resetCountdown(until: window.resetAt))")
+        }
+        if let weekly = snapshot.weeklyWindow {
+            parts.append("\(weekly.intervalChip) \(weekly.remainingPercent) percent")
+        }
+        if let resetCreditsAvailable = snapshot.resetCreditsAvailable {
+            parts.append(resetCreditsLabel(resetCreditsAvailable))
         }
         if snapshot.isStale {
             parts.append("stale")
@@ -117,8 +145,19 @@ private struct UsageQuotaPercentBadge: View {
     let snapshot = UsageQuotaSnapshot(
         providerID: .codex,
         displayName: "Codex",
-        sessionWindow: UsageWindow(remainingPercent: 62, resetAt: Date().addingTimeInterval(8100), label: "Session"),
-        weeklyWindow: UsageWindow(remainingPercent: 88, resetAt: Date().addingTimeInterval(86400 * 3), label: "Weekly"),
+        sessionWindow: UsageWindow(
+            remainingPercent: 62,
+            resetAt: Date().addingTimeInterval(8100),
+            label: "5h",
+            durationSeconds: 5 * 3600
+        ),
+        weeklyWindow: UsageWindow(
+            remainingPercent: 88,
+            resetAt: Date().addingTimeInterval(86400 * 3),
+            label: "7d",
+            durationSeconds: 7 * 86400
+        ),
+        resetCreditsAvailable: 2,
         isAvailable: true,
         statusNote: "chatgpt usage api"
     )
@@ -130,7 +169,6 @@ private struct UsageQuotaPercentBadge: View {
 
     return UsageQuotaStripView()
         .environmentObject(store)
-        .padding()
         .frame(width: 380)
 }
 
@@ -138,13 +176,18 @@ private struct UsageQuotaPercentBadge: View {
     let defaults = UserDefaults(suiteName: "UsageQuotaStripStalePreview")!
     defaults.removePersistentDomain(forName: "UsageQuotaStripStalePreview")
     let snapshot = UsageQuotaSnapshot(
-        providerID: .codex,
-        displayName: "Codex",
-        sessionWindow: UsageWindow(remainingPercent: 12, resetAt: Date().addingTimeInterval(900), label: "Session"),
-        weeklyWindow: UsageWindow(remainingPercent: 40, resetAt: nil, label: "Weekly"),
+        providerID: .cursor,
+        displayName: "Cursor",
+        sessionWindow: UsageWindow(
+            remainingPercent: 33,
+            resetAt: Date().addingTimeInterval(86400 * 20),
+            label: "Plan",
+            durationSeconds: 30 * 86400
+        ),
+        weeklyWindow: nil,
         isAvailable: true,
         isStale: true,
-        statusNote: "local .codex sessions"
+        statusNote: "cursor usage-summary api"
     )
     let store = UsageQuotaStore(
         defaults: defaults,
@@ -154,13 +197,17 @@ private struct UsageQuotaPercentBadge: View {
 
     return UsageQuotaStripView()
         .environmentObject(store)
-        .padding()
         .frame(width: 380)
 }
 
 private struct PreviewUsageQuotaProvider: UsageQuotaProviding {
-    let id: UsageProviderID = .codex
+    let id: UsageProviderID
     let snapshot: UsageQuotaSnapshot
+
+    init(snapshot: UsageQuotaSnapshot) {
+        id = snapshot.providerID
+        self.snapshot = snapshot
+    }
 
     func fetchSnapshot() async -> UsageQuotaSnapshot {
         snapshot

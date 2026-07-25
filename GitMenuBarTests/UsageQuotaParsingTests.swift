@@ -20,26 +20,37 @@ final class UsageQuotaParsingTests: XCTestCase {
     }
 
     func testCodexAPIWindow() {
-        let (used, reset) = CodexUsageParsing.codexAPIWindow([
+        let (used, reset, duration) = CodexUsageParsing.codexAPIWindow([
             "used_percent": 42.0,
-            "reset_at": 1_700_000_000.0
+            "reset_at": 1_700_000_000.0,
+            "limit_window_seconds": 604_800
         ])
         XCTAssertEqual(used, 42.0)
         XCTAssertEqual(reset, Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertEqual(duration, 604_800)
 
-        let (usedInt, _) = CodexUsageParsing.codexAPIWindow(["used_percent": 30])
+        let (usedInt, _, _) = CodexUsageParsing.codexAPIWindow(["used_percent": 30])
         XCTAssertEqual(usedInt, 30)
 
-        let (none, noReset) = CodexUsageParsing.codexAPIWindow(nil)
+        let (none, noReset, noDuration) = CodexUsageParsing.codexAPIWindow(nil)
         XCTAssertNil(none)
         XCTAssertNil(noReset)
+        XCTAssertNil(noDuration)
     }
 
     func testSnapshotFromUsageAPI() {
         let root: [String: Any] = [
             "rate_limit": [
-                "primary_window": ["used_percent": 34.0, "reset_at": 1_700_000_000.0],
-                "secondary_window": ["used_percent": 50.0, "reset_at": 1_800_000_000.0]
+                "primary_window": [
+                    "used_percent": 34.0,
+                    "reset_at": 1_700_000_000.0,
+                    "limit_window_seconds": 18000
+                ],
+                "secondary_window": [
+                    "used_percent": 50.0,
+                    "reset_at": 1_800_000_000.0,
+                    "limit_window_seconds": 604_800
+                ]
             ],
             "credits": [
                 "has_credits": true,
@@ -50,9 +61,33 @@ final class UsageQuotaParsingTests: XCTestCase {
         let snapshot = CodexUsageParsing.snapshot(fromUsageAPI: root)
 
         XCTAssertEqual(snapshot?.sessionWindow?.remainingPercent, 66)
+        XCTAssertEqual(snapshot?.sessionWindow?.intervalChip, "5h")
         XCTAssertEqual(snapshot?.weeklyWindow?.remainingPercent, 50)
+        XCTAssertEqual(snapshot?.weeklyWindow?.intervalChip, "7d")
         XCTAssertEqual(snapshot?.creditValueText, "12.5 credits")
         XCTAssertEqual(snapshot?.statusNote, "chatgpt usage api")
+    }
+
+    func testResetCreditsAvailableCount() {
+        let json = """
+        {"available_count":2,"credits":[{"id":"a"},{"id":"b","expires_at":"2099-01-01T00:00:00Z"}]}
+        """
+        XCTAssertEqual(CodexUsageParsing.resetCreditsAvailable(from: Data(json.utf8)), 2)
+
+        let expiredOnly = """
+        {"credits":[{"id":"old","expires_at":"2000-01-01T00:00:00Z"}]}
+        """
+        XCTAssertEqual(CodexUsageParsing.resetCreditsAvailable(from: Data(expiredOnly.utf8)), 0)
+    }
+
+    func testIntervalChipAndDayScaleCountdown() {
+        XCTAssertEqual(UsageQuotaFormatting.intervalChip(durationSeconds: 5 * 3600), "5h")
+        XCTAssertEqual(UsageQuotaFormatting.intervalChip(durationSeconds: 7 * 86400), "7d")
+        let now = Date()
+        XCTAssertEqual(
+            UsageQuotaFormatting.resetCountdown(until: now.addingTimeInterval(2 * 86400 + 3 * 3600), now: now),
+            "2d 3h"
+        )
     }
 
     func testCreditsUnlimitedAndMissing() {
@@ -85,7 +120,9 @@ final class UsageQuotaParsingTests: XCTestCase {
         let snapshot = CodexUsageParsing.snapshot(fromSessionsJSONL: jsonl)
 
         XCTAssertEqual(snapshot?.sessionWindow?.remainingPercent, 80)
+        XCTAssertEqual(snapshot?.sessionWindow?.intervalChip, "5h")
         XCTAssertEqual(snapshot?.weeklyWindow?.remainingPercent, 60)
+        XCTAssertEqual(snapshot?.weeklyWindow?.intervalChip, "7d")
         XCTAssertEqual(snapshot?.statusNote, "local .codex sessions")
     }
 

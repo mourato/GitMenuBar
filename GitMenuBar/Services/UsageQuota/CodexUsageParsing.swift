@@ -22,14 +22,70 @@ enum CodexUsageParsing {
         return nil
     }
 
-    static func codexAPIWindow(_ raw: Any?) -> (usedPercent: Double?, resetAt: Date?) {
+    static func codexAPIWindow(_ raw: Any?) -> (usedPercent: Double?, resetAt: Date?, durationSeconds: Int?) {
         guard let object = raw as? [String: Any] else {
-            return (nil, nil)
+            return (nil, nil, nil)
         }
 
         let used = doubleValue(object["used_percent"])
         let reset = doubleValue(object["reset_at"]).map { Date(timeIntervalSince1970: $0) }
-        return (used, reset)
+        let duration = intValue(object["limit_window_seconds"])
+            ?? intValue(object["window_minutes"]).map { $0 * 60 }
+        return (used, reset, duration)
+    }
+
+    static func intValue(_ raw: Any?) -> Int? {
+        if let value = raw as? Int {
+            return value
+        }
+        if let value = raw as? Double {
+            return Int(value.rounded())
+        }
+        if let value = raw as? NSNumber {
+            return value.intValue
+        }
+        if let value = raw as? String, let parsed = Int(value) {
+            return parsed
+        }
+        return nil
+    }
+
+    /// Decode CodexBar-compatible reset-credit inventory payloads.
+    static func resetCreditsAvailable(from data: Data, now: Date = Date()) -> Int? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        if let count = intValue(root["available_count"]) ?? intValue(root["availableCount"]) {
+            return max(0, count)
+        }
+        guard let credits = root["credits"] as? [[String: Any]] else {
+            return nil
+        }
+        let available = credits.filter { credit in
+            if let expiresRaw = credit["expires_at"] ?? credit["expiresAt"] {
+                if let text = expiresRaw as? String,
+                   let expiresAt = parseISO8601Date(text),
+                   expiresAt <= now {
+                    return false
+                }
+                if let epoch = doubleValue(expiresRaw),
+                   Date(timeIntervalSince1970: epoch) <= now {
+                    return false
+                }
+            }
+            return true
+        }
+        return available.count
+    }
+
+    private static func parseISO8601Date(_ text: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: text) {
+            return date
+        }
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: text)
     }
 
     static func decodeJWTPayload(_ token: String) -> [String: Any]? {
@@ -136,14 +192,22 @@ enum CodexUsageParsing {
                 UsageWindow(
                     remainingPercent: remainingPercent(fromUsed: $0),
                     resetAt: session.resetAt,
-                    label: "Session"
+                    label: UsageQuotaFormatting.intervalLabel(
+                        durationSeconds: session.durationSeconds,
+                        fallback: "Session"
+                    ),
+                    durationSeconds: session.durationSeconds
                 )
             },
             weeklyWindow: weekly.usedPercent.map {
                 UsageWindow(
                     remainingPercent: remainingPercent(fromUsed: $0),
                     resetAt: weekly.resetAt,
-                    label: "Weekly"
+                    label: UsageQuotaFormatting.intervalLabel(
+                        durationSeconds: weekly.durationSeconds,
+                        fallback: "Weekly"
+                    ),
+                    durationSeconds: weekly.durationSeconds
                 )
             },
             creditValueText: creditValueText(from: root["credits"]),
@@ -178,6 +242,8 @@ enum CodexUsageParsing {
         var weeklyRemaining: Int?
         var sessionReset: Date?
         var weeklyReset: Date?
+        var sessionDuration: Int?
+        var weeklyDuration: Int?
 
         for line in lines {
             guard let data = line.data(using: .utf8),
@@ -186,23 +252,31 @@ enum CodexUsageParsing {
                   record.payload?.type == "token_count",
                   let rateLimits = record.payload?.rateLimits else { continue }
 
-            if let primary = rateLimits.primary,
-               let summary = summarizeCodexWindow(primary, now: now) {
-                if sessionRemaining == nil {
-                    sessionRemaining = remainingPercent(fromUsed: summary.usedPercent)
+            if let primary = rateLimits.primary {
+                if sessionDuration == nil, let minutes = primary.windowMinutes {
+                    sessionDuration = minutes * 60
                 }
-                if sessionReset == nil {
-                    sessionReset = summary.resetAt
+                if let summary = summarizeCodexWindow(primary, now: now) {
+                    if sessionRemaining == nil {
+                        sessionRemaining = remainingPercent(fromUsed: summary.usedPercent)
+                    }
+                    if sessionReset == nil {
+                        sessionReset = summary.resetAt
+                    }
                 }
             }
 
-            if let secondary = rateLimits.secondary,
-               let summary = summarizeCodexWindow(secondary, now: now) {
-                if weeklyRemaining == nil {
-                    weeklyRemaining = remainingPercent(fromUsed: summary.usedPercent)
+            if let secondary = rateLimits.secondary {
+                if weeklyDuration == nil, let minutes = secondary.windowMinutes {
+                    weeklyDuration = minutes * 60
                 }
-                if weeklyReset == nil {
-                    weeklyReset = summary.resetAt
+                if let summary = summarizeCodexWindow(secondary, now: now) {
+                    if weeklyRemaining == nil {
+                        weeklyRemaining = remainingPercent(fromUsed: summary.usedPercent)
+                    }
+                    if weeklyReset == nil {
+                        weeklyReset = summary.resetAt
+                    }
                 }
             }
 
@@ -221,10 +295,20 @@ enum CodexUsageParsing {
             providerID: .codex,
             displayName: UsageProviderID.codex.displayName,
             sessionWindow: sessionRemaining.map {
-                UsageWindow(remainingPercent: $0, resetAt: sessionReset, label: "Session")
+                UsageWindow(
+                    remainingPercent: $0,
+                    resetAt: sessionReset,
+                    label: UsageQuotaFormatting.intervalLabel(durationSeconds: sessionDuration, fallback: "Session"),
+                    durationSeconds: sessionDuration
+                )
             },
             weeklyWindow: weeklyRemaining.map {
-                UsageWindow(remainingPercent: $0, resetAt: weeklyReset, label: "Weekly")
+                UsageWindow(
+                    remainingPercent: $0,
+                    resetAt: weeklyReset,
+                    label: UsageQuotaFormatting.intervalLabel(durationSeconds: weeklyDuration, fallback: "Weekly"),
+                    durationSeconds: weeklyDuration
+                )
             },
             isAvailable: true,
             statusNote: statusNote

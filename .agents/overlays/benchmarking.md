@@ -7,8 +7,9 @@ precedence: project
 
 # GitMenuBar reference catalog
 
-**Same-domain** here means menu-bar utilities, Git clients, or macOS developer
-productivity tools.
+**Same-domain** here means menu-bar utilities, Git clients, macOS developer
+productivity tools, or AI usage-quota monitors that inform GitMenuBar's
+secondary quota strip.
 
 ## Registered references
 
@@ -34,6 +35,17 @@ productivity tools.
 | **Remote** | https://github.com/erayendes/mimir |
 | **Description** | macOS menu bar app for tracking AI tool usage limits (Claude, Codex, Antigravity). Real-time quota monitoring, reset countdowns, color status dots, privacy-first local-only data access, minimalist design with dark/light mode support |
 
+### CodexBar
+
+| Attribute | Value |
+|-----------|-------|
+| **Canonical name** | CodexBar |
+| **Classification** | UI/UX + Engineering + Same-domain |
+| **Local path** | ~/Documents/Projects/References/CodexBar |
+| **Cloned?** | Yes |
+| **Remote** | https://github.com/steipete/CodexBar |
+| **Description** | Benchmark menu-bar usage monitor for Codex, Claude, Cursor, and many other AI providers. Multi-window rate limits (`limit_window_seconds`), reset-credit inventory, pace tracking, tokenized status-item layouts, and provider-card density without cognitive overload |
+
 ## Relevant GitMenuBar touchpoints
 
 When studying Vorssaint, cross-reference:
@@ -45,10 +57,18 @@ When studying Vorssaint, cross-reference:
 When studying Mimir, cross-reference:
 
 - `StatusBarController.swift` — status-item glyph and popover lifecycle
-- `AIProviderAdapters.swift` / `AIProviderStore.swift` — multi-provider data aggregation pattern
-- `StatusItemBadgeRenderer.swift` — status indicator rendering (color dots, quota display)
-- `AppPreferences.swift` — local-first data persistence approach
-- `UpdateChecker.swift` — background refresh and backoff strategies
+- `Services/UsageQuota/*` — multi-provider quota aggregation (not AI commit adapters)
+- `Components/UsageQuota/UsageQuotaStripView.swift` — compact remaining-% + countdown presentation
+- `AppPreferences.swift` — local-first preference keys for opt-in quota UI
+- Snapshot/stale fallback patterns in `UsageQuotaStore.swift`
+
+When studying CodexBar, cross-reference:
+
+- `Services/UsageQuota/CodexUsageProvider.swift` / `CodexUsageParsing.swift` — ChatGPT `wham/usage` windows + `wham/rate-limit-reset-credits`
+- `UsageQuotaModels.swift` — dynamic interval labels from `limit_window_seconds` / `window_minutes`
+- `Components/UsageQuota/UsageQuotaStripView.swift` — footer density: primary % + interval chip + reset countdown + optional reset-credit count
+- `CursorUsageProvider.swift` — Cursor billing-period remaining as a single plan window
+- Menu-open latency: keep quota refresh non-blocking (show last snapshot first)
 
 ## Product routing
 
