@@ -34,18 +34,18 @@ struct WorkbenchSectionHeaderChrome<Trailing: View>: View {
             }
             .buttonStyle(PressableButtonStyle())
             .accessibilityLabel(accessibilityLabel)
-            .accessibilityHint(isCollapsed ? accessibilityHintCollapsed : accessibilityHintExpanded)
+            .accessibilityHint(isCollapsed ? accessibilityHintExpanded : accessibilityHintCollapsed)
 
             Spacer(minLength: WorkbenchMetrics.compactSpacing)
 
             trailing(isHovered)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
         .padding(.horizontal, WorkbenchMetrics.microSpacing)
         .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
-        .cornerRadius(WorkbenchMetrics.microCornerRadius)
+        .cornerRadius(WorkbenchMetrics.rowCornerRadius)
         .overlay(
-            RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius)
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius)
                 .stroke(
                     WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast)
                         .opacity(colorSchemeContrast == .increased ? 1 : 0),

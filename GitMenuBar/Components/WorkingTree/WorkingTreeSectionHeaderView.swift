@@ -20,16 +20,34 @@ struct WorkingTreeSectionHeaderView: View {
             accessibilityHintExpanded: "Expands the section.",
             accessibilityHintCollapsed: "Collapses the section."
         ) { isHovered in
-            HStack(spacing: WorkbenchMetrics.microSpacing) {
-                WorkingTreeLineDiffView(
-                    addedCount: summary.addedLineCount,
-                    removedCount: summary.removedLineCount
-                )
+            HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                HStack(spacing: WorkbenchMetrics.microSpacing) {
+                    WorkingTreeLineDiffView(
+                        addedCount: summary.addedLineCount,
+                        removedCount: summary.removedLineCount
+                    )
 
-                if showsAction {
-                    if let onDiscardAll {
-                        Button(action: onDiscardAll) {
-                            Image(systemName: "arrow.uturn.backward")
+                    if showsAction {
+                        if let onDiscardAll {
+                            Button(action: onDiscardAll) {
+                                Image(systemName: "arrow.uturn.backward")
+                                    .font(WorkbenchTypography.captionStrong)
+                                    .foregroundColor(.primary)
+                                    .frame(
+                                        width: WorkingTreeLayoutMetrics.actionHitTarget,
+                                        height: WorkingTreeLayoutMetrics.actionHitTarget
+                                    )
+                                    .contentShape(Rectangle())
+                            }
+                            .workbenchIcon()
+                            .help("Discard All")
+                            .accessibilityLabel("Discard all files in \(title)")
+                            .opacity(isHovered ? 1 : 0)
+                            .allowsHitTesting(isHovered)
+                        }
+
+                        Button(action: onAction) {
+                            Image(systemName: actionIcon)
                                 .font(WorkbenchTypography.captionStrong)
                                 .foregroundColor(.primary)
                                 .frame(
@@ -39,25 +57,9 @@ struct WorkingTreeSectionHeaderView: View {
                                 .contentShape(Rectangle())
                         }
                         .workbenchIcon()
-                        .help("Discard All")
-                        .accessibilityLabel("Discard all files in \(title)")
-                        .opacity(isHovered ? 1 : 0)
-                        .allowsHitTesting(isHovered)
+                        .help(actionHelp)
+                        .accessibilityLabel("\(actionHelp) in \(title)")
                     }
-
-                    Button(action: onAction) {
-                        Image(systemName: actionIcon)
-                            .font(WorkbenchTypography.captionStrong)
-                            .foregroundColor(.primary)
-                            .frame(
-                                width: WorkingTreeLayoutMetrics.actionHitTarget,
-                                height: WorkingTreeLayoutMetrics.actionHitTarget
-                            )
-                            .contentShape(Rectangle())
-                    }
-                    .workbenchIcon()
-                    .help(actionHelp)
-                    .accessibilityLabel("\(actionHelp) in \(title)")
                 }
 
                 Text(summary.fileCountText)
