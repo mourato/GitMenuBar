@@ -40,40 +40,43 @@ struct WorkingTreeSectionHeaderView: View {
 
             Spacer(minLength: 8)
 
-            ZStack(alignment: .trailing) {
+            HStack(spacing: 4) {
                 WorkingTreeLineDiffView(
                     addedCount: summary.addedLineCount,
                     removedCount: summary.removedLineCount
                 )
-                .opacity(isHovered && showsAction ? 0 : 1)
 
-                HStack(spacing: 4) {
+                if showsAction {
                     if let onDiscardAll {
                         Button(action: onDiscardAll) {
                             Image(systemName: "arrow.uturn.backward")
                                 .font(WorkbenchTypography.captionStrong)
                                 .foregroundColor(.primary)
-                                .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
-                                .contentShape(Rectangle())
                         }
-                        .buttonStyle(PressableButtonStyle())
+                        .workbenchIcon()
+                        .frame(
+                            width: WorkingTreeLayoutMetrics.actionHitTarget,
+                            height: WorkingTreeLayoutMetrics.actionHitTarget
+                        )
                         .help("Discard All")
                         .accessibilityLabel("Discard all files in \(title)")
+                        .opacity(isHovered ? 1 : 0)
+                        .allowsHitTesting(isHovered)
                     }
 
                     Button(action: onAction) {
                         Image(systemName: actionIcon)
                             .font(WorkbenchTypography.captionStrong)
                             .foregroundColor(.primary)
-                            .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
-                            .contentShape(Rectangle())
                     }
-                    .buttonStyle(PressableButtonStyle())
+                    .workbenchIcon()
+                    .frame(
+                        width: WorkingTreeLayoutMetrics.actionHitTarget,
+                        height: WorkingTreeLayoutMetrics.actionHitTarget
+                    )
                     .help(actionHelp)
                     .accessibilityLabel(actionHelp)
                 }
-                .opacity(isHovered && showsAction ? 1 : 0)
-                .allowsHitTesting(isHovered && showsAction)
             }
 
             Text(summary.fileCountText)
@@ -165,4 +168,31 @@ private struct WorkingTreeSectionHeaderPreviewContainer: View {
 
 #Preview("Working Tree Section Header") {
     WorkingTreeSectionHeaderPreviewContainer()
+}
+
+#Preview("Unstaged Section Header — Stage All Visible") {
+    struct UnstagedPreview: View {
+        @State private var isCollapsed = false
+
+        var body: some View {
+            WorkingTreeSectionHeaderView(
+                title: "Unstaged",
+                summary: WorkingTreeSectionSummary(
+                    fileCount: 3,
+                    addedLineCount: 42,
+                    removedLineCount: 11
+                ),
+                isCollapsed: $isCollapsed,
+                actionIcon: "plus.circle",
+                actionHelp: "Stage all files",
+                showsAction: true,
+                onAction: {},
+                onDiscardAll: {}
+            )
+            .padding()
+            .frame(width: 380, alignment: .leading)
+        }
+    }
+
+    return UnstagedPreview()
 }

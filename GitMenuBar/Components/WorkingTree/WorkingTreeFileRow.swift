@@ -1,7 +1,10 @@
 import SwiftUI
 
 enum WorkingTreeLayoutMetrics {
+    /// Compact glyph width; hit area uses `actionHitTarget`.
     static let actionWidth: CGFloat = 18
+    /// Minimum interactive target for row/header icon actions (≥ `WorkbenchMetrics.iconHitTarget`).
+    static let actionHitTarget: CGFloat = 32
     static let diffColumnWidth: CGFloat = 72
     static let statusColumnWidth: CGFloat = 14
     static let trailingContentPadding: CGFloat = 12
@@ -38,6 +41,27 @@ struct WorkingTreeLineDiffView: View {
         .monospacedDigit()
         .fixedSize(horizontal: true, vertical: false)
     }
+}
+
+private func workingTreeRowIconButton(
+    systemName: String,
+    help: String,
+    accessibilityLabel: String,
+    action: @escaping () -> Void
+) -> some View {
+    Button(action: action) {
+        Image(systemName: systemName)
+            .font(WorkbenchTypography.captionStrong)
+            .foregroundColor(.primary)
+            .frame(
+                width: WorkingTreeLayoutMetrics.actionHitTarget,
+                height: WorkingTreeLayoutMetrics.actionHitTarget
+            )
+            .contentShape(Rectangle())
+    }
+    .workbenchIcon()
+    .help(help)
+    .accessibilityLabel(accessibilityLabel)
 }
 
 struct WorkingTreeFileRowView: View {
@@ -144,43 +168,31 @@ struct WorkingTreeFileRowView: View {
                 )
                 .opacity(isHovered ? 0 : 1)
 
-                HStack(spacing: 4) {
+                HStack(spacing: 0) {
                     if let onOpen = onOpen {
-                        Button(action: onOpen) {
-                            Image(systemName: "doc")
-                                .font(WorkbenchTypography.captionStrong)
-                                .foregroundColor(Color.primary)
-                                .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("Open File")
-                        .accessibilityLabel("Open \(file.fileName)")
+                        workingTreeRowIconButton(
+                            systemName: "doc",
+                            help: "Open File",
+                            accessibilityLabel: "Open \(file.fileName)",
+                            action: onOpen
+                        )
                     }
 
                     if let onDiscard = onDiscard {
-                        Button(action: onDiscard) {
-                            Image(systemName: "arrow.uturn.backward")
-                                .font(WorkbenchTypography.captionStrong)
-                                .foregroundColor(Color.primary)
-                                .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("Discard Changes")
-                        .accessibilityLabel("Discard changes in \(file.fileName)")
+                        workingTreeRowIconButton(
+                            systemName: "arrow.uturn.backward",
+                            help: "Discard Changes",
+                            accessibilityLabel: "Discard changes in \(file.fileName)",
+                            action: onDiscard
+                        )
                     }
 
-                    Button(action: onAction) {
-                        Image(systemName: actionIcon)
-                            .font(WorkbenchTypography.captionStrong)
-                            .foregroundColor(Color.primary)
-                            .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
-                            .contentShape(Rectangle()) // makes the whole frame clickable
-                    }
-                    .buttonStyle(.plain)
-                    .help(actionHelp)
-                    .accessibilityLabel("\(actionHelp) for \(file.fileName)")
+                    workingTreeRowIconButton(
+                        systemName: actionIcon,
+                        help: actionHelp,
+                        accessibilityLabel: "\(actionHelp) for \(file.fileName)",
+                        action: onAction
+                    )
                 }
                 .opacity(isHovered ? 1 : 0)
                 .allowsHitTesting(isHovered)
