@@ -1,30 +1,27 @@
 import AppKit
 import SwiftUI
 
-struct MainMenuProjectSelectorControl<PopoverContent: View, ContextMenuContent: View, RepoOptionsContent: View>: View {
+struct MainMenuProjectSelectorControl<PopoverContent: View, ContextMenuContent: View>: View {
     let currentProjectName: String
     @Binding var showProjectSelector: Bool
-    @Binding var showRepositoryOptionsPopover: Bool
+    let isInteractionDisabled: Bool
     let projectSelectorContent: () -> PopoverContent
     let projectContextMenu: () -> ContextMenuContent
-    let repositoryOptionsContent: () -> RepoOptionsContent
 
     @State private var isProjectHovered = false
 
     init(
         currentProjectName: String,
         showProjectSelector: Binding<Bool>,
-        showRepositoryOptionsPopover: Binding<Bool>,
+        isInteractionDisabled: Bool = false,
         @ViewBuilder projectSelectorContent: @escaping () -> PopoverContent,
-        @ViewBuilder projectContextMenu: @escaping () -> ContextMenuContent,
-        @ViewBuilder repositoryOptionsContent: @escaping () -> RepoOptionsContent
+        @ViewBuilder projectContextMenu: @escaping () -> ContextMenuContent
     ) {
         self.currentProjectName = currentProjectName
         _showProjectSelector = showProjectSelector
-        _showRepositoryOptionsPopover = showRepositoryOptionsPopover
+        self.isInteractionDisabled = isInteractionDisabled
         self.projectSelectorContent = projectSelectorContent
         self.projectContextMenu = projectContextMenu
-        self.repositoryOptionsContent = repositoryOptionsContent
     }
 
     var body: some View {
@@ -49,9 +46,12 @@ struct MainMenuProjectSelectorControl<PopoverContent: View, ContextMenuContent: 
         .buttonStyle(.plain)
         .contentShape(Rectangle())
         .controlSize(.small)
+        .disabled(isInteractionDisabled)
+        .opacity(isInteractionDisabled ? 0.5 : 1)
         .accessibilityLabel("Current repository")
         .accessibilityHint("Opens the recent repository picker.")
         .onHover { inside in
+            guard !isInteractionDisabled else { return }
             isProjectHovered = inside
             if inside {
                 NSCursor.pointingHand.push()
@@ -63,9 +63,6 @@ struct MainMenuProjectSelectorControl<PopoverContent: View, ContextMenuContent: 
         .popover(isPresented: $showProjectSelector) {
             projectSelectorContent()
         }
-        .popover(isPresented: $showRepositoryOptionsPopover, arrowEdge: .top) {
-            repositoryOptionsContent()
-        }
     }
 }
 
@@ -73,6 +70,7 @@ struct MainMenuHeaderToolbarContent<PopoverContent: View, ContextMenuContent: Vi
     let currentProjectName: String
     @Binding var showProjectSelector: Bool
     @Binding var showRepositoryOptionsPopover: Bool
+    let isCommandPalettePresented: Bool
     let onOpenSettings: () -> Void
     let projectSelectorContent: () -> PopoverContent
     let projectContextMenu: () -> ContextMenuContent
@@ -82,6 +80,7 @@ struct MainMenuHeaderToolbarContent<PopoverContent: View, ContextMenuContent: Vi
         currentProjectName: String,
         showProjectSelector: Binding<Bool>,
         showRepositoryOptionsPopover: Binding<Bool>,
+        isCommandPalettePresented: Bool,
         onOpenSettings: @escaping () -> Void,
         @ViewBuilder projectSelectorContent: @escaping () -> PopoverContent,
         @ViewBuilder projectContextMenu: @escaping () -> ContextMenuContent,
@@ -90,6 +89,7 @@ struct MainMenuHeaderToolbarContent<PopoverContent: View, ContextMenuContent: Vi
         self.currentProjectName = currentProjectName
         _showProjectSelector = showProjectSelector
         _showRepositoryOptionsPopover = showRepositoryOptionsPopover
+        self.isCommandPalettePresented = isCommandPalettePresented
         self.onOpenSettings = onOpenSettings
         self.projectSelectorContent = projectSelectorContent
         self.projectContextMenu = projectContextMenu
@@ -98,14 +98,22 @@ struct MainMenuHeaderToolbarContent<PopoverContent: View, ContextMenuContent: Vi
 
     var body: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
-            MainMenuProjectSelectorControl(
-                currentProjectName: currentProjectName,
-                showProjectSelector: $showProjectSelector,
-                showRepositoryOptionsPopover: $showRepositoryOptionsPopover,
-                projectSelectorContent: projectSelectorContent,
-                projectContextMenu: projectContextMenu,
-                repositoryOptionsContent: repositoryOptionsContent
-            )
+            HStack(spacing: 0) {
+                MainMenuProjectSelectorControl(
+                    currentProjectName: currentProjectName,
+                    showProjectSelector: $showProjectSelector,
+                    isInteractionDisabled: isCommandPalettePresented,
+                    projectSelectorContent: projectSelectorContent,
+                    projectContextMenu: projectContextMenu
+                )
+
+                Color.clear
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+                    .popover(isPresented: $showRepositoryOptionsPopover, arrowEdge: .top) {
+                        repositoryOptionsContent()
+                    }
+            }
         }
 
         ToolbarItem(placement: .primaryAction) {
@@ -115,6 +123,8 @@ struct MainMenuHeaderToolbarContent<PopoverContent: View, ContextMenuContent: Vi
                 accessibilityHint: "Opens GitMenuBar settings.",
                 action: onOpenSettings
             )
+            .disabled(isCommandPalettePresented)
+            .opacity(isCommandPalettePresented ? 0.5 : 1)
         }
     }
 }
@@ -123,21 +133,12 @@ struct MainMenuHeaderToolbarContent<PopoverContent: View, ContextMenuContent: Vi
     MainMenuProjectSelectorControl(
         currentProjectName: "gitmenubar",
         showProjectSelector: .constant(false),
-        showRepositoryOptionsPopover: .constant(false),
         projectSelectorContent: {
             Text("Projects")
                 .padding()
         },
         projectContextMenu: {
             Button("Repository Options…") {}
-        },
-        repositoryOptionsContent: {
-            RepositoryOptionsPopoverView(
-                visibilityStatusDescription: "This repository is currently private.",
-                visibilityActionTitle: "Make Public",
-                onToggleVisibility: {},
-                onDeleteRepository: {}
-            )
         }
     )
     .padding()
@@ -153,6 +154,7 @@ struct MainMenuHeaderToolbarContent<PopoverContent: View, ContextMenuContent: Vi
                     currentProjectName: "gitmenubar",
                     showProjectSelector: .constant(false),
                     showRepositoryOptionsPopover: .constant(false),
+                    isCommandPalettePresented: false,
                     onOpenSettings: {},
                     projectSelectorContent: {
                         Text("Projects")

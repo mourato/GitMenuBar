@@ -298,7 +298,11 @@ struct MainMenuView: View {
         .onChange(of: showBranchSelector) { _ in
             presentPendingRepositoryOptionsIfPossible()
         }
-        .onChange(of: isCommandPalettePresented) { _ in
+        .onChange(of: isCommandPalettePresented) { isPresented in
+            if isPresented {
+                showProjectSelector = false
+                showRepositoryOptionsPopover = false
+            }
             presentPendingRepositoryOptionsIfPossible()
         }
         .onChange(of: presentationModel.route) { route in

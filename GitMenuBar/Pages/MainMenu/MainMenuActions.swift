@@ -229,6 +229,8 @@ extension MainMenuView {
         selectedCommandPaletteItemID = MainMenuCommandPaletteResolver.defaultSelectionID(
             for: commandPaletteVisibleItems
         )
+        showProjectSelector = false
+        showRepositoryOptionsPopover = false
         isCommandPalettePresented = true
     }
 
