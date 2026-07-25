@@ -279,7 +279,7 @@ History/WT header chrome parity. Planned against commit `bb03dcc`.
 | 025 | Lock workbench system.md and rename MacChrome tokens to Workbench | P1 | L | — | DONE (b0b3edb) |
 | 026 | Add Workbench button variants and adopt on main panel + popovers | P1 | M | 025 | DONE |
 | 027 | Enlarge working-tree hit targets and always-show section Stage/Unstage | P1 | M | 025, 026 | DONE |
-| 028 | Unify Working Tree and History section header chrome | P1 | S | 027 | TODO |
+| 028 | Unify Working Tree and History section header chrome | P1 | S | 027 | DONE |
 | 029 | (stub) Adopt Workbench button variants on sheets + Settings | P2 | M | 026 | NOT YET AUTHORED |
 
 ### Dependency notes
