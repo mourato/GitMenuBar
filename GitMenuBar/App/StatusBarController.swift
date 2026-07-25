@@ -18,6 +18,7 @@ final class StatusBarController: ObservableObject {
         static let windowPresentationDuration: TimeInterval = 0.20
         static let windowPresentationReducedMotionDuration: TimeInterval = 0.01
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
+        static let mainWindowToolbarIdentifier = NSToolbar.Identifier("GitMenuBar.MainWindowToolbar")
         static let appFocusedShortcutNames: [KeyboardShortcuts.Name] = [
             .commandPalette, .commit, .sync, .push, .branchManagement, .createBranch
         ]
@@ -335,6 +336,16 @@ final class StatusBarController: ObservableObject {
         window.titlebarAppearsTransparent = true
         window.titlebarSeparatorStyle = .none
         window.isMovableByWindowBackground = true
+        configureMainWindowToolbar(window)
+    }
+
+    private func configureMainWindowToolbar(_ window: NSWindow) {
+        let toolbar = NSToolbar(identifier: Constants.mainWindowToolbarIdentifier)
+        toolbar.displayMode = .iconOnly
+        toolbar.allowsUserCustomization = false
+        toolbar.autosavesConfiguration = false
+        window.toolbar = toolbar
+        window.toolbarStyle = .unifiedCompact
     }
 
     private func makeRootView() -> AnyView {

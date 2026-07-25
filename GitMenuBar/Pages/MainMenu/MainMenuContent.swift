@@ -173,55 +173,6 @@ extension MainMenuView {
     var mainView: some View {
         applyMainViewOverlays(
             to: VStack(spacing: WorkbenchMetrics.groupSpacing) {
-                MainMenuHeaderView(
-                    currentProjectName: currentProjectName,
-                    showProjectSelector: $showProjectSelector,
-                    showRepositoryOptionsPopover: $showRepositoryOptionsPopover,
-                    showsRepositoryOptionsButton: canPresentRepositoryOptions,
-                    onShowRepositoryOptions: {
-                        requestRepositoryOptionsPopoverPresentation()
-                    },
-                    onOpenSettings: {
-                        showProjectSelector = false
-                        showRepositoryOptionsPopover = false
-                        openSettingsWindow()
-                    },
-                    projectSelectorContent: {
-                        ProjectSelectorPopoverView(
-                            recentPaths: recentPaths,
-                            currentRepoPath: currentRepoPath,
-                            onSelectPath: { path in
-                                showProjectSelector = false
-                                switchRepository(path: path)
-                            },
-                            onBrowse: {
-                                showProjectSelector = false
-                                selectDirectory()
-                            },
-                            onShowRepositoryOptions: canPresentRepositoryOptions ? {
-                                requestRepositoryOptionsPopoverPresentation()
-                            } : nil
-                        )
-                    },
-                    projectContextMenu: {
-                        if canPresentRepositoryOptions {
-                            Button("Repository Options…") {
-                                requestRepositoryOptionsPopoverPresentation()
-                            }
-                        } else {
-                            EmptyView()
-                        }
-                    },
-                    repositoryOptionsContent: {
-                        RepositoryOptionsPopoverView(
-                            visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
-                            visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
-                            onToggleVisibility: confirmRepositoryVisibilityAction,
-                            onDeleteRepository: confirmRepositoryDeleteAction
-                        )
-                    }
-                )
-
                 CommitWorkflowView(
                     commentText: $commentText,
                     isCommentFieldFocused: $isCommentFieldFocused,
@@ -264,6 +215,61 @@ extension MainMenuView {
                 UsageQuotaStripView()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    MainMenuProjectSelectorControl(
+                        currentProjectName: currentProjectName,
+                        showProjectSelector: $showProjectSelector,
+                        showRepositoryOptionsPopover: $showRepositoryOptionsPopover,
+                        projectSelectorContent: {
+                            ProjectSelectorPopoverView(
+                                recentPaths: recentPaths,
+                                currentRepoPath: currentRepoPath,
+                                onSelectPath: { path in
+                                    showProjectSelector = false
+                                    switchRepository(path: path)
+                                },
+                                onBrowse: {
+                                    showProjectSelector = false
+                                    selectDirectory()
+                                },
+                                onShowRepositoryOptions: canPresentRepositoryOptions ? {
+                                    requestRepositoryOptionsPopoverPresentation()
+                                } : nil
+                            )
+                        },
+                        projectContextMenu: {
+                            if canPresentRepositoryOptions {
+                                Button("Repository Options…") {
+                                    requestRepositoryOptionsPopoverPresentation()
+                                }
+                            }
+                        },
+                        repositoryOptionsContent: {
+                            RepositoryOptionsPopoverView(
+                                visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
+                                visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
+                                onToggleVisibility: confirmRepositoryVisibilityAction,
+                                onDeleteRepository: confirmRepositoryDeleteAction
+                            )
+                        }
+                    )
+                }
+
+                ToolbarItem(placement: .primaryAction) {
+                    MainMenuHeaderIconButton(
+                        systemImage: "gearshape",
+                        accessibilityLabel: "Settings",
+                        accessibilityHint: "Opens GitMenuBar settings.",
+                        action: {
+                            showProjectSelector = false
+                            showRepositoryOptionsPopover = false
+                            openSettingsWindow()
+                        }
+                    )
+                }
+            }
+            .toolbarBackground(.hidden, for: .windowToolbar)
             .onExitCommand {
                 if isCommandPalettePresented {
                     closeCommandPalette()
