@@ -4,36 +4,16 @@ struct HistorySectionHeaderView: View {
     let commitCount: Int
     @Binding var isCollapsed: Bool
 
-    @State private var isHovered = false
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 8) {
-            Button {
-                withAnimation(
-                    WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion)
-                ) {
-                    isCollapsed.toggle()
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                        .font(WorkbenchTypography.captionStrong)
-                        .foregroundColor(.secondary)
-                        .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
-
-                    Text("History")
-                        .font(WorkbenchTypography.body)
-                        .tracking(WorkbenchTypography.tracking(for: .subheadline))
-                }
-            }
-            .buttonStyle(PressableButtonStyle())
-            .accessibilityLabel("History section")
-            .accessibilityHint(isCollapsed ? "Expands commit history." : "Collapses commit history.")
-
-            Spacer(minLength: 8)
-
+        WorkbenchSectionHeaderChrome(
+            title: "History",
+            isCollapsed: $isCollapsed,
+            accessibilityLabel: "History section",
+            accessibilityHintExpanded: "Expands commit history.",
+            accessibilityHintCollapsed: "Collapses commit history."
+        ) { _ in
             Text("\(commitCount)")
                 .font(.caption.weight(.medium))
                 .foregroundColor(.secondary)
@@ -42,22 +22,6 @@ struct HistorySectionHeaderView: View {
                     WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
                     value: commitCount
                 )
-        }
-        .padding(.vertical, 2)
-        .padding(.horizontal, 4)
-        .background(isHovered ? Color.primary.opacity(0.08) : Color.clear)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.secondary.opacity(colorSchemeContrast == .increased ? 0.45 : 0), lineWidth: 1)
-        )
-        .contentShape(Rectangle())
-        .animation(
-            WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
-            value: isHovered
-        )
-        .onHover { inside in
-            isHovered = inside
         }
     }
 }

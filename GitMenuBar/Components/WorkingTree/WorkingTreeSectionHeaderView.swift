@@ -10,37 +10,17 @@ struct WorkingTreeSectionHeaderView: View {
     let onAction: () -> Void
     var onDiscardAll: (() -> Void)?
 
-    @State private var isHovered = false
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 8) {
-            Button {
-                withAnimation(
-                    WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion)
-                ) {
-                    isCollapsed.toggle()
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                        .font(WorkbenchTypography.captionStrong)
-                        .foregroundColor(.secondary)
-                        .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
-
-                    Text(title)
-                        .font(WorkbenchTypography.body)
-                        .tracking(WorkbenchTypography.tracking(for: .subheadline))
-                }
-            }
-            .buttonStyle(PressableButtonStyle())
-            .accessibilityLabel("\(title) section")
-            .accessibilityHint(isCollapsed ? "Expands the section." : "Collapses the section.")
-
-            Spacer(minLength: 8)
-
-            HStack(spacing: 4) {
+        WorkbenchSectionHeaderChrome(
+            title: title,
+            isCollapsed: $isCollapsed,
+            accessibilityLabel: "\(title) section",
+            accessibilityHintExpanded: "Expands the section.",
+            accessibilityHintCollapsed: "Collapses the section."
+        ) { isHovered in
+            HStack(spacing: WorkbenchMetrics.microSpacing) {
                 WorkingTreeLineDiffView(
                     addedCount: summary.addedLineCount,
                     removedCount: summary.removedLineCount
@@ -79,36 +59,16 @@ struct WorkingTreeSectionHeaderView: View {
                     .help(actionHelp)
                     .accessibilityLabel("\(actionHelp) in \(title)")
                 }
-            }
 
-            Text(summary.fileCountText)
-                .font(.caption.weight(.medium))
-                .foregroundColor(.secondary)
-                .contentTransition(reduceMotion ? .identity : .numericText())
-                .animation(
-                    WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
-                    value: summary.fileCount
-                )
-        }
-        .padding(.vertical, 2)
-        .padding(.horizontal, 4)
-        .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(
-                    WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast)
-                        .opacity(colorSchemeContrast == .increased ? 1 : 0),
-                    lineWidth: 1
-                )
-        )
-        .contentShape(Rectangle())
-        .animation(
-            WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
-            value: isHovered
-        )
-        .onHover { inside in
-            isHovered = inside
+                Text(summary.fileCountText)
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(.secondary)
+                    .contentTransition(reduceMotion ? .identity : .numericText())
+                    .animation(
+                        WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
+                        value: summary.fileCount
+                    )
+            }
         }
     }
 }
