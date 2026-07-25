@@ -28,13 +28,6 @@ enum WorkbenchWindowChrome {
         shell.updateAppearance()
     }
 
-    static func apply(to window: NSWindow) {
-        configureTransparentWindow(window)
-        if let contentView = window.contentView {
-            installShell(in: contentView)
-        }
-    }
-
     static func makeHostedContentController<Content: View>(rootView: Content) -> NSViewController {
         WorkbenchHostedContentViewController(rootView: AnyView(rootView))
     }
@@ -154,6 +147,8 @@ private final class WorkbenchHostedContentViewController: NSViewController {
 
         if let hostingView = hostingController.view as? NSHostingView<AnyView> {
             hostingView.sceneBridgingOptions = [.toolbars]
+        } else {
+            assertionFailure("Expected NSHostingView<AnyView> for SwiftUI toolbar bridging")
         }
     }
 }

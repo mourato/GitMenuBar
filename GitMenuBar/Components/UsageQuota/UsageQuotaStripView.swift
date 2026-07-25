@@ -45,6 +45,10 @@ private struct UsageQuotaProviderCard: View {
             if let window = snapshot.primaryDisplayWindow {
                 UsageQuotaProgressBar(percent: window.remainingPercent)
                 metaRow(for: window)
+            } else if let creditsText = creditsLineText {
+                Text(creditsText)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
             }
 
             if let weekly = secondaryWeeklyWindow {
