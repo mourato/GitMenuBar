@@ -27,14 +27,14 @@ struct SyncOptionCard: View {
                 Spacer()
             }
             .padding(WorkbenchMetrics.compactSpacing)
-            .background(backgroundColor, in: RoundedRectangle(cornerRadius: 6))
+            .background(backgroundColor, in: RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius))
             .overlay(
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius)
                     .stroke(borderColor, lineWidth: colorSchemeContrast == .increased ? 1 : 0.5)
             )
         }
         .buttonStyle(.plain)
-        .contentShape(RoundedRectangle(cornerRadius: 6))
+        .contentShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius))
     }
 
     private var backgroundColor: Color {
