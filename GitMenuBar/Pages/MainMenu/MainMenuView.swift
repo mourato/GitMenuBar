@@ -127,6 +127,8 @@ struct MainMenuView: View {
                 )
                 .environmentObject(gitManager)
                 .environmentObject(githubAuthManager)
+                .padding(.horizontal, WorkbenchMetrics.windowPadding)
+                .padding(.bottom, WorkbenchMetrics.windowPadding)
                 .transition(routeTransition)
             case .main:
                 mainView
@@ -156,6 +158,8 @@ struct MainMenuView: View {
                         }
                     }
                 )
+                .padding(.horizontal, WorkbenchMetrics.windowPadding)
+                .padding(.bottom, WorkbenchMetrics.windowPadding)
                 .transition(routeTransition)
             }
         }
@@ -267,9 +271,10 @@ struct MainMenuView: View {
             }
         )
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
-        .padding(.horizontal, WorkbenchMetrics.windowPadding)
-        .padding(.bottom, WorkbenchMetrics.windowPadding)
         .frame(minWidth: 400, idealWidth: 440, maxWidth: .infinity)
+        .overlay {
+            commandPaletteOverlayContent
+        }
         .onAppear {
             reloadRepositorySelectionSnapshot()
             refreshRenderSnapshot()
