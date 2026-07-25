@@ -53,8 +53,8 @@ struct CommitDetailPageView: View {
                 missingCommitSection
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
+        // Horizontal inset comes from MainMenuView's windowPadding (same as main / create-repo routes).
+        .padding(.top, WorkbenchMetrics.windowPadding)
         .task(id: avatarTaskID) {
             await loadAuthorAvatarIfNeeded(for: commit)
         }

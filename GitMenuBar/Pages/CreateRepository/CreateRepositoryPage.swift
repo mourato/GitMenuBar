@@ -23,8 +23,8 @@ struct CreateRepositoryPageView: View {
                 onSuccess: onSuccess
             )
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 10)
+        // Horizontal / bottom inset come from MainMenuView's windowPadding.
+        .padding(.top, WorkbenchMetrics.windowPadding)
     }
 }
 
