@@ -8,40 +8,36 @@ struct RecentProjectsSection: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private var selectablePaths: [String] {
+        Array(recentPaths.filter { $0 != currentRepoPath }.prefix(5))
+    }
+
     var body: some View {
-        if !recentPaths.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Text("Recently Used")
-                        .font(WorkbenchTypography.sectionLabel)
-                        .foregroundColor(.secondary)
+        if !selectablePaths.isEmpty {
+            Toggle("Show full path", isOn: $showFullPathInRecents)
+                .toggleStyle(.checkbox)
 
-                    Spacer()
-
-                    Toggle("Show full path", isOn: $showFullPathInRecents)
-                        .toggleStyle(.checkbox)
-                        .font(WorkbenchTypography.caption)
-                }
-
-                ForEach(recentPaths.filter { $0 != currentRepoPath }.prefix(5), id: \.self) { path in
-                    let abbreviatedPath = PathDisplayFormatter.abbreviatedPath(path)
-                    RecentPathRowView(
-                        displayText: PathDisplayFormatter.recentProjectLabel(
-                            for: path,
-                            showFullPath: showFullPathInRecents
-                        ),
-                        fullPath: abbreviatedPath,
-                        onTap: {
-                            onSelectPath(path)
-                        }
-                    )
-                }
+            ForEach(selectablePaths, id: \.self) { path in
+                let abbreviatedPath = PathDisplayFormatter.abbreviatedPath(path)
+                RecentPathRowView(
+                    displayText: PathDisplayFormatter.recentProjectLabel(
+                        for: path,
+                        showFullPath: showFullPathInRecents
+                    ),
+                    fullPath: abbreviatedPath,
+                    onTap: {
+                        onSelectPath(path)
+                    }
+                )
             }
-            .padding(.top, 4)
             .animation(
                 WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
                 value: showFullPathInRecents
             )
+        } else {
+            Text("No other recent projects.")
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.secondary)
         }
     }
 }
@@ -50,18 +46,24 @@ private struct RecentProjectsSectionPreviewContainer: View {
     @State private var showFullPathInRecents = false
 
     var body: some View {
-        RecentProjectsSection(
-            recentPaths: [
-                "/Users/usuario/Documents/Projects/gitmenubar",
-                "/tmp/demo-app",
-                "/tmp/docs-site"
-            ],
-            currentRepoPath: "/Users/usuario/Documents/Projects/gitmenubar",
-            showFullPathInRecents: $showFullPathInRecents,
-            onSelectPath: { _ in }
-        )
-        .padding()
-        .frame(width: 360)
+        Form {
+            Section {
+                RecentProjectsSection(
+                    recentPaths: [
+                        "/Users/usuario/Documents/Projects/gitmenubar",
+                        "/tmp/demo-app",
+                        "/tmp/docs-site"
+                    ],
+                    currentRepoPath: "/Users/usuario/Documents/Projects/gitmenubar",
+                    showFullPathInRecents: $showFullPathInRecents,
+                    onSelectPath: { _ in }
+                )
+            } header: {
+                SettingsFormSectionHeader(title: "Recent Projects", icon: "clock")
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 560, height: 240)
     }
 }
 
