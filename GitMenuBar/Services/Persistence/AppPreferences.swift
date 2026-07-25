@@ -13,6 +13,8 @@ enum AppPreferences {
         static let hideCommitMessageField = "hideCommitMessageField"
         static let appearanceMode = "appearanceMode"
         static let hasMigratedKeychainDomain = "hasMigratedKeychainDomain"
+        static let showAIUsageQuotas = "showAIUsageQuotas"
+        static let showCodexUsageQuota = "showCodexUsageQuota"
     }
 
     enum AppearanceMode: String, CaseIterable, Identifiable {

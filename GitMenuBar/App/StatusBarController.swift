@@ -67,6 +67,7 @@ final class StatusBarController: ObservableObject {
     let aiCommitMessageService = AICommitMessageService()
     let shortcutActionBridge = MainMenuShortcutActionBridge()
     let presentationModel = MainMenuPresentationModel()
+    let usageQuotaStore = UsageQuotaStore()
 
     lazy var aiCommitCoordinator = AICommitCoordinator(
         providerStore: aiProviderStore,
@@ -88,6 +89,7 @@ final class StatusBarController: ObservableObject {
         githubAuthManager: githubAuthManager,
         aiProviderStore: aiProviderStore,
         aiCommitCoordinator: aiCommitCoordinator,
+        usageQuotaStore: usageQuotaStore,
         onSetAutoHideSuspended: { [weak self] suspended in
             self?.setAutoHideSuspended(suspended)
         },
@@ -356,6 +358,7 @@ final class StatusBarController: ObservableObject {
         .environmentObject(commitHistoryEditCoordinator)
         .environmentObject(shortcutActionBridge)
         .environmentObject(presentationModel)
+        .environmentObject(usageQuotaStore)
 
         return AnyView(rootView)
     }
@@ -533,12 +536,14 @@ final class StatusBarController: ObservableObject {
 
         if mainWindowPresentationState == .dismissing {
             activateAndShowMainWindow(mainWindow, trace: trace)
+            refreshUsageQuotaOnWindowPresented()
             return
         }
 
         if mainWindowPresentationState == .presenting || mainWindowPresentationState == .visible {
             NSApp.activate(ignoringOtherApps: true)
             mainWindow.makeKeyAndOrderFront(nil)
+            refreshUsageQuotaOnWindowPresented()
             return
         }
 
@@ -567,6 +572,11 @@ final class StatusBarController: ObservableObject {
         mainWindow.makeKeyAndOrderFront(nil)
         mainWindowPresentationState = .presenting
         animateMainWindowAlpha(to: 1, trace: trace)
+        refreshUsageQuotaOnWindowPresented()
+    }
+
+    private func refreshUsageQuotaOnWindowPresented() {
+        usageQuotaStore.refresh(reason: .windowPresented)
     }
 
     private func activateAndShowMainWindow(_ window: NSWindow, trace: WindowOpenTrace) {

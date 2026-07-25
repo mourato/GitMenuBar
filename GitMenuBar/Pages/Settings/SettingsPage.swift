@@ -194,6 +194,7 @@ struct GeneralSettingsPaneView: View {
 
 struct AccountsSettingsPaneView: View {
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
+    @EnvironmentObject private var usageQuotaStore: UsageQuotaStore
     let onSetAutoHideSuspended: (Bool) -> Void
 
     var body: some View {
@@ -202,6 +203,9 @@ struct AccountsSettingsPaneView: View {
                 GitHubConnectionSection(setAutoHideSuspended: onSetAutoHideSuspended)
 
                 AISettingsSectionView()
+                    .padding(.top, 4)
+
+                UsageQuotaSettingsSection()
                     .padding(.top, 4)
             }
             .padding(.horizontal, MacChromeMetrics.windowPadding)

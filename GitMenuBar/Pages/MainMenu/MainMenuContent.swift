@@ -39,6 +39,8 @@ extension MainMenuView {
                 createRepoSuggestionBanner(path: suggestionPath)
             }
 
+            UsageQuotaStripView()
+
             if presentationModel.refreshState.isRefreshing && !hasWorkingTreeChanges {
                 loadingStateView
             }

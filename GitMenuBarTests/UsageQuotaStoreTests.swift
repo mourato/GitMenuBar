@@ -1,0 +1,157 @@
+@testable import GitMenuBar
+import XCTest
+
+@MainActor
+final class UsageQuotaStoreTests: XCTestCase {
+    private var suiteName: String!
+    private var defaults: UserDefaults!
+    private var snapshotStore: UsageQuotaSnapshotStore!
+
+    override func setUp() {
+        super.setUp()
+        suiteName = "UsageQuotaStoreTests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)!
+        snapshotStore = UsageQuotaSnapshotStore(defaults: defaults)
+    }
+
+    override func tearDown() {
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults = nil
+        snapshotStore = nil
+        suiteName = nil
+        super.tearDown()
+    }
+
+    func testFeatureDisabledStartsWithEmptyVisibleSnapshots() {
+        let provider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
+        let store = makeStore(provider: provider)
+
+        XCTAssertFalse(store.showAIUsageQuotas)
+        XCTAssertTrue(store.visibleSnapshots.isEmpty)
+        XCTAssertTrue(store.snapshots.isEmpty)
+    }
+
+    func testEnabledProviderPublishesSuccessfulSnapshot() async {
+        let provider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
+        let store = makeStore(provider: provider)
+        store.showAIUsageQuotas = true
+
+        await waitUntil { provider.fetchCount > 0 && !store.snapshots.isEmpty }
+
+        XCTAssertEqual(store.visibleSnapshots.count, 1)
+        XCTAssertEqual(store.visibleSnapshots.first?.sessionWindow?.remainingPercent, 70)
+        XCTAssertFalse(store.visibleSnapshots.first?.isStale ?? true)
+    }
+
+    func testFailureUsesCachedSnapshotMarkedStale() async {
+        snapshotStore.save(Self.sampleSnapshot())
+        let provider = FakeUsageQuotaProvider(snapshot: .unavailable(providerID: .codex, statusNote: "offline"))
+        let store = makeStore(provider: provider)
+        store.showAIUsageQuotas = true
+
+        await waitUntil { provider.fetchCount > 0 && store.snapshots.first?.isStale == true }
+
+        XCTAssertEqual(store.visibleSnapshots.count, 1)
+        XCTAssertTrue(store.visibleSnapshots.first?.isStale ?? false)
+        XCTAssertEqual(store.visibleSnapshots.first?.statusNote, "offline")
+    }
+
+    func testCodexToggleHidesVisibleSnapshots() async {
+        let provider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
+        let store = makeStore(provider: provider)
+        store.showAIUsageQuotas = true
+
+        await waitUntil { !store.visibleSnapshots.isEmpty }
+
+        store.showCodexUsageQuota = false
+
+        XCTAssertTrue(store.visibleSnapshots.isEmpty)
+    }
+
+    func testEncodedSnapshotContainsNoTokenLikeKeys() {
+        snapshotStore.save(Self.sampleSnapshot())
+
+        guard let data = defaults.data(forKey: "usageQuotaSnapshot.v1.codex"),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return XCTFail("Expected encoded snapshot data")
+        }
+
+        let flattenedKeys = Self.flattenKeys(json)
+        XCTAssertFalse(flattenedKeys.contains(where: { $0.localizedCaseInsensitiveContains("access_token") }))
+        XCTAssertFalse(flattenedKeys.contains(where: { $0.localizedCaseInsensitiveContains("refresh_token") }))
+    }
+
+    func testRefreshNoOpsWhenFeatureDisabled() async {
+        let provider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
+        let store = makeStore(provider: provider)
+
+        store.refresh(reason: .manual)
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        XCTAssertEqual(provider.fetchCount, 0)
+        XCTAssertTrue(store.snapshots.isEmpty)
+    }
+
+    private func makeStore(provider: FakeUsageQuotaProvider) -> UsageQuotaStore {
+        UsageQuotaStore(
+            defaults: defaults,
+            snapshotStore: snapshotStore,
+            providers: [provider]
+        )
+    }
+
+    private func waitUntil(
+        _ predicate: @escaping () -> Bool,
+        timeout: TimeInterval = 2
+    ) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if predicate() {
+                return
+            }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        XCTFail("Timed out waiting for store refresh")
+    }
+
+    private static func sampleSnapshot() -> UsageQuotaSnapshot {
+        UsageQuotaSnapshot(
+            providerID: .codex,
+            displayName: "Codex",
+            sessionWindow: UsageWindow(remainingPercent: 70, resetAt: Date().addingTimeInterval(3600), label: "Session"),
+            weeklyWindow: UsageWindow(remainingPercent: 90, resetAt: Date().addingTimeInterval(86400), label: "Weekly"),
+            isAvailable: true,
+            statusNote: "chatgpt usage api"
+        )
+    }
+
+    private static func flattenKeys(_ value: Any, prefix: String = "") -> [String] {
+        if let dictionary = value as? [String: Any] {
+            return dictionary.flatMap { key, nested in
+                flattenKeys(nested, prefix: prefix + key + ".")
+            } + dictionary.keys.map { prefix + $0 }
+        }
+        if let array = value as? [Any] {
+            return array.enumerated().flatMap { index, nested in
+                flattenKeys(nested, prefix: prefix + "[\(index)].")
+            }
+        }
+        return prefix.isEmpty ? [] : [prefix]
+    }
+}
+
+private final class FakeUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
+    let id: UsageProviderID
+    var snapshot: UsageQuotaSnapshot
+    private(set) var fetchCount = 0
+
+    init(id: UsageProviderID = .codex, snapshot: UsageQuotaSnapshot) {
+        self.id = id
+        self.snapshot = snapshot
+    }
+
+    func fetchSnapshot() async -> UsageQuotaSnapshot {
+        fetchCount += 1
+        return snapshot
+    }
+}
