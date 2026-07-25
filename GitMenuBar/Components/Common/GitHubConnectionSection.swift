@@ -7,21 +7,21 @@ struct GitHubConnectionSection: View {
     let setAutoHideSuspended: (Bool) -> Void
 
     var body: some View {
-        SettingsSection(title: "GitHub", systemImage: "globe") {
+        Group {
             if githubAuthManager.isAuthenticated {
                 HStack {
                     Text("Connected as @\(githubAuthManager.username)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
                     Spacer()
                     Button("Disconnect") {
                         githubAuthManager.disconnect()
                     }
                     .buttonStyle(.borderless)
-                    .font(.caption)
+                    .font(WorkbenchTypography.caption)
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+                .padding(.vertical, WorkbenchMetrics.microSpacing)
                 .githubConnectionCardChrome(contrast: colorSchemeContrast)
             } else if githubAuthManager.isAuthenticating {
                 authenticatingView
@@ -35,75 +35,75 @@ struct GitHubConnectionSection: View {
     }
 
     private var authenticatingView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: WorkbenchMetrics.sectionSpacing) {
             if !githubAuthManager.userCode.isEmpty {
-                VStack(spacing: 8) {
-                    VStack(spacing: 4) {
+                VStack(spacing: WorkbenchMetrics.compactSpacing) {
+                    VStack(spacing: WorkbenchMetrics.microSpacing) {
                         Text(githubAuthManager.userCode)
                             .font(.title.weight(.semibold).monospacedDigit())
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
                             .kerning(2)
 
-                        HStack(spacing: 4) {
+                        HStack(spacing: WorkbenchMetrics.microSpacing) {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.caption2)
-                                .foregroundColor(.accentColor)
+                                .foregroundStyle(Color.accentColor)
                             Text("Copied to clipboard")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(WorkbenchTypography.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
 
                     Text("Enter this code on GitHub")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
 
                     Button("Cancel") {
                         githubAuthManager.cancelAuthentication()
                     }
                     .buttonStyle(.borderless)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
                 }
             } else {
-                HStack(spacing: 8) {
+                HStack(spacing: WorkbenchMetrics.compactSpacing) {
                     ProgressView()
-                        .scaleEffect(0.7)
+                        .controlSize(.small)
                     Text("Connecting...")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .padding(.horizontal, 12)
+        .padding(.vertical, WorkbenchMetrics.sectionSpacing)
+        .padding(.horizontal, WorkbenchMetrics.sectionSpacing)
         .githubConnectionCardChrome(contrast: colorSchemeContrast)
     }
 
     private var disconnectedView: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
             HStack {
                 Text("Not connected")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
                 Spacer()
                 Button("Connect") {
                     setAutoHideSuspended(true)
                     githubAuthManager.startDeviceFlow()
                 }
                 .buttonStyle(.borderedProminent)
-                .font(.caption)
+                .font(WorkbenchTypography.caption)
             }
 
             if !githubAuthManager.authError.isEmpty {
                 Text(githubAuthManager.authError)
-                    .font(.caption)
-                    .foregroundColor(.red)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.red)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+        .padding(.vertical, WorkbenchMetrics.microSpacing)
         .githubConnectionCardChrome(contrast: colorSchemeContrast)
     }
 }
@@ -134,8 +134,14 @@ private extension View {
     authManager.isAuthenticated = true
     authManager.username = "octocat"
 
-    return GitHubConnectionSection(setAutoHideSuspended: { _ in })
-        .environmentObject(authManager)
-        .padding()
-        .frame(width: 360)
+    return Form {
+        Section {
+            GitHubConnectionSection(setAutoHideSuspended: { _ in })
+        } header: {
+            SettingsFormSectionHeader(title: "GitHub", icon: "globe")
+        }
+    }
+    .formStyle(.grouped)
+    .environmentObject(authManager)
+    .frame(width: 560, height: 180)
 }

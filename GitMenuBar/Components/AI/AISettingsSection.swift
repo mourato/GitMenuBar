@@ -8,36 +8,25 @@ struct AISettingsSectionView: View {
     @State private var showingProviderEditor = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundColor(.secondary)
-                Text("AI Commit Generation")
-                    .font(.subheadline.weight(.medium))
-            }
-            .padding(.top, 4)
-
+        Group {
             if aiProviderStore.providers.isEmpty {
                 Text("No AI providers configured yet.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
             } else {
-                VStack(spacing: 6) {
-                    ForEach(aiProviderStore.providers) { provider in
-                        AIProviderRowView(
-                            provider: provider,
-                            isDefault: aiProviderStore.preferences.defaultProviderId == provider.id,
-                            onEdit: {
-                                editingProvider = provider
-                                showingProviderEditor = true
-                            },
-                            onDelete: {
-                                aiCommitCoordinator.deleteAPIKey(for: provider.id)
-                                aiProviderStore.deleteProvider(id: provider.id)
-                            }
-                        )
-                    }
+                ForEach(aiProviderStore.providers) { provider in
+                    AIProviderRowView(
+                        provider: provider,
+                        isDefault: aiProviderStore.preferences.defaultProviderId == provider.id,
+                        onEdit: {
+                            editingProvider = provider
+                            showingProviderEditor = true
+                        },
+                        onDelete: {
+                            aiCommitCoordinator.deleteAPIKey(for: provider.id)
+                            aiProviderStore.deleteProvider(id: provider.id)
+                        }
+                    )
                 }
             }
 
@@ -49,11 +38,7 @@ struct AISettingsSectionView: View {
             .focusable(false)
 
             if !aiProviderStore.providers.isEmpty {
-                Divider()
-                    .padding(.vertical, 2)
-
                 defaultProviderPicker
-
                 defaultModelPicker
             }
         }
@@ -70,64 +55,53 @@ struct AISettingsSectionView: View {
     }
 
     private var defaultProviderPicker: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Default Provider")
-                .font(.caption.weight(.medium))
-
-            Picker(
-                "Default Provider",
-                selection: Binding<UUID?>(
-                    get: { aiProviderStore.preferences.defaultProviderId },
-                    set: { aiProviderStore.updateDefaultProvider($0) }
-                )
-            ) {
-                ForEach(aiProviderStore.providers) { provider in
-                    Text(provider.name).tag(Optional(provider.id))
-                }
+        Picker(
+            "Default Provider",
+            selection: Binding<UUID?>(
+                get: { aiProviderStore.preferences.defaultProviderId },
+                set: { aiProviderStore.updateDefaultProvider($0) }
+            )
+        ) {
+            ForEach(aiProviderStore.providers) { provider in
+                Text(provider.name).tag(Optional(provider.id))
             }
-            .labelsHidden()
-            .pickerStyle(.menu)
         }
+        .pickerStyle(.menu)
     }
 
+    @ViewBuilder
     private var defaultModelPicker: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Default Model")
-                .font(.caption.weight(.medium))
+        if let provider = aiProviderStore.defaultProvider {
+            let models = provider.availableModels.isEmpty
+                ? [provider.selectedModel].filter { !$0.isEmpty }
+                : provider.availableModels
 
-            if let provider = aiProviderStore.defaultProvider {
-                let models = provider.availableModels.isEmpty
-                    ? [provider.selectedModel].filter { !$0.isEmpty }
-                    : provider.availableModels
-
-                if !models.isEmpty {
-                    Picker(
-                        "Default Model",
-                        selection: Binding(
-                            get: {
-                                let current = aiProviderStore.preferences.defaultModel
-                                return current.isEmpty ? models[0] : current
-                            },
-                            set: { aiProviderStore.updateDefaultModel($0) }
-                        )
-                    ) {
-                        ForEach(models, id: \.self) { model in
-                            Text(model).tag(model)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                } else {
-                    TextField(
-                        "Model name",
-                        text: Binding(
-                            get: { aiProviderStore.preferences.defaultModel },
-                            set: { aiProviderStore.updateDefaultModel($0) }
-                        )
+            if !models.isEmpty {
+                Picker(
+                    "Default Model",
+                    selection: Binding(
+                        get: {
+                            let current = aiProviderStore.preferences.defaultModel
+                            return current.isEmpty ? models[0] : current
+                        },
+                        set: { aiProviderStore.updateDefaultModel($0) }
                     )
-                    .textFieldStyle(.roundedBorder)
-                    .font(.caption)
+                ) {
+                    ForEach(models, id: \.self) { model in
+                        Text(model).tag(model)
+                    }
                 }
+                .pickerStyle(.menu)
+            } else {
+                TextField(
+                    "Model name",
+                    text: Binding(
+                        get: { aiProviderStore.preferences.defaultModel },
+                        set: { aiProviderStore.updateDefaultModel($0) }
+                    )
+                )
+                .textFieldStyle(.roundedBorder)
+                .font(WorkbenchTypography.caption)
             }
         }
     }
@@ -144,9 +118,15 @@ struct AISettingsSectionView: View {
         gitManager: gitManager
     )
 
-    return AISettingsSectionView()
-        .environmentObject(providerStore)
-        .environmentObject(coordinator)
-        .padding()
-        .frame(width: 420)
+    return Form {
+        Section {
+            AISettingsSectionView()
+        } header: {
+            SettingsFormSectionHeader(title: "AI Commit Generation", icon: "sparkles")
+        }
+    }
+    .formStyle(.grouped)
+    .environmentObject(providerStore)
+    .environmentObject(coordinator)
+    .frame(width: 560, height: 280)
 }

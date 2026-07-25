@@ -57,6 +57,15 @@ struct GeneralSettingsPaneView: View {
             } header: {
                 SettingsFormSectionHeader(title: "Appearance", icon: "paintbrush")
             }
+
+            Section {
+                Button("Quit GitMenuBar") {
+                    NSApplication.shared.terminate(nil)
+                }
+                .workbenchGhost()
+            } header: {
+                SettingsFormSectionHeader(title: "App", icon: "power")
+            }
         }
         .preferredColorScheme(preferredColorScheme)
     }
@@ -73,6 +82,9 @@ struct GitSettingsPaneView: View {
 
     @State private var repositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
     @State private var recentPaths = RecentProjectsStore().recentPaths()
+    @State private var showWipeConfirmation = false
+    @State private var isWiping = false
+    @State private var wipeError: String?
 
     let gitManager: GitManager
     let githubAuthManager: GitHubAuthManager
@@ -82,30 +94,22 @@ struct GitSettingsPaneView: View {
     private let recentProjectsStore = RecentProjectsStore()
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: WorkbenchMetrics.groupSpacing) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Hide commit message field")
-                            .font(WorkbenchTypography.body)
-                        Spacer()
-                        Toggle("", isOn: $hideCommitMessageField)
-                            .toggleStyle(.switch)
-                            .controlSize(.small)
-                            .accessibilityLabel("Hide commit message field")
-                    }
+        SettingsFormPage {
+            SettingsFormSectionHeader(title: "Git", icon: "arrow.triangle.branch")
+        } content: {
+            Section {
+                Toggle("Hide commit message field", isOn: $hideCommitMessageField)
+                    .toggleStyle(.switch)
+            } header: {
+                SettingsFormSectionHeader(title: "Commit", icon: "text.badge.checkmark")
+            } footer: {
+                Text(
+                    "When enabled, GitMenuBar hides the text field and prefers automatic commit messages. "
+                        + "If automatic generation is unavailable, the field is shown when needed."
+                )
+            }
 
-                    Text(
-                        "When enabled, GitMenuBar hides the text field and prefers automatic commit messages. "
-                            + "If automatic generation is unavailable, the field is shown when needed."
-                    )
-                    .font(WorkbenchTypography.caption)
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Divider()
-
+            Section {
                 RepositoryPathSection(
                     repositoryPath: Binding(
                         get: { PathDisplayFormatter.abbreviatedPath(repositoryPath) },
@@ -113,27 +117,63 @@ struct GitSettingsPaneView: View {
                     ),
                     onBrowse: browseRepository
                 )
+            } header: {
+                SettingsFormSectionHeader(title: "Repository Path", icon: "folder")
+            }
 
-                Divider()
-
+            Section {
                 RecentProjectsSection(
                     recentPaths: recentPaths,
                     currentRepoPath: repositoryPath,
                     showFullPathInRecents: $showFullPathInRecents,
                     onSelectPath: selectRecentPath
                 )
-
-                Divider()
-
-                GitHubConnectionSection(setAutoHideSuspended: onSetAutoHideSuspended)
-
-                AISettingsSectionView()
-                    .padding(.top, 4)
+            } header: {
+                SettingsFormSectionHeader(title: "Recent Projects", icon: "clock")
             }
-            .padding(.horizontal, WorkbenchMetrics.windowPadding)
-            .padding(.vertical, WorkbenchMetrics.groupSpacing)
+
+            Section {
+                GitHubConnectionSection(setAutoHideSuspended: onSetAutoHideSuspended)
+            } header: {
+                SettingsFormSectionHeader(title: "GitHub", icon: "globe")
+            }
+
+            Section {
+                Button("Wipe Repository History", role: .destructive) {
+                    showWipeConfirmation = true
+                }
+                .disabled(!githubAuthManager.isAuthenticated || gitManager.remoteUrl.isEmpty)
+                .help("Reset repository to a single commit, erasing all history")
+            } header: {
+                SettingsFormSectionHeader(title: "Danger Zone", icon: "exclamationmark.triangle")
+            } footer: {
+                Text("Permanently erase commit history and reset to a single Initial commit. Current files are preserved.")
+            }
         }
-        .frame(minWidth: 420, minHeight: 700)
+        .alert("Wipe Repository History?", isPresented: $showWipeConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Wipe", role: .destructive) {
+                wipeRepository()
+            }
+            .disabled(isWiping)
+        } message: {
+            Text(
+                "This will permanently erase all commit history and reset the repository to a single \"Initial commit\". " +
+                    "Your current files will be preserved. This action cannot be undone."
+            )
+        }
+        .alert("Wipe Failed", isPresented: .init(
+            get: { wipeError != nil },
+            set: {
+                if !$0 {
+                    wipeError = nil
+                }
+            }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(wipeError ?? "An unknown error occurred.")
+        }
         .preferredColorScheme(preferredColorScheme)
     }
 
@@ -174,98 +214,6 @@ struct GitSettingsPaneView: View {
         gitManager.refresh(includeReflogHistory: false)
     }
 
-    private var preferredColorScheme: ColorScheme? {
-        SettingsAppearance.preferredColorScheme(for: appearanceMode)
-    }
-}
-
-struct QuotasSettingsPaneView: View {
-    @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: WorkbenchMetrics.groupSpacing) {
-                UsageQuotaSettingsSection()
-            }
-            .padding(.horizontal, WorkbenchMetrics.windowPadding)
-            .padding(.vertical, WorkbenchMetrics.groupSpacing)
-        }
-        .frame(minWidth: 420, minHeight: 700)
-        .preferredColorScheme(SettingsAppearance.preferredColorScheme(for: appearanceMode))
-    }
-}
-
-struct ShortcutsSettingsPaneView: View {
-    let gitManager: GitManager
-    let githubAuthManager: GitHubAuthManager
-    @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
-
-    @State private var showWipeConfirmation = false
-    @State private var isWiping = false
-    @State private var wipeError: String?
-
-    var body: some View {
-        VStack(spacing: WorkbenchMetrics.groupSpacing) {
-            ScrollView {
-                VStack(spacing: WorkbenchMetrics.groupSpacing) {
-                    KeyboardShortcutsSection()
-                }
-                .padding(.horizontal, WorkbenchMetrics.windowPadding)
-                .padding(.vertical, WorkbenchMetrics.groupSpacing)
-            }
-
-            Divider()
-
-            HStack {
-                Button("Wipe", action: {
-                    showWipeConfirmation = true
-                })
-                .buttonStyle(.borderless)
-                .font(WorkbenchTypography.detail)
-                .foregroundColor(.secondary)
-                .disabled(!githubAuthManager.isAuthenticated || gitManager.remoteUrl.isEmpty)
-                .help("Reset repository to a single commit, erasing all history")
-
-                Spacer()
-
-                Button("Quit") {
-                    NSApplication.shared.terminate(nil)
-                }
-                .buttonStyle(.borderless)
-                .font(WorkbenchTypography.detail)
-                .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, WorkbenchMetrics.windowPadding)
-            .padding(.bottom, WorkbenchMetrics.groupSpacing)
-        }
-        .alert("Wipe Repository History?", isPresented: $showWipeConfirmation) {
-            Button("Cancel", role: .cancel) {}
-            Button("Wipe", role: .destructive) {
-                wipeRepository()
-            }
-            .disabled(isWiping)
-        } message: {
-            Text(
-                "This will permanently erase all commit history and reset the repository to a single \"Initial commit\". " +
-                    "Your current files will be preserved. This action cannot be undone."
-            )
-        }
-        .alert("Wipe Failed", isPresented: .init(
-            get: { wipeError != nil },
-            set: {
-                if !$0 {
-                    wipeError = nil
-                }
-            }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(wipeError ?? "An unknown error occurred.")
-        }
-        .frame(minWidth: 420, minHeight: 700)
-        .preferredColorScheme(SettingsAppearance.preferredColorScheme(for: appearanceMode))
-    }
-
     private func wipeRepository() {
         isWiping = true
 
@@ -281,6 +229,53 @@ struct ShortcutsSettingsPaneView: View {
                 }
             }
         }
+    }
+
+    private var preferredColorScheme: ColorScheme? {
+        SettingsAppearance.preferredColorScheme(for: appearanceMode)
+    }
+}
+
+struct AISettingsPaneView: View {
+    @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
+
+    var body: some View {
+        SettingsFormPage {
+            SettingsFormSectionHeader(title: "AI", icon: "sparkles")
+        } content: {
+            Section {
+                AISettingsSectionView()
+            } header: {
+                SettingsFormSectionHeader(title: "AI Commit Generation", icon: "sparkles")
+            }
+
+            Section {
+                UsageQuotaSettingsSection()
+            } header: {
+                SettingsFormSectionHeader(
+                    title: "Usage Quotas",
+                    icon: "gauge.with.dots.needle.33percent"
+                )
+            }
+        }
+        .preferredColorScheme(SettingsAppearance.preferredColorScheme(for: appearanceMode))
+    }
+}
+
+struct ShortcutsSettingsPaneView: View {
+    @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
+
+    var body: some View {
+        SettingsFormPage {
+            SettingsFormSectionHeader(title: "Shortcuts", icon: "keyboard")
+        } content: {
+            Section {
+                KeyboardShortcutsSection()
+            } header: {
+                SettingsFormSectionHeader(title: "Keyboard Shortcuts", icon: "keyboard")
+            }
+        }
+        .preferredColorScheme(SettingsAppearance.preferredColorScheme(for: appearanceMode))
     }
 }
 
@@ -307,13 +302,6 @@ private enum SettingsAppearance {
         tokenStore: InMemoryGitHubTokenStore(),
         preloadStoredToken: false
     )
-    let providerStore = AIProviderStore()
-    let coordinator = AICommitCoordinator(
-        providerStore: providerStore,
-        keychainStore: InMemoryAIAPIKeyStore(),
-        messageService: AICommitMessageService(),
-        gitManager: gitManager
-    )
 
     return GitSettingsPaneView(
         gitManager: gitManager,
@@ -322,11 +310,24 @@ private enum SettingsAppearance {
         onRequestCreateRepo: { _ in }
     )
     .environmentObject(githubAuthManager)
-    .environmentObject(providerStore)
-    .environmentObject(coordinator)
 }
 
-#Preview("Quotas Settings Pane") {
-    QuotasSettingsPaneView()
+#Preview("AI Settings Pane") {
+    let gitManager = GitManager(repositoryPathOverride: "/tmp")
+    let providerStore = AIProviderStore()
+    let coordinator = AICommitCoordinator(
+        providerStore: providerStore,
+        keychainStore: InMemoryAIAPIKeyStore(),
+        messageService: AICommitMessageService(),
+        gitManager: gitManager
+    )
+
+    return AISettingsPaneView()
+        .environmentObject(providerStore)
+        .environmentObject(coordinator)
         .environmentObject(UsageQuotaStore())
+}
+
+#Preview("Shortcuts Settings Pane") {
+    ShortcutsSettingsPaneView()
 }

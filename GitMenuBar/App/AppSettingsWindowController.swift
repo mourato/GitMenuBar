@@ -5,7 +5,7 @@ import Settings
 private extension Settings.PaneIdentifier {
     static let gitMenuBarGeneral = Self("gitmenubar.general")
     static let gitMenuBarGit = Self("gitmenubar.git")
-    static let gitMenuBarQuotas = Self("gitmenubar.quotas")
+    static let gitMenuBarAI = Self("gitmenubar.ai")
     static let gitMenuBarShortcuts = Self("gitmenubar.shortcuts")
 }
 
@@ -51,19 +51,17 @@ final class AppSettingsWindowController {
                     onRequestCreateRepo: onRequestCreateRepo
                 )
                 .environmentObject(githubAuthManager)
-                .environmentObject(aiProviderStore)
-                .environmentObject(aiCommitCoordinator)
             }
         )
-        let quotasPane = Settings.Pane(
-            identifier: .gitMenuBarQuotas,
-            title: "Quotas",
-            toolbarIcon: NSImage(
-                systemSymbolName: "gauge.with.dots.needle.33percent",
-                accessibilityDescription: "Quotas settings"
-            ) ?? NSImage(),
+        let aiPane = Settings.Pane(
+            identifier: .gitMenuBarAI,
+            title: "AI",
+            toolbarIcon: NSImage(systemSymbolName: "sparkles", accessibilityDescription: "AI settings")
+                ?? NSImage(),
             contentView: {
-                QuotasSettingsPaneView()
+                AISettingsPaneView()
+                    .environmentObject(aiProviderStore)
+                    .environmentObject(aiCommitCoordinator)
                     .environmentObject(usageQuotaStore)
             }
         )
@@ -73,15 +71,12 @@ final class AppSettingsWindowController {
             toolbarIcon: NSImage(systemSymbolName: "keyboard", accessibilityDescription: "Shortcuts settings")
                 ?? NSImage(),
             contentView: {
-                ShortcutsSettingsPaneView(
-                    gitManager: gitManager,
-                    githubAuthManager: githubAuthManager
-                )
+                ShortcutsSettingsPaneView()
             }
         )
 
         windowController = SettingsWindowController(
-            panes: [generalPane, gitPane, quotasPane, shortcutsPane],
+            panes: [generalPane, gitPane, aiPane, shortcutsPane],
             style: .toolbarItems,
             animated: false
         )
