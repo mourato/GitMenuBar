@@ -73,13 +73,14 @@ copied into `.agents/skills/`. The canonical global routes are:
 - `global:thermo-nuclear-code-quality-review` for strict reviews
 - `global:accessibility-audit`
 - `global:apple-design`
+- `global:benchmarking`
 - `global:code-quality`
 - `global:delivery-workflow`
 - `global:macos-app-engineering`
 - `global:menubar`
 - `global:swift-conventions`
 
-When one of the seven macOS global skills is active, load its global core
+When one of these overlay-backed global skills is active, load its global core
 first, then the matching optional project overlay at
 `.agents/overlays/<skill-name>.md`, then any applicable specialist local skill.
 Overlays use `kind: project-overlay`, `extends: <global-skill-name>`,
@@ -88,17 +89,18 @@ GitMenuBar facts and explicit exceptions; global safety, privacy, and
 repository-integrity rules remain authoritative.
 
 Same-name local copies of global skills are forbidden: `.agents/overlays/` is
-the only project customization layer for these seven cores. Independent
-specialist skills retain their own names and triggers. `delivery-workflow`
-owns risk lanes, validation, gates, and Git mechanics. Domain overlays and
-skills own GitMenuBar technical invariants. The project-only review profile at
-`.agents/review-profiles/thermo-gitmenubar.md` adds only this repository's
-rules to the global thermo review.
+the only project customization layer for these overlay-backed cores.
+Independent specialist skills retain their own names and triggers.
+`delivery-workflow` owns risk lanes, validation, gates, and Git mechanics.
+Domain overlays and skills own GitMenuBar technical invariants. The
+project-only review profile at `.agents/review-profiles/thermo-gitmenubar.md`
+adds only this repository's rules to the global thermo review.
 
 Primary skills in this repo:
 
 - `global:accessibility-audit` + `.agents/overlays/accessibility-audit.md`
 - `global:apple-design` + `.agents/overlays/apple-design.md`
+- `global:benchmarking` + `.agents/overlays/benchmarking.md`
 - `global:code-quality` + `.agents/overlays/code-quality.md`
 - `global:delivery-workflow` + `.agents/overlays/delivery-workflow.md`
 - `global:macos-app-engineering` + `.agents/overlays/macos-app-engineering.md`
