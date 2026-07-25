@@ -12,7 +12,7 @@ private extension Settings.PaneIdentifier {
 @MainActor
 final class AppSettingsWindowController {
     private enum Constants {
-        static let minimumContentSize = NSSize(width: 420, height: 700)
+        static let minimumContentSize = NSSize(width: 560, height: 440)
     }
 
     private let windowController: SettingsWindowController

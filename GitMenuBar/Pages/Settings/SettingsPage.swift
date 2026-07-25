@@ -12,85 +12,53 @@ struct GeneralSettingsPaneView: View {
     let loginItemManager: LoginItemManager
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: WorkbenchMetrics.groupSpacing) {
-                HStack {
-                    Text("Open at Login")
-                        .font(WorkbenchTypography.body)
-                    Spacer()
-                    Toggle(
-                        "",
-                        isOn: Binding(
-                            get: { loginItemManager.isEnabled },
-                            set: { newValue in
-                                loginItemManager.isEnabled = newValue
-                                loginItemManager.setLoginItem(enabled: newValue)
-                            }
-                        )
+        SettingsFormPage {
+            SettingsFormSectionHeader(title: "General", icon: "gearshape")
+        } content: {
+            Section {
+                Toggle(
+                    "Open at Login",
+                    isOn: Binding(
+                        get: { loginItemManager.isEnabled },
+                        set: { newValue in
+                            loginItemManager.isEnabled = newValue
+                            loginItemManager.setLoginItem(enabled: newValue)
+                        }
                     )
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .accessibilityLabel("Open at Login")
-                }
-
-                HStack {
-                    Text("Auto-hide window when focus is lost")
-                        .font(WorkbenchTypography.body)
-                    Spacer()
-                    Toggle("", isOn: $autoHideMainWindowOnBlur)
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .accessibilityLabel("Auto-hide window when focus is lost")
-                }
-
-                HStack {
-                    Text("Show window on monitor with mouse pointer")
-                        .font(WorkbenchTypography.body)
-                    Spacer()
-                    Toggle(
-                        "",
-                        isOn: $toggleShortcutUsesMouseMonitor
-                    )
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .accessibilityLabel("Show window on monitor with mouse pointer")
-                }
-
-                Divider()
-
-                appearancePicker
-            }
-            .padding(.horizontal, WorkbenchMetrics.windowPadding)
-            .padding(.vertical, WorkbenchMetrics.groupSpacing)
-        }
-        .frame(minWidth: 420, minHeight: 700)
-        .preferredColorScheme(preferredColorScheme)
-    }
-
-    private var appearancePicker: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Appearance")
-                .font(WorkbenchTypography.sectionLabel)
-
-            Picker(
-                "",
-                selection: Binding(
-                    get: {
-                        AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode)
-                    },
-                    set: { newValue in
-                        appearanceMode = newValue.rawValue
-                    }
                 )
-            ) {
-                ForEach(AppPreferences.AppearanceMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
+                .toggleStyle(.switch)
+
+                Toggle("Auto-hide window when focus is lost", isOn: $autoHideMainWindowOnBlur)
+                    .toggleStyle(.switch)
+
+                Toggle("Show window on monitor with mouse pointer", isOn: $toggleShortcutUsesMouseMonitor)
+                    .toggleStyle(.switch)
+            } header: {
+                SettingsFormSectionHeader(title: "App Behavior", icon: "app.badge")
             }
-            .pickerStyle(.segmented)
-            .accessibilityLabel("Appearance")
+
+            Section {
+                Picker(
+                    "Appearance",
+                    selection: Binding(
+                        get: {
+                            AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode)
+                        },
+                        set: { newValue in
+                            appearanceMode = newValue.rawValue
+                        }
+                    )
+                ) {
+                    ForEach(AppPreferences.AppearanceMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                SettingsFormSectionHeader(title: "Appearance", icon: "paintbrush")
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .preferredColorScheme(preferredColorScheme)
     }
 
     private var preferredColorScheme: ColorScheme? {

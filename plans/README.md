@@ -334,3 +334,30 @@ Planned against commit `7ade5a9`.
 - Status-item quota glyphs (UX option B): still deferred.
 - Collapsing weekly quota row behind disclosure: rejected; show when it differs.
 - Hard-capping quota region height / one-provider carousel: rejected; natural height for 1–2 cards.
+
+## Settings Form surface & IA regroup — 2026-07-25
+
+Locked via grill. Docs: `.interface-design/system.md` → **Settings Form surface**.
+Planned against commit `b558d22`. Visual reference: Vozinha Form *ideas* only (no source copy).
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 034 | Settings Form surface + General canary | P1 | M | 032 (DONE) | IN PROGRESS |
+| 035 | Migrate Git/AI/Shortcuts to Form + destination map | P1 | M | 034 | TODO |
+
+### Dependency notes
+
+- **034** adds `SettingsFormPage` / `SettingsFormSectionHeader` / `SettingsFormLayoutPolicy`, migrates General only, updates Settings window min size (~520–600 × shorter height). Keeps toolbar `Settings` package. Reviewer required.
+- **035** migrates Git / AI / Shortcuts; Quotas→AI pane; Quit→General; Wipe→Git Danger zone; retires `SettingsSection` when unused. Reviewer required.
+- Recommended order: 034 → 035. Do not start 035 until 034 primitives exist.
+
+### Findings considered and rejected (this wave)
+
+- Full Vozinha sidebar + search port in the same wave: deferred.
+- Retiring `sindresorhus/Settings` now: deferred (primitives stay chrome-agnostic).
+- Expandable / drill-down Settings row kit: deferred.
+- Aggressive single-pane flatten beyond the destination map: rejected for this wave.
+- Opaque Form background ignoring Plan 032 shell: rejected.
+- Nested `workbenchPanelSurface` cards inside Settings Form panes: rejected.
