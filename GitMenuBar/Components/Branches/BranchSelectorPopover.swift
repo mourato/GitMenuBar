@@ -51,7 +51,7 @@ struct BranchSelectorPopoverView: View {
                         Button(action: onCreateBranchFromDetached) {
                             Label("Create Branch from Here…", systemImage: "plus.branch")
                         }
-                        .buttonStyle(.bordered)
+                        .workbenchSecondary()
                     }
                     .padding(.vertical, 4)
                 }
@@ -69,7 +69,7 @@ struct BranchSelectorPopoverView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.plain)
+                    .workbenchRow()
                 }
             }
 
@@ -101,6 +101,7 @@ struct BranchSelectorPopoverView: View {
                 Button(action: onNewBranch) {
                     Label("New Branch…", systemImage: "plus")
                 }
+                .workbenchRow()
             }
         }
         .listStyle(.inset)

@@ -212,7 +212,7 @@ struct MainMenuCommandPaletteView: View {
                     row(for: item)
                 }
                 .id(item.id)
-                .buttonStyle(.plain)
+                .workbenchRow(isSelected: selectedItemID == item.id)
                 .disabled(!item.isEnabled)
                 .accessibilityLabel(item.title)
             }
@@ -220,9 +220,7 @@ struct MainMenuCommandPaletteView: View {
     }
 
     private func row(for item: MainMenuCommandPaletteItem) -> some View {
-        let isSelected = selectedItemID == item.id
-
-        return HStack(spacing: 8) {
+        HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(WorkbenchTypography.body)
@@ -238,13 +236,6 @@ struct MainMenuCommandPaletteView: View {
 
             Spacer()
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.clear)
-        )
-        .contentShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
     }
 
     private func synchronizeSelectionWithVisibleItems() {

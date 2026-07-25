@@ -40,9 +40,7 @@ struct CommitComposerSectionView: View {
                 .frame(maxWidth: .infinity)
             }
             .frame(maxWidth: .infinity)
-            .controlSize(.large)
-            .buttonStyle(.borderedProminent)
-            .tint(isPrimaryButtonDisabled ? .gray.opacity(0.75) : nil)
+            .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
             .disabled(isPrimaryButtonDisabled)
             .keyboardShortcut(.defaultAction)
 

@@ -27,7 +27,7 @@ extension MainMenuView {
             Button("Create Repo") {
                 presentationModel.showCreateRepo(path: path)
             }
-            .buttonStyle(.link)
+            .workbenchGhost()
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)

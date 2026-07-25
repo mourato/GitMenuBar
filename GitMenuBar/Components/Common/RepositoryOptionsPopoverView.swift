@@ -26,7 +26,7 @@ struct RepositoryOptionsPopoverView: View {
                     symbol: "lock.circle"
                 )
             }
-            .buttonStyle(.plain)
+            .workbenchRow()
 
             Button(role: .destructive, action: onDeleteRepository) {
                 actionRow(
@@ -34,7 +34,7 @@ struct RepositoryOptionsPopoverView: View {
                     symbol: "trash"
                 )
             }
-            .buttonStyle(.plain)
+            .workbenchDestructiveRow()
         }
         .padding(WorkbenchMetrics.panelPadding)
         .frame(width: 280, alignment: .leading)
@@ -51,13 +51,6 @@ struct RepositoryOptionsPopoverView: View {
 
             Spacer()
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
-                .fill(WorkbenchPalette.hoverFill())
-        )
-        .contentShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
     }
 }
 

@@ -27,7 +27,7 @@ struct ProjectSelectorPopoverView: View {
                             Spacer()
                         }
                     })
-                    .buttonStyle(.plain)
+                    .workbenchRow(isSelected: path == currentRepoPath)
                 }
             }
 
@@ -35,11 +35,13 @@ struct ProjectSelectorPopoverView: View {
                 Button(action: onBrowse) {
                     Label("Choose Repository…", systemImage: "folder")
                 }
+                .workbenchRow()
 
                 if let onShowRepositoryOptions {
                     Button(action: onShowRepositoryOptions) {
                         Label("Repository Options…", systemImage: "ellipsis.circle")
                     }
+                    .workbenchRow()
                 }
             }
         }

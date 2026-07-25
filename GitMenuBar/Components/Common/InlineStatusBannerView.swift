@@ -41,7 +41,7 @@ struct InlineStatusBannerView: View {
             Spacer(minLength: 0)
 
             Button("Dismiss", action: onDismiss)
-                .buttonStyle(.borderless)
+                .workbenchGhost()
                 .accessibilityHint("Clears the current status message.")
         }
         .padding(.horizontal, WorkbenchMetrics.panelPadding)
