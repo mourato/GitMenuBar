@@ -11,8 +11,8 @@ struct UsageQuotaStripView: View {
                     UsageQuotaProviderRow(snapshot: snapshot)
                 }
             }
-            .padding(.horizontal, MacChromeMetrics.windowPadding)
-            .padding(.vertical, MacChromeMetrics.compactSpacing)
+            .padding(.horizontal, WorkbenchMetrics.windowPadding)
+            .padding(.vertical, WorkbenchMetrics.compactSpacing)
             .task {
                 usageQuotaStore.refresh(reason: .contentAppeared)
             }
@@ -24,15 +24,15 @@ private struct UsageQuotaProviderRow: View {
     let snapshot: UsageQuotaSnapshot
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: MacChromeMetrics.compactSpacing) {
+        HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.compactSpacing) {
             Text(snapshot.displayName)
-                .font(MacChromeTypography.captionStrong)
+                .font(WorkbenchTypography.captionStrong)
                 .foregroundStyle(snapshot.isStale ? .secondary : .primary)
                 .frame(minWidth: 52, alignment: .leading)
 
             if let window = snapshot.primaryDisplayWindow {
                 Text(window.intervalChip)
-                    .font(MacChromeTypography.caption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 1)
@@ -54,17 +54,17 @@ private struct UsageQuotaProviderRow: View {
                snapshot.primaryDisplayWindow?.label != weekly.label
                || snapshot.primaryDisplayWindow?.remainingPercent != weekly.remainingPercent {
                 Text("\(weekly.intervalChip) \(weekly.remainingPercent)%")
-                    .font(MacChromeTypography.caption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             }
 
             if let resetCreditsAvailable = snapshot.resetCreditsAvailable {
                 Text(resetCreditsLabel(resetCreditsAvailable))
-                    .font(MacChromeTypography.caption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             } else if let creditValueText = snapshot.creditValueText {
                 Text(creditValueText)
-                    .font(MacChromeTypography.caption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             }
         }
@@ -118,11 +118,11 @@ private struct UsageQuotaPercentBadge: View {
                 .accessibilityHidden(true)
 
             Text("\(percent)%")
-                .font(MacChromeTypography.captionStrong)
+                .font(WorkbenchTypography.captionStrong)
                 .foregroundStyle(trafficLightColor)
 
             Text(UsageQuotaFormatting.resetCountdown(until: resetAt))
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
         }
     }

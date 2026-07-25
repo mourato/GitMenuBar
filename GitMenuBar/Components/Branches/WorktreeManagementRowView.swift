@@ -10,29 +10,29 @@ struct WorktreeManagementRowView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: info.worktree.isDetached ? "rectangle.dashed" : "folder.fill")
-                .font(MacChromeTypography.body)
+                .font(WorkbenchTypography.body)
                 .foregroundStyle(.secondary)
                 .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(info.worktree.branchName ?? "Detached HEAD")
-                        .font(MacChromeTypography.body)
+                        .font(WorkbenchTypography.body)
                         .lineLimit(1)
                     Text(shortHash)
-                        .font(MacChromeTypography.monospacedCaption)
+                        .font(WorkbenchTypography.monospacedCaption)
                         .foregroundStyle(.secondary)
                 }
 
                 Text(info.worktree.path)
-                    .font(MacChromeTypography.monospacedCaption)
+                    .font(WorkbenchTypography.monospacedCaption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
                     .truncationMode(.middle)
 
                 if let statusDetail {
                     Text(statusDetail)
-                        .font(MacChromeTypography.caption)
+                        .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
@@ -41,11 +41,11 @@ struct WorktreeManagementRowView: View {
                     CleanupStatusBadgeView(status: info.status)
                     if info.worktree.workingTreeState == .clean {
                         Label("Clean", systemImage: "checkmark")
-                            .font(MacChromeTypography.caption)
+                            .font(WorkbenchTypography.caption)
                             .foregroundStyle(.secondary)
                     } else if info.worktree.workingTreeState == .dirty {
                         Label("Uncommitted changes", systemImage: "pencil")
-                            .font(MacChromeTypography.caption)
+                            .font(WorkbenchTypography.caption)
                             .foregroundStyle(.orange)
                     }
                 }
@@ -58,7 +58,7 @@ struct WorktreeManagementRowView: View {
                 Button("Copy Path", action: onCopyPath)
             } label: {
                 Image(systemName: "ellipsis.circle")
-                    .font(MacChromeTypography.body)
+                    .font(WorkbenchTypography.body)
                     .foregroundStyle(.secondary)
             }
             .menuStyle(.borderlessButton)
@@ -68,8 +68,8 @@ struct WorktreeManagementRowView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(minHeight: 58)
-        .background(isHovered ? MacChromePalette.hoverFill() : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
+        .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .onHover { inside in
             isHovered = inside
         }

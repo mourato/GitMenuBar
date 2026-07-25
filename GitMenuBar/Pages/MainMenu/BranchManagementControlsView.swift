@@ -57,14 +57,14 @@ struct BranchManagementControlsView: View {
                     onAtomicCommits()
                 }
                 .buttonStyle(.borderless)
-                .font(MacChromeTypography.detail)
+                .font(WorkbenchTypography.detail)
             }
 
             Button("Manage…") {
                 onManage()
             }
             .buttonStyle(.borderless)
-            .font(MacChromeTypography.detail)
+            .font(WorkbenchTypography.detail)
         }
     }
 }

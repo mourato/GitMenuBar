@@ -1,14 +1,14 @@
 import SwiftUI
 
-enum MacPanelMaterialWeight {
+enum WorkbenchMaterialWeight {
     case thin
     case regular
     case thick
 }
 
-private struct MacPanelSurfaceModifier: ViewModifier {
+private struct WorkbenchPanelSurfaceModifier: ViewModifier {
     let cornerRadius: CGFloat
-    let materialWeight: MacPanelMaterialWeight
+    let materialWeight: WorkbenchMaterialWeight
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
@@ -37,7 +37,10 @@ private struct MacPanelSurfaceModifier: ViewModifier {
 }
 
 extension View {
-    func macPanelSurface(cornerRadius: CGFloat = MacChromeMetrics.largeCornerRadius, material: MacPanelMaterialWeight = .regular) -> some View {
-        modifier(MacPanelSurfaceModifier(cornerRadius: cornerRadius, materialWeight: material))
+    func workbenchPanelSurface(
+        cornerRadius: CGFloat = WorkbenchMetrics.largeCornerRadius,
+        material: WorkbenchMaterialWeight = .regular
+    ) -> some View {
+        modifier(WorkbenchPanelSurfaceModifier(cornerRadius: cornerRadius, materialWeight: material))
     }
 }

@@ -15,7 +15,7 @@ struct BottomBranchSelectorView: View {
         Button(action: onTap) {
             HStack(spacing: 8) {
                 Label(currentBranch, systemImage: "arrow.triangle.branch")
-                    .font(MacChromeTypography.detail)
+                    .font(WorkbenchTypography.detail)
                     .foregroundStyle(.primary)
                     .labelStyle(.titleAndIcon)
                     .lineLimit(1)
@@ -29,23 +29,23 @@ struct BottomBranchSelectorView: View {
                 }
             }
             .padding(.horizontal, 10)
-            .frame(minHeight: 28)
+            .frame(minHeight: WorkbenchMetrics.iconHitTarget)
             .background(backgroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
             .animation(
-                MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
                 value: currentBranch
             )
             .animation(
-                MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
                 value: commitCount
             )
             .animation(
-                MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
                 value: isRemoteAhead
             )
             .animation(
-                MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
                 value: behindCount
             )
         }
@@ -76,7 +76,7 @@ struct BottomBranchSelectorView: View {
             Text("\(count)")
                 .contentTransition(reduceMotion ? .identity : .numericText())
         }
-        .font(MacChromeTypography.captionStrong)
+        .font(WorkbenchTypography.captionStrong)
         .foregroundStyle(style.foregroundColor)
         .padding(.horizontal, 7)
         .frame(minHeight: 20)
@@ -101,9 +101,9 @@ private enum BadgeStyle {
     func backgroundColor(colorSchemeContrast: ColorSchemeContrast) -> Color {
         switch self {
         case .accent:
-            return MacChromePalette.accentFill(contrast: colorSchemeContrast)
+            return WorkbenchPalette.accentFill(contrast: colorSchemeContrast)
         case .warning:
-            return MacChromePalette.warningFill(contrast: colorSchemeContrast)
+            return WorkbenchPalette.warningFill(contrast: colorSchemeContrast)
         }
     }
 }

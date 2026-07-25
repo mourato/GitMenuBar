@@ -10,7 +10,7 @@ struct PressableButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
             .animation(
-                MacChromeMotion.adaptive(MacChromeMotion.press, usesReducedMotion: reduceMotion),
+                WorkbenchMotion.adaptive(WorkbenchMotion.press, usesReducedMotion: reduceMotion),
                 value: configuration.isPressed
             )
     }
@@ -30,7 +30,7 @@ private struct PressableModifier: ViewModifier {
         content
             .scaleEffect(isPressed ? 0.98 : 1.0)
             .animation(
-                MacChromeMotion.adaptive(MacChromeMotion.press, usesReducedMotion: reduceMotion),
+                WorkbenchMotion.adaptive(WorkbenchMotion.press, usesReducedMotion: reduceMotion),
                 value: isPressed
             )
             .simultaneousGesture(
@@ -49,7 +49,7 @@ struct AdaptiveMotionModifier: ViewModifier {
         content
             .transaction { transaction in
                 if reduceMotion {
-                    transaction.animation = MacChromeMotion.reduceMotion
+                    transaction.animation = WorkbenchMotion.reduceMotion
                 }
             }
     }
@@ -61,18 +61,23 @@ extension View {
     }
 }
 
-enum MacChromeMetrics {
+enum WorkbenchMetrics {
+    static let microSpacing: CGFloat = 4
+    static let chipSpacing: CGFloat = 6
     static let compactSpacing: CGFloat = 8
     static let sectionSpacing: CGFloat = 12
     static let groupSpacing: CGFloat = 20
     static let panelPadding: CGFloat = 16
     static let windowPadding: CGFloat = 20
+    static let microCornerRadius: CGFloat = 6
     static let rowCornerRadius: CGFloat = 8
     static let cornerRadius: CGFloat = 10
     static let largeCornerRadius: CGFloat = 14
+    static let overlayCornerRadius: CGFloat = 16
+    static let iconHitTarget: CGFloat = 28
 }
 
-enum MacChromeTypography {
+enum WorkbenchTypography {
     static var windowTitle: Font {
         .headline
     }
@@ -120,7 +125,7 @@ enum MacChromeTypography {
     }
 }
 
-enum MacChromePalette {
+enum WorkbenchPalette {
     static func hoverFill() -> Color {
         Color.primary.opacity(0.06)
     }

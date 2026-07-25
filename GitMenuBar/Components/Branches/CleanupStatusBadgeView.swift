@@ -86,7 +86,7 @@ struct CleanupStatusBadgeView: View {
 
     var body: some View {
         Label(title, systemImage: systemImage)
-            .font(MacChromeTypography.captionStrong)
+            .font(WorkbenchTypography.captionStrong)
             .foregroundStyle(foregroundColor)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
@@ -110,13 +110,13 @@ struct CleanupStatusBadgeView: View {
     private var backgroundColor: Color {
         switch tone {
         case .success:
-            return MacChromePalette.successFill(contrast: colorSchemeContrast)
+            return WorkbenchPalette.successFill(contrast: colorSchemeContrast)
         case .warning:
-            return MacChromePalette.warningFill(contrast: colorSchemeContrast)
+            return WorkbenchPalette.warningFill(contrast: colorSchemeContrast)
         case .neutral:
-            return MacChromePalette.hoverFill()
+            return WorkbenchPalette.hoverFill()
         case .error:
-            return MacChromePalette.errorFill(contrast: colorSchemeContrast)
+            return WorkbenchPalette.errorFill(contrast: colorSchemeContrast)
         }
     }
 }

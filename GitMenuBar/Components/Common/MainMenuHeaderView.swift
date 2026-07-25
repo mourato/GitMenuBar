@@ -37,24 +37,24 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
     }
 
     var body: some View {
-        HStack(spacing: MacChromeMetrics.compactSpacing) {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
             Button(action: { showProjectSelector.toggle() }, label: {
-                HStack(spacing: 6) {
+                HStack(spacing: WorkbenchMetrics.chipSpacing) {
                     Text(currentProjectName)
-                        .font(MacChromeTypography.windowTitle)
+                        .font(WorkbenchTypography.windowTitle)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .foregroundStyle(.primary)
                     Image(systemName: "chevron.down")
-                        .font(MacChromeTypography.captionStrong)
+                        .font(WorkbenchTypography.captionStrong)
                         .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous)
-                        .fill(isProjectHovered ? MacChromePalette.hoverFill() : Color.clear)
+                    RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
+                        .fill(isProjectHovered ? WorkbenchPalette.hoverFill() : Color.clear)
                 )
             })
             .buttonStyle(.plain)
@@ -97,7 +97,7 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
         }
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity)
-        .macPanelSurface(cornerRadius: MacChromeMetrics.cornerRadius, material: .thin)
+        .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.cornerRadius, material: .thin)
     }
 }
 

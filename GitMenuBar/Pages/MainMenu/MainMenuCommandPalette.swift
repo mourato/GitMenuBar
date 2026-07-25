@@ -119,10 +119,10 @@ struct MainMenuCommandPaletteView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(alignment: .leading, spacing: MacChromeMetrics.sectionSpacing) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
             TextField("Search commands", text: $query)
                 .textFieldStyle(.roundedBorder)
-                .font(MacChromeTypography.field)
+                .font(WorkbenchTypography.field)
                 .focused($isSearchFieldFocused)
                 .onSubmit {
                     executeSelectedOrFirstVisibleItem()
@@ -154,11 +154,11 @@ struct MainMenuCommandPaletteView: View {
                 }
             }
         }
-        .padding(MacChromeMetrics.panelPadding)
+        .padding(WorkbenchMetrics.panelPadding)
         .frame(width: 360)
         .background(backgroundStyle)
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.overlayCornerRadius, style: .continuous)
                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.10), radius: 16, x: 0, y: 8)
@@ -176,11 +176,11 @@ struct MainMenuCommandPaletteView: View {
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.chipSpacing) {
             Text("No matching commands")
-                .font(MacChromeTypography.sectionLabel)
+                .font(WorkbenchTypography.sectionLabel)
             Text("Try another query.")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 18)
@@ -190,18 +190,18 @@ struct MainMenuCommandPaletteView: View {
     @ViewBuilder
     private var backgroundStyle: some View {
         if reduceTransparency {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.overlayCornerRadius, style: .continuous)
                 .fill(Color(nsColor: .windowBackgroundColor))
         } else {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.overlayCornerRadius, style: .continuous)
                 .fill(.regularMaterial)
         }
     }
 
     private func sectionView(section: MainMenuCommandPaletteSection, items: [MainMenuCommandPaletteItem]) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
             Text(section.title)
-                .font(MacChromeTypography.captionStrong)
+                .font(WorkbenchTypography.captionStrong)
                 .foregroundColor(.secondary)
 
             ForEach(items) { item in
@@ -225,12 +225,12 @@ struct MainMenuCommandPaletteView: View {
         return HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
-                    .font(MacChromeTypography.body)
+                    .font(WorkbenchTypography.body)
                     .foregroundColor(item.isEnabled ? .primary : .secondary)
 
                 if let subtitle = item.subtitle {
                     Text(subtitle)
-                        .font(MacChromeTypography.caption)
+                        .font(WorkbenchTypography.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
@@ -241,10 +241,10 @@ struct MainMenuCommandPaletteView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
                 .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.clear)
         )
-        .contentShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
     }
 
     private func synchronizeSelectionWithVisibleItems() {

@@ -44,7 +44,7 @@ struct CleanupConfirmationView: View {
                 .font(.headline.weight(.semibold))
 
             Text(summaryText)
-                .font(MacChromeTypography.detail)
+                .font(WorkbenchTypography.detail)
                 .foregroundStyle(.secondary)
 
             if requiresRiskReview && !didReviewRisk {
@@ -52,7 +52,7 @@ struct CleanupConfirmationView: View {
                     "Worktree directories will be removed from disk. Review the list before continuing.",
                     systemImage: "exclamationmark.triangle.fill"
                 )
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.orange)
             }
 
@@ -79,7 +79,7 @@ struct CleanupConfirmationView: View {
         }
         .padding(20)
         .frame(width: 460)
-        .macPanelSurface(cornerRadius: MacChromeMetrics.largeCornerRadius, material: .regular)
+        .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.largeCornerRadius, material: .regular)
         .accessibilityElement(children: .contain)
     }
 
@@ -92,16 +92,16 @@ struct CleanupConfirmationView: View {
     private func targetSection(_ title: String, targets: [GitCleanupTarget]) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text("\(title) (\(targets.count))")
-                .font(MacChromeTypography.sectionLabel)
+                .font(WorkbenchTypography.sectionLabel)
                 .foregroundStyle(.secondary)
             if targets.isEmpty {
                 Text("None selected")
-                    .font(MacChromeTypography.caption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(targets) { target in
                     Label(target.title, systemImage: icon(for: target))
-                        .font(MacChromeTypography.caption)
+                        .font(WorkbenchTypography.caption)
                         .lineLimit(2)
                 }
             }

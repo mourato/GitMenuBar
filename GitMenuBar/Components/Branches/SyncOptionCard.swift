@@ -26,7 +26,7 @@ struct SyncOptionCard: View {
                 }
                 Spacer()
             }
-            .padding(MacChromeMetrics.compactSpacing)
+            .padding(WorkbenchMetrics.compactSpacing)
             .background(backgroundColor, in: RoundedRectangle(cornerRadius: 6))
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
@@ -40,11 +40,11 @@ struct SyncOptionCard: View {
     private var backgroundColor: Color {
         switch tone {
         case .accent:
-            return MacChromePalette.accentFill(contrast: colorSchemeContrast)
+            return WorkbenchPalette.accentFill(contrast: colorSchemeContrast)
         case .warning:
-            return MacChromePalette.warningFill(contrast: colorSchemeContrast)
+            return WorkbenchPalette.warningFill(contrast: colorSchemeContrast)
         case .success:
-            return MacChromePalette.successFill(contrast: colorSchemeContrast)
+            return WorkbenchPalette.successFill(contrast: colorSchemeContrast)
         }
     }
 
@@ -53,7 +53,7 @@ struct SyncOptionCard: View {
         case .accent:
             return Color.accentColor.opacity(colorSchemeContrast == .increased ? 0.65 : 0.25)
         case .warning:
-            return MacChromePalette.warningBorder(contrast: colorSchemeContrast)
+            return WorkbenchPalette.warningBorder(contrast: colorSchemeContrast)
         case .success:
             return Color.green.opacity(colorSchemeContrast == .increased ? 0.65 : 0.3)
         }

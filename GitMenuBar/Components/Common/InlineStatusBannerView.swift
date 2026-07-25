@@ -21,7 +21,7 @@ struct InlineStatusBannerView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
-        HStack(alignment: .top, spacing: MacChromeMetrics.compactSpacing) {
+        HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
             Image(systemName: iconName)
                 .foregroundStyle(iconColor)
                 .accessibilityHidden(true)
@@ -44,16 +44,16 @@ struct InlineStatusBannerView: View {
                 .buttonStyle(.borderless)
                 .accessibilityHint("Clears the current status message.")
         }
-        .padding(.horizontal, MacChromeMetrics.panelPadding)
-        .padding(.vertical, MacChromeMetrics.compactSpacing)
+        .padding(.horizontal, WorkbenchMetrics.panelPadding)
+        .padding(.vertical, WorkbenchMetrics.compactSpacing)
         .background(
             banner.style == .info
                 ? infoBackground
                 : AnyShapeStyle(backgroundColor),
-            in: RoundedRectangle(cornerRadius: MacChromeMetrics.cornerRadius)
+            in: RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: MacChromeMetrics.cornerRadius)
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius)
                 .strokeBorder(borderColor, lineWidth: colorSchemeContrast == .increased ? 1.5 : 1)
         )
     }
@@ -93,9 +93,9 @@ struct InlineStatusBannerView: View {
         case .info:
             return Color(nsColor: .controlBackgroundColor)
         case .warning:
-            return MacChromePalette.warningFill(contrast: colorSchemeContrast)
+            return WorkbenchPalette.warningFill(contrast: colorSchemeContrast)
         case .error:
-            return MacChromePalette.errorFill(contrast: colorSchemeContrast)
+            return WorkbenchPalette.errorFill(contrast: colorSchemeContrast)
         }
     }
 
@@ -104,9 +104,9 @@ struct InlineStatusBannerView: View {
         case .info:
             return Color.secondary.opacity(colorSchemeContrast == .increased ? 0.6 : 0.2)
         case .warning:
-            return MacChromePalette.warningBorder(contrast: colorSchemeContrast)
+            return WorkbenchPalette.warningBorder(contrast: colorSchemeContrast)
         case .error:
-            return MacChromePalette.errorBorder(contrast: colorSchemeContrast)
+            return WorkbenchPalette.errorBorder(contrast: colorSchemeContrast)
         }
     }
 }

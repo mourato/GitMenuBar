@@ -69,7 +69,7 @@ struct BranchManagementListView: View {
                 .foregroundStyle(.secondary)
             TextField(filterPlaceholder, text: $query)
                 .textFieldStyle(.plain)
-                .font(MacChromeTypography.body)
+                .font(WorkbenchTypography.body)
             if !query.isEmpty {
                 Button {
                     query = ""
@@ -84,7 +84,7 @@ struct BranchManagementListView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
     }
@@ -162,13 +162,13 @@ struct BranchManagementListView: View {
 
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
-            .font(MacChromeTypography.sectionLabel)
+            .font(WorkbenchTypography.sectionLabel)
             .foregroundStyle(.secondary)
     }
 
     private var emptyHint: some View {
         Text("No branches match your filter.")
-            .font(MacChromeTypography.caption)
+            .font(WorkbenchTypography.caption)
             .foregroundStyle(.secondary)
             .padding(.leading, 4)
     }
@@ -201,14 +201,14 @@ struct WorktreeManagementContentView: View {
             .padding(16)
         } else if filteredWorktrees.isEmpty {
             Text("No worktrees match your filter.")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
                 .padding(16)
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 if let snapshot {
                     Text("\(snapshot.worktrees.count) worktree\(snapshot.worktrees.count == 1 ? "" : "s")")
-                        .font(MacChromeTypography.sectionLabel)
+                        .font(WorkbenchTypography.sectionLabel)
                         .foregroundStyle(.secondary)
                 }
                 ForEach(filteredWorktrees) { info in
@@ -276,7 +276,7 @@ struct CleanupManagementContentView: View {
                 summary(snapshot: snapshot)
                 if localInfos.isEmpty {
                     Text("No local branches match your filter.")
-                        .font(MacChromeTypography.caption)
+                        .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(localInfos) { info in
@@ -294,7 +294,7 @@ struct CleanupManagementContentView: View {
             .padding(16)
         } else {
             Text("No cleanup analysis is available.")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
                 .padding(16)
         }
@@ -304,14 +304,14 @@ struct CleanupManagementContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Label("Default branch: \(snapshot.defaultBranchName)", systemImage: "arrow.triangle.branch")
-                    .font(MacChromeTypography.sectionLabel)
+                    .font(WorkbenchTypography.sectionLabel)
                 Spacer()
                 Text("Local refs")
-                    .font(MacChromeTypography.caption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             }
             Text(snapshot.analysisDescription)
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
             HStack(spacing: 8) {
                 summaryCount(eligibleCount, title: "eligible", color: .green)
@@ -322,7 +322,7 @@ struct CleanupManagementContentView: View {
         .padding(10)
         .background(
             Color(nsColor: .controlBackgroundColor),
-            in: RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius)
+            in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius)
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
@@ -333,7 +333,7 @@ struct CleanupManagementContentView: View {
 
     private func summaryCount(_ count: Int, title: String, color: Color) -> some View {
         Label("\(count) \(title)", systemImage: "circle.fill")
-            .font(MacChromeTypography.captionStrong)
+            .font(WorkbenchTypography.captionStrong)
             .foregroundStyle(color)
     }
 
@@ -365,17 +365,17 @@ struct CleanupManagementContentView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(info.reference.name)
-                    .font(MacChromeTypography.body)
+                    .font(WorkbenchTypography.body)
                 if let worktreePath = info.worktreePath {
                     Text("Checked out at \(worktreePath)")
-                        .font(MacChromeTypography.caption)
+                        .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
                 if let detail = statusDetail(for: info.status), info.worktreePath == nil {
                     Text(detail)
-                        .font(MacChromeTypography.caption)
+                        .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
@@ -385,8 +385,8 @@ struct CleanupManagementContentView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(info.isEligible ? Color.clear : MacChromePalette.hoverFill())
-        .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
+        .background(info.isEligible ? Color.clear : WorkbenchPalette.hoverFill())
+        .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(cleanupAccessibilityLabel(for: info))
     }

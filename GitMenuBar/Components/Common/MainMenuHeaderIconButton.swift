@@ -12,11 +12,11 @@ struct MainMenuHeaderIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(MacChromeTypography.body)
-                .frame(width: 28, height: 28)
+                .font(WorkbenchTypography.body)
+                .frame(width: WorkbenchMetrics.iconHitTarget, height: WorkbenchMetrics.iconHitTarget)
                 .background(
-                    RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous)
-                        .fill(isHovered ? MacChromePalette.hoverFill() : Color.clear)
+                    RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
+                        .fill(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
                 )
         }
         .buttonStyle(.plain)
@@ -30,7 +30,7 @@ struct MainMenuHeaderIconButton: View {
 }
 
 #Preview("Header Icon Button") {
-    HStack(spacing: MacChromeMetrics.compactSpacing) {
+    HStack(spacing: WorkbenchMetrics.compactSpacing) {
         MainMenuHeaderIconButton(
             systemImage: "ellipsis.circle",
             accessibilityLabel: "Repository options",
