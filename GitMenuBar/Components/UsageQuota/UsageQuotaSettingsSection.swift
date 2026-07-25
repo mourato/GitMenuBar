@@ -16,7 +16,7 @@ struct UsageQuotaSettingsSection: View {
 
             Toggle(isOn: $usageQuotaStore.showAIUsageQuotas) {
                 Text("Show AI usage in menu")
-                    .font(MacChromeTypography.body)
+                    .font(WorkbenchTypography.body)
             }
             .toggleStyle(.switch)
             .controlSize(.small)
@@ -24,7 +24,7 @@ struct UsageQuotaSettingsSection: View {
 
             Toggle(isOn: $usageQuotaStore.showCodexUsageQuota) {
                 Text("Codex")
-                    .font(MacChromeTypography.body)
+                    .font(WorkbenchTypography.body)
             }
             .toggleStyle(.switch)
             .controlSize(.small)
@@ -33,7 +33,7 @@ struct UsageQuotaSettingsSection: View {
 
             Toggle(isOn: $usageQuotaStore.showCursorUsageQuota) {
                 Text("Cursor")
-                    .font(MacChromeTypography.body)
+                    .font(WorkbenchTypography.body)
             }
             .toggleStyle(.switch)
             .controlSize(.small)
@@ -44,7 +44,7 @@ struct UsageQuotaSettingsSection: View {
                 "Quota data stays on this Mac. GitMenuBar reads your local Codex and Cursor sessions "
                     + "and calls unofficial usage endpoints only when refreshing — it never stores OAuth tokens."
             )
-            .font(MacChromeTypography.caption)
+            .font(WorkbenchTypography.caption)
             .foregroundColor(.secondary)
             .fixedSize(horizontal: false, vertical: true)
 
@@ -52,7 +52,7 @@ struct UsageQuotaSettingsSection: View {
                 usageQuotaStore.refresh(reason: .manual)
             }
             .buttonStyle(.borderless)
-            .font(MacChromeTypography.detail)
+            .font(WorkbenchTypography.detail)
             .disabled(!usageQuotaStore.showAIUsageQuotas)
         }
     }

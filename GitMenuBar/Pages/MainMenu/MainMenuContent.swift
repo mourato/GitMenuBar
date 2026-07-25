@@ -27,7 +27,7 @@ extension MainMenuView {
     }
 
     private var mainScrollContent: some View {
-        VStack(alignment: .leading, spacing: MacChromeMetrics.groupSpacing) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
             if let inlineStatusBanner {
                 InlineStatusBannerView(
                     banner: inlineStatusBanner,
@@ -172,7 +172,7 @@ extension MainMenuView {
 
     var mainView: some View {
         applyMainViewOverlays(
-            to: VStack(spacing: MacChromeMetrics.groupSpacing) {
+            to: VStack(spacing: WorkbenchMetrics.groupSpacing) {
                 MainMenuHeaderView(
                     currentProjectName: currentProjectName,
                     showProjectSelector: $showProjectSelector,

@@ -17,7 +17,7 @@ struct NewBranchButton: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(isHovered ? MacChromePalette.hoverFill() : Color.clear)
+            .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

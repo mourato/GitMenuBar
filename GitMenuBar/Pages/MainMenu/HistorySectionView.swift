@@ -45,7 +45,7 @@ struct HistorySectionView: View {
                             onLoadMore()
                         }
                         .buttonStyle(.link)
-                        .font(MacChromeTypography.detail)
+                        .font(WorkbenchTypography.detail)
                         .disabled(isLoading)
                     }
                     .padding(.top, 2)

@@ -24,7 +24,7 @@ struct AtomicCommitReviewSheet: View {
         }
         .padding(20)
         .frame(width: 520)
-        .macPanelSurface(cornerRadius: MacChromeMetrics.largeCornerRadius, material: .thick)
+        .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.largeCornerRadius, material: .thick)
         .onAppear(perform: generateIfNeeded)
     }
 
@@ -33,7 +33,7 @@ struct AtomicCommitReviewSheet: View {
             Text("Review Atomic Commits")
                 .font(.headline.weight(.semibold))
             Text("Grouped changes into logical commits. Edit messages, move files between groups, then create the commits.")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -45,7 +45,7 @@ struct AtomicCommitReviewSheet: View {
             ProgressView()
                 .controlSize(.regular)
             Text("Analyzing changes with AI…")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
             Spacer()
         }
@@ -59,7 +59,7 @@ struct AtomicCommitReviewSheet: View {
                 .font(.largeTitle)
                 .foregroundStyle(.orange)
             Text(message)
-                .font(MacChromeTypography.body)
+                .font(WorkbenchTypography.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -118,11 +118,11 @@ struct AtomicCommitReviewSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text("Group \(index + 1)")
-                    .font(MacChromeTypography.captionStrong)
+                    .font(WorkbenchTypography.captionStrong)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text("\(groups[index].fileCount) file\(groups[index].fileCount == 1 ? "" : "s")")
-                    .font(MacChromeTypography.caption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
                 if groups.count > 1 {
                     Button(action: { removeGroup(at: index) }) {
@@ -146,16 +146,16 @@ struct AtomicCommitReviewSheet: View {
         }
         .padding(12)
         .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
     }
 
     private func fileRow(file: String, groupIndex: Int) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "doc")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
             Text(file)
-                .font(MacChromeTypography.body)
+                .font(WorkbenchTypography.body)
                 .lineLimit(1)
             Spacer()
             HStack(spacing: 4) {

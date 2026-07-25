@@ -9,10 +9,10 @@ struct SettingsSection<Content: View>: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Image(systemName: systemImage)
-                    .font(MacChromeTypography.detail)
+                    .font(WorkbenchTypography.detail)
                     .foregroundColor(.secondary)
                 Text(title)
-                    .font(MacChromeTypography.sectionLabel)
+                    .font(WorkbenchTypography.sectionLabel)
             }
             .padding(.top, 4)
 
@@ -24,7 +24,7 @@ struct SettingsSection<Content: View>: View {
 #Preview("Settings Section") {
     SettingsSection(title: "Preview Section", systemImage: "slider.horizontal.3") {
         Text("Example content")
-            .font(MacChromeTypography.caption)
+            .font(WorkbenchTypography.caption)
             .foregroundColor(.secondary)
     }
     .padding()

@@ -13,14 +13,14 @@ struct RecentProjectsSection: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Text("Recently Used")
-                        .font(MacChromeTypography.sectionLabel)
+                        .font(WorkbenchTypography.sectionLabel)
                         .foregroundColor(.secondary)
 
                     Spacer()
 
                     Toggle("Show full path", isOn: $showFullPathInRecents)
                         .toggleStyle(.checkbox)
-                        .font(MacChromeTypography.caption)
+                        .font(WorkbenchTypography.caption)
                 }
 
                 ForEach(recentPaths.filter { $0 != currentRepoPath }.prefix(5), id: \.self) { path in
@@ -39,7 +39,7 @@ struct RecentProjectsSection: View {
             }
             .padding(.top, 4)
             .animation(
-                MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
                 value: showFullPathInRecents
             )
         }

@@ -36,7 +36,7 @@ struct HistoryTimelineSectionView: View {
             }
 
             Text(isLoading ? "Loading history…" : "No commits yet")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
@@ -47,7 +47,7 @@ struct HistoryTimelineSectionView: View {
             ForEach(sections) { section in
                 VStack(alignment: .leading, spacing: 6) {
                     Text(section.title)
-                        .font(MacChromeTypography.sectionLabel)
+                        .font(WorkbenchTypography.sectionLabel)
                         .foregroundColor(.secondary)
 
                     VStack(spacing: 0) {
@@ -108,7 +108,7 @@ private struct HistoryTimelineRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(commit.subject)
-                        .font(MacChromeTypography.body)
+                        .font(WorkbenchTypography.body)
                         .foregroundColor(titleColor)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -116,7 +116,7 @@ private struct HistoryTimelineRowView: View {
 
                     if isFutureCommit {
                         Text("Future")
-                            .font(MacChromeTypography.captionStrong)
+                            .font(WorkbenchTypography.captionStrong)
                             .foregroundColor(.blue)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
@@ -127,7 +127,7 @@ private struct HistoryTimelineRowView: View {
                     Spacer(minLength: 0)
 
                     Image(systemName: "chevron.right")
-                        .font(MacChromeTypography.captionStrong)
+                        .font(WorkbenchTypography.captionStrong)
                         .foregroundColor(.secondary)
                 }
             }
@@ -144,7 +144,7 @@ private struct HistoryTimelineRowView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .contentShape(RoundedRectangle(cornerRadius: 8))
         .animation(
-            MacChromeMotion.adaptive(MacChromeMotion.micro, usesReducedMotion: reduceMotion),
+            WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
             value: isHovered
         )
         .onTapGesture {

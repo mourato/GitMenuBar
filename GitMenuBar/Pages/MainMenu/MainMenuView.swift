@@ -161,11 +161,11 @@ struct MainMenuView: View {
         }
         .adaptiveMotion()
         .animation(
-            MacChromeMotion.adaptive(MacChromeMotion.route, usesReducedMotion: reduceMotion),
+            WorkbenchMotion.adaptive(WorkbenchMotion.route, usesReducedMotion: reduceMotion),
             value: presentationModel.route
         )
         .animation(
-            MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+            WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
             value: isCommandPalettePresented
         )
         .confirmationDialogs(
@@ -267,8 +267,8 @@ struct MainMenuView: View {
             }
         )
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
-        .padding(.horizontal, MacChromeMetrics.windowPadding)
-        .padding(.bottom, MacChromeMetrics.windowPadding)
+        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+        .padding(.bottom, WorkbenchMetrics.windowPadding)
         .frame(minWidth: 400, idealWidth: 440, maxWidth: .infinity)
         .onAppear {
             reloadRepositorySelectionSnapshot()

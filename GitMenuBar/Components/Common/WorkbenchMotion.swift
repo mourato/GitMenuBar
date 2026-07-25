@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum MacChromeMotion {
+enum WorkbenchMotion {
     static let micro: Animation = .easeOut(duration: 0.13)
     static let arrive: Animation = .snappy(duration: 0.30, extraBounce: 0.02)
     static let settle: Animation = .smooth(duration: 0.34)

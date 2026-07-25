@@ -12,20 +12,20 @@ struct HistorySectionHeaderView: View {
         HStack(spacing: 8) {
             Button {
                 withAnimation(
-                    MacChromeMotion.adaptive(MacChromeMotion.settle, usesReducedMotion: reduceMotion)
+                    WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion)
                 ) {
                     isCollapsed.toggle()
                 }
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                        .font(MacChromeTypography.captionStrong)
+                        .font(WorkbenchTypography.captionStrong)
                         .foregroundColor(.secondary)
                         .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
 
                     Text("History")
-                        .font(MacChromeTypography.body)
-                        .tracking(MacChromeTypography.tracking(for: .subheadline))
+                        .font(WorkbenchTypography.body)
+                        .tracking(WorkbenchTypography.tracking(for: .subheadline))
                 }
             }
             .buttonStyle(PressableButtonStyle())
@@ -39,7 +39,7 @@ struct HistorySectionHeaderView: View {
                 .foregroundColor(.secondary)
                 .contentTransition(reduceMotion ? .identity : .numericText())
                 .animation(
-                    MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                    WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
                     value: commitCount
                 )
         }
@@ -53,7 +53,7 @@ struct HistorySectionHeaderView: View {
         )
         .contentShape(Rectangle())
         .animation(
-            MacChromeMotion.adaptive(MacChromeMotion.micro, usesReducedMotion: reduceMotion),
+            WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
             value: isHovered
         )
         .onHover { inside in

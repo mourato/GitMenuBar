@@ -7,13 +7,13 @@ struct RepositoryOptionsPopoverView: View {
     let onDeleteRepository: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: MacChromeMetrics.sectionSpacing) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Repository Options")
-                    .font(MacChromeTypography.sectionLabel)
+                    .font(WorkbenchTypography.sectionLabel)
 
                 Text(visibilityStatusDescription)
-                    .font(MacChromeTypography.caption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -36,28 +36,28 @@ struct RepositoryOptionsPopoverView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(MacChromeMetrics.panelPadding)
+        .padding(WorkbenchMetrics.panelPadding)
         .frame(width: 280, alignment: .leading)
     }
 
     private func actionRow(title: String, symbol: String) -> some View {
-        HStack(spacing: MacChromeMetrics.compactSpacing) {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
             Image(systemName: symbol)
-                .font(MacChromeTypography.detail)
+                .font(WorkbenchTypography.detail)
                 .foregroundStyle(.secondary)
 
             Text(title)
-                .font(MacChromeTypography.body)
+                .font(WorkbenchTypography.body)
 
             Spacer()
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous)
-                .fill(MacChromePalette.hoverFill())
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
+                .fill(WorkbenchPalette.hoverFill())
         )
-        .contentShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
     }
 }
 

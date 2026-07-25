@@ -7,7 +7,7 @@ extension MainMenuView {
                 .controlSize(.small)
 
             Text("Loading working tree…")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
@@ -19,7 +19,7 @@ extension MainMenuView {
                 .foregroundColor(.orange)
 
             Text("GitHub remote not found for this repository.")
-                .font(MacChromeTypography.detail)
+                .font(WorkbenchTypography.detail)
                 .foregroundColor(.primary)
 
             Spacer()

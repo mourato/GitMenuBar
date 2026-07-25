@@ -14,10 +14,10 @@ struct RecentPathRowView: View {
         Button(action: onTap) {
             HStack {
                 Image(systemName: "clock")
-                    .font(MacChromeTypography.detail)
+                    .font(WorkbenchTypography.detail)
                     .foregroundColor(.secondary)
                 Text(displayText)
-                    .font(MacChromeTypography.body)
+                    .font(WorkbenchTypography.body)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(fullPath)
@@ -25,12 +25,12 @@ struct RecentPathRowView: View {
             }
             .padding(.horizontal, 8)
             .frame(minHeight: rowHeight)
-            .background(isHovered ? MacChromePalette.hoverFill() : Color(nsColor: .controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
+            .background(isHovered ? WorkbenchPalette.hoverFill() : Color(nsColor: .controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         }
         .buttonStyle(PressableButtonStyle())
         .animation(
-            MacChromeMotion.adaptive(MacChromeMotion.micro, usesReducedMotion: reduceMotion),
+            WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
             value: isHovered
         )
         .onHover { inside in

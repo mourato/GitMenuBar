@@ -21,7 +21,7 @@ struct WorkingTreeLineDiffView: View {
                 .foregroundColor(addedCount > 0 ? .green : .secondary)
                 .contentTransition(reduceMotion ? .identity : .numericText())
                 .animation(
-                    MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                    WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
                     value: addedCount
                 )
             Text("-\(removedCount)")
@@ -30,11 +30,11 @@ struct WorkingTreeLineDiffView: View {
                 .foregroundColor(removedCount > 0 ? .red : .secondary)
                 .contentTransition(reduceMotion ? .identity : .numericText())
                 .animation(
-                    MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                    WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
                     value: removedCount
                 )
         }
-        .font(MacChromeTypography.captionStrong)
+        .font(WorkbenchTypography.captionStrong)
         .monospacedDigit()
         .fixedSize(horizontal: true, vertical: false)
     }
@@ -60,7 +60,7 @@ struct WorkingTreeFileRowView: View {
             fileLabel
 
             Text(file.status.symbol)
-                .font(MacChromeTypography.body.weight(.semibold))
+                .font(WorkbenchTypography.body.weight(.semibold))
                 .foregroundColor(Color(nsColor: file.status.foregroundColor))
                 .frame(width: WorkingTreeLayoutMetrics.statusColumnWidth, alignment: .trailing)
         }
@@ -71,7 +71,7 @@ struct WorkingTreeFileRowView: View {
         .padding(.horizontal, -4) // Offset the internal padding so the row maintains its original width while letting the background expand
         .contentShape(Rectangle())
         .animation(
-            MacChromeMotion.adaptive(MacChromeMotion.micro, usesReducedMotion: reduceMotion),
+            WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
             value: isHovered
         )
         .onTapGesture {
@@ -120,7 +120,7 @@ struct WorkingTreeFileRowView: View {
     private var fileLabel: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(file.fileName)
-                .font(MacChromeTypography.body)
+                .font(WorkbenchTypography.body)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .layoutPriority(1)
@@ -128,7 +128,7 @@ struct WorkingTreeFileRowView: View {
 
             if !file.directoryPath.isEmpty {
                 Text(file.directoryPath)
-                    .font(MacChromeTypography.caption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -148,7 +148,7 @@ struct WorkingTreeFileRowView: View {
                     if let onOpen = onOpen {
                         Button(action: onOpen) {
                             Image(systemName: "doc")
-                                .font(MacChromeTypography.captionStrong)
+                                .font(WorkbenchTypography.captionStrong)
                                 .foregroundColor(Color.primary)
                                 .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
                                 .contentShape(Rectangle())
@@ -161,7 +161,7 @@ struct WorkingTreeFileRowView: View {
                     if let onDiscard = onDiscard {
                         Button(action: onDiscard) {
                             Image(systemName: "arrow.uturn.backward")
-                                .font(MacChromeTypography.captionStrong)
+                                .font(WorkbenchTypography.captionStrong)
                                 .foregroundColor(Color.primary)
                                 .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
                                 .contentShape(Rectangle())
@@ -173,7 +173,7 @@ struct WorkingTreeFileRowView: View {
 
                     Button(action: onAction) {
                         Image(systemName: actionIcon)
-                            .font(MacChromeTypography.captionStrong)
+                            .font(WorkbenchTypography.captionStrong)
                             .foregroundColor(Color.primary)
                             .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
                             .contentShape(Rectangle()) // makes the whole frame clickable
@@ -203,11 +203,11 @@ struct WorkingTreeFileRowView: View {
 
     private var backgroundColor: Color {
         if isSelected {
-            return MacChromePalette.selectedFill()
+            return WorkbenchPalette.selectedFill()
         }
 
         if isHovered {
-            return MacChromePalette.hoverFill()
+            return WorkbenchPalette.hoverFill()
         }
 
         return Color.clear

@@ -18,20 +18,20 @@ struct WorkingTreeSectionHeaderView: View {
         HStack(spacing: 8) {
             Button {
                 withAnimation(
-                    MacChromeMotion.adaptive(MacChromeMotion.settle, usesReducedMotion: reduceMotion)
+                    WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion)
                 ) {
                     isCollapsed.toggle()
                 }
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                        .font(MacChromeTypography.captionStrong)
+                        .font(WorkbenchTypography.captionStrong)
                         .foregroundColor(.secondary)
                         .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
 
                     Text(title)
-                        .font(MacChromeTypography.body)
-                        .tracking(MacChromeTypography.tracking(for: .subheadline))
+                        .font(WorkbenchTypography.body)
+                        .tracking(WorkbenchTypography.tracking(for: .subheadline))
                 }
             }
             .buttonStyle(PressableButtonStyle())
@@ -51,7 +51,7 @@ struct WorkingTreeSectionHeaderView: View {
                     if let onDiscardAll {
                         Button(action: onDiscardAll) {
                             Image(systemName: "arrow.uturn.backward")
-                                .font(MacChromeTypography.captionStrong)
+                                .font(WorkbenchTypography.captionStrong)
                                 .foregroundColor(.primary)
                                 .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
                                 .contentShape(Rectangle())
@@ -63,7 +63,7 @@ struct WorkingTreeSectionHeaderView: View {
 
                     Button(action: onAction) {
                         Image(systemName: actionIcon)
-                            .font(MacChromeTypography.captionStrong)
+                            .font(WorkbenchTypography.captionStrong)
                             .foregroundColor(.primary)
                             .frame(width: WorkingTreeLayoutMetrics.actionWidth, height: 16)
                             .contentShape(Rectangle())
@@ -81,25 +81,25 @@ struct WorkingTreeSectionHeaderView: View {
                 .foregroundColor(.secondary)
                 .contentTransition(reduceMotion ? .identity : .numericText())
                 .animation(
-                    MacChromeMotion.adaptive(MacChromeMotion.swap, usesReducedMotion: reduceMotion),
+                    WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
                     value: summary.fileCount
                 )
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 4)
-        .background(isHovered ? MacChromePalette.hoverFill() : Color.clear)
+        .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
         .cornerRadius(4)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
                 .stroke(
-                    MacChromePalette.neutralBorder(contrast: colorSchemeContrast)
+                    WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast)
                         .opacity(colorSchemeContrast == .increased ? 1 : 0),
                     lineWidth: 1
                 )
         )
         .contentShape(Rectangle())
         .animation(
-            MacChromeMotion.adaptive(MacChromeMotion.micro, usesReducedMotion: reduceMotion),
+            WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
             value: isHovered
         )
         .onHover { inside in

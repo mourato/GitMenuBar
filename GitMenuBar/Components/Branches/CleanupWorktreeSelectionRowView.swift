@@ -15,14 +15,14 @@ struct CleanupWorktreeSelectionRowView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(info.worktree.branchName ?? "Detached HEAD")
-                    .font(MacChromeTypography.body)
+                    .font(WorkbenchTypography.body)
                 Text(info.worktree.path)
-                    .font(MacChromeTypography.monospacedCaption)
+                    .font(WorkbenchTypography.monospacedCaption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Text("Clean and eligible for safe removal.")
-                    .font(MacChromeTypography.caption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -30,8 +30,8 @@ struct CleanupWorktreeSelectionRowView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(MacChromePalette.selectedFill())
-        .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
+        .background(WorkbenchPalette.selectedFill())
+        .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             "\(info.worktree.branchName ?? "Detached HEAD"), \(info.worktree.path), eligible for worktree removal"
@@ -58,11 +58,11 @@ struct CleanupWorktreeListView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Worktrees")
-                .font(MacChromeTypography.sectionLabel)
+                .font(WorkbenchTypography.sectionLabel)
                 .foregroundStyle(.secondary)
             if filteredWorktrees.isEmpty {
                 Text("No worktrees match your filter.")
-                    .font(MacChromeTypography.caption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(filteredWorktrees) { info in

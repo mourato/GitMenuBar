@@ -24,24 +24,24 @@ struct BranchManagementRowView: View {
         HStack(spacing: 10) {
             if branch.isCurrent {
                 Image(systemName: "checkmark")
-                    .font(MacChromeTypography.captionStrong)
+                    .font(WorkbenchTypography.captionStrong)
                     .foregroundStyle(Color.accentColor)
             } else {
                 Image(systemName: branch.isRemote ? "icloud" : "arrow.triangle.branch")
-                    .font(MacChromeTypography.caption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(branch.displayName)
-                    .font(MacChromeTypography.body)
+                    .font(WorkbenchTypography.body)
                     .lineLimit(1)
 
                 HStack(spacing: 6) {
                     trackingBadge
                     if let date = branch.lastCommitDate {
                         Text(BranchManagementRowView.relativeDateFormatter.localizedString(for: date, relativeTo: Date()))
-                            .font(MacChromeTypography.caption)
+                            .font(WorkbenchTypography.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -65,7 +65,7 @@ struct BranchManagementRowView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
-                        .font(MacChromeTypography.body)
+                        .font(WorkbenchTypography.body)
                         .foregroundStyle(.secondary)
                 }
                 .menuStyle(.borderlessButton)
@@ -79,7 +79,7 @@ struct BranchManagementRowView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
-                        .font(MacChromeTypography.body)
+                        .font(WorkbenchTypography.body)
                         .foregroundStyle(.secondary)
                 }
                 .menuStyle(.borderlessButton)
@@ -89,8 +89,8 @@ struct BranchManagementRowView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .frame(minHeight: 40)
-        .background(isHovered ? MacChromePalette.hoverFill() : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
+        .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .contentShape(Rectangle())
         .onTapGesture(perform: onSwitch)
         .accessibilityElement(children: .combine)
@@ -110,27 +110,27 @@ struct BranchManagementRowView: View {
         switch branch.trackingStatus {
         case .upToDate:
             Label("Up to date", systemImage: "equal")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.green)
         case let .ahead(count):
             Label("Ahead \(count)", systemImage: "arrow.up")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(Color.accentColor)
         case let .behind(count):
             Label("Behind \(count)", systemImage: "arrow.down")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.orange)
         case let .diverged(ahead, behind):
             Label("Diverged \(ahead)/\(behind)", systemImage: "arrow.left.arrow.right")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.orange)
         case .noRemote:
             Label("No upstream", systemImage: "dot")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
         case .unknown:
             Label("Unknown", systemImage: "questionmark")
-                .font(MacChromeTypography.caption)
+                .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
         }
     }

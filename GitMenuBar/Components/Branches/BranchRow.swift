@@ -36,18 +36,18 @@ struct BranchRowView: View {
     var body: some View {
         HStack {
             Text(branchName)
-                .font(MacChromeTypography.body)
+                .font(WorkbenchTypography.body)
             Spacer()
             if isCurrentBranch {
                 Image(systemName: "checkmark")
-                    .font(MacChromeTypography.captionStrong)
+                    .font(WorkbenchTypography.captionStrong)
                     .foregroundStyle(Color.accentColor)
             }
         }
         .padding(.horizontal, 12)
-        .frame(minHeight: 28)
-        .background(isHovered ? MacChromePalette.hoverFill() : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous))
+        .frame(minHeight: WorkbenchMetrics.iconHitTarget)
+        .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
         .accessibilityElement(children: .combine)
