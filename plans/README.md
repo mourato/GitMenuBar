@@ -313,7 +313,7 @@ Planned against commit `7ade5a9`.
 |------|-------|----------|--------|------------|--------|
 | 030 | Full-window command palette scrim (material + dim) | P1 | S | — | DONE (`904af68`) |
 | 031 | Titlebar-aligned header; Repository Options on current Projects row | P1 | M | 030 (seq) | DONE (`578e4e6`) |
-| 032 | Window-level material shell for main panel + Settings | P1 | M | 031 | DONE (`bdb4153`) |
+| 032 | Window-level material shell for main panel + Settings | P1 | M | 031 | DONE (`9afedb3`) |
 | 033 | Mimir-style usage quota provider cards | P2 | M | 032 (soft) | TODO |
 
 ### Dependency notes
