@@ -126,8 +126,8 @@ final class AppSettingsWindowController {
     }
 
     private func configureWindowShell() {
-        guard let window = windowController.window else { return }
-        WorkbenchWindowChrome.apply(to: window)
+        guard let contentView = windowController.window?.contentView else { return }
+        WorkbenchWindowChrome.installShell(in: contentView)
     }
 }
 

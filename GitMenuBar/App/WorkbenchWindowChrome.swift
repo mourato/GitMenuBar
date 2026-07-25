@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 enum WorkbenchWindowChrome {
-    static func configureWindow(_ window: NSWindow) {
+    static func configureTransparentWindow(_ window: NSWindow) {
         window.isOpaque = false
         window.backgroundColor = .clear
     }
@@ -29,7 +29,7 @@ enum WorkbenchWindowChrome {
     }
 
     static func apply(to window: NSWindow) {
-        configureWindow(window)
+        configureTransparentWindow(window)
         if let contentView = window.contentView {
             installShell(in: contentView)
         }
@@ -151,5 +151,9 @@ private final class WorkbenchHostedContentViewController: NSViewController {
 
         hostingController.view.wantsLayer = true
         hostingController.view.layer?.backgroundColor = NSColor.clear.cgColor
+
+        if let hostingView = hostingController.view as? NSHostingView<AnyView> {
+            hostingView.sceneBridgingOptions = [.toolbars]
+        }
     }
 }

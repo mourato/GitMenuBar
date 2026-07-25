@@ -2,20 +2,36 @@ import SwiftUI
 
 struct UsageQuotaStripView: View {
     @EnvironmentObject private var usageQuotaStore: UsageQuotaStore
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         let snapshots = usageQuotaStore.visibleSnapshots
         if usageQuotaStore.showAIUsageQuotas, !snapshots.isEmpty {
-            VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-                ForEach(snapshots) { snapshot in
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(snapshots.enumerated()), id: \.element.id) { index, snapshot in
+                    if index > 0 {
+                        Rectangle()
+                            .fill(Color.primary.opacity(0.06))
+                            .frame(height: 1)
+                    }
+
                     UsageQuotaProviderCard(snapshot: snapshot)
                 }
+            }
+            .padding(WorkbenchMetrics.compactSpacing)
+            .overlay {
+                RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
+                    .strokeBorder(groupBorderColor, lineWidth: 1)
             }
             .padding(.vertical, WorkbenchMetrics.compactSpacing)
             .task {
                 usageQuotaStore.refresh(reason: .contentAppeared)
             }
         }
+    }
+
+    private var groupBorderColor: Color {
+        Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.12)
     }
 }
 
@@ -33,12 +49,6 @@ private struct UsageQuotaProviderCard: View {
 
             if let weekly = secondaryWeeklyWindow {
                 weeklyRow(weekly)
-            }
-
-            if let creditsText = creditsLineText {
-                Text(creditsText)
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
             }
         }
         .opacity(snapshot.isStale ? 0.72 : 1)
@@ -87,6 +97,12 @@ private struct UsageQuotaProviderCard: View {
             )
 
             Spacer(minLength: 0)
+
+            if let creditsText = creditsLineText {
+                Text(creditsText)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

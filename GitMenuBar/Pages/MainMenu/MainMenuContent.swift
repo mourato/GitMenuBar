@@ -260,7 +260,6 @@ extension MainMenuView {
                     }
                 )
             }
-            .toolbarBackground(.hidden, for: .windowToolbar)
             .onExitCommand {
                 if isCommandPalettePresented {
                     closeCommandPalette()
