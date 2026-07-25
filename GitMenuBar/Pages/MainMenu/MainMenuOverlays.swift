@@ -7,8 +7,37 @@ import SwiftUI
 
 extension MainMenuView {
     func applyMainViewOverlays<Content: View>(to view: Content) -> some View {
-        let sheets = applySheets(to: view)
-        return applyCommandPaletteOverlay(to: sheets)
+        applySheets(
+            to: view
+                .padding(.horizontal, WorkbenchMetrics.windowPadding)
+                .padding(.bottom, WorkbenchMetrics.windowPadding)
+        )
+    }
+
+    @ViewBuilder
+    var commandPaletteOverlayContent: some View {
+        if isCommandPalettePresented && presentationModel.route == .main {
+            ZStack {
+                commandPaletteScrim
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        closeCommandPalette()
+                    }
+                    .zIndex(0)
+
+                MainMenuCommandPaletteView(
+                    query: $commandPaletteQuery,
+                    items: commandPaletteVisibleItems,
+                    selectedItemID: $selectedCommandPaletteItemID,
+                    onClose: closeCommandPalette,
+                    onSelectItem: executeCommandPaletteItem
+                )
+                .accessibilityAddTraits(.isModal)
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+                .zIndex(1)
+            }
+            .transition(.opacity)
+        }
     }
 
     private func applySheets<Content: View>(to view: Content) -> some View {
@@ -31,40 +60,16 @@ extension MainMenuView {
             .sheet(isPresented: $showAtomicCommitSheet, content: atomicCommitSheet)
     }
 
-    private func applyCommandPaletteOverlay<Content: View>(to view: Content) -> some View {
-        view.overlay {
-            if isCommandPalettePresented && presentationModel.route == .main {
-                ZStack {
-                    commandPaletteScrim
-                        .ignoresSafeArea()
-                        .onTapGesture {
-                            closeCommandPalette()
-                        }
-                        .zIndex(0)
-
-                    MainMenuCommandPaletteView(
-                        query: $commandPaletteQuery,
-                        items: commandPaletteVisibleItems,
-                        selectedItemID: $selectedCommandPaletteItemID,
-                        onClose: closeCommandPalette,
-                        onSelectItem: executeCommandPaletteItem
-                    )
-                    .accessibilityAddTraits(.isModal)
-                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
-                    .zIndex(1)
-                }
-                .transition(.opacity)
-            }
-        }
-    }
-
     @ViewBuilder
     private var commandPaletteScrim: some View {
         if reduceTransparency {
             Color(nsColor: .windowBackgroundColor)
         } else {
-            Rectangle()
-                .fill(.ultraThinMaterial)
+            ZStack {
+                Color.black.opacity(0.08)
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+            }
         }
     }
 
