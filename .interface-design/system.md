@@ -7,7 +7,10 @@ from Apple HIG plus `.agents/overlays/apple-design.md` and
 `.agents/overlays/references/gitmenubar-motion.md` and `WorkbenchMotion`
 (formerly `MacChromeMotion`).
 
-Related ADR: `docs/adr/0001-workbench-depth-and-token-naming.md`.
+Related ADRs:
+
+- `docs/adr/0001-workbench-depth-and-token-naming.md`
+- `docs/adr/0002-window-shell-material-and-titlebar-chrome.md`
 
 ---
 
@@ -36,8 +39,11 @@ Not a SaaS dashboard. Not airy marketing chrome. Not multi-accent decoration.
 
 | Surface | Treatment |
 |---|---|
-| Panel chrome, section rows, headers | Materials + soft borders / tints (`WorkbenchPalette`, `workbenchPanelSurface`) |
-| Floating overlays (command palette, popovers, sheets) | One elevation above parent; **shadows allowed here only** |
+| **Window shell** (main panel + Settings) | Window-level material / vibrancy behind content; solid fill when Reduce Transparency |
+| Panel chrome, section rows | Soft borders / tints (`WorkbenchPalette`); avoid large nested `workbenchPanelSurface` plates on the main column (double-frost) |
+| Header | No material plate — titlebar/toolbar chrome; traffic lights · project selector · Settings gear on one line |
+| Floating overlays (command palette, popovers, sheets) | One elevation above parent; **shadows allowed here only**; popovers/sheets keep `workbenchPanelSurface` |
+| Command palette scrim | Full window (including under titlebar), outside content `windowPadding`; material + subtle dim |
 | Inputs | Slightly inset vs surrounding surface (platform field styles OK) |
 
 Do **not** mix “card drop shadow on every block” with material panels.
@@ -115,7 +121,7 @@ Use real SwiftUI `Button`. Prefer a shared styled API (Plan 026) over one-off `.
 | **Primary** | The one focal action on a surface (Commit, Create, Save, Connect) | `.borderedProminent`, large when it is the panel focal control |
 | **Secondary** | Cancel, alternate confirms that are not destructive | Bordered / quiet filled; never equal visual weight to Primary on the same footer |
 | **Ghost** | Low-emphasis chrome (e.g. Manage…, Atomic Commits, Dismiss, Refresh) | Borderless + `WorkbenchTypography.detail` + press feedback |
-| **Icon** | Header gear/options; compact icon chrome | Min visible control **28×28**; clear hover fill; press feedback |
+| **Icon** | Header gear; Projects-row repository options; compact icon chrome | Min visible control **28×28**; clear hover fill; press feedback |
 | **Destructive** | Delete / Discard / Wipe | `role: .destructive` + red treatment; never styled as Ghost |
 | **Row** | Branch list, palette rows, options rows | Plain + `hoverFill` / `selectedFill`; idle background clear (not permanently filled) |
 
@@ -123,8 +129,8 @@ Press feedback: scale ≈ **0.97** via shared press style; respect Reduce Motion
 
 ### Adoption scope
 
-- **This wave:** main panel + popovers attached to it
-- **Deferred:** sheets, Settings, confirmation dialogs ( opportunistic only; later Plan 029 stub)
+- **This wave:** main panel + popovers attached to it; window shell also covers Settings (Plans 030–033)
+- **Deferred:** sheets button-kit migration, confirmation dialogs (opportunistic only; Plan 029 stub)
 
 Confirmation dialogs keep system alert patterns; do not restyle en masse.
 
@@ -147,11 +153,25 @@ Confirmation dialogs keep system alert patterns; do not restyle en masse.
 
 Current vertical order (do not invent a new IA without a plan):
 
-1. Header (repo · options · settings)
+1. Header (titlebar-aligned: traffic lights · project selector · Settings gear)
 2. Commit composer (Primary commit/sync)
 3. Scroll: banners → staged → unstaged → history
 4. Footer: branch chip · Ghost actions (Atomic / Manage)
-5. Optional usage quota strip
+5. Optional usage quota cards (Mimir-style; secondary to Git workflow)
+
+### Header chrome
+
+- Single horizontal line with native traffic lights, project selector (hugs label), and Settings gear (trailing). Visually separated; **no** header `workbenchPanelSurface` plate.
+- Repository Options (ellipsis) lives on the **current** project row inside the Projects popover only (hidden when options unavailable or row is not current). Keep project-button context menu + status-item / command-center entry points; remove header ellipsis and the popover footer “Repository Options…” duplicate.
+- Opening row options: close Projects, then present Repository Options anchored to the project-selector control (existing pending-presentation flow).
+
+### Usage quota cards
+
+When quotas are enabled and snapshots exist, show provider cards (Codex and/or Cursor):
+
+- Primary: provider name, interval chip, traffic-light colored remaining `%`, progress bar matching that %, countdown with icon, locale-aware **time-only** next-cycle clock with icon (`resetAt`).
+- Secondary weekly row when weekly differs from primary (same dedupe rule as the former strip).
+- Natural height for 1–2 providers; no status-item quota glyphs.
 
 **This wave does not** demote footer Ghost actions or redesign Commit-vs-footer focal hierarchy. Footer weight stays as today; button *variants* may still apply so Ghost is consistent.
 
@@ -173,11 +193,12 @@ Respect Reduce Motion and Reduce Transparency (solid control backgrounds when re
 
 ## Out of scope for agents unless a plan says otherwise
 
-- Footer / quota hierarchy redesign
 - Mass confirmation-dialog restyle
-- Sheets/Settings full button migration
+- Sheets full button-kit migration (Plan 029 stub)
 - New per-file stage keyboard shortcut
 - Marketing / landing visuals
+- Status-item quota glyphs / UX option B status accents
+- Repository Options for non-current recent projects (no switch-then-open)
 
 ---
 
