@@ -146,10 +146,43 @@ struct CodexUsageProvider: UsageQuotaProviding {
         do {
             let (data, response) = try await urlSession.data(for: request)
             guard (response as? HTTPURLResponse).map({ 200 ... 299 ~= $0.statusCode }) == true,
-                  let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                  let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  var snapshot = CodexUsageParsing.snapshot(fromUsageAPI: root) else {
                 return nil
             }
-            return CodexUsageParsing.snapshot(fromUsageAPI: root)
+
+            if let resetCredits = await fetchResetCreditsAvailable(
+                accessToken: accessToken,
+                accountID: CodexUsageParsing.codexAccountID(from: auth)
+            ) {
+                snapshot = snapshot.withResetCreditsAvailable(resetCredits)
+            }
+            return snapshot
+        } catch {
+            return nil
+        }
+    }
+
+    private func fetchResetCreditsAvailable(accessToken: String, accountID: String?) async -> Int? {
+        // Unofficial ChatGPT endpoint used by CodexBar; may break without notice.
+        // GET https://chatgpt.com/backend-api/wham/rate-limit-reset-credits
+        var request = URLRequest(
+            url: URL(string: "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits")!,
+            timeoutInterval: 4
+        )
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("GitMenuBar", forHTTPHeaderField: "User-Agent")
+        if let accountID, !accountID.isEmpty {
+            request.setValue(accountID, forHTTPHeaderField: "ChatGPT-Account-Id")
+        }
+
+        do {
+            let (data, response) = try await urlSession.data(for: request)
+            guard (response as? HTTPURLResponse).map({ 200 ... 299 ~= $0.statusCode }) == true else {
+                return nil
+            }
+            return CodexUsageParsing.resetCreditsAvailable(from: data)
         } catch {
             return nil
         }

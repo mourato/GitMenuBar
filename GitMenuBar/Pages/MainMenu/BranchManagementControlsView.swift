@@ -19,7 +19,6 @@ struct BranchManagementControlsView: View {
     let onNewBranch: () -> Void
     let onAtomicCommits: () -> Void
     let onManage: () -> Void
-    let onSettings: () -> Void
 
     @Binding var showBranchSelector: Bool
 
@@ -66,12 +65,6 @@ struct BranchManagementControlsView: View {
             }
             .buttonStyle(.borderless)
             .font(MacChromeTypography.detail)
-
-            Button("Settings") {
-                onSettings()
-            }
-            .buttonStyle(.borderless)
-            .font(MacChromeTypography.detail)
         }
     }
 }
@@ -96,7 +89,6 @@ struct BranchManagementControlsView: View {
         onNewBranch: {},
         onAtomicCommits: {},
         onManage: {},
-        onSettings: {},
         showBranchSelector: .constant(false)
     )
     .padding()

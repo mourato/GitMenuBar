@@ -4,7 +4,8 @@ import Settings
 
 private extension Settings.PaneIdentifier {
     static let gitMenuBarGeneral = Self("gitmenubar.general")
-    static let gitMenuBarAccounts = Self("gitmenubar.accounts")
+    static let gitMenuBarGit = Self("gitmenubar.git")
+    static let gitMenuBarQuotas = Self("gitmenubar.quotas")
     static let gitMenuBarShortcuts = Self("gitmenubar.shortcuts")
 }
 
@@ -27,40 +28,50 @@ final class AppSettingsWindowController {
         onSetAutoHideSuspended: @escaping (Bool) -> Void,
         onRequestCreateRepo: @escaping (String) -> Void
     ) {
-        let toolbarIcon = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "General settings")
-            ?? NSImage(named: NSImage.preferencesGeneralName)
-            ?? NSImage()
-
         let generalPane = Settings.Pane(
             identifier: .gitMenuBarGeneral,
             title: "General",
-            toolbarIcon: toolbarIcon,
+            toolbarIcon: NSImage(systemSymbolName: "gearshape", accessibilityDescription: "General settings")
+                ?? NSImage(named: NSImage.preferencesGeneralName)
+                ?? NSImage(),
             contentView: {
-                GeneralSettingsPaneView(
+                GeneralSettingsPaneView(loginItemManager: loginItemManager)
+            }
+        )
+        let gitPane = Settings.Pane(
+            identifier: .gitMenuBarGit,
+            title: "Git",
+            toolbarIcon: NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: "Git settings")
+                ?? NSImage(),
+            contentView: {
+                GitSettingsPaneView(
                     gitManager: gitManager,
-                    loginItemManager: loginItemManager,
                     githubAuthManager: githubAuthManager,
                     onSetAutoHideSuspended: onSetAutoHideSuspended,
                     onRequestCreateRepo: onRequestCreateRepo
                 )
+                .environmentObject(githubAuthManager)
+                .environmentObject(aiProviderStore)
+                .environmentObject(aiCommitCoordinator)
             }
         )
-        let accountsPane = Settings.Pane(
-            identifier: .gitMenuBarAccounts,
-            title: "Accounts",
-            toolbarIcon: NSImage(systemSymbolName: "person.crop.circle", accessibilityDescription: "Accounts settings") ?? NSImage(),
+        let quotasPane = Settings.Pane(
+            identifier: .gitMenuBarQuotas,
+            title: "Quotas",
+            toolbarIcon: NSImage(
+                systemSymbolName: "gauge.with.dots.needle.33percent",
+                accessibilityDescription: "Quotas settings"
+            ) ?? NSImage(),
             contentView: {
-                AccountsSettingsPaneView(onSetAutoHideSuspended: onSetAutoHideSuspended)
-                    .environmentObject(githubAuthManager)
-                    .environmentObject(aiProviderStore)
-                    .environmentObject(aiCommitCoordinator)
+                QuotasSettingsPaneView()
                     .environmentObject(usageQuotaStore)
             }
         )
         let shortcutsPane = Settings.Pane(
             identifier: .gitMenuBarShortcuts,
             title: "Shortcuts",
-            toolbarIcon: NSImage(systemSymbolName: "keyboard", accessibilityDescription: "Shortcuts settings") ?? NSImage(),
+            toolbarIcon: NSImage(systemSymbolName: "keyboard", accessibilityDescription: "Shortcuts settings")
+                ?? NSImage(),
             contentView: {
                 ShortcutsSettingsPaneView(
                     gitManager: gitManager,
@@ -70,7 +81,7 @@ final class AppSettingsWindowController {
         )
 
         windowController = SettingsWindowController(
-            panes: [generalPane, accountsPane, shortcutsPane],
+            panes: [generalPane, gitPane, quotasPane, shortcutsPane],
             style: .toolbarItems,
             animated: false
         )

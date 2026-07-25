@@ -39,8 +39,6 @@ extension MainMenuView {
                 createRepoSuggestionBanner(path: suggestionPath)
             }
 
-            UsageQuotaStripView()
-
             if presentationModel.refreshState.isRefreshing && !hasWorkingTreeChanges {
                 loadingStateView
             }
@@ -168,10 +166,6 @@ extension MainMenuView {
                 showRepositoryOptionsPopover = false
                 showBranchManagement = true
             },
-            onSettings: {
-                showRepositoryOptionsPopover = false
-                openSettingsWindow()
-            },
             showBranchSelector: $showBranchSelector
         )
     }
@@ -186,6 +180,11 @@ extension MainMenuView {
                     showsRepositoryOptionsButton: canPresentRepositoryOptions,
                     onShowRepositoryOptions: {
                         requestRepositoryOptionsPopoverPresentation()
+                    },
+                    onOpenSettings: {
+                        showProjectSelector = false
+                        showRepositoryOptionsPopover = false
+                        openSettingsWindow()
                     },
                     projectSelectorContent: {
                         ProjectSelectorPopoverView(
@@ -261,6 +260,8 @@ extension MainMenuView {
                 }
 
                 footerSection
+
+                UsageQuotaStripView()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .onExitCommand {

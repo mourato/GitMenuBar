@@ -7,12 +7,12 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
     @Binding var showRepositoryOptionsPopover: Bool
     let showsRepositoryOptionsButton: Bool
     let onShowRepositoryOptions: () -> Void
+    let onOpenSettings: () -> Void
     let projectSelectorContent: () -> PopoverContent
     let projectContextMenu: () -> ContextMenuContent
     let repositoryOptionsContent: () -> RepoOptionsContent
 
     @State private var isProjectHovered = false
-    @State private var isRepositoryOptionsHovered = false
 
     init(
         currentProjectName: String,
@@ -20,6 +20,7 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
         showRepositoryOptionsPopover: Binding<Bool>,
         showsRepositoryOptionsButton: Bool,
         onShowRepositoryOptions: @escaping () -> Void,
+        onOpenSettings: @escaping () -> Void,
         @ViewBuilder projectSelectorContent: @escaping () -> PopoverContent,
         @ViewBuilder projectContextMenu: @escaping () -> ContextMenuContent,
         @ViewBuilder repositoryOptionsContent: @escaping () -> RepoOptionsContent
@@ -29,6 +30,7 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
         _showRepositoryOptionsPopover = showRepositoryOptionsPopover
         self.showsRepositoryOptionsButton = showsRepositoryOptionsButton
         self.onShowRepositoryOptions = onShowRepositoryOptions
+        self.onOpenSettings = onOpenSettings
         self.projectSelectorContent = projectSelectorContent
         self.projectContextMenu = projectContextMenu
         self.repositoryOptionsContent = repositoryOptionsContent
@@ -75,28 +77,23 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
             .frame(maxWidth: .infinity, alignment: .leading)
 
             if showsRepositoryOptionsButton {
-                Button {
-                    onShowRepositoryOptions()
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(MacChromeTypography.body)
-                        .frame(width: 28, height: 28)
-                        .background(
-                            RoundedRectangle(cornerRadius: MacChromeMetrics.rowCornerRadius, style: .continuous)
-                                .fill(isRepositoryOptionsHovered ? MacChromePalette.hoverFill() : Color.clear)
-                        )
-                }
-                .buttonStyle(.plain)
-                .controlSize(.small)
-                .accessibilityLabel("Repository options")
-                .accessibilityHint("Shows repository visibility and deletion actions.")
-                .onHover { inside in
-                    isRepositoryOptionsHovered = inside
-                }
+                MainMenuHeaderIconButton(
+                    systemImage: "ellipsis.circle",
+                    accessibilityLabel: "Repository options",
+                    accessibilityHint: "Shows repository visibility and deletion actions.",
+                    action: onShowRepositoryOptions
+                )
                 .popover(isPresented: $showRepositoryOptionsPopover, arrowEdge: .top) {
                     repositoryOptionsContent()
                 }
             }
+
+            MainMenuHeaderIconButton(
+                systemImage: "gearshape",
+                accessibilityLabel: "Settings",
+                accessibilityHint: "Opens GitMenuBar settings.",
+                action: onOpenSettings
+            )
         }
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity)
@@ -111,6 +108,7 @@ struct MainMenuHeaderView<PopoverContent: View, ContextMenuContent: View, RepoOp
         showRepositoryOptionsPopover: .constant(false),
         showsRepositoryOptionsButton: true,
         onShowRepositoryOptions: {},
+        onOpenSettings: {},
         projectSelectorContent: {
             Text("Projects")
                 .padding()

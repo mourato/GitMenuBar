@@ -2,25 +2,14 @@ import AppKit
 import SwiftUI
 
 struct GeneralSettingsPaneView: View {
-    @AppStorage(AppPreferences.Keys.showFullPathInRecents) private var showFullPathInRecents = false
     @AppStorage(AppPreferences.Keys.autoHideMainWindowOnBlur) private var autoHideMainWindowOnBlur =
         MainWindowPreferences.defaultAutoHideOnBlur
     @AppStorage(AppPreferences.Keys.toggleShortcutUsesMouseMonitor)
     private var toggleShortcutUsesMouseMonitor =
         MainWindowPreferences.defaultToggleShortcutUsesMouseMonitor
-    @AppStorage(AppPreferences.Keys.hideCommitMessageField) private var hideCommitMessageField = false
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
 
-    @State private var repositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
-    @State private var recentPaths = RecentProjectsStore().recentPaths()
-
-    let gitManager: GitManager
     let loginItemManager: LoginItemManager
-    let githubAuthManager: GitHubAuthManager
-    let onSetAutoHideSuspended: (Bool) -> Void
-    let onRequestCreateRepo: (String) -> Void
-
-    private let recentProjectsStore = RecentProjectsStore()
 
     var body: some View {
         ScrollView {
@@ -67,6 +56,66 @@ struct GeneralSettingsPaneView: View {
                     .accessibilityLabel("Show window on monitor with mouse pointer")
                 }
 
+                Divider()
+
+                appearancePicker
+            }
+            .padding(.horizontal, MacChromeMetrics.windowPadding)
+            .padding(.vertical, MacChromeMetrics.groupSpacing)
+        }
+        .frame(minWidth: 420, minHeight: 700)
+        .preferredColorScheme(preferredColorScheme)
+    }
+
+    private var appearancePicker: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Appearance")
+                .font(MacChromeTypography.sectionLabel)
+
+            Picker(
+                "",
+                selection: Binding(
+                    get: {
+                        AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode)
+                    },
+                    set: { newValue in
+                        appearanceMode = newValue.rawValue
+                    }
+                )
+            ) {
+                ForEach(AppPreferences.AppearanceMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityLabel("Appearance")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var preferredColorScheme: ColorScheme? {
+        SettingsAppearance.preferredColorScheme(for: appearanceMode)
+    }
+}
+
+struct GitSettingsPaneView: View {
+    @AppStorage(AppPreferences.Keys.showFullPathInRecents) private var showFullPathInRecents = false
+    @AppStorage(AppPreferences.Keys.hideCommitMessageField) private var hideCommitMessageField = false
+    @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
+
+    @State private var repositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
+    @State private var recentPaths = RecentProjectsStore().recentPaths()
+
+    let gitManager: GitManager
+    let githubAuthManager: GitHubAuthManager
+    let onSetAutoHideSuspended: (Bool) -> Void
+    let onRequestCreateRepo: (String) -> Void
+
+    private let recentProjectsStore = RecentProjectsStore()
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: MacChromeMetrics.groupSpacing) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text("Hide commit message field")
@@ -89,10 +138,6 @@ struct GeneralSettingsPaneView: View {
 
                 Divider()
 
-                appearancePicker
-
-                Divider()
-
                 RepositoryPathSection(
                     repositoryPath: Binding(
                         get: { PathDisplayFormatter.abbreviatedPath(repositoryPath) },
@@ -109,6 +154,13 @@ struct GeneralSettingsPaneView: View {
                     showFullPathInRecents: $showFullPathInRecents,
                     onSelectPath: selectRecentPath
                 )
+
+                Divider()
+
+                GitHubConnectionSection(setAutoHideSuspended: onSetAutoHideSuspended)
+
+                AISettingsSectionView()
+                    .padding(.top, 4)
             }
             .padding(.horizontal, MacChromeMetrics.windowPadding)
             .padding(.vertical, MacChromeMetrics.groupSpacing)
@@ -154,76 +206,24 @@ struct GeneralSettingsPaneView: View {
         gitManager.refresh(includeReflogHistory: false)
     }
 
-    private var appearancePicker: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Appearance")
-                .font(MacChromeTypography.sectionLabel)
-
-            Picker(
-                "",
-                selection: Binding(
-                    get: {
-                        AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode)
-                    },
-                    set: { newValue in
-                        appearanceMode = newValue.rawValue
-                    }
-                )
-            ) {
-                ForEach(AppPreferences.AppearanceMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityLabel("Appearance")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     private var preferredColorScheme: ColorScheme? {
-        switch AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode) {
-        case .systemDefault:
-            return nil
-        case .light:
-            return .light
-        case .dark:
-            return .dark
-        }
+        SettingsAppearance.preferredColorScheme(for: appearanceMode)
     }
 }
 
-struct AccountsSettingsPaneView: View {
+struct QuotasSettingsPaneView: View {
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
-    @EnvironmentObject private var usageQuotaStore: UsageQuotaStore
-    let onSetAutoHideSuspended: (Bool) -> Void
 
     var body: some View {
         ScrollView {
             VStack(spacing: MacChromeMetrics.groupSpacing) {
-                GitHubConnectionSection(setAutoHideSuspended: onSetAutoHideSuspended)
-
-                AISettingsSectionView()
-                    .padding(.top, 4)
-
                 UsageQuotaSettingsSection()
-                    .padding(.top, 4)
             }
             .padding(.horizontal, MacChromeMetrics.windowPadding)
             .padding(.vertical, MacChromeMetrics.groupSpacing)
         }
         .frame(minWidth: 420, minHeight: 700)
-        .preferredColorScheme(preferredColorScheme)
-    }
-
-    private var preferredColorScheme: ColorScheme? {
-        switch AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode) {
-        case .systemDefault:
-            return nil
-        case .light:
-            return .light
-        case .dark:
-            return .dark
-        }
+        .preferredColorScheme(SettingsAppearance.preferredColorScheme(for: appearanceMode))
     }
 }
 
@@ -295,7 +295,7 @@ struct ShortcutsSettingsPaneView: View {
             Text(wipeError ?? "An unknown error occurred.")
         }
         .frame(minWidth: 420, minHeight: 700)
-        .preferredColorScheme(preferredColorScheme)
+        .preferredColorScheme(SettingsAppearance.preferredColorScheme(for: appearanceMode))
     }
 
     private func wipeRepository() {
@@ -314,8 +314,10 @@ struct ShortcutsSettingsPaneView: View {
             }
         }
     }
+}
 
-    private var preferredColorScheme: ColorScheme? {
+private enum SettingsAppearance {
+    static func preferredColorScheme(for appearanceMode: String) -> ColorScheme? {
         switch AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode) {
         case .systemDefault:
             return nil
@@ -328,18 +330,35 @@ struct ShortcutsSettingsPaneView: View {
 }
 
 #Preview("General Settings Pane") {
+    GeneralSettingsPaneView(loginItemManager: LoginItemManager())
+}
+
+#Preview("Git Settings Pane") {
     let gitManager = GitManager(repositoryPathOverride: "/Users/usuario/Documents/Projects/gitmenubar")
-    let loginItemManager = LoginItemManager()
     let githubAuthManager = GitHubAuthManager(
         tokenStore: InMemoryGitHubTokenStore(),
         preloadStoredToken: false
     )
+    let providerStore = AIProviderStore()
+    let coordinator = AICommitCoordinator(
+        providerStore: providerStore,
+        keychainStore: InMemoryAIAPIKeyStore(),
+        messageService: AICommitMessageService(),
+        gitManager: gitManager
+    )
 
-    return GeneralSettingsPaneView(
+    return GitSettingsPaneView(
         gitManager: gitManager,
-        loginItemManager: loginItemManager,
         githubAuthManager: githubAuthManager,
         onSetAutoHideSuspended: { _ in },
         onRequestCreateRepo: { _ in }
     )
+    .environmentObject(githubAuthManager)
+    .environmentObject(providerStore)
+    .environmentObject(coordinator)
+}
+
+#Preview("Quotas Settings Pane") {
+    QuotasSettingsPaneView()
+        .environmentObject(UsageQuotaStore())
 }
