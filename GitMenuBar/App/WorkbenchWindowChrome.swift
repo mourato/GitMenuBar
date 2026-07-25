@@ -55,7 +55,7 @@ final class WorkbenchWindowShellView: NSView {
     }
 
     deinit {
-        NotificationCenter.default.removeObserver(self)
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
     }
 
     func updateAppearance() {
@@ -90,7 +90,7 @@ final class WorkbenchWindowShellView: NSView {
             visualEffectView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
 
-        NotificationCenter.default.addObserver(
+        NSWorkspace.shared.notificationCenter.addObserver(
             self,
             selector: #selector(handleAccessibilityDisplayOptionsDidChange),
             name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
@@ -100,9 +100,16 @@ final class WorkbenchWindowShellView: NSView {
         updateAppearance()
     }
 
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateAppearance()
+    }
+
     @objc
     private func handleAccessibilityDisplayOptionsDidChange() {
-        updateAppearance()
+        DispatchQueue.main.async { [weak self] in
+            self?.updateAppearance()
+        }
     }
 }
 

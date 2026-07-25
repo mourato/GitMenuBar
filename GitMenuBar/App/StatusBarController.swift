@@ -44,7 +44,6 @@ final class StatusBarController: ObservableObject {
 
     var statusItem: NSStatusItem?
     private var mainWindow: NSWindow?
-    private var contentViewController: NSViewController?
     var contextMenu: NSMenu?
     private var badgeRefreshTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -327,7 +326,6 @@ final class StatusBarController: ObservableObject {
 
         window.delegate = windowDelegate
 
-        contentViewController = contentController
         mainWindow = window
     }
 

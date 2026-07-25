@@ -113,10 +113,6 @@ private struct GitHubConnectionCardChromeModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(
-                RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous)
-                    .fill(Color.clear)
-            )
             .overlay(
                 RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous)
                     .strokeBorder(WorkbenchPalette.neutralBorder(contrast: contrast), lineWidth: 1)
