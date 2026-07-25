@@ -44,7 +44,7 @@ final class StatusBarController: ObservableObject {
 
     var statusItem: NSStatusItem?
     private var mainWindow: NSWindow?
-    private var hostingController: NSHostingController<AnyView>?
+    private var contentViewController: NSViewController?
     var contextMenu: NSMenu?
     private var badgeRefreshTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -310,8 +310,9 @@ final class StatusBarController: ObservableObject {
         window.setFrameAutosaveName(Constants.windowAutosaveName)
         hasPositionedWindowInitially = window.setFrameUsingName(Constants.windowAutosaveName, force: false)
 
-        let hostingController = NSHostingController(rootView: makeRootView())
-        window.contentViewController = hostingController
+        let contentController = WorkbenchWindowChrome.makeHostedContentController(rootView: makeRootView())
+        window.contentViewController = contentController
+        WorkbenchWindowChrome.configureWindow(window)
 
         windowDelegate.onShouldClose = { [weak self] in
             self?.hideMainWindow()
@@ -326,7 +327,7 @@ final class StatusBarController: ObservableObject {
 
         window.delegate = windowDelegate
 
-        self.hostingController = hostingController
+        contentViewController = contentController
         mainWindow = window
     }
 
