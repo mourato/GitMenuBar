@@ -50,7 +50,8 @@ private struct CommitDetailPreviewNamespace {
             preloadStoredToken: false
         )
     )
-    .frame(width: 400, height: 580)
+    .padding(.horizontal, WorkbenchMetrics.windowPadding)
+    .frame(width: 420, height: 580)
 }
 
 #Preview("Commit Detail - Missing Commit") {
@@ -72,6 +73,6 @@ private struct CommitDetailPreviewNamespace {
             preloadStoredToken: false
         )
     )
-    .padding()
-    .frame(width: 400)
+    .padding(.horizontal, WorkbenchMetrics.windowPadding)
+    .frame(width: 420)
 }

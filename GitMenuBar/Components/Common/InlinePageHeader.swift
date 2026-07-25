@@ -8,28 +8,30 @@ struct InlinePageHeader: View {
 
     var body: some View {
         HStack {
-            HStack(spacing: 6) {
+            HStack(spacing: WorkbenchMetrics.chipSpacing) {
                 Image(systemName: systemImage)
-                    .font(.headline.weight(.semibold))
-                    .foregroundColor(.blue)
+                    .font(WorkbenchTypography.windowTitle)
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityHidden(true)
                 Text(title)
-                    .font(.headline.weight(.semibold))
+                    .font(WorkbenchTypography.windowTitle)
             }
+            .accessibilityElement(children: .combine)
 
-            Spacer()
+            Spacer(minLength: WorkbenchMetrics.compactSpacing)
 
             Button(actionTitle, action: onAction)
-                .buttonStyle(.borderless)
+                .workbenchGhost()
         }
-        .padding(.top, 4)
+        .padding(.top, WorkbenchMetrics.microSpacing)
     }
 }
 
 #Preview("Inline Page Header") {
     InlinePageHeader(
-        title: "Settings",
-        systemImage: "gear",
-        actionTitle: "Done",
+        title: "Create Repository",
+        systemImage: "plus.circle.fill",
+        actionTitle: "Cancel",
         onAction: {}
     )
     .padding()
