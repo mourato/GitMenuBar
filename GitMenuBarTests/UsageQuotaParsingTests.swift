@@ -90,6 +90,55 @@ final class UsageQuotaParsingTests: XCTestCase {
         )
     }
 
+    func testResetClockTimeUsesLocaleTimeOnly() throws {
+        let locale = Locale(identifier: "en_US")
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone.current
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 1, day: 15, hour: 10, minute: 0)))
+        let resetAt = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 1, day: 15, hour: 18, minute: 27)))
+
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        let expected = formatter.string(from: resetAt)
+
+        XCTAssertEqual(
+            UsageQuotaFormatting.resetClockTime(until: resetAt, locale: locale, now: now),
+            expected
+        )
+    }
+
+    func testResetClockTime24HourLocale() throws {
+        let locale = Locale(identifier: "en_GB")
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone.current
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 1, day: 15, hour: 10, minute: 0)))
+        let resetAt = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 1, day: 15, hour: 18, minute: 27)))
+
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        let expected = formatter.string(from: resetAt)
+
+        XCTAssertEqual(
+            UsageQuotaFormatting.resetClockTime(until: resetAt, locale: locale, now: now),
+            expected
+        )
+        XCTAssertFalse(expected.contains("AM"))
+        XCTAssertFalse(expected.contains("PM"))
+    }
+
+    func testResetClockTimeMissingOrPast() {
+        let now = Date()
+        XCTAssertEqual(UsageQuotaFormatting.resetClockTime(until: nil, now: now), "—")
+        XCTAssertEqual(
+            UsageQuotaFormatting.resetClockTime(until: now.addingTimeInterval(-60), now: now),
+            "—"
+        )
+    }
+
     func testCreditsUnlimitedAndMissing() {
         let unlimitedRoot: [String: Any] = [
             "rate_limit": [

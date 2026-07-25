@@ -166,6 +166,22 @@ enum UsageQuotaFormatting {
         return intervalChip(durationSeconds: durationSeconds)
     }
 
+    /// Locale-aware time-only string for the next quota reset (e.g. `18:27` / `6:27 PM`).
+    /// Returns an em dash when `resetAt` is nil or not in the future, matching `resetCountdown`.
+    static func resetClockTime(
+        until resetAt: Date?,
+        locale: Locale = .current,
+        now: Date = Date()
+    ) -> String {
+        guard let resetAt, resetAt > now else { return "—" }
+
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter.string(from: resetAt)
+    }
+
     static func resetCountdown(until resetAt: Date?, now: Date = Date()) -> String {
         guard let resetAt, resetAt > now else { return "—" }
 
