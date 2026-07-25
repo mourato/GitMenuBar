@@ -1,8 +1,6 @@
 import SwiftUI
 
 enum WorkingTreeLayoutMetrics {
-    /// Compact glyph width; hit area uses `actionHitTarget`.
-    static let actionWidth: CGFloat = 18
     /// Minimum interactive target for row/header icon actions (≥ `WorkbenchMetrics.iconHitTarget`).
     static let actionHitTarget: CGFloat = 32
     static let diffColumnWidth: CGFloat = 72

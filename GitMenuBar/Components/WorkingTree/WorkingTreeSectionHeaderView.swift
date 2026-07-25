@@ -52,12 +52,13 @@ struct WorkingTreeSectionHeaderView: View {
                             Image(systemName: "arrow.uturn.backward")
                                 .font(WorkbenchTypography.captionStrong)
                                 .foregroundColor(.primary)
+                                .frame(
+                                    width: WorkingTreeLayoutMetrics.actionHitTarget,
+                                    height: WorkingTreeLayoutMetrics.actionHitTarget
+                                )
+                                .contentShape(Rectangle())
                         }
                         .workbenchIcon()
-                        .frame(
-                            width: WorkingTreeLayoutMetrics.actionHitTarget,
-                            height: WorkingTreeLayoutMetrics.actionHitTarget
-                        )
                         .help("Discard All")
                         .accessibilityLabel("Discard all files in \(title)")
                         .opacity(isHovered ? 1 : 0)
@@ -68,14 +69,15 @@ struct WorkingTreeSectionHeaderView: View {
                         Image(systemName: actionIcon)
                             .font(WorkbenchTypography.captionStrong)
                             .foregroundColor(.primary)
+                            .frame(
+                                width: WorkingTreeLayoutMetrics.actionHitTarget,
+                                height: WorkingTreeLayoutMetrics.actionHitTarget
+                            )
+                            .contentShape(Rectangle())
                     }
                     .workbenchIcon()
-                    .frame(
-                        width: WorkingTreeLayoutMetrics.actionHitTarget,
-                        height: WorkingTreeLayoutMetrics.actionHitTarget
-                    )
                     .help(actionHelp)
-                    .accessibilityLabel(actionHelp)
+                    .accessibilityLabel("\(actionHelp) in \(title)")
                 }
             }
 
