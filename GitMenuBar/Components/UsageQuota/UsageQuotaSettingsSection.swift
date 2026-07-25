@@ -31,9 +31,18 @@ struct UsageQuotaSettingsSection: View {
             .disabled(!usageQuotaStore.showAIUsageQuotas)
             .accessibilityLabel("Show Codex usage quota")
 
+            Toggle(isOn: $usageQuotaStore.showCursorUsageQuota) {
+                Text("Cursor")
+                    .font(MacChromeTypography.body)
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .disabled(!usageQuotaStore.showAIUsageQuotas)
+            .accessibilityLabel("Show Cursor usage quota")
+
             Text(
-                "Quota data stays on this Mac. GitMenuBar reads your local Codex session and calls "
-                    + "OpenAI’s usage endpoint only when refreshing — it never stores OAuth tokens."
+                "Quota data stays on this Mac. GitMenuBar reads your local Codex and Cursor sessions "
+                    + "and calls unofficial usage endpoints only when refreshing — it never stores OAuth tokens."
             )
             .font(MacChromeTypography.caption)
             .foregroundColor(.secondary)

@@ -33,6 +33,14 @@ final class UsageQuotaStore: ObservableObject {
         }
     }
 
+    @Published var showCursorUsageQuota: Bool {
+        didSet {
+            guard showCursorUsageQuota != oldValue else { return }
+            defaults.set(showCursorUsageQuota, forKey: AppPreferences.Keys.showCursorUsageQuota)
+            handlePreferenceChange()
+        }
+    }
+
     private let defaults: UserDefaults
     private let snapshotStore: UsageQuotaSnapshotStore
     private let providers: [any UsageQuotaProviding]
@@ -42,13 +50,14 @@ final class UsageQuotaStore: ObservableObject {
     init(
         defaults: UserDefaults = .standard,
         snapshotStore: UsageQuotaSnapshotStore = UsageQuotaSnapshotStore(),
-        providers: [any UsageQuotaProviding] = [CodexUsageProvider()]
+        providers: [any UsageQuotaProviding] = [CodexUsageProvider(), CursorUsageProvider()]
     ) {
         self.defaults = defaults
         self.snapshotStore = snapshotStore
         self.providers = providers
         showAIUsageQuotas = defaults.object(forKey: AppPreferences.Keys.showAIUsageQuotas) as? Bool ?? false
         showCodexUsageQuota = defaults.object(forKey: AppPreferences.Keys.showCodexUsageQuota) as? Bool ?? true
+        showCursorUsageQuota = defaults.object(forKey: AppPreferences.Keys.showCursorUsageQuota) as? Bool ?? true
         handlePreferenceChange(loadCachedOnly: true)
     }
 
@@ -114,7 +123,7 @@ final class UsageQuotaStore: ObservableObject {
         case .codex:
             return showCodexUsageQuota
         case .cursor:
-            return false
+            return showCursorUsageQuota
         }
     }
 

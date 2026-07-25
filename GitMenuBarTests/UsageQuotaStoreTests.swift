@@ -68,6 +68,43 @@ final class UsageQuotaStoreTests: XCTestCase {
         XCTAssertTrue(store.visibleSnapshots.isEmpty)
     }
 
+    func testCursorToggleHidesVisibleSnapshots() async {
+        let provider = FakeUsageQuotaProvider(
+            id: .cursor,
+            snapshot: Self.cursorSampleSnapshot()
+        )
+        let store = makeStore(provider: provider)
+        store.showAIUsageQuotas = true
+
+        await waitUntil { !store.visibleSnapshots.isEmpty }
+
+        store.showCursorUsageQuota = false
+
+        XCTAssertTrue(store.visibleSnapshots.isEmpty)
+    }
+
+    func testCursorDisabledProviderIsSkippedDuringRefresh() async {
+        let codexProvider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
+        let cursorProvider = FakeUsageQuotaProvider(
+            id: .cursor,
+            snapshot: Self.cursorSampleSnapshot()
+        )
+        let store = UsageQuotaStore(
+            defaults: defaults,
+            snapshotStore: snapshotStore,
+            providers: [codexProvider, cursorProvider]
+        )
+        store.showAIUsageQuotas = true
+        store.showCursorUsageQuota = false
+
+        await waitUntil { codexProvider.fetchCount > 0 && !store.snapshots.isEmpty }
+
+        XCTAssertEqual(codexProvider.fetchCount, 1)
+        XCTAssertEqual(cursorProvider.fetchCount, 0)
+        XCTAssertEqual(store.snapshots.count, 1)
+        XCTAssertEqual(store.snapshots.first?.providerID, .codex)
+    }
+
     func testEncodedSnapshotContainsNoTokenLikeKeys() {
         snapshotStore.save(Self.sampleSnapshot())
 
@@ -141,6 +178,18 @@ final class UsageQuotaStoreTests: XCTestCase {
             weeklyWindow: UsageWindow(remainingPercent: 90, resetAt: Date().addingTimeInterval(86400), label: "Weekly"),
             isAvailable: true,
             statusNote: "chatgpt usage api"
+        )
+    }
+
+    private static func cursorSampleSnapshot() -> UsageQuotaSnapshot {
+        UsageQuotaSnapshot(
+            providerID: .cursor,
+            displayName: "Cursor",
+            sessionWindow: UsageWindow(remainingPercent: 55, resetAt: Date().addingTimeInterval(7200), label: "Plan"),
+            weeklyWindow: nil,
+            creditValueText: "$12.00 left",
+            isAvailable: true,
+            statusNote: "cursor usage-summary api"
         )
     }
 
