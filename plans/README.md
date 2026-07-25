@@ -262,3 +262,40 @@ Planned against commit `278eb3e`.
   surface.
 - Persisting refreshed Codex tokens back to `auth.json` in Plan 023: rejected
   pending explicit security design if live refresh requires it.
+
+## Interface design workbench system — 2026-07-25
+
+Locked via grill + `.interface-design/system.md` and
+`docs/adr/0001-workbench-depth-and-token-naming.md`. Dense macOS workbench:
+materials + soft borders on panel chrome; shadows only on floating overlays;
+`MacChrome*` → `Workbench*` rename; button variants on main panel first;
+working-tree section Stage/Unstage always visible with larger hit targets;
+History/WT header chrome parity. Planned against commit `bb03dcc`.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 025 | Lock workbench system.md and rename MacChrome tokens to Workbench | P1 | L | — | TODO |
+| 026 | Add Workbench button variants and adopt on main panel + popovers | P1 | M | 025 | TODO |
+| 027 | Enlarge working-tree hit targets and always-show section Stage/Unstage | P1 | M | 025, 026 | TODO |
+| 028 | Unify Working Tree and History section header chrome | P1 | S | 027 | TODO |
+| 029 | (stub) Adopt Workbench button variants on sheets + Settings | P2 | M | 026 | NOT YET AUTHORED |
+
+### Dependency notes
+
+- **025** must land first (docs already present; executor completes rename + metrics).
+- **026** consumes `Workbench*` tokens and implements the variant kit.
+- **027** uses Icon/hit metrics from 025–026; must not add per-file stage shortcuts.
+- **028** extracts shared header chrome after 027’s WT action policy is stable.
+- **029** is a README stub only — do not implement until a full plan is written.
+
+### Findings considered and rejected (this wave)
+
+- Demote footer Atomic/Manage or redesign Commit-vs-footer focal hierarchy:
+  rejected for this wave (keep current footer weight).
+- Always-show per-file Open/Discard/Stage triad: rejected; hover-reveal stays.
+- New Space/`S` stage keyboard shortcut: deferred.
+- Mass confirmation-dialog restyle: deferred (opportunistic pattern only).
+- Keep `MacChrome*` with documentation-only aliases: rejected (ADR 0001).
+- Layered shadows as default elevation: rejected in favor of materials + borders.
