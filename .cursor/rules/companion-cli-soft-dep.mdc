@@ -1,0 +1,21 @@
+---
+description: Companion CLI soft dependency when committing in GitMenuBar
+alwaysApply: true
+---
+
+# Companion CLI soft dependency (commits)
+
+When the user asks you to **commit** (and only then):
+
+1. If `command -v gitmenubar` succeeds and Propose exits `0` → use
+   `gitmenubar commit` or `gitmenubar atomic` (cwd / `--path`). Use `--apply`
+   only for that authorized commit. No amend/rebase/push/reset/force via CLI.
+2. If the CLI is missing or not usable (exit `2` notReady, exit `3`
+   invalidRepository) → fall back to plain `git` + your commit message;
+   mention `make install-cli` or Settings → AI → Install CLI.
+3. If the CLI was ready but Propose fails (exit `1` operationalFailure, exit
+   `4` policyRejected) → **fail closed**: do not invent a commit message; do
+   not `--apply`; report the CLI error.
+
+Full contract: `docs/companion-cli-agent-soft-dep.md` (ADR 0003).
+Never hard-require the CLI in CI.

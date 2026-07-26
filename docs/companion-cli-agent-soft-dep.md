@@ -47,15 +47,14 @@ Propose-only tasks may use the CLI when available; do not `--apply` unless the u
 
 ## Surfaces to update (operator paste)
 
-Add a short **Companion CLI (soft dependency)** subsection to:
+| Surface | Status |
+|---------|--------|
+| Global `ship-ship` (`~/.agents/core/skills/ship-ship`) | Updated in core skill + `references/ship-protocol.md` |
+| Global `delivery-workflow` (`~/.agents/core/skills/delivery-workflow`) | Updated in portable rules |
+| GitMenuBar Cursor rule | `.cursor/rules/companion-cli-soft-dep.mdc` (project) |
+| Cursor **User Rules** (Settings UI) | Optional global paste — Cursor has no stable file API; use the contract above if you want the soft-dep outside GitMenuBar projects |
 
-| Surface | Location (typical) |
-|---------|-------------------|
-| `ship-ship` | Commit step: check `command -v gitmenubar`, Propose vs `--apply` gate, branch on exit codes |
-| `delivery-workflow` | Verification/commit guidance: optional `make install-cli`; same three-way branch as above |
-| Cursor commit-on-request rule | When user asks to commit: prefer CLI if on PATH and ready; fallback on missing/`2`/`3`; fail closed on `1`/`4` while ready |
-
-Project overlay (in-repo, already maintained): `.agents/overlays/delivery-workflow.md`.
+Project overlay (in-repo): `.agents/overlays/delivery-workflow.md`.
 
 ## Example commit-on-request flow (pseudocode)
 

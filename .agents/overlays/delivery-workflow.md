@@ -30,8 +30,10 @@ precedence: project
   3. If the CLI was ready but Propose fails (exit `1` operationalFailure, exit
      `4` policyRejected) → **fail closed** (no harness-invented commit
      message); do not `--apply`.
-  Surfaces: global `ship-ship`, `delivery-workflow`, and Cursor commit-on-request
-  rules (paste from the handoff doc; do not hard-require CLI in CI).
+  Surfaces: global `ship-ship` and `delivery-workflow` skills; project
+  `.cursor/rules/companion-cli-soft-dep.mdc`. Optional Cursor Settings → User
+  Rules paste from `docs/companion-cli-agent-soft-dep.md`. Do not hard-require
+  CLI in CI.
 - Before merge/push, run `git diff --check`, `make guidance-check`,
   `make lint`, and `make test`.
 - Preserve unrelated changes and never delete `main`, unmerged branches, or
