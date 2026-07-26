@@ -381,7 +381,7 @@ working tree stays expanded with trailing status letters.
 |------|-------|----------|--------|------------|--------|
 | 039 | Shared Diff Tree foundation (builder, compaction, preview helpers) | P1 | M | — | DONE |
 | 040 | Commit Details Changed Files Summary | P1 | M | 039 | DONE |
-| 041 | Migrate Staged/Unstaged working tree to Diff Trees | P1 | L | 039, 040 | TODO |
+| 041 | Migrate Staged/Unstaged working tree to Diff Trees | P1 | L | 039, 040 | DONE |
 | 042 | Colored File Type Icons (license-gated) | P2 | M | 040 (041 recommended) | TODO |
 
 ### Dependency notes

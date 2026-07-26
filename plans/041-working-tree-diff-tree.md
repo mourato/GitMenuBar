@@ -20,6 +20,7 @@
 - **Depends on**: plans/039-changed-files-diff-tree-foundation.md, plans/040-commit-details-changed-files-summary.md
 - **Category**: direction
 - **Planned at**: commit `42cde45`, 2026-07-26
+- **Completed at**: commit pending, 2026-07-26
 
 ## Execution profile
 

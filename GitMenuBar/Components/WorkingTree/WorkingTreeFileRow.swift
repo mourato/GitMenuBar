@@ -41,7 +41,7 @@ struct WorkingTreeLineDiffView: View {
     }
 }
 
-private func workingTreeRowIconButton(
+func workingTreeRowIconButton(
     systemName: String,
     help: String,
     accessibilityLabel: String,

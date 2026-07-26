@@ -28,3 +28,9 @@ extension CommitFileChange {
         DiffTreeFileInput(path: path, stat: lineDiff.diffTreeStat)
     }
 }
+
+extension WorkingTreeFile {
+    var diffTreeFileInput: DiffTreeFileInput {
+        DiffTreeFileInput(path: path, stat: lineDiff.diffTreeStat)
+    }
+}
