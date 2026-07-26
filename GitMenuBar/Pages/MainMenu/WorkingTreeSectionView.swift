@@ -55,28 +55,12 @@ struct WorkingTreeSectionView: View {
     }
 
     private var showsDirectoryControls: Bool {
-        !isCollapsed && diffTreeViewShowsDirectoryControls
-    }
-
-    private var diffTreeViewShowsDirectoryControls: Bool {
-        let treeNodes = DiffTreeBuilder.buildDiffTree(files.map(\.file.diffTreeFileInput))
-        return !Self.collectDirectoryPaths(in: treeNodes).isEmpty
+        !isCollapsed && files.contains { !$0.file.directoryPath.isEmpty }
     }
 
     private func toggleAllDirectories() {
         allDirectoriesExpanded.toggle()
         directoryExpansionOverrides = [:]
-    }
-
-    private static func collectDirectoryPaths(in nodes: [DiffTreeNode]) -> [String] {
-        nodes.flatMap { node -> [String] in
-            switch node {
-            case let .directory(_, path, _, children):
-                return [path] + collectDirectoryPaths(in: children)
-            case .file:
-                return []
-            }
-        }
     }
 }
 

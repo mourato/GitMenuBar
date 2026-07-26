@@ -16,12 +16,8 @@ struct WorkingTreeDiffTreeView: View {
         DiffTreeBuilder.buildDiffTree(files.map(\.file.diffTreeFileInput))
     }
 
-    private var directoryPaths: [String] {
-        Self.collectDirectoryPaths(in: treeNodes)
-    }
-
     private var hasDirectoryNodes: Bool {
-        !directoryPaths.isEmpty
+        files.contains { !$0.file.directoryPath.isEmpty }
     }
 
     var body: some View {
@@ -47,15 +43,6 @@ struct WorkingTreeDiffTreeView: View {
         }
     }
 
-    func toggleAllDirectories() {
-        allDirectoriesExpanded.toggle()
-        directoryExpansionOverrides = [:]
-    }
-
-    var showsDirectoryControls: Bool {
-        hasDirectoryNodes
-    }
-
     private func adapter(for path: String) -> WorkingTreeRowAdapter? {
         files.first { $0.file.path == path }
     }
@@ -63,17 +50,6 @@ struct WorkingTreeDiffTreeView: View {
     private func toggleDirectory(_ path: String) {
         let isExpanded = directoryExpansionOverrides[path] ?? allDirectoriesExpanded
         directoryExpansionOverrides[path] = !isExpanded
-    }
-
-    private static func collectDirectoryPaths(in nodes: [DiffTreeNode]) -> [String] {
-        nodes.flatMap { node -> [String] in
-            switch node {
-            case let .directory(_, path, _, children):
-                return [path] + collectDirectoryPaths(in: children)
-            case .file:
-                return []
-            }
-        }
     }
 }
 
@@ -128,6 +104,8 @@ struct WorkingTreeDiffTreeNodeView: View {
                 )
             }
             .buttonStyle(.plain)
+            .frame(minHeight: WorkingTreeLayoutMetrics.actionHitTarget)
+            .contentShape(Rectangle())
             .accessibilityLabel("\(name) folder")
             .accessibilityHint(isExpanded ? "Collapse folder." : "Expand folder.")
             .accessibilityValue(folderAccessibilityValue(for: stat))
