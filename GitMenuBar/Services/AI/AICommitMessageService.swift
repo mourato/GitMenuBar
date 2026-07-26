@@ -46,10 +46,16 @@ final class AICommitMessageService {
 
     private let maxDiffCharacters: Int
     private let session: URLSession
+    private let messagePolicy: CommitMessagePolicy
 
-    init(maxDiffCharacters: Int = 40000, session: URLSession = .shared) {
+    init(
+        maxDiffCharacters: Int = 40000,
+        session: URLSession = .shared,
+        messagePolicy: CommitMessagePolicy = .shared
+    ) {
         self.maxDiffCharacters = maxDiffCharacters
         self.session = session
+        self.messagePolicy = messagePolicy
     }
 
     func testConnection(
@@ -154,7 +160,7 @@ final class AICommitMessageService {
             throw AIError.emptyResponse
         }
 
-        switch CommitMessagePolicy.shared.sanitize(cleanedResponse) {
+        switch messagePolicy.sanitize(cleanedResponse) {
         case let .success(accepted):
             return accepted
         case let .failure(error):

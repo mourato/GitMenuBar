@@ -13,9 +13,14 @@ extension AICommitMessageService: AtomicGroupingAIProviding {}
 
 final class AICommitGrouperService: ObservableObject {
     private let aiService: AtomicGroupingAIProviding
+    private let messagePolicy: CommitMessagePolicy
 
-    init(aiService: AtomicGroupingAIProviding) {
+    init(
+        aiService: AtomicGroupingAIProviding,
+        messagePolicy: CommitMessagePolicy = .shared
+    ) {
         self.aiService = aiService
+        self.messagePolicy = messagePolicy
     }
 
     /// Analyze per-file diffs and group them into logical atomic commits.
@@ -88,7 +93,7 @@ final class AICommitGrouperService: ObservableObject {
             guard !files.isEmpty else { continue }
             let message = raw.message.trimmingCharacters(in: .whitespacesAndNewlines)
             let acceptedMessage: String
-            switch CommitMessagePolicy.shared.sanitize(message) {
+            switch messagePolicy.sanitize(message) {
             case let .success(sanitized):
                 acceptedMessage = sanitized
             case let .failure(error):
