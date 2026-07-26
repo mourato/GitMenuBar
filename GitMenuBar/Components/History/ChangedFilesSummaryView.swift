@@ -113,7 +113,7 @@ struct ChangedFilesSummaryView: View {
         WorkbenchSectionHeaderChrome(
             title: changedFilesTitle,
             isCollapsed: $isCollapsed,
-            accessibilityLabel: "Changed files section",
+            accessibilityLabel: "\(changedFilesTitle) section",
             accessibilityHintExpanded: "Shows changed files.",
             accessibilityHintCollapsed: "Hides changed files."
         ) { isHovered in
