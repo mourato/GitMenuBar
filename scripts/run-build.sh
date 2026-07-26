@@ -48,3 +48,11 @@ echo "Building ${APP_PRODUCT_NAME} (${CONFIGURATION})..."
     }
 
 echo "Build succeeded"
+CLI_PATH="${DERIVED_DATA}/Build/Products/${CONFIGURATION}/gitmenubar"
+BUNDLE_CLI_PATH="${DERIVED_DATA}/Build/Products/${CONFIGURATION}/${APP_PRODUCT_NAME}.app/Contents/MacOS/gitmenubar"
+if [[ -x "${CLI_PATH}" ]]; then
+    echo "Companion CLI: ${CLI_PATH}"
+fi
+if [[ -x "${BUNDLE_CLI_PATH}" ]]; then
+    echo "Bundled CLI: ${BUNDLE_CLI_PATH}"
+fi
