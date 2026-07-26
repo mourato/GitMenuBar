@@ -69,7 +69,7 @@ call sites without changing navigation or staging behavior.
 
 **In scope**:
 - License/provenance decision recorded in the PR description (and a short
-  comment or `GitMenuBar/Resources/FileTypeIcons/README.md` if assets are
+  comment or `docs/file-type-icons.md` if assets are
   added)
 - Icon assets **or** Swift-drawn shapes under an agreed approach (see steps)
 - Replacement/adapter for `FileTypeSymbol` used by Commit Details + working

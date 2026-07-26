@@ -15,10 +15,12 @@ We do **not** vendor SVG or path data from `@pierre/trees` or T3 Code.
 
 **Why SF Symbols instead of vendoring Pierre assets**
 
-- GitMenuBar is a native Swift/macOS app; SF Symbols integrate with system appearance,
-  Dynamic Type, and Increase Contrast without sprite conversion or JS bridges.
+- GitMenuBar is a native Swift/macOS app; SF Symbols integrate with system appearance
+  and Dynamic Type without sprite conversion or JS bridges.
+- Increase Contrast is not specially tuned for these icons today; light/dark tints follow
+  the current `FileTypeIcon` color pairs.
 - Plan 042 out-of-scope items explicitly exclude NPM/JS bridges and full Pierre parity.
-- Color tokens are **inspired by** T3 Code’s `PierreEntryIcon.tsx` pairs (light/dark hex
+- Color tokens are **inspired by** T3 Code's `PierreEntryIcon.tsx` pairs (light/dark hex
   values) but mapped to SwiftUI `Color` — no Pierre icon path data is copied.
 
 **Attribution**
