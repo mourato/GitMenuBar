@@ -96,7 +96,7 @@ struct WorkingTreeDiffTreeNodeView: View {
                 ChangedFilesTreeRowChrome(
                     depth: depth,
                     showsChevronSpacer: hasDirectoryNodes || depth > 0,
-                    leadingIcon: FileTypeSymbol.directoryIconName(isExpanded: isExpanded),
+                    leadingIcon: .directory(isExpanded: isExpanded),
                     title: name,
                     stat: stat,
                     showsChevron: true,
@@ -274,11 +274,7 @@ struct WorkingTreeDiffTreeFileRowView: View {
                     .frame(width: 12, height: 12)
             }
 
-            Image(systemName: FileTypeSymbol.fileIconName(for: path))
-                .font(WorkbenchTypography.captionStrong)
-                .foregroundStyle(.secondary)
-                .frame(width: 14, alignment: .center)
-                .accessibilityHidden(true)
+            FileTypeIconView(path: path)
 
             Text(name)
                 .font(WorkbenchTypography.captionStrong.monospaced())

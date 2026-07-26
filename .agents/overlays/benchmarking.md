@@ -25,7 +25,7 @@ quota strip.
 | **Remote** | https://github.com/pingdotgg/t3code |
 | **Study ref** | `v0.0.29-nightly.20260725.899` (`5719e8ac4020`) — latest GitHub Nightly/prerelease at clone time |
 | **Channel note** | Public desktop releases are Nightly prereleases; the changed-files card also exists on `main`. Prefer the pinned Nightly tag when matching shipped Preview/Nightly UI; re-check `main` before assuming a feature is Nightly-only. |
-| **License** | MIT (T3 Tools Inc., 2026). File icons lean on `@pierre/trees` — verify that package's license before porting assets. |
+| **License** | MIT (T3 Tools Inc., 2026). File icons lean on `@pierre/trees` (Apache-2.0, verified 2026-07-26); GitMenuBar uses native SF Symbols + adaptive tints instead of vendoring Pierre SVGs — see `GitMenuBar/Resources/FileTypeIcons/README.md`. |
 | **Description** | Web/Electron coding-agent harness (Codex, Claude, Cursor, OpenCode). After each agent turn, a collapsible **Changed files** card shows aggregate `+N/-M` stats, optional compact scope preview, hierarchical folder tree with path compaction, expand/collapse-all, per-type Pierre file icons, and **Open diff**. Primary study surface for GitMenuBar's commit-detail and working-tree file summaries. |
 
 ### Vorssaint
@@ -69,7 +69,7 @@ When studying T3Code, cross-reference:
 - `apps/web/src/lib/turnDiffTree.ts` — path tree build, directory compaction, aggregated stats
 - `apps/web/src/components/chat/changedFilesPresentation.ts` — auto-expand thresholds, compact scope/file preview
 - `apps/web/src/components/chat/DiffStatLabel.tsx` — compact `+N` / `-M` formatting
-- `apps/web/src/components/chat/PierreEntryIcon.tsx` + `apps/web/src/pierre-icons.ts` — extension/name → colored file icons
+- `apps/web/src/components/chat/PierreEntryIcon.tsx` + `apps/web/src/pierre-icons.ts` — extension/name → colored file icons (GitMenuBar maps T3 light/dark token pairs to SF Symbol tints in `FileTypeIcon.swift`)
 - `apps/web/src/components/chat/MessagesTimeline.tsx` — when the card mounts after a turn
 - GitMenuBar consumers to adapt: `WorkingTreeSectionView.swift`, `WorkingTreeFileRow.swift`, `WorkingTreeSectionHeaderView.swift`, `CommitDetailPageView.swift` (`changedFilesSection` / `CommitChangedFileRowView`)
 

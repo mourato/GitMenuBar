@@ -36,7 +36,7 @@ struct ChangedFilesDiffTreeNodeView: View {
                 ChangedFilesTreeRowChrome(
                     depth: depth,
                     showsChevronSpacer: hasDirectoryNodes || depth > 0,
-                    leadingIcon: FileTypeSymbol.directoryIconName(isExpanded: isExpanded),
+                    leadingIcon: .directory(isExpanded: isExpanded),
                     title: name,
                     stat: stat,
                     showsChevron: true,
@@ -78,7 +78,7 @@ struct ChangedFilesDiffTreeNodeView: View {
             ChangedFilesTreeRowChrome(
                 depth: depth,
                 showsChevronSpacer: hasDirectoryNodes || depth > 0,
-                leadingIcon: FileTypeSymbol.fileIconName(for: path),
+                leadingIcon: .file(path: path),
                 title: name,
                 stat: stat,
                 showsChevron: false,
@@ -122,7 +122,7 @@ struct ChangedFilesDiffTreeNodeView: View {
 struct ChangedFilesTreeRowChrome: View {
     let depth: Int
     let showsChevronSpacer: Bool
-    let leadingIcon: String
+    let leadingIcon: DiffTreeLeadingIcon
     let title: String
     let stat: DiffTreeStat?
     let showsChevron: Bool
@@ -143,11 +143,7 @@ struct ChangedFilesTreeRowChrome: View {
                     .frame(width: 12, height: 12)
             }
 
-            Image(systemName: leadingIcon)
-                .font(WorkbenchTypography.captionStrong)
-                .foregroundStyle(.secondary)
-                .frame(width: 14, alignment: .center)
-                .accessibilityHidden(true)
+            DiffTreeLeadingIconView(icon: leadingIcon)
 
             Text(title)
                 .font(WorkbenchTypography.captionStrong.monospaced())
@@ -235,7 +231,7 @@ struct ChangedFilesPreviewFlowLayout: Layout {
     ChangedFilesTreeRowChrome(
         depth: 1,
         showsChevronSpacer: true,
-        leadingIcon: "swift",
+        leadingIcon: .file(path: "CommitDetailPageView.swift"),
         title: "CommitDetailPageView.swift",
         stat: DiffTreeStat(additions: 12, deletions: 3),
         showsChevron: false,

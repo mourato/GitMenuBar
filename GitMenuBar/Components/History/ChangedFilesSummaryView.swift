@@ -213,10 +213,7 @@ struct ChangedFilesSummaryView: View {
             openFile(at: path)
         } label: {
             HStack(spacing: WorkbenchMetrics.microSpacing) {
-                Image(systemName: FileTypeSymbol.fileIconName(for: path))
-                    .font(WorkbenchTypography.captionStrong)
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
+                FileTypeIconView(path: path)
 
                 Text(ChangedFilesPresentation.changedFileName(path: path))
                     .font(WorkbenchTypography.captionStrong.monospaced())
