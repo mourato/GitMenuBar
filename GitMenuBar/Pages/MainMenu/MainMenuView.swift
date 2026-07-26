@@ -134,33 +134,8 @@ struct MainMenuView: View {
                 mainView
                     .transition(routeTransition)
             case let .historyDetail(commitID):
-                CommitDetailPageView(
-                    commit: gitManager.commitHistory.first(where: { $0.id == commitID }),
-                    currentHash: gitManager.currentHash,
-                    remoteUrl: gitManager.remoteUrl,
-                    isCommitInFuture: isCommitInFuture,
-                    animationNamespace: animationNamespace,
-                    onBack: {
-                        presentationModel.showMain()
-                    },
-                    onRestoreCommit: { commit in
-                        guard commit.id != gitManager.currentHash else { return }
-                        gitManager.resetToCommit(commit.id)
-                    },
-                    onEditCommitMessage: { commit in
-                        Task {
-                            await startManualCommitMessageEdit(for: commit)
-                        }
-                    },
-                    onGenerateCommitMessage: { commit in
-                        Task {
-                            await startAutomaticCommitMessageEdit(for: commit)
-                        }
-                    }
-                )
-                .padding(.horizontal, WorkbenchMetrics.windowPadding)
-                .padding(.bottom, WorkbenchMetrics.windowPadding)
-                .transition(routeTransition)
+                commitDetailRouteView(commitID: commitID)
+                    .transition(routeTransition)
             }
         }
         .adaptiveMotion()

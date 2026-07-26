@@ -32,10 +32,6 @@ struct CommitDetailPageView: View {
 
     var body: some View {
         VStack(spacing: WorkbenchMetrics.panelPadding) {
-            header
-
-            Divider()
-
             if let commit {
                 ScrollView {
                     VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
@@ -54,38 +50,10 @@ struct CommitDetailPageView: View {
                 missingCommitSection
             }
         }
-        // Horizontal inset comes from MainMenuView's windowPadding (same as main / create-repo routes).
-        .padding(.top, WorkbenchMetrics.windowPadding)
+        // Horizontal inset from MainMenuView; top matches main under the shared titlebar toolbar.
+        .padding(.top, WorkbenchMetrics.sectionSpacing)
         .task(id: avatarTaskID) {
             await loadAuthorAvatarIfNeeded(for: commit)
-        }
-    }
-
-    private var header: some View {
-        HStack(spacing: WorkbenchMetrics.compactSpacing) {
-            Button {
-                onBack()
-            } label: {
-                HStack(spacing: WorkbenchMetrics.microSpacing) {
-                    Image(systemName: "chevron.left")
-                        .font(WorkbenchTypography.captionStrong)
-                    Text("Back")
-                        .font(WorkbenchTypography.detail)
-                }
-            }
-            .workbenchGhost()
-
-            Spacer(minLength: WorkbenchMetrics.compactSpacing)
-
-            HStack(spacing: WorkbenchMetrics.chipSpacing) {
-                Image(systemName: "clock")
-                    .font(WorkbenchTypography.captionStrong)
-                    .foregroundStyle(Color.accentColor)
-                    .accessibilityHidden(true)
-                Text("Commit Details")
-                    .font(WorkbenchTypography.sectionLabel)
-            }
-            .accessibilityElement(children: .combine)
         }
     }
 

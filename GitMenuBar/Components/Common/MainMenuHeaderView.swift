@@ -129,6 +129,29 @@ struct MainMenuHeaderToolbarContent<PopoverContent: View, ContextMenuContent: Vi
     }
 }
 
+/// Titlebar toolbar for the Commit Details route — same chrome slots as main (principal + trailing).
+struct CommitDetailHeaderToolbarContent: ToolbarContent {
+    let onBack: () -> Void
+
+    var body: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            Text("Commit Details")
+                .font(WorkbenchTypography.windowTitle)
+                .lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
+        }
+
+        ToolbarItem(placement: .primaryAction) {
+            MainMenuHeaderIconButton(
+                systemImage: "chevron.backward",
+                accessibilityLabel: "Back",
+                accessibilityHint: "Returns to the main repository view.",
+                action: onBack
+            )
+        }
+    }
+}
+
 #Preview("Main Menu Project Selector") {
     MainMenuProjectSelectorControl(
         currentProjectName: "gitmenubar",
@@ -172,6 +195,17 @@ struct MainMenuHeaderToolbarContent<PopoverContent: View, ContextMenuContent: Vi
                         )
                     }
                 )
+            }
+    }
+    .frame(width: 400, height: 240)
+}
+
+#Preview("Commit Detail Header Toolbar") {
+    NavigationStack {
+        Text("Commit detail content")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .toolbar {
+                CommitDetailHeaderToolbarContent(onBack: {})
             }
     }
     .frame(width: 400, height: 240)

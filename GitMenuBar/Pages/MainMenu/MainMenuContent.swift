@@ -170,6 +170,45 @@ extension MainMenuView {
         )
     }
 
+    func commitDetailRouteView(commitID: String) -> some View {
+        CommitDetailPageView(
+            commit: gitManager.commitHistory.first(where: { $0.id == commitID }),
+            currentHash: gitManager.currentHash,
+            remoteUrl: gitManager.remoteUrl,
+            isCommitInFuture: isCommitInFuture,
+            animationNamespace: animationNamespace,
+            onBack: {
+                presentationModel.showMain()
+            },
+            onRestoreCommit: { commit in
+                guard commit.id != gitManager.currentHash else { return }
+                gitManager.resetToCommit(commit.id)
+            },
+            onEditCommitMessage: { commit in
+                Task {
+                    await startManualCommitMessageEdit(for: commit)
+                }
+            },
+            onGenerateCommitMessage: { commit in
+                Task {
+                    await startAutomaticCommitMessageEdit(for: commit)
+                }
+            }
+        )
+        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+        .padding(.bottom, WorkbenchMetrics.windowPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .toolbar {
+            CommitDetailHeaderToolbarContent(
+                onBack: {
+                    showProjectSelector = false
+                    showRepositoryOptionsPopover = false
+                    presentationModel.showMain()
+                }
+            )
+        }
+    }
+
     var mainView: some View {
         applyMainViewOverlays(
             to: VStack(spacing: WorkbenchMetrics.groupSpacing) {
