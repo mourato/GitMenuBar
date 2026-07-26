@@ -48,13 +48,36 @@ echo "Building ${APP_PRODUCT_NAME} (${CONFIGURATION})..."
     }
 
 echo "Build succeeded"
-CLI_PATH="${DERIVED_DATA}/Build/Products/${CONFIGURATION}/gitmenubar"
-BUNDLE_CLI_PATH="${DERIVED_DATA}/Build/Products/${CONFIGURATION}/${APP_PRODUCT_NAME}.app/Contents/MacOS/gitmenubar"
+PRODUCTS_DIR="${DERIVED_DATA}/Build/Products/${CONFIGURATION}"
+APP_EXEC_PATH="${PRODUCTS_DIR}/${APP_PRODUCT_NAME}.app/Contents/MacOS/${APP_PRODUCT_NAME}"
+CLI_PATH="${PRODUCTS_DIR}/gitmenubar"
+BUNDLE_CLI_PATH="${PRODUCTS_DIR}/${APP_PRODUCT_NAME}.app/Contents/Helpers/gitmenubar"
+
+if [[ ! -x "${APP_EXEC_PATH}" ]]; then
+    echo "App executable missing: ${APP_EXEC_PATH}" >&2
+    exit 1
+fi
+if [[ -x "${CLI_PATH}" ]] && cmp -s "${CLI_PATH}" "${APP_EXEC_PATH}"; then
+    echo "App executable was overwritten by Companion CLI: ${APP_EXEC_PATH}" >&2
+    exit 1
+fi
+# Do not launch the GUI binary for verification (it would hang as a menu-bar app).
+if command -v nm >/dev/null 2>&1; then
+    if nm -gU "${APP_EXEC_PATH}" 2>/dev/null | grep -q 'GitMenuBarCLI'; then
+        echo "App executable still embeds Companion CLI entrypoint: ${APP_EXEC_PATH}" >&2
+        exit 1
+    fi
+fi
+
 if [[ -x "${CLI_PATH}" ]]; then
     echo "Companion CLI: ${CLI_PATH}"
 fi
 if [[ ! -x "${BUNDLE_CLI_PATH}" ]]; then
     echo "Bundled CLI missing or not executable: ${BUNDLE_CLI_PATH}" >&2
+    exit 1
+fi
+if cmp -s "${BUNDLE_CLI_PATH}" "${APP_EXEC_PATH}"; then
+    echo "Bundled CLI path points at the app executable: ${BUNDLE_CLI_PATH}" >&2
     exit 1
 fi
 echo "Bundled CLI: ${BUNDLE_CLI_PATH}"

@@ -15,7 +15,9 @@ export PATH="$HOME/.local/bin:$PATH"
 command -v gitmenubar
 ```
 
-Or use **Settings → AI → Install CLI** in the app (symlinks `~/.local/bin/gitmenubar` to the running app bundle’s binary). Settings install refuses App Translocation and other unstable bundle paths — copy the app to `/Applications` and reopen first.
+Or use **Settings → AI → Install CLI** in the app (symlinks `~/.local/bin/gitmenubar` to the running app bundle’s `Contents/Helpers/gitmenubar`). Settings install refuses App Translocation and other unstable bundle paths — copy the app to `/Applications` and reopen first.
+
+> **Note:** The CLI must live under `Contents/Helpers/`, not `Contents/MacOS/`. On case-insensitive APFS, `MacOS/gitmenubar` collides with `MacOS/GitMenuBar` and overwrites the GUI executable.
 
 ## Soft dependency contract
 

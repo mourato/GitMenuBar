@@ -17,6 +17,6 @@ Agents in the global delivery workflow commit via plain `git` and often cannot u
 - Operate on cwd / `--path`, never the menu bar’s selected repo by default.
 - Fail closed when the CLI is ready but AI/policy fails; skill fallback only when CLI is missing or not ready.
 - Mid-atomic apply failure stops without automatic rollback; earlier commits remain.
-- Binary lives inside the app bundle; `make install-cli` (and later Settings) puts `gitmenubar` on `PATH`.
+- Binary lives inside the app bundle at `Contents/Helpers/gitmenubar` (not `Contents/MacOS/` — on case-insensitive APFS that path collides with `GitMenuBar`); `make install-cli` (and later Settings) puts `gitmenubar` on `PATH`.
 - No interactive TTY review in v1; humans keep using the menu bar UI.
 - Do not invent a parallel usage ledger for the CLI; share the app’s AI path. (`UsageQuotaStore` today is Codex/Cursor **display**, not commit-provider metering — do not misuse it as a commit meter.)

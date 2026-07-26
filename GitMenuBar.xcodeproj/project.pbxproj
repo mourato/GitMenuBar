@@ -292,7 +292,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\nif [ \"${GITMENUBAR_BUNDLE_CLI:-YES}\" != YES ]; then\n  exit 0\nfi\nCLI=\"${BUILD_DIR}/${CONFIGURATION}/gitmenubar\"\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/../MacOS/gitmenubar\"\nif [ ! -f \"${CLI}\" ]; then\n  echo \"error: gitmenubar not built at ${CLI}\" >&2\n  exit 1\nfi\ncp \"${CLI}\" \"${DEST}\"\nchmod +x \"${DEST}\"\n";
+			shellScript = "set -euo pipefail\nif [ \"${GITMENUBAR_BUNDLE_CLI:-YES}\" != YES ]; then\n  exit 0\nfi\n# Bundle under Contents/Helpers — never Contents/MacOS/gitmenubar.\n# On case-insensitive APFS, MacOS/gitmenubar collides with MacOS/GitMenuBar and overwrites the GUI.\nCLI=\"${BUILT_PRODUCTS_DIR}/gitmenubar\"\nDEST=\"${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/Helpers/gitmenubar\"\nAPP_EXEC=\"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_PATH}\"\nif [ ! -f \"${CLI}\" ]; then\n  echo \"error: gitmenubar not built at ${CLI}\" >&2\n  exit 1\nfi\nif [ \"${DEST}\" = \"${APP_EXEC}\" ]; then\n  echo \"error: refusing to overwrite app executable at ${APP_EXEC}\" >&2\n  exit 1\nfi\nmkdir -p \"$(dirname \"${DEST}\")\"\ncp \"${CLI}\" \"${DEST}\"\nchmod +x \"${DEST}\"\nif cmp -s \"${CLI}\" \"${APP_EXEC}\"; then\n  echo \"error: app executable matches CLI after bundle copy; GUI binary was overwritten\" >&2\n  exit 1\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

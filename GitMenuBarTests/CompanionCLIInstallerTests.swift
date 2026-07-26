@@ -40,7 +40,7 @@ final class CompanionCLIInstallerTests: XCTestCase {
     }
 
     func testAppBundleContainingCLI() {
-        let cli = URL(fileURLWithPath: "/Applications/GitMenuBar.app/Contents/MacOS/gitmenubar")
+        let cli = URL(fileURLWithPath: "/Applications/GitMenuBar.app/Contents/Helpers/gitmenubar")
         let bundle = CompanionCLIInstaller.appBundle(containingCLI: cli)
         XCTAssertEqual(bundle.path, "/Applications/GitMenuBar.app")
     }

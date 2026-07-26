@@ -9,7 +9,7 @@ source "${SCRIPT_DIR}/config/app_identity.sh"
 INSTALL_DIR="${HOME}/.local/bin"
 LINK_PATH="${INSTALL_DIR}/gitmenubar"
 APP_BUNDLE_NAME="${APP_PRODUCT_NAME}.app"
-CLI_RELATIVE="Contents/MacOS/gitmenubar"
+CLI_RELATIVE="Contents/Helpers/gitmenubar"
 
 find_cli_in_app() {
     local app_path="$1"

@@ -90,7 +90,7 @@ enum CompanionCLIInstaller {
     static func locateBundledCLI(projectRoot: URL? = nil) -> URL? {
         for appBundle in appBundleCandidates(projectRoot: projectRoot) {
             let cli = appBundle
-                .appendingPathComponent("Contents/MacOS", isDirectory: true)
+                .appendingPathComponent("Contents/Helpers", isDirectory: true)
                 .appendingPathComponent(bundledCLIName, isDirectory: false)
             if FileManager.default.isExecutableFile(atPath: cli.path) {
                 return cli
@@ -101,7 +101,7 @@ enum CompanionCLIInstaller {
 
     static func appBundle(containingCLI cliURL: URL) -> URL {
         cliURL
-            .deletingLastPathComponent() // MacOS
+            .deletingLastPathComponent() // Helpers (or legacy MacOS)
             .deletingLastPathComponent() // Contents
             .deletingLastPathComponent() // .app
     }
