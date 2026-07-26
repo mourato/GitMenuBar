@@ -21,13 +21,15 @@ precedence: project
   install path for the running app.
 - **Companion CLI (Soft dependency)** — when an agent commits on user request
   (ADR 0003; handoff: `docs/companion-cli-agent-soft-dep.md`):
-  1. If `command -v gitmenubar` and the CLI is ready → Propose with
+  1. If `command -v gitmenubar` and Propose exits `0` → use
      `gitmenubar message|commit|atomic`; use `--apply` only when the user asked
      to commit.
-  2. If the CLI is missing or not ready → fall back to plain `git` and an
-     agent-authored message; mention `make install-cli` or Settings install.
-  3. If the CLI is ready but AI/Message policy fails → **fail closed** (no
-     harness-invented commit message); do not `--apply`.
+  2. If the CLI is missing or not usable (exit `2` notReady, exit `3`
+     invalidRepository) → fall back to plain `git` and an agent-authored
+     message; mention `make install-cli` or Settings install.
+  3. If the CLI was ready but Propose fails (exit `1` operationalFailure, exit
+     `4` policyRejected) → **fail closed** (no harness-invented commit
+     message); do not `--apply`.
   Surfaces: global `ship-ship`, `delivery-workflow`, and Cursor commit-on-request
   rules (paste from the handoff doc; do not hard-require CLI in CI).
 - Before merge/push, run `git diff --check`, `make guidance-check`,

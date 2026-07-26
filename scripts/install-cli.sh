@@ -24,9 +24,15 @@ find_cli_in_app() {
 SOURCE=""
 SEARCH_ORDER=()
 
+PREFERRED_DIST_APP="${PROJECT_ROOT}/dist/${APP_BUNDLE_NAME}"
+if [[ -d "${PREFERRED_DIST_APP}" ]]; then
+    SEARCH_ORDER+=("${PREFERRED_DIST_APP}")
+fi
+
 if [[ -d "${PROJECT_ROOT}/dist" ]]; then
     for app in "${PROJECT_ROOT}/dist/"*.app; do
         [[ -d "${app}" ]] || continue
+        [[ "${app}" == "${PREFERRED_DIST_APP}" ]] && continue
         SEARCH_ORDER+=("${app}")
     done
 fi
@@ -64,7 +70,8 @@ if [[ -L "${LINK_PATH}" ]]; then
     fi
     rm -f "${LINK_PATH}"
 elif [[ -e "${LINK_PATH}" ]]; then
-    rm -f "${LINK_PATH}"
+    echo "Error: ${LINK_PATH} exists and is not a symlink. Remove it manually, then retry." >&2
+    exit 1
 fi
 
 ln -sf "${SOURCE}" "${LINK_PATH}"
