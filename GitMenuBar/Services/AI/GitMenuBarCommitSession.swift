@@ -36,11 +36,13 @@ final class GitMenuBarCommitSession {
     /// Shared Message policy applied by nested AI services; exposed for CLI `--message` sanitization.
     let messagePolicy: CommitMessagePolicy
 
-    private let providerStore: AIProviderStore
     private let keychainStore: any AIAPIKeyStore
     private let messageService: AICommitMessageService
-    private let gitManager: GitManager
     private let grouper: AICommitGrouperService
+
+    /// Shared with Companion CLI within the same module.
+    let providerStore: AIProviderStore
+    let gitManager: GitManager
 
     init(
         repositoryPathScope: String,

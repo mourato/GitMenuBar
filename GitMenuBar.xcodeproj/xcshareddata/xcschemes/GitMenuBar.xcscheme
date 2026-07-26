@@ -3,10 +3,24 @@
    LastUpgradeVersion = "1640"
    version = "1.7">
    <BuildAction
-      parallelizeBuildables = "YES"
+      parallelizeBuildables = "NO"
       buildImplicitDependencies = "YES"
       buildArchitectures = "Automatic">
       <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "NO"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D5E6F7082F33333300ABC010"
+               BuildableName = "gitmenubar"
+               BlueprintName = "gitmenubar"
+               ReferencedContainer = "container:GitMenuBar.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
          <BuildActionEntry
             buildForTesting = "YES"
             buildForRunning = "YES"
