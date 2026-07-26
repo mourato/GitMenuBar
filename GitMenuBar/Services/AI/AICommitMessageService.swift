@@ -154,7 +154,12 @@ final class AICommitMessageService {
             throw AIError.emptyResponse
         }
 
-        return cleanedResponse
+        switch CommitMessagePolicy.shared.sanitize(cleanedResponse) {
+        case let .success(accepted):
+            return accepted
+        case let .failure(error):
+            throw error.aiError
+        }
     }
 
     private func resolveRequestedScope(

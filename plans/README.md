@@ -371,7 +371,7 @@ Planned against commit `42cde45`.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 036 | Shared CLI session + Commit Message policy | P1 | M | — | TODO |
+| 036 | Shared CLI session + Commit Message policy | P1 | M | — | DONE |
 | 037 | Companion CLI `gitmenubar` Propose/Apply commands | P1 | L | 036 | TODO |
 | 038 | Install CLI on PATH + soft-dep workflow docs | P1 | M | 037 | TODO |
 

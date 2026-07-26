@@ -42,6 +42,11 @@ final class AICommitGrouperService: ObservableObject {
                 return AtomicCommitGroup.fallbackGroups(for: changedFiles)
             }
             return groups
+        } catch let error as AIError {
+            if case .messagePolicyRejected = error {
+                throw error
+            }
+            return AtomicCommitGroup.fallbackGroups(for: changedFiles)
         } catch {
             return AtomicCommitGroup.fallbackGroups(for: changedFiles)
         }
@@ -76,13 +81,22 @@ final class AICommitGrouperService: ObservableObject {
             throw AIError.invalidResponse
         }
 
-        return rawGroups.compactMap { raw -> AtomicCommitGroup? in
+        var groups: [AtomicCommitGroup] = []
+        for raw in rawGroups {
             let files = raw.files.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
-            guard !files.isEmpty else { return nil }
+            guard !files.isEmpty else { continue }
             let message = raw.message.trimmingCharacters(in: .whitespacesAndNewlines)
-            return AtomicCommitGroup(files: files, message: message)
+            let acceptedMessage: String
+            switch CommitMessagePolicy.shared.sanitize(message) {
+            case let .success(sanitized):
+                acceptedMessage = sanitized
+            case let .failure(error):
+                throw error.aiError
+            }
+            groups.append(AtomicCommitGroup(files: files, message: acceptedMessage))
         }
+        return groups
     }
 
     private func strippingCodeFences(from text: String) -> String {
