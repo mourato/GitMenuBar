@@ -89,8 +89,72 @@ final class CompanionCLIServiceTests: XCTestCase {
             try service.assertIndexUnlocked(at: repoURL.path)
             XCTFail("Expected index lock refusal")
         } catch let error as CompanionCLIService.Error {
-            XCTAssertEqual(error.cliExitCode, CompanionCLIExitCode.operationalFailure)
+            XCTAssertEqual(error.exitCode, .operationalFailure)
+            XCTAssertEqual(error.cliExitCode, CompanionCLIExitCode.operationalFailure.rawValue)
         }
+    }
+
+    func testResolveMessageWithoutProviderUsesNotReadyExitCode() async {
+        let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
+        let session = GitMenuBarCommitSession(
+            repositoryPath: "/tmp",
+            providerStore: providerStore,
+            keychainStore: InMemoryAIAPIKeyStore(),
+            messageService: AICommitMessageService()
+        )
+
+        let options = CompanionCLIScopeOptions(
+            repositoryPathScope: "/tmp",
+            staged: false,
+            all: false,
+            outputFormat: .json,
+            messageOverride: nil
+        )
+
+        do {
+            _ = try await service.resolveMessage(session: session, options: options)
+            XCTFail("Expected not-ready error")
+        } catch let error as CompanionCLIService.Error {
+            XCTAssertEqual(error.exitCode, .notReady)
+            XCTAssertEqual(error.cliExitCode, CompanionCLIExitCode.notReady.rawValue)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testApplyCommitPlanCommitsOnlyPlanFiles() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let trackedFile = repoURL.appendingPathComponent("feature.swift")
+        let otherFile = repoURL.appendingPathComponent("other.swift")
+        try "base\n".write(to: trackedFile, atomically: true, encoding: .utf8)
+        try "base\n".write(to: otherFile, atomically: true, encoding: .utf8)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        try "base\nfeature\n".write(to: trackedFile, atomically: true, encoding: .utf8)
+        try "base\nother\n".write(to: otherFile, atomically: true, encoding: .utf8)
+        await gitManager.updateUncommittedFilesAsync()
+
+        let session = GitMenuBarCommitSession(
+            repositoryPath: repoURL.path,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            keychainStore: InMemoryAIAPIKeyStore(),
+            messageService: AICommitMessageService()
+        )
+
+        let plan = CompanionCLICommitPlan(
+            scope: .all,
+            files: ["feature.swift"],
+            message: "feat: feature only"
+        )
+
+        try await service.applyCommitPlan(session: session, plan: plan)
+
+        let status = try runGit(["status", "--porcelain"], in: repoURL)
+        XCTAssertTrue(status.contains("other.swift"), "other.swift should remain uncommitted")
+
+        let lastMessage = try runGit(["log", "-1", "--format=%s"], in: repoURL)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertEqual(lastMessage, "feat: feature only")
     }
 
     func testScopeOptionsResolveStagedAndAllFlags() {
@@ -111,16 +175,5 @@ final class CompanionCLIServiceTests: XCTestCase {
             messageOverride: nil
         )
         XCTAssertEqual(all.resolvedDiffScope(), DiffScope.all.rawValue)
-    }
-}
-
-private extension CompanionCLIService.Error {
-    var cliExitCode: Int32 {
-        switch self {
-        case .indexLocked, .operational:
-            return CompanionCLIExitCode.operationalFailure
-        default:
-            return exitCode.rawValue
-        }
     }
 }

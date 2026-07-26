@@ -1,6 +1,10 @@
 import ArgumentParser
 import Foundation
 
+// Shared Services/Models/Utils roots are compiled into this target alongside GitMenuBarCLI.
+// Do not import KeyboardShortcuts, Settings, or other app-only packages here — the CLI
+// target must stay headless and build without the menu bar app's UI dependencies.
+
 @main
 struct GitMenuBarCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

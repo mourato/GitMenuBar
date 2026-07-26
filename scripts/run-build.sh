@@ -53,6 +53,9 @@ BUNDLE_CLI_PATH="${DERIVED_DATA}/Build/Products/${CONFIGURATION}/${APP_PRODUCT_N
 if [[ -x "${CLI_PATH}" ]]; then
     echo "Companion CLI: ${CLI_PATH}"
 fi
-if [[ -x "${BUNDLE_CLI_PATH}" ]]; then
-    echo "Bundled CLI: ${BUNDLE_CLI_PATH}"
+if [[ ! -x "${BUNDLE_CLI_PATH}" ]]; then
+    echo "Bundled CLI missing or not executable: ${BUNDLE_CLI_PATH}" >&2
+    exit 1
 fi
+echo "Bundled CLI: ${BUNDLE_CLI_PATH}"
+"${BUNDLE_CLI_PATH}" --help >/dev/null

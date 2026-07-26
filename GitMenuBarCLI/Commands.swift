@@ -14,6 +14,9 @@ struct RepositoryCommandOptions: ParsableArguments {
     @Flag(name: .long, help: "Emit plain text instead of JSON.")
     var plain: Bool = false
 
+    @Flag(name: .long, help: "Emit JSON output (default; accepted for agent scripts).")
+    var json: Bool = false
+
     @Option(name: .long, help: "Commit message override (still runs Message policy).")
     var message: String?
 
@@ -129,9 +132,19 @@ struct AtomicCommand: AsyncParsableCommand {
 
             if apply {
                 if let progress = try await service.applyAtomicPlan(plan: plan, options: options.scopeOptions) {
-                    let json = try CompanionCLIEncoder.encodeJSON(progress)
-                    CompanionCLIRuntime.printJSON(json)
-                    throw ExitCode(CompanionCLIExitCode.operationalFailure)
+                    if options.prefersJSON {
+                        let json = try CompanionCLIEncoder.encodeJSON(progress)
+                        CompanionCLIRuntime.printJSON(json)
+                    } else {
+                        CompanionCLIRuntime.printPlain(progress.error)
+                        for (index, group) in progress.completedGroups.enumerated() {
+                            CompanionCLIRuntime.printPlain("Completed group \(index + 1): \(group.message)")
+                        }
+                        for (index, group) in progress.remainingGroups.enumerated() {
+                            CompanionCLIRuntime.printPlain("Remaining group \(index + 1): \(group.message)")
+                        }
+                    }
+                    throw ExitCode(CompanionCLIExitCode.operationalFailure.rawValue)
                 }
             }
 

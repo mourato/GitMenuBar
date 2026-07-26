@@ -18,7 +18,7 @@ public struct CompanionCLIService: Sendable {
             case .policyRejected:
                 return .policyRejected
             case .indexLocked, .operational:
-                return .success
+                return .operationalFailure
             }
         }
 
@@ -32,6 +32,10 @@ public struct CompanionCLIService: Sendable {
             case .indexLocked:
                 return "Refusing --apply because .git/index.lock exists."
             }
+        }
+
+        public var cliExitCode: Int32 {
+            exitCode.rawValue
         }
     }
 
@@ -90,7 +94,7 @@ public struct CompanionCLIService: Sendable {
         try assertIndexUnlocked(at: session.repositoryPath)
 
         let gitManager = session.gitManager
-        let result = await gitManager.commitLocallyWithFallbackAsync(plan.message)
+        let result = await gitManager.commitAtomicGroupAsync(files: plan.files, message: plan.message)
         if case let .failure(error) = result {
             throw Error.operational(error.localizedDescription)
         }
