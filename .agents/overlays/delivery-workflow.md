@@ -16,6 +16,24 @@ precedence: project
   routing, overlays, and skill metadata.
 - Debug and release build logs are `/tmp/gitmenubar-build-debug.log` and
   `/tmp/gitmenubar-build-release.log`; test logs are `/tmp/gitmenubar-test.log`.
+- `make install-cli` symlinks the app bundle’s `gitmenubar` to `~/.local/bin`
+  (see `scripts/install-cli.sh`). Settings → AI → **Install CLI** runs the same
+  install path for the running app.
+- **Companion CLI (Soft dependency)** — when an agent commits on user request
+  (ADR 0003; handoff: `docs/companion-cli-agent-soft-dep.md`):
+  1. If `command -v gitmenubar` and Propose exits `0` → use
+     `gitmenubar message|commit|atomic`; use `--apply` only when the user asked
+     to commit.
+  2. If the CLI is missing or not usable (exit `2` notReady, exit `3`
+     invalidRepository) → fall back to plain `git` and an agent-authored
+     message; mention `make install-cli` or Settings install.
+  3. If the CLI was ready but Propose fails (exit `1` operationalFailure, exit
+     `4` policyRejected) → **fail closed** (no harness-invented commit
+     message); do not `--apply`.
+  Surfaces: global `ship-ship` and `delivery-workflow` skills; project
+  `.cursor/rules/companion-cli-soft-dep.mdc`. Optional Cursor Settings → User
+  Rules paste from `docs/companion-cli-agent-soft-dep.md`. Do not hard-require
+  CLI in CI.
 - Before merge/push, run `git diff --check`, `make guidance-check`,
   `make lint`, and `make test`.
 - Preserve unrelated changes and never delete `main`, unmerged branches, or

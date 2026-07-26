@@ -149,6 +149,7 @@ enum AIError: LocalizedError, Equatable {
     case invalidEndpoint
     case invalidResponse
     case emptyResponse
+    case messagePolicyRejected(String)
     case requestFailed(String)
 
     var errorDescription: String? {
@@ -167,6 +168,8 @@ enum AIError: LocalizedError, Equatable {
             return "The AI provider returned an unexpected response format."
         case .emptyResponse:
             return "The AI provider returned an empty message."
+        case let .messagePolicyRejected(message):
+            return message
         case let .requestFailed(message):
             return message
         }

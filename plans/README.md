@@ -362,6 +362,36 @@ Planned against commit `b558d22`. Visual reference: Vozinha Form *ideas* only (n
 - Opaque Form background ignoring Plan 032 shell: rejected.
 - Nested `workbenchPanelSurface` cards inside Settings Form panes: rejected.
 
+## Companion CLI for agent commits — 2026-07-26
+
+Locked via grill. Docs: `CONTEXT.md`, `docs/adr/0003-companion-cli-for-agent-commits.md`.
+Planned against commit `42cde45`.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 036 | Shared CLI session + Commit Message policy | P1 | M | — | DONE |
+| 037 | Companion CLI `gitmenubar` Propose/Apply commands | P1 | L | 036 | DONE |
+| 038 | Install CLI on PATH + soft-dep workflow docs | P1 | M | 037 | DONE |
+
+### Dependency notes
+
+- **036** adds non-UI session + product Message policy (fail closed); no CLI binary yet.
+- **037** adds `gitmenubar` tool target (`message` / `commit` / `atomic`), JSON schema, exit codes, `--apply` stage+commit only.
+- **038** adds `make install-cli`, Settings Install CLI, and Soft dependency docs/overlay (global skill edits via handoff doc).
+- Recommended order: 036 → 037 → 038. Reviewer required on all three.
+- `UsageQuotaStore` (Codex/Cursor display) is not a commit-AI meter — do not misuse it in these plans.
+
+### Findings considered and rejected (this wave)
+
+- Skill-only / prompt-only commit quality: rejected (ADR 0003).
+- Separate CLI product/repo: rejected.
+- XPC requiring app running: rejected for v1.
+- Hard-require CLI in global skills / CI: rejected (Soft dependency).
+- Interactive TTY review in v1: deferred (humans use menu bar).
+- Git porcelain parity in CLI (`push`/`branch`/amend): rejected for v1.
+
 ## Changed Files Summary (T3Code-inspired) — 2026-07-26
 
 Locked via grill against T3 Code Nightly

@@ -23,6 +23,8 @@ If a tradeoff is required, choose **correctness and robustness** over short-term
 - `make lint-changed`
 - `make lint-fix`
 - `make agent-check`
+- `make install-cli`
+- `make uninstall-cli`
 - `make dmg`
 - `make clean`
 - `make setup`

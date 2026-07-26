@@ -15,7 +15,8 @@ echo "Running tests (build-for-testing + test-without-building)..."
     --configuration Debug \
     --derived-data "${DERIVED_DATA}" \
     --destination "platform=macOS,arch=$(uname -m)" \
-    --action build-for-testing >"${LOG_PATH}" 2>&1 || {
+    --action build-for-testing \
+    GITMENUBAR_BUNDLE_CLI=NO >"${LOG_PATH}" 2>&1 || {
         echo "Build-for-testing failed. Log: ${LOG_PATH}" >&2
         rg -n "error:|fatal error:|Test Suite|Failing tests" "${LOG_PATH}" | head -50 || true
         exit 1
