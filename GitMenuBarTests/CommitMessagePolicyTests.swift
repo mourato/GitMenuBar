@@ -67,6 +67,51 @@ final class CommitMessagePolicyTests: XCTestCase {
         }
     }
 
+    func testKeepsClaudeShannonCoAuthor() {
+        let input = """
+        feat: information theory
+
+        Co-authored-by: Claude Shannon <claude.shannon@example.com>
+        """
+
+        switch policy.sanitize(input) {
+        case let .success(sanitized):
+            XCTAssertTrue(sanitized.contains("Co-authored-by: Claude Shannon <claude.shannon@example.com>"))
+        case let .failure(error):
+            XCTFail("Expected acceptance, got \(error)")
+        }
+    }
+
+    func testKeepsAgentSmithCoAuthor() {
+        let input = """
+        feat: matrix patch
+
+        Co-authored-by: Agent Smith <agent.smith@example.com>
+        """
+
+        switch policy.sanitize(input) {
+        case let .success(sanitized):
+            XCTAssertTrue(sanitized.contains("Co-authored-by: Agent Smith <agent.smith@example.com>"))
+        case let .failure(error):
+            XCTFail("Expected acceptance, got \(error)")
+        }
+    }
+
+    func testKeepsWrittenByAliceInBody() {
+        let input = """
+        docs: credit contributors
+
+        Written by Alice for the onboarding guide.
+        """
+
+        switch policy.sanitize(input) {
+        case let .success(sanitized):
+            XCTAssertTrue(sanitized.contains("Written by Alice"))
+        case let .failure(error):
+            XCTFail("Expected acceptance, got \(error)")
+        }
+    }
+
     func testGenerateCommitMessageStripsHarnessPollutionFromProvider() async throws {
         let session = makeMockedURLSession()
         MockURLProtocol.requestHandler = { request in

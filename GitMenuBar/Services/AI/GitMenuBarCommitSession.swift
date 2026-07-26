@@ -17,8 +17,15 @@ enum GitMenuBarCommitSessionError: Error, Equatable, LocalizedError {
 /// Non-UI session for Companion CLI and other headless callers.
 ///
 /// Resolves **Repository path scope** to a git root, loads shared AI stores,
-/// and delegates generation to existing services while enforcing **Message policy**.
-final class GitMenuBarCommitSession: @unchecked Sendable {
+/// and delegates generation to existing services that enforce **Message policy**.
+///
+/// **Concurrency and ownership:** One session instance owns one Companion CLI
+/// process lifetime. Do not share a session with SwiftUI views, `@Published`
+/// observers, or the menu bar app's main-actor coordinators — construct a
+/// dedicated session per CLI invocation instead. This type is intentionally
+/// not `@MainActor`-isolated because it is CLI-oriented and may perform
+/// blocking Git and network work off the main thread.
+final class GitMenuBarCommitSession {
     private struct GenerationDependencies {
         let provider: AIProviderConfig
         let apiKey: String
@@ -26,45 +33,54 @@ final class GitMenuBarCommitSession: @unchecked Sendable {
     }
 
     let repositoryPath: String
+    /// Shared Message policy applied by nested AI services; exposed for CLI `--message` sanitization.
+    let messagePolicy: CommitMessagePolicy
 
     private let providerStore: AIProviderStore
     private let keychainStore: any AIAPIKeyStore
     private let messageService: AICommitMessageService
     private let gitManager: GitManager
     private let grouper: AICommitGrouperService
-    private let messagePolicy: CommitMessagePolicy
 
     init(
         repositoryPathScope: String,
         providerStore: AIProviderStore = AIProviderStore(),
         keychainStore: any AIAPIKeyStore = AIKeychainStore(service: "com.mourato.GitMenuBar"),
-        messageService: AICommitMessageService = AICommitMessageService(),
         messagePolicy: CommitMessagePolicy = .shared,
+        messageService: AICommitMessageService? = nil,
         commandRunner: GitCommandRunner = GitCommandRunner()
     ) throws {
         repositoryPath = try Self.resolveGitRoot(from: repositoryPathScope, using: commandRunner)
         self.providerStore = providerStore
         self.keychainStore = keychainStore
-        self.messageService = messageService
         self.messagePolicy = messagePolicy
+        let resolvedMessageService = messageService ?? AICommitMessageService(messagePolicy: messagePolicy)
+        self.messageService = resolvedMessageService
         gitManager = GitManager(repositoryPathOverride: repositoryPath)
-        grouper = AICommitGrouperService(aiService: messageService)
+        grouper = AICommitGrouperService(
+            aiService: resolvedMessageService,
+            messagePolicy: messagePolicy
+        )
     }
 
     init(
         repositoryPath: String,
         providerStore: AIProviderStore,
         keychainStore: any AIAPIKeyStore,
-        messageService: AICommitMessageService,
-        messagePolicy: CommitMessagePolicy = .shared
+        messagePolicy: CommitMessagePolicy = .shared,
+        messageService: AICommitMessageService? = nil
     ) {
         self.repositoryPath = repositoryPath
         self.providerStore = providerStore
         self.keychainStore = keychainStore
-        self.messageService = messageService
         self.messagePolicy = messagePolicy
+        let resolvedMessageService = messageService ?? AICommitMessageService(messagePolicy: messagePolicy)
+        self.messageService = resolvedMessageService
         gitManager = GitManager(repositoryPathOverride: repositoryPath)
-        grouper = AICommitGrouperService(aiService: messageService)
+        grouper = AICommitGrouperService(
+            aiService: resolvedMessageService,
+            messagePolicy: messagePolicy
+        )
     }
 
     var isReadyForGeneration: Bool {
@@ -101,7 +117,7 @@ final class GitMenuBarCommitSession: @unchecked Sendable {
 
     func generateMessage(scopeOverride: DiffScope?) async throws -> String {
         let dependencies = try resolvedGenerationDependencies()
-        let message = try await messageService.generateCommitMessage(
+        return try await messageService.generateCommitMessage(
             request: AICommitMessageService.GenerationRequest(
                 provider: dependencies.provider,
                 apiKey: dependencies.apiKey,
@@ -111,7 +127,6 @@ final class GitMenuBarCommitSession: @unchecked Sendable {
                 gitManager: gitManager
             )
         )
-        return try applyMessagePolicy(message)
     }
 
     func generateMessage(
@@ -119,14 +134,13 @@ final class GitMenuBarCommitSession: @unchecked Sendable {
         scopeDescription: String = "Selected commit"
     ) async throws -> String {
         let dependencies = try resolvedGenerationDependencies()
-        let message = try await messageService.generateCommitMessage(
+        return try await messageService.generateCommitMessage(
             provider: dependencies.provider,
             apiKey: dependencies.apiKey,
             model: dependencies.model,
             rawDiff: rawDiff,
             scopeDescription: scopeDescription
         )
-        return try applyMessagePolicy(message)
     }
 
     func generateAtomicGroups(
@@ -134,18 +148,13 @@ final class GitMenuBarCommitSession: @unchecked Sendable {
         diffPerFile: [String: String]
     ) async throws -> [AtomicCommitGroup] {
         let dependencies = try resolvedGenerationDependencies()
-        let groups = try await grouper.generateAtomicGroups(
+        return try await grouper.generateAtomicGroups(
             changedFiles: changedFiles,
             diffPerFile: diffPerFile,
             provider: dependencies.provider,
             apiKey: dependencies.apiKey,
             model: dependencies.model
         )
-        return try groups.map { group in
-            var sanitizedGroup = group
-            sanitizedGroup.message = try applyMessagePolicy(group.message)
-            return sanitizedGroup
-        }
     }
 
     static func resolveGitRoot(
@@ -182,15 +191,6 @@ final class GitMenuBarCommitSession: @unchecked Sendable {
         }
 
         return URL(fileURLWithPath: root, isDirectory: true).standardizedFileURL.path
-    }
-
-    private func applyMessagePolicy(_ message: String) throws -> String {
-        switch messagePolicy.sanitize(message) {
-        case let .success(accepted):
-            return accepted
-        case let .failure(error):
-            throw error.aiError
-        }
     }
 
     private func resolvedAPIKey(for provider: AIProviderConfig) -> String {
