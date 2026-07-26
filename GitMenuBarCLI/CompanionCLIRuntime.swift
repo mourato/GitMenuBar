@@ -36,14 +36,3 @@ private extension FileHandle {
         write(data)
     }
 }
-
-extension CompanionCLIService.Error {
-    var cliExitCode: Int32 {
-        switch self {
-        case .indexLocked, .operational:
-            return CompanionCLIExitCode.operationalFailure
-        default:
-            return exitCode.rawValue
-        }
-    }
-}

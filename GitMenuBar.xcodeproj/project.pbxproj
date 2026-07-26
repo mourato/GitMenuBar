@@ -281,6 +281,7 @@
 /* Begin PBXShellScriptBuildPhase section */
 		D5E6F7082F33333300ABC012 /* Bundle gitmenubar */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -291,7 +292,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "CLI=\"${BUILD_DIR}/${CONFIGURATION}/gitmenubar\"\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/../MacOS/gitmenubar\"\nif [ -f \"${CLI}\" ]; then\n  /bin/cp \"${CLI}\" \"${DEST}\"\n  /bin/chmod +x \"${DEST}\"\nfi\n";
+			shellScript = "set -euo pipefail\nif [ \"${GITMENUBAR_BUNDLE_CLI:-YES}\" != YES ]; then\n  exit 0\nfi\nCLI=\"${BUILD_DIR}/${CONFIGURATION}/gitmenubar\"\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/../MacOS/gitmenubar\"\nif [ ! -f \"${CLI}\" ]; then\n  echo \"error: gitmenubar not built at ${CLI}\" >&2\n  exit 1\nfi\ncp \"${CLI}\" \"${DEST}\"\nchmod +x \"${DEST}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -456,7 +457,9 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				GITMENUBAR_BUNDLE_CLI = YES;
 				INFOPLIST_FILE = GitMenuBar/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -483,7 +486,9 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				GITMENUBAR_BUNDLE_CLI = YES;
 				INFOPLIST_FILE = GitMenuBar/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# DO NOT RE-RUN — one-shot migration script; GitMenuBar.xcodeproj is the source of truth.
 """Add gitmenubar CLI with dual-membership Services/Models/Utils roots and Copy Files into .app."""
 import subprocess
 import sys
