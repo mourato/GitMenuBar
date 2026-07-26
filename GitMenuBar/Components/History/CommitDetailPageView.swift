@@ -14,6 +14,7 @@ struct CommitDetailPageView: View {
     let onRestoreCommit: (Commit) -> Void
     let onEditCommitMessage: (Commit) -> Void
     let onGenerateCommitMessage: (Commit) -> Void
+    var onOpenLocalFile: ((String) -> Void)?
     @State private var authorAvatarURL: URL?
     @State private var loadedAvatarLookupKey: String?
 
@@ -109,10 +110,6 @@ struct CommitDetailPageView: View {
 
     private func statsSection(commit: Commit) -> some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-            Text(statsSummary(for: commit))
-                .font(WorkbenchTypography.caption)
-                .foregroundStyle(.secondary)
-
             VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
                 HStack(spacing: WorkbenchMetrics.sectionSpacing) {
                     Button("Open on GitHub") {
@@ -163,22 +160,12 @@ struct CommitDetailPageView: View {
     }
 
     private func changedFilesSection(commit: Commit) -> some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-            Text("Changed Files")
-                .font(WorkbenchTypography.sectionLabel)
-
-            if commit.changedFiles.isEmpty {
-                Text("No file list available for this commit.")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                VStack(spacing: WorkbenchMetrics.compactSpacing) {
-                    ForEach(commit.changedFiles) { file in
-                        CommitChangedFileRowView(file: file)
-                    }
-                }
-            }
-        }
+        ChangedFilesSummaryView(
+            changedFiles: commit.changedFiles,
+            commitSHA: commit.id,
+            remoteURL: remoteUrl,
+            onOpenLocalFile: onOpenLocalFile
+        )
     }
 
     private var missingCommitSection: some View {
@@ -283,49 +270,5 @@ struct CommitDetailPageView: View {
         let relative = HistoryTimelineDateFormatter.relativeTimestamp(for: commit.committedAt)
         let absolute = HistoryTimelineDateFormatter.absoluteTimestamp(for: commit.committedAt)
         return "\(relative) (\(absolute))"
-    }
-
-    private func statsSummary(for commit: Commit) -> String {
-        "\(commit.stats.filesChanged) files changed, \(commit.stats.insertions) insertions(+), \(commit.stats.deletions) deletions(-)"
-    }
-}
-
-private struct CommitChangedFileRowView: View {
-    let file: CommitFileChange
-
-    var body: some View {
-        HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
-            Image(systemName: "doc.text")
-                .font(WorkbenchTypography.captionStrong)
-                .foregroundStyle(.secondary)
-                .frame(width: 14, alignment: .center)
-                .accessibilityHidden(true)
-
-            HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.chipSpacing) {
-                Text(file.fileName)
-                    .font(WorkbenchTypography.captionStrong)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .layoutPriority(1)
-
-                if !file.directoryPath.isEmpty {
-                    Text(file.directoryPath)
-                        .font(WorkbenchTypography.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .layoutPriority(0)
-                }
-            }
-
-            Spacer(minLength: WorkbenchMetrics.compactSpacing)
-
-            WorkingTreeLineDiffView(
-                addedCount: file.lineDiff.added,
-                removedCount: file.lineDiff.removed
-            )
-        }
-        .accessibilityElement(children: .combine)
     }
 }

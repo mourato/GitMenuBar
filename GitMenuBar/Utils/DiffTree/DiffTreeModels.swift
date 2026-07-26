@@ -16,3 +16,15 @@ struct DiffTreeFileInput: Equatable, Hashable {
     let path: String
     let stat: DiffTreeStat?
 }
+
+extension LineDiffStats {
+    var diffTreeStat: DiffTreeStat {
+        DiffTreeStat(additions: added, deletions: removed)
+    }
+}
+
+extension CommitFileChange {
+    var diffTreeFileInput: DiffTreeFileInput {
+        DiffTreeFileInput(path: path, stat: lineDiff.diffTreeStat)
+    }
+}

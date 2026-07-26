@@ -193,7 +193,8 @@ extension MainMenuView {
                 Task {
                     await startAutomaticCommitMessageEdit(for: commit)
                 }
-            }
+            },
+            onOpenLocalFile: { gitManager.openFile(path: $0) }
         )
         .padding(.horizontal, WorkbenchMetrics.windowPadding)
         .padding(.bottom, WorkbenchMetrics.windowPadding)
