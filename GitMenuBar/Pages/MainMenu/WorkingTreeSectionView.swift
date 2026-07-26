@@ -17,6 +17,9 @@ struct WorkingTreeSectionView: View {
     let actionHelp: String
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    @State private var allDirectoriesExpanded = true
+    @State private var directoryExpansionOverrides: [String: Bool] = [:]
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             WorkingTreeSectionHeaderView(
@@ -27,49 +30,58 @@ struct WorkingTreeSectionView: View {
                 actionHelp: actionHelp,
                 showsAction: !files.isEmpty,
                 onAction: onAction,
-                onDiscardAll: onDiscardAll
+                onDiscardAll: onDiscardAll,
+                showsDirectoryControls: showsDirectoryControls,
+                allDirectoriesExpanded: allDirectoriesExpanded,
+                onToggleAllDirectories: toggleAllDirectories
             )
 
             if !isCollapsed {
-                VStack(spacing: 3) {
-                    ForEach(files) { row in
-                        WorkingTreeFileRowView(
-                            file: row.file,
-                            actionIcon: actionIcon,
-                            actionHelp: row.actions.primaryLabel,
-                            isSelected: selectedItemID == row.id,
-                            onSelect: {
-                                onSelect(row.id)
-                            },
-                            onAction: { onStageToggle(row.file.path) },
-                            onOpen: { onOpen(row.file.path) },
-                            onDiscard: {
-                                onSelect(row.id)
-                                onDiscard(row.file.path, row.file.status)
-                            },
-                            onReveal: { onReveal(row.file.path) }
-                        )
-                    }
-                }
+                WorkingTreeDiffTreeView(
+                    files: files,
+                    actionIcon: actionIcon,
+                    selectedItemID: selectedItemID,
+                    onSelect: onSelect,
+                    onStageToggle: onStageToggle,
+                    onOpen: onOpen,
+                    onDiscard: onDiscard,
+                    onReveal: onReveal,
+                    allDirectoriesExpanded: $allDirectoriesExpanded,
+                    directoryExpansionOverrides: $directoryExpansionOverrides
+                )
                 .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
             }
         }
+    }
+
+    private var showsDirectoryControls: Bool {
+        !isCollapsed && files.contains { !$0.file.directoryPath.isEmpty }
+    }
+
+    private func toggleAllDirectories() {
+        allDirectoriesExpanded.toggle()
+        directoryExpansionOverrides = [:]
     }
 }
 
 #Preview("Staged Section") {
     WorkingTreeSectionView(
         title: "Staged",
-        summary: WorkingTreeSectionSummary(fileCount: 2, addedLineCount: 28, removedLineCount: 10),
+        summary: WorkingTreeSectionSummary(fileCount: 3, addedLineCount: 37, removedLineCount: 11),
         files: [
             WorkingTreeRowAdapter.staged(file: WorkingTreeFile(
-                path: "GitMenuBar/Features/MainMenu/MainMenuContent.swift",
+                path: "GitMenuBar/Pages/MainMenu/MainMenuContent.swift",
                 lineDiff: LineDiffStats(added: 23, removed: 8),
                 status: .modified
             )),
             WorkingTreeRowAdapter.staged(file: WorkingTreeFile(
-                path: "GitMenuBar/Features/MainMenu/MainMenuView.swift",
+                path: "GitMenuBar/Pages/MainMenu/MainMenuView.swift",
                 lineDiff: LineDiffStats(added: 5, removed: 2),
+                status: .modified
+            )),
+            WorkingTreeRowAdapter.staged(file: WorkingTreeFile(
+                path: "GitMenuBar/Components/WorkingTree/WorkingTreeFileRow.swift",
+                lineDiff: LineDiffStats(added: 9, removed: 1),
                 status: .modified
             ))
         ],
@@ -84,6 +96,48 @@ struct WorkingTreeSectionView: View {
         onDiscardAll: nil,
         actionIcon: "minus.circle",
         actionHelp: "Unstage all files"
+    )
+    .padding()
+    .frame(width: 380)
+}
+
+#Preview("Unstaged Section — Nested Paths") {
+    WorkingTreeSectionView(
+        title: "Unstaged",
+        summary: WorkingTreeSectionSummary(fileCount: 4, addedLineCount: 52, removedLineCount: 14),
+        files: [
+            WorkingTreeRowAdapter.unstaged(file: WorkingTreeFile(
+                path: "GitMenuBar/Services/Git/GitManager.swift",
+                lineDiff: LineDiffStats(added: 19, removed: 4),
+                status: .modified
+            )),
+            WorkingTreeRowAdapter.unstaged(file: WorkingTreeFile(
+                path: "GitMenuBar/Resources/PreviewSeed.json",
+                lineDiff: LineDiffStats(added: 0, removed: 0),
+                status: .untracked
+            )),
+            WorkingTreeRowAdapter.unstaged(file: WorkingTreeFile(
+                path: "GitMenuBar/Features/Auth/TokenStore.swift",
+                lineDiff: LineDiffStats(added: 12, removed: 3),
+                status: .modified
+            )),
+            WorkingTreeRowAdapter.unstaged(file: WorkingTreeFile(
+                path: "GitMenuBar/Features/Auth/Keychain.swift",
+                lineDiff: LineDiffStats(added: 21, removed: 7),
+                status: .modified
+            ))
+        ],
+        isCollapsed: .constant(false),
+        selectedItemID: .unstagedFile(path: "GitMenuBar/Services/Git/GitManager.swift"),
+        onSelect: { _ in },
+        onStageToggle: { _ in },
+        onOpen: { _ in },
+        onDiscard: { _, _ in },
+        onReveal: { _ in },
+        onAction: {},
+        onDiscardAll: {},
+        actionIcon: "plus.circle",
+        actionHelp: "Stage all files"
     )
     .padding()
     .frame(width: 380)

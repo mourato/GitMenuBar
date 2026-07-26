@@ -10,11 +10,7 @@ struct HistoryActionSet: Equatable {
     let canRestore: Bool
 
     init(commit: Commit, currentHash: String, remoteUrl: String, isCommitInFuture: Bool) {
-        if let reference = GitHubRemoteURLParser.parse(remoteUrl) {
-            commitURL = URL(string: "https://github.com/\(reference.owner)/\(reference.repository)/commit/\(commit.id)")
-        } else {
-            commitURL = nil
-        }
+        commitURL = GitHubRemoteURLParser.commitURL(remoteURL: remoteUrl, sha: commit.id)
 
         isCurrentCommit = commit.id == currentHash
         isFutureCommit = isCommitInFuture

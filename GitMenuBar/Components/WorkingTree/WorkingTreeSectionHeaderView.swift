@@ -9,6 +9,9 @@ struct WorkingTreeSectionHeaderView: View {
     let showsAction: Bool
     let onAction: () -> Void
     var onDiscardAll: (() -> Void)?
+    var showsDirectoryControls = false
+    var allDirectoriesExpanded = true
+    var onToggleAllDirectories: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -26,6 +29,28 @@ struct WorkingTreeSectionHeaderView: View {
                         addedCount: summary.addedLineCount,
                         removedCount: summary.removedLineCount
                     )
+
+                    if showsDirectoryControls, let onToggleAllDirectories {
+                        Button(action: onToggleAllDirectories) {
+                            Image(
+                                systemName: allDirectoriesExpanded
+                                    ? "arrow.down.right.and.arrow.up.left"
+                                    : "arrow.up.left.and.arrow.down.right"
+                            )
+                            .font(WorkbenchTypography.captionStrong)
+                            .foregroundColor(.primary)
+                            .frame(
+                                width: WorkingTreeLayoutMetrics.actionHitTarget,
+                                height: WorkingTreeLayoutMetrics.actionHitTarget
+                            )
+                            .contentShape(Rectangle())
+                        }
+                        .workbenchIcon()
+                        .help(allDirectoriesExpanded ? "Collapse all folders" : "Expand all folders")
+                        .accessibilityLabel(allDirectoriesExpanded ? "Collapse all folders" : "Expand all folders")
+                        .opacity(isHovered ? 1 : 0)
+                        .allowsHitTesting(isHovered)
+                    }
 
                     if showsAction {
                         if let onDiscardAll {
@@ -77,52 +102,59 @@ struct WorkingTreeSectionHeaderView: View {
 
 private struct WorkingTreeSectionHeaderPreviewContainer: View {
     @State private var isCollapsed = false
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-    private let previewFiles = [
-        WorkingTreeFile(
+    @State private var allDirectoriesExpanded = true
+    @State private var directoryExpansionOverrides: [String: Bool] = [:]
+
+    private let previewFiles: [WorkingTreeRowAdapter] = [
+        .staged(file: WorkingTreeFile(
             path: "GitMenuBar/Pages/MainMenu/MainMenuContent.swift",
             lineDiff: LineDiffStats(added: 23, removed: 8),
             status: .modified
-        ),
-        WorkingTreeFile(
+        )),
+        .staged(file: WorkingTreeFile(
             path: "GitMenuBar/Services/Git/GitManager.swift",
             lineDiff: LineDiffStats(added: 19, removed: 4),
             status: .modified
-        ),
-        WorkingTreeFile(
+        )),
+        .staged(file: WorkingTreeFile(
             path: "GitMenuBar/Resources/PreviewSeed.json",
             lineDiff: LineDiffStats(added: 0, removed: 0),
             status: .untracked
-        )
+        ))
     ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             WorkingTreeSectionHeaderView(
                 title: "Staged",
-                summary: previewFiles.sectionSummary,
+                summary: previewFiles.map(\.file).sectionSummary,
                 isCollapsed: $isCollapsed,
                 actionIcon: "minus.circle",
                 actionHelp: "Unstage all files",
                 showsAction: true,
                 onAction: {},
-                onDiscardAll: {}
+                onDiscardAll: {},
+                showsDirectoryControls: !isCollapsed,
+                allDirectoriesExpanded: allDirectoriesExpanded,
+                onToggleAllDirectories: {
+                    allDirectoriesExpanded.toggle()
+                    directoryExpansionOverrides = [:]
+                }
             )
 
             if !isCollapsed {
-                VStack(spacing: 3) {
-                    ForEach(previewFiles) { file in
-                        WorkingTreeFileRowView(
-                            file: file,
-                            actionIcon: "minus.circle",
-                            actionHelp: "Unstage file",
-                            onAction: {},
-                            onOpen: {},
-                            onDiscard: {},
-                            onReveal: {}
-                        )
-                    }
-                }
+                WorkingTreeDiffTreeView(
+                    files: previewFiles,
+                    actionIcon: "minus.circle",
+                    selectedItemID: nil,
+                    onSelect: { _ in },
+                    onStageToggle: { _ in },
+                    onOpen: { _ in },
+                    onDiscard: { _, _ in },
+                    onReveal: { _ in },
+                    allDirectoriesExpanded: $allDirectoriesExpanded,
+                    directoryExpansionOverrides: $directoryExpansionOverrides
+                )
             }
         }
         .padding()

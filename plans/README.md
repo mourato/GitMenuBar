@@ -391,3 +391,46 @@ Planned against commit `42cde45`.
 - Hard-require CLI in global skills / CI: rejected (Soft dependency).
 - Interactive TTY review in v1: deferred (humans use menu bar).
 - Git porcelain parity in CLI (`push`/`branch`/amend): rejected for v1.
+
+## Changed Files Summary (T3Code-inspired) — 2026-07-26
+
+Locked via grill against T3 Code Nightly
+`v0.0.29-nightly.20260725.899` (`~/Documents/Projects/References/T3Code`).
+Vocabulary: root `CONTEXT.md`. Benchmark catalog:
+`.agents/overlays/benchmarking.md` (**T3Code**). Planned against commit
+`42cde45` on worktree branch `feat/t3code-changed-files-summary`.
+
+Product locks: keep Staged/Unstaged separate; Commit Details first; Workbench
+section chrome (no chat card); Path Compaction + Compact Preview; Open Diff →
+GitHub commit/blob URLs with on-disk fallback; SF Symbols then colored icons;
+working tree stays expanded with trailing status letters.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 039 | Shared Diff Tree foundation (builder, compaction, preview helpers) | P1 | M | — | DONE |
+| 040 | Commit Details Changed Files Summary | P1 | M | 039 | DONE |
+| 041 | Migrate Staged/Unstaged working tree to Diff Trees | P1 | L | 039, 040 | DONE |
+| 042 | Colored File Type Icons (license-gated) | P2 | M | 040 (041 recommended) | DONE |
+
+### Dependency notes
+
+- **039** is pure Foundation + XCTest; must land before any UI.
+- **040** ships Commit Details only (tree, preview, Open Diff, SF Symbols).
+- **041** restyles working-tree sections without merging Staged/Unstaged.
+- **042** is appearance-only after icon call sites exist; license gate first.
+- Numbering starts at 039 so companion-CLI plans 036–038 on other branches
+  do not collide when they merge.
+
+### Findings considered and rejected (this wave)
+
+- Nightly-only assumption for the Changed Files card: rejected as a hard
+  constraint — the feature exists on `main` and in Nightly; study ref remains
+  the pinned Nightly tag for shipped UI fidelity.
+- Unifying Staged/Unstaged into one T3-like list: rejected.
+- In-app DiffPanel in v1: rejected; Open Diff uses GitHub/local open.
+- T3 chat-card shell inside Commit Details: rejected (ADR 0001 workbench depth).
+- Full Pierre icon parity in the first UI plan: deferred to 042 with license gate.
+- Writing plans 036–038 for this wave: rejected to avoid colliding with the
+  companion-CLI plan numbers on other branches.
