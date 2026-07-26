@@ -2,7 +2,7 @@
 
 Use this snippet when updating **global** delivery skills outside this repository (`ship-ship`, `delivery-workflow`, Cursor commit-on-request rules). Do **not** hard-require the CLI in CI or agent routing.
 
-Reference: [ADR 0003](adr/0003-companion-cli-for-agent-commits.md), `CONTEXT.md` (Soft dependency vocabulary).
+Reference: [ADR 0003](adr/0003-companion-cli-for-agent-commits.md), `CONTEXT.md` (Soft dependency vocabulary), `CompanionCLIExitCode` in the app/CLI.
 
 ## Install on PATH
 
@@ -15,23 +15,35 @@ export PATH="$HOME/.local/bin:$PATH"
 command -v gitmenubar
 ```
 
-Or use **Settings → AI → Install CLI** in the app (symlinks `~/.local/bin/gitmenubar` to the running app bundle’s binary).
+Or use **Settings → AI → Install CLI** in the app (symlinks `~/.local/bin/gitmenubar` to the running app bundle’s binary). Settings install refuses App Translocation and other unstable bundle paths — copy the app to `/Applications` and reopen first.
 
 ## Soft dependency contract
 
 When an agent is asked to **commit** (and only then):
 
-1. **CLI on PATH and ready** (`command -v gitmenubar` succeeds; `gitmenubar message` / `commit` / `atomic` Propose mode works):
+1. **CLI on PATH and ready** (`command -v gitmenubar` succeeds; Propose exits `0`):
    - Use the Companion CLI for Propose (JSON + stable exit codes).
    - Use `--apply` **only** when the user explicitly asked to commit (stage + new commits; no amend/rebase/push/reset/force).
-2. **CLI missing or not ready** (not on PATH, no providers/keys, repo invalid):
-   - Fall back to plain `git` and the agent’s own commit message flow.
-   - Tell the user the CLI is unavailable and how to install (`make install-cli` or Settings → Install CLI).
-3. **CLI ready but AI or Message policy fails** (non-zero exit, policy rejection):
-   - **Fail closed** — do not invent or substitute a commit message in the skill/harness.
+2. **CLI missing or not usable** — fall back to plain `git` and the agent’s own commit message flow; mention install:
+   - CLI not on PATH.
+   - Exit `2` (`notReady`) — missing AI provider, API key, or model.
+   - Exit `3` (`invalidRepository`) — cwd/`--path` is not a valid Git repo scope.
+3. **CLI ready but Propose failed after a ready attempt** — **fail closed** (do not invent or substitute a commit message):
+   - Exit `4` (`policyRejected`) — Message policy rejected the draft.
+   - Exit `1` (`operationalFailure`) — operational error after the CLI was ready (I/O, Git, unexpected failure).
    - Surface the CLI error; stop without `--apply`.
 
 Propose-only tasks may use the CLI when available; do not `--apply` unless the user requested a commit.
+
+## Exit codes (`CompanionCLIExitCode`)
+
+| Code | Name | Agent branch |
+|------|------|--------------|
+| `0` | success | Propose succeeded; `--apply` only if user asked to commit |
+| `1` | operationalFailure | Fail closed when CLI was ready |
+| `2` | notReady | Fallback to plain `git` |
+| `3` | invalidRepository | Fallback to plain `git` |
+| `4` | policyRejected | Fail closed when CLI was ready |
 
 ## Surfaces to update (operator paste)
 
@@ -39,9 +51,9 @@ Add a short **Companion CLI (soft dependency)** subsection to:
 
 | Surface | Location (typical) |
 |---------|-------------------|
-| `ship-ship` | Commit step: check `command -v gitmenubar`, Propose vs `--apply` gate, fail closed on policy/AI errors |
+| `ship-ship` | Commit step: check `command -v gitmenubar`, Propose vs `--apply` gate, branch on exit codes |
 | `delivery-workflow` | Verification/commit guidance: optional `make install-cli`; same three-way branch as above |
-| Cursor commit-on-request rule | When user asks to commit: prefer CLI if on PATH and ready; fallback to git; never invent message if CLI failed while ready |
+| Cursor commit-on-request rule | When user asks to commit: prefer CLI if on PATH and ready; fallback on missing/`2`/`3`; fail closed on `1`/`4` while ready |
 
 Project overlay (in-repo, already maintained): `.agents/overlays/delivery-workflow.md`.
 
@@ -50,12 +62,16 @@ Project overlay (in-repo, already maintained): `.agents/overlays/delivery-workfl
 ```text
 if user did not ask to commit:
   use git / CLI Propose only as needed; never --apply
-else if command -v gitmenubar && repo ready:
-  run gitmenubar … (Propose)
-  if success && user asked to commit:
+else if command -v gitmenubar:
+  run gitmenubar … (Propose); capture exit code
+  if exit 0 && user asked to commit:
     run gitmenubar … --apply
-  else if CLI error while ready:
+  else if exit 2 or exit 3:
+    git add / git commit with agent message; mention make install-cli or fix repo scope
+  else if exit 1 or exit 4:
     STOP — report CLI error; do not write git commit -m …
+  else:
+    STOP — unexpected exit; do not invent a commit message
 else:
   git add / git commit with agent message; mention make install-cli
 ```

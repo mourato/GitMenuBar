@@ -13,7 +13,6 @@ struct CompanionCLIInstallSectionView: View {
             }
             .disabled(isInstalling)
             .buttonStyle(.borderless)
-            .focusable(false)
 
             Text(
                 "Installs gitmenubar to ~/.local/bin for agents on your PATH. " +

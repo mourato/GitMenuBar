@@ -14,7 +14,7 @@ help:
 	@echo "make agent-check   Lint changed Swift files and build Debug app"
 	@echo "make guidance-check Validate agent guidance, plans, and skill references"
 	@echo "make install-cli   Symlink gitmenubar to ~/.local/bin"
-	@echo "make uninstall-cli Remove ~/.local/bin/gitmenubar symlink"
+	@echo "make uninstall-cli Remove ~/.local/bin/gitmenubar (symlink only)"
 	@echo "make dmg           Build and package DMG"
 	@echo "make clean         Remove generated artifacts"
 	@echo "make setup         Install local dev dependencies"
