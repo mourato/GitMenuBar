@@ -86,7 +86,7 @@ enum MainMenuCommandPaletteResolver {
                 MainMenuCommandPaletteItem(
                     kind: .recentProject(path: path),
                     section: .recentProjects,
-                    title: PathDisplayFormatter.projectName(from: path),
+                    title: RecentProjectsStore().displayName(for: path),
                     subtitle: PathDisplayFormatter.abbreviatedPath(path),
                     keywords: ["project", "switch", path],
                     isEnabled: true

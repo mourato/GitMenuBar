@@ -446,7 +446,7 @@ path used for Git operations.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 043 | Store and display custom project names | P1 | M | — | TODO |
+| 043 | Store and display custom project names | P1 | M | — | DONE |
 
 ### Dependency notes
 

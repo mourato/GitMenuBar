@@ -17,7 +17,7 @@ struct ProjectSelectorPopoverView: View {
                                 Image(systemName: path == currentRepoPath ? "checkmark.circle.fill" : "circle")
                                     .foregroundStyle(path == currentRepoPath ? Color.accentColor : Color.secondary)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(URL(fileURLWithPath: path).lastPathComponent)
+                                    Text(RecentProjectsStore().displayName(for: path))
                                         .font(WorkbenchTypography.body)
                                         .lineLimit(1)
                                     Text(PathDisplayFormatter.abbreviatedPath(path))

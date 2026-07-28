@@ -20,10 +20,9 @@ struct RecentProjectsSection: View {
             ForEach(selectablePaths, id: \.self) { path in
                 let abbreviatedPath = PathDisplayFormatter.abbreviatedPath(path)
                 RecentPathRowView(
-                    displayText: PathDisplayFormatter.recentProjectLabel(
-                        for: path,
-                        showFullPath: showFullPathInRecents
-                    ),
+                    displayText: showFullPathInRecents
+                        ? abbreviatedPath
+                        : RecentProjectsStore().displayName(for: path),
                     fullPath: abbreviatedPath,
                     onTap: {
                         onSelectPath(path)

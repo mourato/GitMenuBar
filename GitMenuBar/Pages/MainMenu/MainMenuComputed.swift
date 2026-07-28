@@ -69,7 +69,7 @@ struct MainMenuRenderSnapshot: Equatable {
             keyboardSelectableItems += historyRowAdapters.map(\.id)
         }
 
-        let projectName = currentRepoPath.isEmpty ? "Select Project" : PathDisplayFormatter.projectName(from: currentRepoPath)
+        let projectName = currentRepoPath.isEmpty ? "Select Project" : RecentProjectsStore().displayName(for: currentRepoPath)
         let branchMenuRows = availableBranches.map {
             BranchMenuRowAdapter(branchName: $0, currentBranchName: currentBranch)
         }

@@ -180,7 +180,7 @@ enum AppCommandResolver {
             .map {
                 AppRecentProjectCommand(
                     path: $0,
-                    title: PathDisplayFormatter.projectName(from: $0),
+                    title: RecentProjectsStore().displayName(for: $0),
                     subtitle: PathDisplayFormatter.abbreviatedPath($0)
                 )
             }
