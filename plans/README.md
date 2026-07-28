@@ -434,3 +434,31 @@ working tree stays expanded with trailing status letters.
 - Full Pierre icon parity in the first UI plan: deferred to 042 with license gate.
 - Writing plans 036–038 for this wave: rejected to avoid colliding with the
   companion-CLI plan numbers on other branches.
+
+## Named project references — 2026-07-28
+
+Plan [043](043-named-project-references.md) makes project identity explicit by
+persisting a display name beside each folder path. The default display name is
+the folder name, while custom names are display-only and must never replace the
+path used for Git operations.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 043 | Store and display custom project names | P1 | M | — | TODO |
+
+### Dependency notes
+
+- Plan 043 is independent of the Changed Files Summary and Companion CLI waves.
+- Execute it serially because persistence, Settings, command-center recents,
+  and the project popover all consume the same project identity model.
+
+### Findings considered and rejected
+
+- Project grouping, drag sorting, pinning, or sync: rejected for this slice
+  because the request only requires a name to exist with the folder path.
+- Using custom names in Git, GitHub, or CLI repository selection: rejected;
+  paths remain the only operational identity.
+- Adding a duplicate record for the same path under multiple names: rejected;
+  it creates ambiguous command/menu behavior without product need.
