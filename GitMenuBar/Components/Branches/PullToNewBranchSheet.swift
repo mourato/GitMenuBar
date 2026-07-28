@@ -18,7 +18,7 @@ struct PullToNewBranchSheet: View {
 
                 TextField("branch-name", text: $branchName)
                     .textFieldStyle(.roundedBorder)
-                    .font(.subheadline.monospaced())
+                    .font(.subheadline)
                     .onSubmit(onPull)
 
                 if let errorMessage {

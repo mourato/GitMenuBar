@@ -1,8 +1,10 @@
 import SwiftUI
 
 enum WorkingTreeLayoutMetrics {
-    /// Minimum interactive target for row/header icon actions (≥ `WorkbenchMetrics.iconHitTarget`).
-    static let actionHitTarget: CGFloat = 32
+    static let rowHeight: CGFloat = 32
+    static let rowVerticalPadding: CGFloat = WorkbenchMetrics.headerVerticalPadding
+    /// Minimum interactive target for row/header icon actions.
+    static let actionHitTarget: CGFloat = WorkbenchMetrics.iconHitTarget
     static let diffColumnWidth: CGFloat = 72
     static let statusColumnWidth: CGFloat = 14
     static let trailingContentPadding: CGFloat = 12
@@ -36,7 +38,6 @@ struct WorkingTreeLineDiffView: View {
                 )
         }
         .font(WorkbenchTypography.captionStrong)
-        .monospacedDigit()
         .fixedSize(horizontal: true, vertical: false)
     }
 }

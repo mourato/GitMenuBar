@@ -17,7 +17,7 @@ struct CleanupWorktreeSelectionRowView: View {
                 Text(info.worktree.branchName ?? "Detached HEAD")
                     .font(WorkbenchTypography.body)
                 Text(info.worktree.path)
-                    .font(WorkbenchTypography.monospacedCaption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)

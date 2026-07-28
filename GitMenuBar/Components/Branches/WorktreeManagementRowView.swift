@@ -20,12 +20,12 @@ struct WorktreeManagementRowView: View {
                         .font(WorkbenchTypography.body)
                         .lineLimit(1)
                     Text(shortHash)
-                        .font(WorkbenchTypography.monospacedCaption)
+                        .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Text(info.worktree.path)
-                    .font(WorkbenchTypography.monospacedCaption)
+                    .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
                     .truncationMode(.middle)

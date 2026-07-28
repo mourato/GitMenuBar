@@ -125,7 +125,9 @@ struct AtomicCommitReviewSheet: View {
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
                 if groups.count > 1 {
-                    Button(action: { removeGroup(at: index) }) {
+                    Button {
+                        removeGroup(at: index)
+                    } label: {
                         Image(systemName: "trash")
                             .foregroundStyle(.secondary)
                     }
@@ -136,7 +138,7 @@ struct AtomicCommitReviewSheet: View {
 
             TextField("Commit message", text: $groups[index].message)
                 .textFieldStyle(.roundedBorder)
-                .font(.subheadline.monospaced())
+                .font(.subheadline)
 
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(groups[index].files, id: \.self) { file in
@@ -160,20 +162,26 @@ struct AtomicCommitReviewSheet: View {
             Spacer()
             HStack(spacing: 4) {
                 if groupIndex > 0 {
-                    Button(action: { moveFile(file, from: groupIndex, to: groupIndex - 1) }) {
+                    Button {
+                        moveFile(file, from: groupIndex, to: groupIndex - 1)
+                    } label: {
                         Image(systemName: "arrow.up")
                     }
                     .buttonStyle(.plain)
                     .help("Move to previous group")
                 }
                 if groupIndex < groups.count - 1 {
-                    Button(action: { moveFile(file, from: groupIndex, to: groupIndex + 1) }) {
+                    Button {
+                        moveFile(file, from: groupIndex, to: groupIndex + 1)
+                    } label: {
                         Image(systemName: "arrow.down")
                     }
                     .buttonStyle(.plain)
                     .help("Move to next group")
                 }
-                Button(action: { removeFile(file, from: groupIndex) }) {
+                Button {
+                    removeFile(file, from: groupIndex)
+                } label: {
                     Image(systemName: "xmark.circle")
                         .foregroundStyle(.secondary)
                 }

@@ -41,7 +41,7 @@ struct CommitMessageEditorSheet: View {
                     .foregroundColor(.secondary)
 
                 TextEditor(text: $message)
-                    .font(.subheadline.monospaced())
+                    .font(.subheadline)
                     .frame(minHeight: 140)
                     .padding(8)
                     .background(Color.black.opacity(0.06))

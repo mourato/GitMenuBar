@@ -40,7 +40,7 @@ struct GitHubConnectionSection: View {
                 VStack(spacing: WorkbenchMetrics.compactSpacing) {
                     VStack(spacing: WorkbenchMetrics.microSpacing) {
                         Text(githubAuthManager.userCode)
-                            .font(.title.weight(.semibold).monospacedDigit())
+                            .font(.title.weight(.semibold))
                             .foregroundStyle(.primary)
                             .kerning(2)
 

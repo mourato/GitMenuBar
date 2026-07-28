@@ -146,7 +146,7 @@ struct ChangedFilesTreeRowChrome: View {
             DiffTreeLeadingIconView(icon: leadingIcon)
 
             Text(title)
-                .font(WorkbenchTypography.captionStrong.monospaced())
+                .font(WorkbenchTypography.body)
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -160,9 +160,10 @@ struct ChangedFilesTreeRowChrome: View {
                 )
             }
         }
-        .padding(.vertical, WorkbenchMetrics.microSpacing)
+        .padding(.vertical, WorkingTreeLayoutMetrics.rowVerticalPadding)
         .padding(.horizontal, WorkbenchMetrics.microSpacing)
         .padding(.leading, CGFloat(depth) * 14)
+        .frame(minHeight: WorkingTreeLayoutMetrics.rowHeight)
         .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .contentShape(Rectangle())

@@ -107,10 +107,6 @@ enum WorkbenchTypography {
         .body.weight(.medium)
     }
 
-    static var monospacedCaption: Font {
-        .system(.caption, design: .monospaced)
-    }
-
     static func tracking(for font: Font) -> CGFloat {
         switch font {
         case .largeTitle: return -1.0

@@ -19,7 +19,7 @@ struct CreateBranchSheet: View {
 
                 TextField("feature/new-feature", text: $branchName)
                     .textFieldStyle(.roundedBorder)
-                    .font(.subheadline.monospaced())
+                    .font(.subheadline)
                     .onSubmit {
                         if !branchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             onCreate()

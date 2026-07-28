@@ -178,7 +178,7 @@ struct ChangedFilesSummaryView: View {
 
                         HStack(spacing: WorkbenchMetrics.microSpacing) {
                             Text(scope.label)
-                                .font(WorkbenchTypography.captionStrong.monospaced())
+                                .font(WorkbenchTypography.captionStrong)
                                 .foregroundStyle(.primary.opacity(0.75))
                             Text("\(scope.fileCount) file\(scope.fileCount == 1 ? "" : "s")")
                                 .font(WorkbenchTypography.caption)
@@ -216,7 +216,7 @@ struct ChangedFilesSummaryView: View {
                 FileTypeIconView(path: path)
 
                 Text(ChangedFilesPresentation.changedFileName(path: path))
-                    .font(WorkbenchTypography.captionStrong.monospaced())
+                    .font(WorkbenchTypography.captionStrong)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

@@ -104,7 +104,7 @@ struct WorkingTreeDiffTreeNodeView: View {
                 )
             }
             .buttonStyle(.plain)
-            .frame(minHeight: WorkingTreeLayoutMetrics.actionHitTarget)
+            .frame(minHeight: WorkingTreeLayoutMetrics.rowHeight)
             .contentShape(Rectangle())
             .accessibilityLabel("\(name) folder")
             .accessibilityHint(isExpanded ? "Collapse folder." : "Expand folder.")
@@ -209,8 +209,9 @@ struct WorkingTreeDiffTreeFileRowView: View {
                 .foregroundColor(Color(nsColor: file.status.foregroundColor))
                 .frame(width: WorkingTreeLayoutMetrics.statusColumnWidth, alignment: .trailing)
         }
-        .padding(.vertical, WorkbenchMetrics.microSpacing)
+        .padding(.vertical, WorkingTreeLayoutMetrics.rowVerticalPadding)
         .padding(.horizontal, WorkbenchMetrics.microSpacing)
+        .frame(minHeight: WorkingTreeLayoutMetrics.rowHeight)
         .background(backgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .contentShape(Rectangle())
@@ -277,7 +278,7 @@ struct WorkingTreeDiffTreeFileRowView: View {
             FileTypeIconView(path: path)
 
             Text(name)
-                .font(WorkbenchTypography.captionStrong.monospaced())
+                .font(WorkbenchTypography.body)
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
