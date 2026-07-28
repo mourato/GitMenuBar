@@ -806,7 +806,7 @@ final class StatusBarController: ObservableObject {
                 syncActionTitle: actionCoordinator.syncActionTitle,
                 currentRepoPath: currentRepositoryPath() ?? "",
                 remoteUrl: gitManager.remoteUrl,
-                recentPaths: RecentProjectsStore().recentPaths(),
+                recentProjects: RecentProjectsStore().recentProjects(),
                 isGitHubAuthenticated: githubAuthManager.isAuthenticated,
                 hasWorkingTreeChanges: hasWorkingTreeChanges,
                 canDoAtomicCommits: hasWorkingTreeChanges && aiCommitCoordinator.isReadyForGeneration,

@@ -14,9 +14,9 @@ final class AppCommandResolverTests: XCTestCase {
             context: AppCommandContext(
                 actionState: actionState,
                 syncActionTitle: "Sync Changes",
-                currentRepoPath: "/tmp/current",
+                currentRepoPath: "/tmp/current/../current",
                 remoteUrl: "git@github.com:saihgupr/GitMenuBar.git",
-                recentPaths: [],
+                recentProjects: [],
                 isGitHubAuthenticated: true,
                 hasWorkingTreeChanges: true,
                 canDoAtomicCommits: false,
@@ -52,14 +52,14 @@ final class AppCommandResolverTests: XCTestCase {
                 syncActionTitle: "Sync Changes",
                 currentRepoPath: "/tmp/current",
                 remoteUrl: "",
-                recentPaths: [
-                    "/tmp/current",
-                    "/tmp/a",
-                    "/tmp/b",
-                    "/tmp/c",
-                    "/tmp/d",
-                    "/tmp/e",
-                    "/tmp/f"
+                recentProjects: [
+                    ProjectReference(path: "/tmp/current", name: "Current Project"),
+                    ProjectReference(path: "/tmp/a", name: "Client A"),
+                    ProjectReference(path: "/tmp/b", name: "Client B"),
+                    ProjectReference(path: "/tmp/c", name: "Client C"),
+                    ProjectReference(path: "/tmp/d", name: "Client D"),
+                    ProjectReference(path: "/tmp/e", name: "Client E"),
+                    ProjectReference(path: "/tmp/f", name: "Client F")
                 ],
                 isGitHubAuthenticated: false,
                 hasWorkingTreeChanges: false,
@@ -76,6 +76,10 @@ final class AppCommandResolverTests: XCTestCase {
         XCTAssertEqual(
             snapshot.recentProjects.map(\.path),
             ["/tmp/a", "/tmp/b", "/tmp/c", "/tmp/d", "/tmp/e"]
+        )
+        XCTAssertEqual(
+            snapshot.recentProjects.map(\.title),
+            ["Client A", "Client B", "Client C", "Client D", "Client E"]
         )
         XCTAssertEqual(
             snapshot.states[AppCommandID.showRepositoryOptions],

@@ -131,7 +131,7 @@ struct AppCommandContext: Equatable {
     let syncActionTitle: String
     let currentRepoPath: String
     let remoteUrl: String
-    let recentPaths: [String]
+    let recentProjects: [ProjectReference]
     let isGitHubAuthenticated: Bool
     let hasWorkingTreeChanges: Bool
     let canDoAtomicCommits: Bool
@@ -174,14 +174,15 @@ enum AppCommandResolver {
             .quit: state(.quit, isEnabled: true)
         ]
 
-        let recentProjects = context.recentPaths
-            .filter { $0 != context.currentRepoPath }
+        let currentRepoPath = context.currentRepoPath.isEmpty ? "" : RecentProjectsStore.normalize(context.currentRepoPath)
+        let recentProjects = context.recentProjects
+            .filter { $0.path != currentRepoPath }
             .prefix(5)
             .map {
                 AppRecentProjectCommand(
-                    path: $0,
-                    title: RecentProjectsStore().displayName(for: $0),
-                    subtitle: PathDisplayFormatter.abbreviatedPath($0)
+                    path: $0.path,
+                    title: $0.name,
+                    subtitle: PathDisplayFormatter.abbreviatedPath($0.path)
                 )
             }
 

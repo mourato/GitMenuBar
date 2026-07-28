@@ -4,7 +4,7 @@ import XCTest
 final class PathDisplayFormatterTests: XCTestCase {
     func testProjectNameUsesLastPathComponent() {
         XCTAssertEqual(
-            PathDisplayFormatter.projectName(from: "/Users/test/Projects/gitmenubar"),
+            PathDisplayFormatter.defaultProjectName(for: "/Users/test/Projects/gitmenubar"),
             "gitmenubar"
         )
     }

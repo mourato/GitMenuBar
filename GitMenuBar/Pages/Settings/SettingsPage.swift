@@ -81,7 +81,7 @@ struct GitSettingsPaneView: View {
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
 
     @State private var repositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
-    @State private var recentPaths = RecentProjectsStore().recentPaths()
+    @State private var recentProjects = RecentProjectsStore().recentProjects()
     @State private var projectName = RecentProjectsStore().displayName(
         for: UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
     )
@@ -125,17 +125,22 @@ struct GitSettingsPaneView: View {
             }
 
             Section {
-                TextField("Project Name", text: $projectName)
-                    .disabled(repositoryPath.isEmpty)
-                    .onSubmit { renameProject() }
-                    .onChange(of: projectName) { _ in renameProject() }
+                TextField(
+                    "Project Name",
+                    text: Binding(
+                        get: { projectName },
+                        set: { updateProjectName($0) }
+                    )
+                )
+                .disabled(repositoryPath.isEmpty)
+                .onSubmit { normalizeProjectNameField() }
             } header: {
                 SettingsFormSectionHeader(title: "Project", icon: "tag")
             }
 
             Section {
                 RecentProjectsSection(
-                    recentPaths: recentPaths,
+                    recentProjects: recentProjects,
                     currentRepoPath: repositoryPath,
                     showFullPathInRecents: $showFullPathInRecents,
                     onSelectPath: selectRecentPath
@@ -210,11 +215,16 @@ struct GitSettingsPaneView: View {
         projectName = recentProjectsStore.displayName(for: path)
     }
 
-    private func renameProject() {
+    private func updateProjectName(_ newName: String) {
+        projectName = newName
         guard !repositoryPath.isEmpty else { return }
-        recentProjectsStore.rename(path: repositoryPath, name: projectName)
+        recentProjectsStore.rename(path: repositoryPath, name: newName)
+        recentProjects = recentProjectsStore.recentProjects()
+    }
+
+    private func normalizeProjectNameField() {
+        guard !repositoryPath.isEmpty else { return }
         projectName = recentProjectsStore.displayName(for: repositoryPath)
-        recentPaths = recentProjectsStore.recentPaths()
     }
 
     private func applyRepositorySelection(_ path: String, mayOpenCreateRepo: Bool) {
@@ -223,7 +233,8 @@ struct GitSettingsPaneView: View {
 
         updateRepositoryPath(normalizedPath)
         recentProjectsStore.add(normalizedPath)
-        recentPaths = recentProjectsStore.recentPaths()
+        projectName = recentProjectsStore.displayName(for: normalizedPath)
+        recentProjects = recentProjectsStore.recentProjects()
 
         if !gitManager.isGitRepository(at: normalizedPath), mayOpenCreateRepo, githubAuthManager.isAuthenticated {
             NSApp.keyWindow?.performClose(nil)

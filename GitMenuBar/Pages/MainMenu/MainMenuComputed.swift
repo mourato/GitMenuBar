@@ -13,7 +13,7 @@ struct MainMenuRenderSnapshot: Equatable {
     let historySections: [HistoryTimelineSectionModel]
     let keyboardSelectableItems: [MainMenuSelectableItem]
     let branchMenuRows: [BranchMenuRowAdapter]
-    let recentPaths: [String]
+    let recentProjects: [ProjectReference]
     let currentRepoPath: String
     let currentProjectName: String
 
@@ -24,7 +24,7 @@ struct MainMenuRenderSnapshot: Equatable {
         historySections: [],
         keyboardSelectableItems: [],
         branchMenuRows: [],
-        recentPaths: [],
+        recentProjects: [],
         currentRepoPath: "",
         currentProjectName: "Select Project"
     )
@@ -42,7 +42,7 @@ struct MainMenuRenderSnapshot: Equatable {
         isStagedSectionCollapsed: Bool,
         isUnstagedSectionCollapsed: Bool,
         isHistorySectionCollapsed: Bool,
-        recentPaths: [String],
+        recentProjects: [ProjectReference],
         currentRepoPath: String,
         isCommitInFuture: (Commit) -> Bool
     ) -> MainMenuRenderSnapshot {
@@ -69,7 +69,11 @@ struct MainMenuRenderSnapshot: Equatable {
             keyboardSelectableItems += historyRowAdapters.map(\.id)
         }
 
-        let projectName = currentRepoPath.isEmpty ? "Select Project" : RecentProjectsStore().displayName(for: currentRepoPath)
+        let normalizedCurrentPath = currentRepoPath.isEmpty ? "" : RecentProjectsStore.normalize(currentRepoPath)
+        let storedProjectName = recentProjects.first { $0.path == normalizedCurrentPath }?.name
+        let projectName = currentRepoPath.isEmpty
+            ? "Select Project"
+            : storedProjectName ?? PathDisplayFormatter.defaultProjectName(for: currentRepoPath)
         let branchMenuRows = availableBranches.map {
             BranchMenuRowAdapter(branchName: $0, currentBranchName: currentBranch)
         }
@@ -81,7 +85,7 @@ struct MainMenuRenderSnapshot: Equatable {
             historySections: historySections,
             keyboardSelectableItems: keyboardSelectableItems,
             branchMenuRows: branchMenuRows,
-            recentPaths: recentPaths,
+            recentProjects: recentProjects,
             currentRepoPath: currentRepoPath,
             currentProjectName: projectName
         )
@@ -332,8 +336,8 @@ extension MainMenuView {
         )
     }
 
-    var recentPaths: [String] {
-        renderSnapshot.recentPaths
+    var recentProjects: [ProjectReference] {
+        renderSnapshot.recentProjects
     }
 
     var currentRepoPath: String {
@@ -385,7 +389,7 @@ extension MainMenuView {
                 syncActionTitle: actionCoordinator.syncActionTitle,
                 currentRepoPath: currentRepoPath,
                 remoteUrl: gitManager.remoteUrl,
-                recentPaths: recentPaths,
+                recentProjects: recentProjects,
                 isGitHubAuthenticated: githubAuthManager.isAuthenticated,
                 hasWorkingTreeChanges: hasWorkingTreeChanges,
                 canDoAtomicCommits: canShowAtomicCommits,

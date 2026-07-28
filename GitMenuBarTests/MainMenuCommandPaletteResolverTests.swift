@@ -16,7 +16,7 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
                 syncActionTitle: "Sync Changes",
                 currentRepoPath: "",
                 remoteUrl: "",
-                recentPaths: [],
+                recentProjects: [],
                 isGitHubAuthenticated: false,
                 hasWorkingTreeChanges: true,
                 canDoAtomicCommits: false,
@@ -49,22 +49,22 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         )
 
         let recents = [
-            "/tmp/current",
-            "/tmp/a",
-            "/tmp/b",
-            "/tmp/c",
-            "/tmp/d",
-            "/tmp/e",
-            "/tmp/f"
+            ProjectReference(path: "/tmp/current", name: "Current Project"),
+            ProjectReference(path: "/tmp/a", name: "Client A"),
+            ProjectReference(path: "/tmp/b", name: "Client B"),
+            ProjectReference(path: "/tmp/c", name: "Client C"),
+            ProjectReference(path: "/tmp/d", name: "Client D"),
+            ProjectReference(path: "/tmp/e", name: "Client E"),
+            ProjectReference(path: "/tmp/f", name: "Client F")
         ]
 
         let items = MainMenuCommandPaletteResolver.resolveItems(
             context: AppCommandContext(
                 actionState: actionState,
                 syncActionTitle: "Sync Changes",
-                currentRepoPath: "/tmp/current",
+                currentRepoPath: "/tmp/current/../current",
                 remoteUrl: "",
-                recentPaths: recents,
+                recentProjects: recents,
                 isGitHubAuthenticated: false,
                 hasWorkingTreeChanges: false,
                 canDoAtomicCommits: false,
@@ -88,6 +88,10 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
                 .recentProject(path: "/tmp/d"),
                 .recentProject(path: "/tmp/e")
             ]
+        )
+        XCTAssertEqual(
+            recentProjectItems.map(\.title),
+            ["Client A", "Client B", "Client C", "Client D", "Client E"]
         )
     }
 
@@ -163,7 +167,7 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
                 syncActionTitle: "",
                 currentRepoPath: "/tmp/repo",
                 remoteUrl: "",
-                recentPaths: [],
+                recentProjects: [],
                 isGitHubAuthenticated: false,
                 hasWorkingTreeChanges: false,
                 canDoAtomicCommits: true,
@@ -192,7 +196,7 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
                 syncActionTitle: "",
                 currentRepoPath: "/tmp/repo",
                 remoteUrl: "",
-                recentPaths: [],
+                recentProjects: [],
                 isGitHubAuthenticated: false,
                 hasWorkingTreeChanges: false,
                 canDoAtomicCommits: false,
@@ -217,7 +221,7 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
                 syncActionTitle: "",
                 currentRepoPath: "/tmp/repo",
                 remoteUrl: "",
-                recentPaths: [],
+                recentProjects: [],
                 isGitHubAuthenticated: false,
                 hasWorkingTreeChanges: false,
                 canDoAtomicCommits: false,
@@ -248,7 +252,7 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
                 syncActionTitle: "",
                 currentRepoPath: "/tmp/repo",
                 remoteUrl: "",
-                recentPaths: [],
+                recentProjects: [],
                 isGitHubAuthenticated: false,
                 hasWorkingTreeChanges: false,
                 canDoAtomicCommits: false,
@@ -269,7 +273,7 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
                 syncActionTitle: "",
                 currentRepoPath: "/tmp/repo",
                 remoteUrl: "",
-                recentPaths: [],
+                recentProjects: [],
                 isGitHubAuthenticated: false,
                 hasWorkingTreeChanges: false,
                 canDoAtomicCommits: false,
@@ -296,7 +300,7 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
                 syncActionTitle: "",
                 currentRepoPath: "/tmp/repo",
                 remoteUrl: "",
-                recentPaths: [],
+                recentProjects: [],
                 isGitHubAuthenticated: false,
                 hasWorkingTreeChanges: false,
                 canDoAtomicCommits: false,

@@ -91,7 +91,7 @@ struct MainMenuView: View {
     @State var discardError: String?
     @State var showDiscardAllConfirmation = false
     @State var currentRepositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
-    @State var recentProjectPaths = RecentProjectsStore().recentPaths()
+    @State var recentProjectReferences = RecentProjectsStore().recentProjects()
     @State var renderSnapshot = MainMenuRenderSnapshot.empty
 
     let closeWindow: () -> Void
@@ -319,7 +319,7 @@ struct MainMenuView: View {
         .onChange(of: currentRepositoryPath) { _ in
             refreshRenderSnapshot()
         }
-        .onChange(of: recentProjectPaths) { _ in
+        .onChange(of: recentProjectReferences) { _ in
             refreshRenderSnapshot()
         }
         .onChange(of: isStagedSectionCollapsed) { _ in
@@ -380,7 +380,7 @@ private extension AppPreferences.AppearanceMode {
 private extension MainMenuView {
     func reloadRepositorySelectionSnapshot() {
         currentRepositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
-        recentProjectPaths = RecentProjectsStore().recentPaths()
+        recentProjectReferences = RecentProjectsStore().recentProjects()
     }
 
     func refreshRenderSnapshot() {
@@ -395,7 +395,7 @@ private extension MainMenuView {
             isStagedSectionCollapsed: isStagedSectionCollapsed,
             isUnstagedSectionCollapsed: isUnstagedSectionCollapsed,
             isHistorySectionCollapsed: isHistorySectionCollapsed,
-            recentPaths: recentProjectPaths,
+            recentProjects: recentProjectReferences,
             currentRepoPath: currentRepositoryPath,
             isCommitInFuture: isCommitInFuture
         )

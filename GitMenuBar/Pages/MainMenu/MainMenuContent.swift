@@ -269,7 +269,7 @@ extension MainMenuView {
                     },
                     projectSelectorContent: {
                         ProjectSelectorPopoverView(
-                            recentPaths: recentPaths,
+                            recentProjects: recentProjects,
                             currentRepoPath: currentRepoPath,
                             onSelectPath: { path in
                                 showProjectSelector = false

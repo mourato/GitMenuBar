@@ -15,7 +15,7 @@ struct ProjectReference: Codable, Equatable, Identifiable {
 
     private static func normalizedName(_ name: String?, path: String) -> String {
         let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return trimmed.isEmpty ? PathDisplayFormatter.projectName(from: path) : trimmed
+        return trimmed.isEmpty ? PathDisplayFormatter.defaultProjectName(for: path) : trimmed
     }
 }
 
@@ -72,7 +72,7 @@ final class RecentProjectsStore {
     func displayName(for path: String) -> String {
         guard !path.isEmpty else { return "" }
         return recentProjects().first { $0.path == Self.normalize(path) }?.name
-            ?? PathDisplayFormatter.projectName(from: path)
+            ?? PathDisplayFormatter.defaultProjectName(for: path)
     }
 
     static func normalize(_ path: String) -> String {

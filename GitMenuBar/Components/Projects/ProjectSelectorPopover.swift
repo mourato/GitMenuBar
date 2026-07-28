@@ -1,23 +1,32 @@
 import SwiftUI
 
 struct ProjectSelectorPopoverView: View {
-    let recentPaths: [String]
+    let recentProjects: [ProjectReference]
     let currentRepoPath: String
     let onSelectPath: (String) -> Void
     let onBrowse: () -> Void
     let onShowRepositoryOptions: (() -> Void)?
 
+    private var normalizedCurrentRepoPath: String {
+        guard !currentRepoPath.isEmpty else {
+            return ""
+        }
+        return RecentProjectsStore.normalize(currentRepoPath)
+    }
+
     var body: some View {
         List {
             Section("Projects") {
-                ForEach(recentPaths, id: \.self) { path in
+                ForEach(recentProjects) { project in
+                    let path = project.path
+                    let isCurrentProject = path == normalizedCurrentRepoPath
                     HStack(spacing: WorkbenchMetrics.compactSpacing) {
                         Button(action: { onSelectPath(path) }, label: {
                             HStack(spacing: 6) {
-                                Image(systemName: path == currentRepoPath ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(path == currentRepoPath ? Color.accentColor : Color.secondary)
+                                Image(systemName: isCurrentProject ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(isCurrentProject ? Color.accentColor : Color.secondary)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(RecentProjectsStore().displayName(for: path))
+                                    Text(project.name)
                                         .font(WorkbenchTypography.body)
                                         .lineLimit(1)
                                     Text(PathDisplayFormatter.abbreviatedPath(path))
@@ -29,9 +38,9 @@ struct ProjectSelectorPopoverView: View {
                             }
                         })
                         .buttonStyle(.plain)
-                        .workbenchRow(isSelected: path == currentRepoPath)
+                        .workbenchRow(isSelected: isCurrentProject)
 
-                        if path == currentRepoPath, let onShowRepositoryOptions {
+                        if isCurrentProject, let onShowRepositoryOptions {
                             MainMenuHeaderIconButton(
                                 systemImage: "ellipsis.circle",
                                 accessibilityLabel: "Repository options",
@@ -59,9 +68,9 @@ struct ProjectSelectorPopoverView: View {
 
 #Preview("Project Selector") {
     ProjectSelectorPopoverView(
-        recentPaths: [
-            "/Users/usuario/Documents/Repos/gitmenubar",
-            "/Users/usuario/Documents/Repos/my-meeting-assistant"
+        recentProjects: [
+            ProjectReference(path: "/Users/usuario/Documents/Repos/gitmenubar", name: "GitMenuBar"),
+            ProjectReference(path: "/Users/usuario/Documents/Repos/my-meeting-assistant", name: "Meeting Assistant")
         ],
         currentRepoPath: "/Users/usuario/Documents/Repos/gitmenubar",
         onSelectPath: { _ in },
@@ -72,9 +81,9 @@ struct ProjectSelectorPopoverView: View {
 
 #Preview("Project Selector Without Options") {
     ProjectSelectorPopoverView(
-        recentPaths: [
-            "/Users/usuario/Documents/Repos/gitmenubar",
-            "/Users/usuario/Documents/Repos/my-meeting-assistant"
+        recentProjects: [
+            ProjectReference(path: "/Users/usuario/Documents/Repos/gitmenubar", name: "GitMenuBar"),
+            ProjectReference(path: "/Users/usuario/Documents/Repos/my-meeting-assistant", name: "Meeting Assistant")
         ],
         currentRepoPath: "/Users/usuario/Documents/Repos/gitmenubar",
         onSelectPath: { _ in },

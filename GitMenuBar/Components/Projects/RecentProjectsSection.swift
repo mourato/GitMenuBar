@@ -1,28 +1,36 @@
 import SwiftUI
 
 struct RecentProjectsSection: View {
-    let recentPaths: [String]
+    let recentProjects: [ProjectReference]
     let currentRepoPath: String
     @Binding var showFullPathInRecents: Bool
     let onSelectPath: (String) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var selectablePaths: [String] {
-        Array(recentPaths.filter { $0 != currentRepoPath }.prefix(5))
+    private var normalizedCurrentRepoPath: String {
+        guard !currentRepoPath.isEmpty else {
+            return ""
+        }
+        return RecentProjectsStore.normalize(currentRepoPath)
+    }
+
+    private var selectableProjects: [ProjectReference] {
+        Array(recentProjects.filter { $0.path != normalizedCurrentRepoPath }.prefix(5))
     }
 
     var body: some View {
-        if !selectablePaths.isEmpty {
+        if !selectableProjects.isEmpty {
             Toggle("Show full path", isOn: $showFullPathInRecents)
                 .toggleStyle(.checkbox)
 
-            ForEach(selectablePaths, id: \.self) { path in
+            ForEach(selectableProjects) { project in
+                let path = project.path
                 let abbreviatedPath = PathDisplayFormatter.abbreviatedPath(path)
                 RecentPathRowView(
                     displayText: showFullPathInRecents
                         ? abbreviatedPath
-                        : RecentProjectsStore().displayName(for: path),
+                        : project.name,
                     fullPath: abbreviatedPath,
                     onTap: {
                         onSelectPath(path)
@@ -48,10 +56,10 @@ private struct RecentProjectsSectionPreviewContainer: View {
         Form {
             Section {
                 RecentProjectsSection(
-                    recentPaths: [
-                        "/Users/usuario/Documents/Projects/gitmenubar",
-                        "/tmp/demo-app",
-                        "/tmp/docs-site"
+                    recentProjects: [
+                        ProjectReference(path: "/Users/usuario/Documents/Projects/gitmenubar", name: "GitMenuBar"),
+                        ProjectReference(path: "/tmp/demo-app", name: "Client Demo"),
+                        ProjectReference(path: "/tmp/docs-site", name: "Documentation Site")
                     ],
                     currentRepoPath: "/Users/usuario/Documents/Projects/gitmenubar",
                     showFullPathInRecents: $showFullPathInRecents,

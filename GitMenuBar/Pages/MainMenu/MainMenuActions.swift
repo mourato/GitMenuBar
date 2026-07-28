@@ -212,7 +212,7 @@ extension MainMenuView {
 
     func addToRecents(_ path: String) {
         recentProjectsStore.add(path)
-        recentProjectPaths = recentProjectsStore.recentPaths()
+        recentProjectReferences = recentProjectsStore.recentProjects()
     }
 
     func setCurrentRepositoryPath(_ path: String) {

@@ -9,8 +9,19 @@ enum PathDisplayFormatter {
         (path as NSString).expandingTildeInPath
     }
 
+    static func defaultProjectName(for path: String) -> String {
+        let expandedPath = expandedPath(path)
+        let lastPathComponent = URL(fileURLWithPath: expandedPath).lastPathComponent
+        if !lastPathComponent.isEmpty {
+            return lastPathComponent
+        }
+
+        let fallbackName = (expandedPath as NSString).lastPathComponent
+        return fallbackName.isEmpty ? path : fallbackName
+    }
+
     static func projectName(from path: String) -> String {
-        URL(fileURLWithPath: path).lastPathComponent
+        defaultProjectName(for: path)
     }
 
     static func recentProjectLabel(for path: String, showFullPath: Bool) -> String {

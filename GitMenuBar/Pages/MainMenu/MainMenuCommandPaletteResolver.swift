@@ -81,14 +81,15 @@ enum MainMenuCommandPaletteResolver {
             )
         )
 
-        for path in context.recentPaths.filter({ $0 != context.currentRepoPath }).prefix(5) {
+        let currentRepoPath = context.currentRepoPath.isEmpty ? "" : RecentProjectsStore.normalize(context.currentRepoPath)
+        for project in context.recentProjects.filter({ $0.path != currentRepoPath }).prefix(5) {
             items.append(
                 MainMenuCommandPaletteItem(
-                    kind: .recentProject(path: path),
+                    kind: .recentProject(path: project.path),
                     section: .recentProjects,
-                    title: RecentProjectsStore().displayName(for: path),
-                    subtitle: PathDisplayFormatter.abbreviatedPath(path),
-                    keywords: ["project", "switch", path],
+                    title: project.name,
+                    subtitle: PathDisplayFormatter.abbreviatedPath(project.path),
+                    keywords: ["project", "switch", project.name, project.path],
                     isEnabled: true
                 )
             )
