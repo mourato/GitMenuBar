@@ -29,8 +29,15 @@ final class ProjectMonitorStore: ObservableObject {
     }
 
     func seed(currentPath: String, recentProjects: [ProjectReference]) {
-        _ = projectStore.seedIfNeeded(currentPath: currentPath, recentProjects: recentProjects)
+        let validRecentProjects = recentProjects.filter { isValidRepository($0.path) }
+        let validCurrentPath = isValidRepository(currentPath) ? currentPath : ""
+        _ = projectStore.seedIfNeeded(currentPath: validCurrentPath, recentProjects: validRecentProjects)
         refreshAll()
+    }
+
+    private func isValidRepository(_ path: String) -> Bool {
+        guard !path.isEmpty else { return false }
+        return !runner.runGitCommand(in: path, args: ["rev-parse", "--show-toplevel"]).failure
     }
 
     func add(path: String, name: String? = nil) {

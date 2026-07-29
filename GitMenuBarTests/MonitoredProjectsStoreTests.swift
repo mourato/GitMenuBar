@@ -59,4 +59,29 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         XCTAssertTrue(snapshot.reasons.contains(.dirty))
         XCTAssertTrue(snapshot.reasons.contains(.diverged))
     }
+
+    @MainActor
+    func testSeedIgnoresNonGitRecentProjects() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("GitMenuBarMonitorSeed-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let validPath = root.appendingPathComponent("valid").path
+        let invalidPath = root.appendingPathComponent("invalid").path
+        try FileManager.default.createDirectory(atPath: validPath, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(atPath: invalidPath, withIntermediateDirectories: true)
+        _ = try runGit(["init", "-q"], in: URL(fileURLWithPath: validPath))
+
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defaults.removePersistentDomain(forName: #function)
+        let store = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
+        let monitor = ProjectMonitorStore(projectStore: store)
+
+        monitor.seed(
+            currentPath: invalidPath,
+            recentProjects: [ProjectReference(path: validPath), ProjectReference(path: invalidPath)]
+        )
+
+        XCTAssertEqual(store.monitoredProjects().map(\.path), [validPath])
+    }
 }
