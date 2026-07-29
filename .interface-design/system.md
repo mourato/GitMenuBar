@@ -120,7 +120,7 @@ Use real SwiftUI `Button`. Prefer a shared styled API (Plan 026) over one-off `.
 |---|---|---|
 | **Primary** | The one focal action on a surface (Commit, Create, Save, Connect) | `.borderedProminent`, large when it is the panel focal control |
 | **Secondary** | Cancel, alternate confirms that are not destructive | Bordered / quiet filled; never equal visual weight to Primary on the same footer |
-| **Ghost** | Low-emphasis chrome (e.g. Manage…, Atomic Commits, Dismiss, Refresh) | Borderless + `WorkbenchTypography.detail` + press feedback |
+| **Ghost** | Low-emphasis chrome (e.g. Manage, Atomic Commits, Dismiss, Refresh) | Borderless + `WorkbenchTypography.detail` + press feedback |
 | **Icon** | Header gear; Projects-row repository options; compact icon chrome | Min visible control **28×28**; clear hover fill; press feedback |
 | **Destructive** | Delete / Discard / Wipe | `role: .destructive` + red treatment; never styled as Ghost |
 | **Row** | Branch list, palette rows, options rows | Plain + `hoverFill` / `selectedFill`; idle background clear (not permanently filled) |
@@ -164,7 +164,10 @@ Current vertical order (do not invent a new IA without a plan):
 - Single horizontal line with native traffic lights (leading), project selector (principal / centered), and Settings gear (trailing). Visually separated across the full titlebar width; **no** header `workbenchPanelSurface` plate.
 - Main body adds top `sectionSpacing` under the titlebar so the first content control is not tight against the header.
 - **Commit Details** route reuses the same titlebar toolbar slots: principal title “Commit Details”, trailing Back (`chevron.backward` in the Settings slot). Do not use an in-content back/title bar on that route — missing toolbar chrome shifts traffic lights.
-- Projects popover rows expose local item options through a hover-revealed ellipsis on every project row. The menu owns rename display name, reveal folder in Finder, and remove from GitMenuBar. The current row may additionally expose Repository Options… when `canPresentRepositoryOptions` is true, separated from local actions. Add Project lives in the Projects section header as icon chrome, not as a full-width row. Removal is local metadata only and uses a system confirmation alert. Keep project-button context menu + status-item / command-center entry points.
+- Projects popover rows expose local item options through a hover-revealed ellipsis icon on every project row. The menu owns Rename project, Reveal in Finder, and Remove project. Rename project edits inline in the selected project row: Return saves, Esc or Cancel exits without adding a new overlay. The current row may additionally expose Repository options when `canPresentRepositoryOptions` is true, separated from local actions. Add Project lives in the Projects section header as icon chrome, not as a full-width row. Removal is local metadata only and uses a system confirmation alert. Keep project-button context menu + status-item / command-center entry points.
+- Visible interface labels do not use trailing ellipses. If an action opens
+  another layer or needs confirmation, communicate that through context,
+  grouping, helper text, or the resulting system surface.
 - Opening row options: close Projects, then present Repository Options anchored to the project-selector control (existing pending-presentation flow).
 
 ### Usage quota cards

@@ -493,5 +493,5 @@ Repository Options entry, which stays separated from local project actions.
   preference.
 - Removing projects without confirmation: rejected because the row contains a
   destructive local action and Apple-style system confirmation is required.
-- Treating "Remove from GitMenuBar" as repository deletion: rejected; it must
+- Treating "Remove project" as repository deletion: rejected; it must
   never delete folders, Git data, or GitHub remotes.

@@ -16,3 +16,6 @@ precedence: project
   VoiceOver cues.
 - Keep popover and panel transitions anchored to their status-item or action
   origin and avoid layout churn in dense Git lists.
+- Do not use ellipses in visible interface labels. Actions that open another
+  panel, popover, sheet, or confirmation should be clear from placement,
+  grouping, iconography, or helper text instead of a trailing three-dot suffix.
