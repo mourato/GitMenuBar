@@ -56,6 +56,57 @@ extension MainMenuView {
         }
     }
 
+    var hasTransientPresentation: Bool {
+        showProjectSelector || showRepositoryOptionsPopover || showBranchSelector
+    }
+
+    func dismissTransientPresentations() {
+        showProjectSelector = false
+        showRepositoryOptionsPopover = false
+        showBranchSelector = false
+        pendingRepositoryOptionsPresentation = false
+        isCommentFieldFocused = false
+        NSApp.keyWindow?.makeFirstResponder(nil)
+    }
+
+    func toggleProjectSelectorPresentation() {
+        guard presentationModel.route == .main else {
+            return
+        }
+
+        let shouldPresent = !showProjectSelector
+        if isCommandPalettePresented {
+            closeCommandPalette()
+        }
+        dismissTransientPresentations()
+        showProjectSelector = shouldPresent
+    }
+
+    func toggleBranchSelectorPresentation() {
+        guard presentationModel.route == .main else {
+            return
+        }
+
+        let shouldPresent = !showBranchSelector
+        if isCommandPalettePresented {
+            closeCommandPalette()
+        }
+        dismissTransientPresentations()
+        showBranchSelector = shouldPresent
+    }
+
+    func presentBranchSelector() {
+        guard presentationModel.route == .main else {
+            return
+        }
+
+        if isCommandPalettePresented {
+            closeCommandPalette()
+        }
+        dismissTransientPresentations()
+        showBranchSelector = true
+    }
+
     func createNewBranch() {
         createBranchError = nil
         gitManager.createBranch(branchName: newBranchName) { result in
@@ -215,8 +266,7 @@ extension MainMenuView {
         selectedCommandPaletteItemID = MainMenuCommandPaletteResolver.defaultSelectionID(
             for: commandPaletteVisibleItems
         )
-        showProjectSelector = false
-        showRepositoryOptionsPopover = false
+        dismissTransientPresentations()
         isCommandPalettePresented = true
     }
 

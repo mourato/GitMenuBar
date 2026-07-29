@@ -195,6 +195,7 @@ private struct ProjectSelectorRowView: View {
             VStack(alignment: .leading, spacing: 2) {
                 TextField("Project name", text: $renameDraft)
                     .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled(true)
                     .focused(focusedRenameProjectPath, equals: project.path)
                     .onSubmit(onCommitRename)
                     .accessibilityLabel("Project name")

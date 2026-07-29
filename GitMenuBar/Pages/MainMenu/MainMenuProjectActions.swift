@@ -30,7 +30,7 @@ extension MainMenuView {
         recentProjectReferences = recentProjectsStore.recentProjects()
         if RecentProjectsStore.normalize(path) == RecentProjectsStore.normalize(currentRepositoryPath) {
             setCurrentRepositoryPath("")
-            showRepositoryOptionsPopover = false
+            dismissTransientPresentations()
             gitManager.refresh(includeReflogHistory: false)
             refreshRenderSnapshot()
         }

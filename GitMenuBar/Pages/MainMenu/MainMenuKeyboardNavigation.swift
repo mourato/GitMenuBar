@@ -16,6 +16,7 @@ extension MainMenuView {
               // installs its own local key monitor that handles arrow/enter/escape.
               // This guard prevents the main monitor from competing with it.
               !isCommandPalettePresented,
+              !showProjectSelector,
               !showBranchSelector,
               !showCreateBranch,
               !showPullToNewBranch,

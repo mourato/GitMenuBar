@@ -123,6 +123,7 @@ struct MainMenuCommandPaletteView: View {
             TextField("Search commands", text: $query)
                 .textFieldStyle(.roundedBorder)
                 .font(WorkbenchTypography.field)
+                .autocorrectionDisabled(true)
                 .focused($isSearchFieldFocused)
                 .onSubmit {
                     executeSelectedOrFirstVisibleItem()

@@ -248,7 +248,7 @@ struct MainMenuView: View {
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
         .frame(minWidth: 400, idealWidth: 440, maxWidth: .infinity)
         .overlay {
-            commandPaletteOverlayContent
+            mainWindowOverlayContent
         }
         .onAppear {
             reloadRepositorySelectionSnapshot()
@@ -274,17 +274,14 @@ struct MainMenuView: View {
             presentPendingRepositoryOptionsIfPossible()
         }
         .onChange(of: isCommandPalettePresented) { isPresented in
-            if isPresented {
-                showProjectSelector = false
-                showRepositoryOptionsPopover = false
+            if !isPresented {
+                presentPendingRepositoryOptionsIfPossible()
             }
-            presentPendingRepositoryOptionsIfPossible()
         }
         .onChange(of: presentationModel.route) { route in
             if route != .main {
                 closeCommandPalette()
-                showRepositoryOptionsPopover = false
-                pendingRepositoryOptionsPresentation = false
+                dismissTransientPresentations()
                 if commentText.isEmpty {
                     isCommitFieldTemporarilyVisible = false
                 }

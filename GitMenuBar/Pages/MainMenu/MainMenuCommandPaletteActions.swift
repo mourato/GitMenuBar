@@ -75,7 +75,7 @@ extension MainMenuView {
             defaultBranchName = gitManager.defaultBranchName
             showMergeCleanupDialog = true
         case .switchToBranchList:
-            showBranchSelector = true
+            presentBranchSelector()
         case let .switchBranch(branchName):
             gitManager.switchBranch(branchName: branchName) { result in
                 if case let .failure(error) = result {

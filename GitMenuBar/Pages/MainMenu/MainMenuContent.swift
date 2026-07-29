@@ -92,81 +92,21 @@ extension MainMenuView {
     private var footerSection: some View {
         BranchManagementControlsView(
             currentBranch: gitManager.currentBranch,
-            availableBranches: gitManager.availableBranches,
             commitCount: gitManager.commitCount,
             isRemoteAhead: gitManager.isRemoteAhead,
             behindCount: gitManager.behindCount,
             isDetachedHead: gitManager.isDetachedHead,
             canShowAtomicCommits: canShowAtomicCommits,
-            onBranchTap: {
-                showRepositoryOptionsPopover = false
-                showBranchSelector.toggle()
-            },
-            onSelectBranch: { branch in
-                showBranchSelector = false
-                guard branch != gitManager.currentBranch else { return }
-
-                if hasWorkingTreeChanges {
-                    pendingSwitchBranch = branch
-                    showDirtySwitchConfirmation = true
-                } else {
-                    gitManager.switchBranch(branchName: branch) { result in
-                        if case let .failure(error) = result {
-                            branchSwitchError = error.localizedDescription
-                        }
-                    }
-                }
-            },
-            onMergeBranch: { branch in
-                showBranchSelector = false
-                if gitManager.currentBranch == "main" || gitManager.currentBranch == "master" {
-                    mergeBranchName = branch
-                    mergeTargetBranch = gitManager.currentBranch
-                    showMergeConfirmation = true
-                } else {
-                    gitManager.mergeBranch(fromBranch: branch) { result in
-                        if case let .failure(error) = result {
-                            mergeError = error.localizedDescription
-                        }
-                    }
-                }
-            },
-            onCreateBranchFromDetached: {
-                showBranchSelector = false
-                showCreateBranch = true
-            },
-            onQuickPull: {
-                showBranchSelector = false
-                useRebase = false
-                syncWithRemote()
-            },
-            onDeleteBranch: { branch in
-                showBranchSelector = false
-                branchNameToDelete = branch
-                showBranchDeleteConfirmation = true
-            },
-            onRenameBranch: { branch in
-                showBranchSelector = false
-                oldBranchName = branch
-                renameBranchNewName = branch
-                showRenameBranch = true
-            },
-            onMergeToDefaultBranch: { branch in
-                showBranchSelector = false
-                featureBranchName = branch
-                defaultBranchName = gitManager.defaultBranchName
-                showMergeToDefaultConfirmation = true
-            },
+            onBranchTap: toggleBranchSelectorPresentation,
             onNewBranch: {
-                showBranchSelector = false
+                dismissTransientPresentations()
                 showCreateBranch = true
             },
             onAtomicCommits: startAtomicCommitFlow,
             onManage: {
-                showRepositoryOptionsPopover = false
+                dismissTransientPresentations()
                 showBranchManagement = true
-            },
-            showBranchSelector: $showBranchSelector
+            }
         )
     }
 
@@ -202,8 +142,7 @@ extension MainMenuView {
         .toolbar {
             CommitDetailHeaderToolbarContent(
                 onBack: {
-                    showProjectSelector = false
-                    showRepositoryOptionsPopover = false
+                    dismissTransientPresentations()
                     presentationModel.showMain()
                 }
             )
@@ -259,33 +198,12 @@ extension MainMenuView {
             .toolbar {
                 MainMenuHeaderToolbarContent(
                     currentProjectName: currentProjectName,
-                    showProjectSelector: $showProjectSelector,
-                    showRepositoryOptionsPopover: $showRepositoryOptionsPopover,
+                    isProjectSelectorPresented: showProjectSelector,
                     isCommandPalettePresented: isCommandPalettePresented,
+                    onToggleProjectSelector: toggleProjectSelectorPresentation,
                     onOpenSettings: {
-                        showProjectSelector = false
-                        showRepositoryOptionsPopover = false
+                        dismissTransientPresentations()
                         openSettingsWindow()
-                    },
-                    projectSelectorContent: {
-                        ProjectSelectorPopoverView(
-                            recentProjects: recentProjects,
-                            currentRepoPath: currentRepoPath,
-                            onSelectPath: { path in
-                                showProjectSelector = false
-                                switchRepository(path: path)
-                            },
-                            onBrowse: {
-                                showProjectSelector = false
-                                selectDirectory()
-                            },
-                            onRenameProject: { path, name in renameProject(path: path, name: name) },
-                            onRevealProject: { path in revealProjectInFinder(path: path) },
-                            onRemoveProject: { path in removeProject(path: path) },
-                            onShowRepositoryOptions: canPresentRepositoryOptions ? {
-                                requestRepositoryOptionsPopoverPresentation()
-                            } : nil
-                        )
                     },
                     projectContextMenu: {
                         if canPresentRepositoryOptions {
@@ -293,14 +211,6 @@ extension MainMenuView {
                                 requestRepositoryOptionsPopoverPresentation()
                             }
                         }
-                    },
-                    repositoryOptionsContent: {
-                        RepositoryOptionsPopoverView(
-                            visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
-                            visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
-                            onToggleVisibility: confirmRepositoryVisibilityAction,
-                            onDeleteRepository: confirmRepositoryDeleteAction
-                        )
                     }
                 )
             }
@@ -310,7 +220,11 @@ extension MainMenuView {
                     return
                 }
                 if showRepositoryOptionsPopover {
-                    showRepositoryOptionsPopover = false
+                    dismissTransientPresentations()
+                    return
+                }
+                if hasTransientPresentation {
+                    dismissTransientPresentations()
                     return
                 }
                 closeWindow()

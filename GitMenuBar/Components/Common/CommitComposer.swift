@@ -19,6 +19,7 @@ struct CommitComposerSectionView: View {
                 TextField("Commit message (optional)", text: $commentText, axis: .vertical)
                     .lineLimit(1 ... 4)
                     .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled(true)
                     .focused(isCommentFieldFocused)
                     .accessibilityHint("Type a commit message or leave it empty to use automatic generation when available.")
             }

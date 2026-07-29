@@ -14,6 +14,176 @@ extension MainMenuView {
         )
     }
 
+    var mainWindowOverlayContent: some View {
+        ZStack {
+            transientPresentationOverlayContent
+            commandPaletteOverlayContent
+        }
+    }
+
+    @ViewBuilder
+    private var transientPresentationOverlayContent: some View {
+        if presentationModel.route == .main && hasTransientPresentation {
+            ZStack {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .ignoresSafeArea()
+                    .accessibilityHidden(true)
+                    .onTapGesture {
+                        dismissTransientPresentations()
+                    }
+
+                transientPanelContent
+            }
+            .transition(.opacity)
+        }
+    }
+
+    @ViewBuilder
+    private var transientPanelContent: some View {
+        if showProjectSelector {
+            VStack {
+                HStack {
+                    projectSelectorOverlay
+                    Spacer(minLength: 0)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.top, WorkbenchMetrics.sectionSpacing)
+            .padding(.leading, WorkbenchMetrics.windowPadding * 2)
+            .padding(.trailing, WorkbenchMetrics.windowPadding)
+        } else if showRepositoryOptionsPopover {
+            VStack {
+                HStack {
+                    Spacer(minLength: 0)
+                    repositoryOptionsOverlay
+                    Spacer(minLength: 0)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.top, WorkbenchMetrics.sectionSpacing)
+            .padding(.horizontal, WorkbenchMetrics.windowPadding)
+        } else if showBranchSelector {
+            VStack {
+                Spacer(minLength: 0)
+                HStack {
+                    branchSelectorOverlay
+                    Spacer(minLength: 0)
+                }
+            }
+            .padding(.leading, WorkbenchMetrics.windowPadding)
+            .padding(.trailing, WorkbenchMetrics.windowPadding)
+            .padding(.bottom, WorkbenchMetrics.windowPadding * 2)
+        }
+    }
+
+    private var projectSelectorOverlay: some View {
+        ProjectSelectorPopoverView(
+            recentProjects: recentProjects,
+            currentRepoPath: currentRepoPath,
+            onSelectPath: { path in
+                dismissTransientPresentations()
+                switchRepository(path: path)
+            },
+            onBrowse: {
+                dismissTransientPresentations()
+                selectDirectory()
+            },
+            onRenameProject: { path, name in renameProject(path: path, name: name) },
+            onRevealProject: { path in revealProjectInFinder(path: path) },
+            onRemoveProject: { path in removeProject(path: path) },
+            onShowRepositoryOptions: canPresentRepositoryOptions ? {
+                requestRepositoryOptionsPopoverPresentation()
+            } : nil
+        )
+        .accessibilityAddTraits(.isModal)
+        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+    }
+
+    private var repositoryOptionsOverlay: some View {
+        RepositoryOptionsPopoverView(
+            visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
+            visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
+            onToggleVisibility: confirmRepositoryVisibilityAction,
+            onDeleteRepository: confirmRepositoryDeleteAction
+        )
+        .workbenchPanelSurface(material: .thin)
+        .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 8)
+        .accessibilityAddTraits(.isModal)
+        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+    }
+
+    private var branchSelectorOverlay: some View {
+        BranchSelectorPopoverView(
+            isDetachedHead: gitManager.isDetachedHead,
+            isRemoteAhead: gitManager.isRemoteAhead,
+            behindCount: gitManager.behindCount,
+            availableBranches: gitManager.availableBranches,
+            currentBranch: gitManager.currentBranch,
+            onCreateBranchFromDetached: {
+                dismissTransientPresentations()
+                showCreateBranch = true
+            },
+            onQuickPull: {
+                dismissTransientPresentations()
+                useRebase = false
+                syncWithRemote()
+            },
+            onSelectBranch: { branch in
+                dismissTransientPresentations()
+                guard branch != gitManager.currentBranch else { return }
+
+                if hasWorkingTreeChanges {
+                    pendingSwitchBranch = branch
+                    showDirtySwitchConfirmation = true
+                } else {
+                    gitManager.switchBranch(branchName: branch) { result in
+                        if case let .failure(error) = result {
+                            branchSwitchError = error.localizedDescription
+                        }
+                    }
+                }
+            },
+            onMergeBranch: { branch in
+                dismissTransientPresentations()
+                if gitManager.currentBranch == "main" || gitManager.currentBranch == "master" {
+                    mergeBranchName = branch
+                    mergeTargetBranch = gitManager.currentBranch
+                    showMergeConfirmation = true
+                } else {
+                    gitManager.mergeBranch(fromBranch: branch) { result in
+                        if case let .failure(error) = result {
+                            mergeError = error.localizedDescription
+                        }
+                    }
+                }
+            },
+            onDeleteBranch: { branch in
+                dismissTransientPresentations()
+                branchNameToDelete = branch
+                showBranchDeleteConfirmation = true
+            },
+            onRenameBranch: { branch in
+                dismissTransientPresentations()
+                oldBranchName = branch
+                renameBranchNewName = branch
+                showRenameBranch = true
+            },
+            onMergeToDefaultBranch: { branch in
+                dismissTransientPresentations()
+                featureBranchName = branch
+                defaultBranchName = gitManager.defaultBranchName
+                showMergeToDefaultConfirmation = true
+            },
+            onNewBranch: {
+                dismissTransientPresentations()
+                showCreateBranch = true
+            }
+        )
+        .accessibilityAddTraits(.isModal)
+        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+    }
+
     @ViewBuilder
     var commandPaletteOverlayContent: some View {
         if isCommandPalettePresented && presentationModel.route == .main {

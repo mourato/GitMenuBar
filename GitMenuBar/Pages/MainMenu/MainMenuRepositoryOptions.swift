@@ -6,15 +6,13 @@ extension MainMenuView {
             return
         }
 
-        let hadTransientPresentation = showProjectSelector || showBranchSelector || isCommandPalettePresented
+        let hadTransientPresentation = hasTransientPresentation || isCommandPalettePresented
 
         if isCommandPalettePresented {
             closeCommandPalette()
         }
 
-        showProjectSelector = false
-        showBranchSelector = false
-        showRepositoryOptionsPopover = false
+        dismissTransientPresentations()
 
         if hadTransientPresentation {
             pendingRepositoryOptionsPresentation = true
@@ -41,14 +39,12 @@ extension MainMenuView {
     }
 
     func confirmRepositoryVisibilityAction() {
-        showRepositoryOptionsPopover = false
-        pendingRepositoryOptionsPresentation = false
+        dismissTransientPresentations()
         showVisibilityConfirmation = true
     }
 
     func confirmRepositoryDeleteAction() {
-        showRepositoryOptionsPopover = false
-        pendingRepositoryOptionsPresentation = false
+        dismissTransientPresentations()
         showDeleteConfirmation = true
     }
 }
