@@ -7,7 +7,11 @@ struct BottomBranchSelectorView: View {
     let isRemoteAhead: Bool
     let behindCount: Int
     let isDetachedHead: Bool
+    let isPresented: Bool
     let onTap: () -> Void
+
+    @State private var isHovered = false
+
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -27,10 +31,18 @@ struct BottomBranchSelectorView: View {
                 if isRemoteAhead {
                     statusBadge(symbol: "arrow.down", count: behindCount, style: .warning)
                 }
+
+                Image(systemName: "chevron.down")
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 10)
             .frame(minHeight: WorkbenchMetrics.iconHitTarget)
             .background(backgroundColor)
+            .overlay(
+                RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: 1)
+            )
             .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
             .animation(
                 WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
@@ -48,11 +60,21 @@ struct BottomBranchSelectorView: View {
                 WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
                 value: behindCount
             )
+            .animation(
+                WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
+                value: isHovered
+            )
+            .animation(
+                WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
+                value: isPresented
+            )
         }
         .buttonStyle(PressableButtonStyle())
         .accessibilityLabel("Current branch \(currentBranch)")
+        .accessibilityValue(isPresented ? "Branch selector open" : "Branch selector closed")
         .accessibilityHint("Shows branch selection and sync actions.")
         .onHover { inside in
+            isHovered = inside
             if inside {
                 NSCursor.pointingHand.push()
             } else {
@@ -66,7 +88,27 @@ struct BottomBranchSelectorView: View {
             return Color.red.opacity(colorSchemeContrast == .increased ? 0.28 : 0.16)
         }
 
-        return Color(nsColor: .controlBackgroundColor)
+        if isPresented {
+            return WorkbenchPalette.selectedFill()
+        }
+
+        if isHovered {
+            return WorkbenchPalette.hoverFill()
+        }
+
+        return .clear
+    }
+
+    private var borderColor: Color {
+        if isDetachedHead {
+            return WorkbenchPalette.errorBorder(contrast: colorSchemeContrast)
+        }
+
+        if isPresented || isHovered {
+            return WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast).opacity(0.55)
+        }
+
+        return .clear
     }
 
     private func statusBadge(symbol: String, count: Int, style: BadgeStyle) -> some View {
@@ -115,6 +157,7 @@ private enum BadgeStyle {
         isRemoteAhead: true,
         behindCount: 1,
         isDetachedHead: false,
+        isPresented: false,
         onTap: {}
     )
     .padding()

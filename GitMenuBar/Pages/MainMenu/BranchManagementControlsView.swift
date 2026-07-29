@@ -6,10 +6,8 @@ struct BranchManagementControlsView: View {
     let isRemoteAhead: Bool
     let behindCount: Int
     let isDetachedHead: Bool
-    let canShowAtomicCommits: Bool
+    let isBranchSelectorPresented: Bool
     let onBranchTap: () -> Void
-    let onNewBranch: () -> Void
-    let onAtomicCommits: () -> Void
     let onManage: () -> Void
 
     var body: some View {
@@ -20,22 +18,18 @@ struct BranchManagementControlsView: View {
                 isRemoteAhead: isRemoteAhead,
                 behindCount: behindCount,
                 isDetachedHead: isDetachedHead,
+                isPresented: isBranchSelectorPresented,
                 onTap: onBranchTap
             )
 
             Spacer()
 
-            if canShowAtomicCommits {
-                Button("Atomic Commits") {
-                    onAtomicCommits()
-                }
-                .workbenchGhost()
-            }
-
-            Button("Manage") {
+            Button("Branches") {
                 onManage()
             }
             .workbenchGhost()
+            .accessibilityHint("Shows branch and worktree management.")
+            .help("Manage branches and worktrees")
         }
     }
 }
@@ -47,10 +41,8 @@ struct BranchManagementControlsView: View {
         isRemoteAhead: true,
         behindCount: 1,
         isDetachedHead: false,
-        canShowAtomicCommits: true,
+        isBranchSelectorPresented: false,
         onBranchTap: {},
-        onNewBranch: {},
-        onAtomicCommits: {},
         onManage: {}
     )
     .padding()

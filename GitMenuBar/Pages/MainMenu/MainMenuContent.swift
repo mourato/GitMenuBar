@@ -96,13 +96,8 @@ extension MainMenuView {
             isRemoteAhead: gitManager.isRemoteAhead,
             behindCount: gitManager.behindCount,
             isDetachedHead: gitManager.isDetachedHead,
-            canShowAtomicCommits: canShowAtomicCommits,
+            isBranchSelectorPresented: showBranchSelector,
             onBranchTap: toggleBranchSelectorPresentation,
-            onNewBranch: {
-                dismissTransientPresentations()
-                showCreateBranch = true
-            },
-            onAtomicCommits: startAtomicCommitFlow,
             onManage: {
                 dismissTransientPresentations()
                 showBranchManagement = true
@@ -170,11 +165,13 @@ extension MainMenuView {
                     generationError: displayedGenerationError,
                     primaryButtonTitle: primaryButtonTitle,
                     isPrimaryButtonDisabled: isPrimaryButtonDisabled,
+                    canShowSplitCommits: canShowAtomicCommits,
                     onPrimaryAction: {
                         Task {
                             await performPrimaryAction()
                         }
                     },
+                    onSplitCommits: startAtomicCommitFlow,
                     onDidCommit: {
                         if hideCommitMessageField {
                             isCommitFieldTemporarilyVisible = false
