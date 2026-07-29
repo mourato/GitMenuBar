@@ -2,11 +2,7 @@ import SwiftUI
 
 extension MainMenuView {
     func applyMainViewOverlays<Content: View>(to view: Content) -> some View {
-        applySheets(
-            to: view
-                .padding(.horizontal, WorkbenchMetrics.windowPadding)
-                .padding(.bottom, WorkbenchMetrics.windowPadding)
-        )
+        applySheets(to: view)
     }
 
     var mainWindowOverlayContent: some View {
@@ -61,8 +57,24 @@ extension MainMenuView {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+        .padding(.leading, mainContentLeadingPadding)
+        .padding(.trailing, WorkbenchMetrics.windowPadding)
         .padding(.bottom, WorkbenchMetrics.windowPadding * 2)
+    }
+
+    private var mainContentLeadingPadding: CGFloat {
+        CGFloat(
+            isProjectsSidebarCollapsed
+                ? ProjectsSidebarMetrics.collapsedWidth
+                : clampedProjectsSidebarWidth
+        ) + WorkbenchMetrics.windowPadding
+    }
+
+    private var clampedProjectsSidebarWidth: Double {
+        min(
+            max(projectsSidebarWidth, ProjectsSidebarMetrics.minWidth),
+            ProjectsSidebarMetrics.maxWidth
+        )
     }
 
     private var repositoryOptionsOverlay: some View {

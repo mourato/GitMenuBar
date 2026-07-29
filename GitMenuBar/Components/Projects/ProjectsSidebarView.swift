@@ -1,10 +1,14 @@
+import AppKit
 import SwiftUI
 
 struct ProjectsSidebarView: View {
     @EnvironmentObject private var monitor: ProjectMonitorStore
     @AppStorage(AppPreferences.Keys.isProjectsSidebarCollapsed) private var isCollapsed = false
+    @AppStorage(AppPreferences.Keys.projectsSidebarWidth) private var expandedWidth = ProjectsSidebarMetrics.defaultWidth
     @State private var renameProject: ProjectReference?
     @State private var renameDraft = ""
+    @State private var resizeDragStartWidth: Double?
+
     let currentPath: String
     let onSelect: (String) -> Void
     let onReveal: (String) -> Void
@@ -16,33 +20,32 @@ struct ProjectsSidebarView: View {
     let onRename: (String, String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                if !isCollapsed {
-                    Text("Projects").font(.headline)
+        ZStack(alignment: .trailing) {
+            VStack(alignment: .leading, spacing: 8) {
+                header
+                ScrollView(.vertical, showsIndicators: true) {
+                    projectGroups
                 }
-                Spacer()
-                if !isCollapsed {
-                    Button(action: onAdd) { Image(systemName: "plus") }.help("Add project")
-                    Button(action: onRefreshAll) { Image(systemName: "arrow.clockwise") }.help("Refresh all projects")
-                    Button(action: onFetchAll) { Image(systemName: "arrow.down.circle") }.help("Fetch all projects")
-                }
-                Button { isCollapsed.toggle() } label: {
-                    Image(systemName: isCollapsed ? "sidebar.right" : "sidebar.left")
-                }.help(isCollapsed ? "Expand projects" : "Collapse projects")
-            }.padding(.horizontal, 10)
-            ForEach(groupedProjects, id: \.0) { title, snapshots in
-                if !isCollapsed {
-                    Text(title.uppercased()).font(.caption2).foregroundStyle(.secondary).padding(.horizontal, 10)
-                }
-                ForEach(snapshots) { snapshot in row(snapshot) }
+                .frame(maxHeight: .infinity, alignment: .topLeading)
+                .layoutPriority(1)
+
+                sidebarFooter
+            }
+            .padding(.top, ProjectsSidebarMetrics.topSafePadding)
+            .padding(.bottom, WorkbenchMetrics.windowPadding)
+            .frame(width: sidebarWidth, alignment: .topLeading)
+            .frame(maxHeight: .infinity, alignment: .topLeading)
+
+            if !isCollapsed {
+                resizeHandle
             }
         }
-        .frame(width: isCollapsed ? 42 : 240, alignment: .top)
-        .padding(.vertical, 10)
+        .frame(width: sidebarWidth, alignment: .topLeading)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
         .background(.quaternary.opacity(0.35))
         .alert("Rename Project", isPresented: Binding(
-            get: { renameProject != nil }, set: {
+            get: { renameProject != nil },
+            set: {
                 if !$0 {
                     renameProject = nil
                 }
@@ -59,6 +62,105 @@ struct ProjectsSidebarView: View {
         }
     }
 
+    private var header: some View {
+        HStack {
+            if !isCollapsed {
+                Text("Projects")
+                    .font(.headline)
+            }
+            Spacer()
+            if !isCollapsed {
+                Button(action: onAdd) { Image(systemName: "plus") }
+                    .help("Add project")
+                Button(action: onRefreshAll) { Image(systemName: "arrow.clockwise") }
+                    .help("Refresh all projects")
+                Button(action: onFetchAll) { Image(systemName: "arrow.down.circle") }
+                    .help("Fetch all projects")
+            }
+            Button { isCollapsed.toggle() } label: {
+                Image(systemName: isCollapsed ? "sidebar.right" : "sidebar.left")
+            }
+            .help(isCollapsed ? "Expand projects" : "Collapse projects")
+        }
+        .padding(.horizontal, 10)
+    }
+
+    private var projectGroups: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(groupedProjects, id: \.0) { title, snapshots in
+                if !isCollapsed {
+                    Text(title.uppercased())
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                }
+                ForEach(snapshots) { snapshot in
+                    row(snapshot)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    private var sidebarFooter: some View {
+        if !isCollapsed {
+            VStack(spacing: WorkbenchMetrics.compactSpacing) {
+                Divider()
+                UsageQuotaStripView()
+                    .padding(.horizontal, 10)
+            }
+        }
+    }
+
+    private var resizeHandle: some View {
+        ZStack {
+            Rectangle()
+                .fill(Color.clear)
+                .frame(width: ProjectsSidebarMetrics.resizeHitWidth)
+            Rectangle()
+                .fill(Color.secondary.opacity(0.16))
+                .frame(width: 1)
+        }
+        .frame(maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .gesture(resizeGesture)
+        .onHover { isHovering in
+            (isHovering ? NSCursor.resizeLeftRight : NSCursor.arrow).set()
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Resize Projects sidebar")
+        .accessibilityValue("\(Int(expandedWidth)) pixels")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment:
+                expandedWidth = clampedWidth(expandedWidth + ProjectsSidebarMetrics.keyboardResizeStep)
+            case .decrement:
+                expandedWidth = clampedWidth(expandedWidth - ProjectsSidebarMetrics.keyboardResizeStep)
+            default:
+                break
+            }
+        }
+    }
+
+    private var resizeGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                if resizeDragStartWidth == nil {
+                    resizeDragStartWidth = expandedWidth
+                }
+                let startWidth = resizeDragStartWidth ?? expandedWidth
+                expandedWidth = clampedWidth(startWidth + value.translation.width)
+            }
+            .onEnded { _ in
+                resizeDragStartWidth = nil
+            }
+    }
+
+    private var sidebarWidth: CGFloat {
+        CGFloat(isCollapsed ? ProjectsSidebarMetrics.collapsedWidth : clampedWidth(expandedWidth))
+    }
+
     private var groupedProjects: [(String, [ProjectStatusSnapshot])] {
         let values = monitor.monitoredProjects.compactMap { monitor.snapshots[$0.path] }
         return [
@@ -71,21 +173,29 @@ struct ProjectsSidebarView: View {
     private func row(_ snapshot: ProjectStatusSnapshot) -> some View {
         Button { onSelect(snapshot.project.path) } label: {
             HStack(spacing: 7) {
-                Circle().fill(snapshot.classification == .clean ? .green : .orange).frame(width: 7, height: 7)
+                Circle()
+                    .fill(snapshot.classification == .clean ? .green : .orange)
+                    .frame(width: 7, height: 7)
                 if !isCollapsed {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(snapshot.project.name).lineLimit(1)
+                        Text(snapshot.project.name)
+                            .lineLimit(1)
                         Text(snapshot.branchName.isEmpty ? "Unavailable" : snapshot.branchName)
-                            .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
                     Spacer()
                 }
-            }.padding(.horizontal, 10).padding(.vertical, 5)
-                .background(
-                    snapshot.project.path == RecentProjectsStore.normalize(currentPath)
-                        ? Color.accentColor.opacity(0.18)
-                        : Color.clear
-                )
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                snapshot.project.path == RecentProjectsStore.normalize(currentPath)
+                    ? Color.accentColor.opacity(0.18)
+                    : Color.clear
+            )
         }
         .buttonStyle(.plain)
         .contextMenu {
@@ -99,6 +209,20 @@ struct ProjectsSidebarView: View {
         }
         .accessibilityLabel(snapshot.project.name)
     }
+
+    private func clampedWidth(_ width: Double) -> Double {
+        min(max(width, ProjectsSidebarMetrics.minWidth), ProjectsSidebarMetrics.maxWidth)
+    }
+}
+
+enum ProjectsSidebarMetrics {
+    static let collapsedWidth: Double = 48
+    static let defaultWidth: Double = 240
+    static let minWidth: Double = 220
+    static let maxWidth: Double = 360
+    static let keyboardResizeStep: Double = 16
+    static let resizeHitWidth: CGFloat = 8
+    static let topSafePadding: CGFloat = 52
 }
 
 #Preview {
@@ -108,7 +232,11 @@ struct ProjectsSidebarView: View {
         onReveal: { _ in },
         onStopMonitoring: { _ in },
         onRemove: { _ in },
-        onAdd: {}, onRefreshAll: {}, onFetchAll: {}, onRename: { _, _ in }
+        onAdd: {},
+        onRefreshAll: {},
+        onFetchAll: {},
+        onRename: { _, _ in }
     )
     .environmentObject(ProjectMonitorStore())
+    .environmentObject(UsageQuotaStore())
 }
