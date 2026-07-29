@@ -46,16 +46,17 @@ struct MainMenuRenderSnapshot: Equatable {
         currentRepoPath: String,
         isCommitInFuture: (Commit) -> Bool
     ) -> MainMenuRenderSnapshot {
-        let stagedRowAdapters = stagedFiles.map(WorkingTreeRowAdapter.staged(file:))
-        let unstagedRowAdapters = changedFiles.map(WorkingTreeRowAdapter.unstaged(file:))
-        let historyRowAdapters = commitHistory.map {
+        let hasCurrentRepository = !currentRepoPath.isEmpty
+        let stagedRowAdapters = hasCurrentRepository ? stagedFiles.map(WorkingTreeRowAdapter.staged(file:)) : []
+        let unstagedRowAdapters = hasCurrentRepository ? changedFiles.map(WorkingTreeRowAdapter.unstaged(file:)) : []
+        let historyRowAdapters = hasCurrentRepository ? commitHistory.map {
             HistoryRowAdapter(
                 commit: $0,
                 currentHash: currentHash,
                 remoteUrl: remoteUrl,
                 isCommitInFuture: isCommitInFuture($0)
             )
-        }
+        } : []
         let historySections = HistoryTimelineSectionModel.build(from: historyRowAdapters)
 
         var keyboardSelectableItems: [MainMenuSelectableItem] = []
@@ -74,9 +75,9 @@ struct MainMenuRenderSnapshot: Equatable {
         let projectName = currentRepoPath.isEmpty
             ? "Select Project"
             : storedProjectName ?? PathDisplayFormatter.defaultProjectName(for: currentRepoPath)
-        let branchMenuRows = availableBranches.map {
+        let branchMenuRows = hasCurrentRepository ? availableBranches.map {
             BranchMenuRowAdapter(branchName: $0, currentBranchName: currentBranch)
-        }
+        } : []
 
         return MainMenuRenderSnapshot(
             stagedRowAdapters: stagedRowAdapters,

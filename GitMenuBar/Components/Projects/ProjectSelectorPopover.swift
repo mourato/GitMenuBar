@@ -15,7 +15,10 @@ struct ProjectSelectorPopoverView: View {
     @FocusState private var renameFocused: Bool
 
     private var normalizedCurrentRepoPath: String {
-        RecentProjectsStore.normalize(currentRepoPath)
+        guard !currentRepoPath.isEmpty else {
+            return ""
+        }
+        return RecentProjectsStore.normalize(currentRepoPath)
     }
 
     var body: some View {
@@ -49,6 +52,11 @@ struct ProjectSelectorPopoverView: View {
             .listStyle(.inset)
             .scrollContentBackground(.hidden)
             if let renameProject {
+                Color.black.opacity(0.001)
+                    .onTapGesture {
+                        self.renameProject = nil
+                    }
+
                 VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
                     Text("Rename Project").font(WorkbenchTypography.captionStrong)
                     TextField("Project name", text: $renameDraft)
@@ -67,6 +75,7 @@ struct ProjectSelectorPopoverView: View {
                 }
                 .padding()
                 .background(.regularMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous))
                 .onAppear { renameFocused = true }
                 .transition(.opacity)
             }
@@ -107,7 +116,6 @@ private struct ProjectSelectorRowView: View {
     let onRemove: () -> Void
     let onShowRepositoryOptions: (() -> Void)?
     @State private var isHovered = false
-    @State private var menuActive = false
 
     var body: some View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
@@ -124,7 +132,12 @@ private struct ProjectSelectorRowView: View {
                     }
                     Spacer(minLength: 0)
                 }
-            }.buttonStyle(.plain).workbenchRow(isSelected: isCurrent)
+            }
+            .buttonStyle(.plain)
+            .workbenchRow(isSelected: isCurrent)
+            .accessibilityLabel(isCurrent ? "\(project.name), current project" : project.name)
+            .accessibilityHint("Switches to this project.")
+
             Menu {
                 Button("Rename Project…", action: onRename)
                 Button("Reveal in Finder", action: onReveal)
@@ -137,9 +150,10 @@ private struct ProjectSelectorRowView: View {
             }
             .menuIndicator(.hidden)
             .workbenchIcon()
-            .opacity(isHovered || menuActive ? 1 : 0)
-            .allowsHitTesting(isHovered || menuActive)
-            .accessibilityLabel("Project actions")
+            .opacity(isHovered ? 1 : 0)
+            .allowsHitTesting(isHovered)
+            .accessibilityHidden(!isHovered)
+            .accessibilityLabel("Project actions for \(project.name)")
         }
         .onHover { isHovered = $0 }
         .contextMenu {

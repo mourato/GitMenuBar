@@ -377,12 +377,14 @@ private extension AppPreferences.AppearanceMode {
     }
 }
 
-extension MainMenuView {
+private extension MainMenuView {
     func reloadRepositorySelectionSnapshot() {
         currentRepositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
         recentProjectReferences = RecentProjectsStore().recentProjects()
     }
+}
 
+extension MainMenuView {
     func refreshRenderSnapshot() {
         renderSnapshot = MainMenuRenderSnapshot.build(
             stagedFiles: gitManager.stagedFiles,

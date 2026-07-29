@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 //
 //  MainMenuActions.swift
 //  GitMenuBar
@@ -11,10 +10,6 @@ import SwiftUI
 extension MainMenuView {
     private var shouldRevealCommitFieldBeforeSubmitting: Bool {
         hideCommitMessageField && !isCommitFieldTemporarilyVisible && !aiCommitCoordinator.isReadyForGeneration
-    }
-
-    private var recentProjectsStore: RecentProjectsStore {
-        RecentProjectsStore()
     }
 
     func submitComment() async {
@@ -211,36 +206,6 @@ extension MainMenuView {
         }
     }
 
-    func addToRecents(_ path: String) {
-        recentProjectsStore.add(path)
-        recentProjectReferences = recentProjectsStore.recentProjects()
-    }
-
-    func renameProject(path: String, name: String) {
-        recentProjectsStore.rename(path: path, name: name)
-        recentProjectReferences = recentProjectsStore.recentProjects()
-        refreshRenderSnapshot()
-    }
-
-    func revealProjectInFinder(path: String) {
-        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
-    }
-
-    func removeProject(path: String) {
-        recentProjectsStore.remove(path: path)
-        recentProjectReferences = recentProjectsStore.recentProjects()
-        if RecentProjectsStore.normalize(path) == RecentProjectsStore.normalize(currentRepositoryPath) {
-            setCurrentRepositoryPath("")
-            showRepositoryOptionsPopover = false
-            refreshRenderSnapshot()
-        }
-    }
-
-    func setCurrentRepositoryPath(_ path: String) {
-        UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
-        currentRepositoryPath = path
-    }
-
     func presentCommandPaletteIfPossible() {
         guard presentationModel.route == .main else {
             return
@@ -360,17 +325,6 @@ extension MainMenuView {
         }
     }
 
-    func executeCommandPaletteItem(_ item: MainMenuCommandPaletteItem) {
-        switch MainMenuCommandPaletteResolver.executionDecision(for: item.kind) {
-        case .executeNow:
-            closeCommandPalette()
-            executeCommandPaletteItemImmediately(item)
-        case .requiresConfirmation:
-            closeCommandPalette()
-            showRestartConfirmation = true
-        }
-    }
-
     func restartApplication() {
         let appURL = URL(fileURLWithPath: Bundle.main.bundlePath)
         let configuration = NSWorkspace.OpenConfiguration()
@@ -397,61 +351,5 @@ extension MainMenuView {
             return false
         }
         return commitIndex < currentIndex
-    }
-
-    private func executeCommandPaletteItemImmediately(_ item: MainMenuCommandPaletteItem) {
-        switch item.kind {
-        case .commit:
-            Task {
-                _ = await actionCoordinator.performCommit(
-                    commentText: "",
-                    forceAutomaticMessage: true
-                )
-            }
-        case .commitAndPush:
-            Task {
-                _ = await actionCoordinator.performCommit(
-                    commentText: "",
-                    forceAutomaticMessage: true,
-                    shouldPushAfterCommit: true
-                )
-            }
-        case .sync:
-            Task {
-                _ = await actionCoordinator.performSync()
-            }
-        case .atomicCommits:
-            startAtomicCommitFlow()
-        case .push:
-            Task {
-                _ = await actionCoordinator.performSync()
-            }
-        case .pull:
-            Task {
-                _ = await actionCoordinator.syncWithRemote(rebase: useRebase)
-            }
-        case .branchManagement:
-            showBranchManagement = true
-        case .createBranch:
-            showCreateBranch = true
-        case let .mergeToDefault(featureBranch):
-            featureBranchName = featureBranch
-            defaultBranchName = gitManager.defaultBranchName
-            showMergeCleanupDialog = true
-        case .switchToBranchList:
-            showBranchSelector = true
-        case let .switchBranch(branchName):
-            gitManager.switchBranch(branchName: branchName) { result in
-                if case let .failure(error) = result {
-                    branchSwitchError = error.localizedDescription
-                }
-            }
-        case let .recentProject(path):
-            switchRepository(path: path)
-        case .restartApp:
-            showRestartConfirmation = true
-        case .quitApp:
-            NSApplication.shared.terminate(nil)
-        }
     }
 }
