@@ -462,3 +462,36 @@ path used for Git operations.
   paths remain the only operational identity.
 - Adding a duplicate record for the same path under multiple names: rejected;
   it creates ambiguous command/menu behavior without product need.
+
+## Projects popover local management — 2026-07-29
+
+Plan [044](044-project-popover-local-management.md) moves project display-name
+editing out of Settings and into the Projects popover. The popover becomes the
+single local-management surface for project rows: rename display name, reveal
+folder in Finder, remove from GitMenuBar, and add a project from the header
+icon. All actions remain local except the existing current-project-only
+Repository Options entry, which stays separated from local project actions.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 044 | Move project management into the Projects popover | P1 | M | 043 | TODO |
+
+### Dependency notes
+
+- Plan 044 depends on Plan 043 because it relies on `ProjectReference.name`
+  being stored alongside each normalized folder path.
+- Execute serially because the same slice touches the Projects popover,
+  Settings cleanup, local persistence, current-project state, and the locked
+  interface contract.
+
+### Findings considered and rejected
+
+- Keeping the Settings `Project Name` field as a second rename surface:
+  rejected because project naming is row-local management, not an app
+  preference.
+- Removing projects without confirmation: rejected because the row contains a
+  destructive local action and Apple-style system confirmation is required.
+- Treating "Remove from GitMenuBar" as repository deletion: rejected; it must
+  never delete folders, Git data, or GitHub remotes.
