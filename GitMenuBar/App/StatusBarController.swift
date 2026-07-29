@@ -261,6 +261,7 @@ final class StatusBarController: ObservableObject {
             gitManager.$isRemoteAhead.map { _ in () }.eraseToAnyPublisher(),
             gitManager.$remoteUrl.map { _ in () }.eraseToAnyPublisher(),
             githubAuthManager.$isAuthenticated.map { _ in () }.eraseToAnyPublisher(),
+            projectMonitor.$snapshots.map { _ in () }.eraseToAnyPublisher(),
             presentationModel.$route.map { _ in () }.eraseToAnyPublisher(),
             NotificationCenter.default.publisher(
                 for: UserDefaults.didChangeNotification,
