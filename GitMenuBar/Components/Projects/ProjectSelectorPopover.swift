@@ -9,6 +9,7 @@ struct ProjectSelectorPopoverView: View {
     let onRevealProject: (String) -> Void
     let onRemoveProject: (String) -> Void
     let onShowRepositoryOptions: (() -> Void)?
+    let onDismiss: () -> Void
     @State private var renamingProjectPath: String?
     @State private var renameDraft = ""
     @State private var removalProject: ProjectReference?
@@ -80,6 +81,8 @@ struct ProjectSelectorPopoverView: View {
         .onExitCommand {
             if renamingProjectPath != nil {
                 cancelRename()
+            } else {
+                onDismiss()
             }
         }
     }
@@ -238,6 +241,7 @@ private struct ProjectSelectorRowView: View {
         onRenameProject: { _, _ in },
         onRevealProject: { _ in },
         onRemoveProject: { _ in },
-        onShowRepositoryOptions: {}
+        onShowRepositoryOptions: {},
+        onDismiss: {}
     )
 }
