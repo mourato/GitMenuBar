@@ -1,6 +1,20 @@
 import SwiftUI
 
 enum WorkbenchMotion {
+    enum TransientPanelOrigin {
+        case topCenter
+        case bottomLeading
+
+        var scaleAnchor: UnitPoint {
+            switch self {
+            case .topCenter:
+                return .top
+            case .bottomLeading:
+                return .bottomLeading
+            }
+        }
+    }
+
     static let micro: Animation = .easeOut(duration: 0.13)
     static let arrive: Animation = .snappy(duration: 0.30, extraBounce: 0.02)
     static let settle: Animation = .smooth(duration: 0.34)
@@ -11,5 +25,16 @@ enum WorkbenchMotion {
 
     static func adaptive(_ animation: Animation, usesReducedMotion: Bool) -> Animation {
         usesReducedMotion ? reduceMotion : animation
+    }
+
+    static func transientPanelTransition(
+        from origin: TransientPanelOrigin,
+        usesReducedMotion: Bool
+    ) -> AnyTransition {
+        guard !usesReducedMotion else { return .opacity }
+
+        return .opacity.combined(
+            with: .scale(scale: 0.98, anchor: origin.scaleAnchor)
+        )
     }
 }

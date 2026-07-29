@@ -25,7 +25,7 @@ extension MainMenuView {
     private var transientPresentationOverlayContent: some View {
         if presentationModel.route == .main && hasTransientPresentation {
             ZStack {
-                Color.clear
+                transientPresentationScrim
                     .contentShape(Rectangle())
                     .ignoresSafeArea()
                     .accessibilityHidden(true)
@@ -35,6 +35,10 @@ extension MainMenuView {
 
                 transientPanelContent
             }
+            .animation(
+                WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
+                value: hasTransientPresentation
+            )
             .transition(.opacity)
         }
     }
@@ -42,39 +46,44 @@ extension MainMenuView {
     @ViewBuilder
     private var transientPanelContent: some View {
         if showProjectSelector {
-            VStack {
-                HStack {
-                    projectSelectorOverlay
-                    Spacer(minLength: 0)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.top, WorkbenchMetrics.sectionSpacing)
-            .padding(.leading, WorkbenchMetrics.windowPadding * 2)
-            .padding(.trailing, WorkbenchMetrics.windowPadding)
+            projectSelectorOverlayLayout
         } else if showRepositoryOptionsPopover {
-            VStack {
-                HStack {
-                    Spacer(minLength: 0)
-                    repositoryOptionsOverlay
-                    Spacer(minLength: 0)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.top, WorkbenchMetrics.sectionSpacing)
-            .padding(.horizontal, WorkbenchMetrics.windowPadding)
+            repositoryOptionsOverlayLayout
         } else if showBranchSelector {
-            VStack {
-                Spacer(minLength: 0)
-                HStack {
-                    branchSelectorOverlay
-                    Spacer(minLength: 0)
-                }
-            }
-            .padding(.leading, WorkbenchMetrics.windowPadding)
-            .padding(.trailing, WorkbenchMetrics.windowPadding)
-            .padding(.bottom, WorkbenchMetrics.windowPadding * 2)
+            branchSelectorOverlayLayout
         }
+    }
+
+    private var projectSelectorOverlayLayout: some View {
+        HStack {
+            Spacer(minLength: 0)
+            projectSelectorOverlay
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.top, WorkbenchMetrics.sectionSpacing)
+        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+    }
+
+    private var repositoryOptionsOverlayLayout: some View {
+        HStack {
+            Spacer(minLength: 0)
+            repositoryOptionsOverlay
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.top, WorkbenchMetrics.sectionSpacing)
+        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+    }
+
+    private var branchSelectorOverlayLayout: some View {
+        HStack {
+            branchSelectorOverlay
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+        .padding(.bottom, WorkbenchMetrics.windowPadding * 2)
     }
 
     private var projectSelectorOverlay: some View {
@@ -94,10 +103,10 @@ extension MainMenuView {
             onRemoveProject: { path in removeProject(path: path) },
             onShowRepositoryOptions: canPresentRepositoryOptions ? {
                 requestRepositoryOptionsPopoverPresentation()
-            } : nil
+            } : nil,
+            onDismiss: dismissTransientPresentations
         )
-        .accessibilityAddTraits(.isModal)
-        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+        .modifier(TransientPanelChrome(origin: .topCenter, reduceMotion: reduceMotion))
     }
 
     private var repositoryOptionsOverlay: some View {
@@ -107,10 +116,7 @@ extension MainMenuView {
             onToggleVisibility: confirmRepositoryVisibilityAction,
             onDeleteRepository: confirmRepositoryDeleteAction
         )
-        .workbenchPanelSurface(material: .thin)
-        .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 8)
-        .accessibilityAddTraits(.isModal)
-        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+        .modifier(TransientPanelChrome(origin: .topCenter, reduceMotion: reduceMotion))
     }
 
     private var branchSelectorOverlay: some View {
@@ -180,8 +186,36 @@ extension MainMenuView {
                 showCreateBranch = true
             }
         )
-        .accessibilityAddTraits(.isModal)
-        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+        .modifier(TransientPanelChrome(origin: .bottomLeading, reduceMotion: reduceMotion))
+    }
+
+    @ViewBuilder
+    private var transientPresentationScrim: some View {
+        if reduceTransparency {
+            Color(nsColor: .windowBackgroundColor)
+        } else {
+            ZStack {
+                Color.black.opacity(0.04)
+                Rectangle().fill(.ultraThinMaterial)
+            }
+        }
+    }
+
+    private struct TransientPanelChrome: ViewModifier {
+        let origin: WorkbenchMotion.TransientPanelOrigin
+        let reduceMotion: Bool
+
+        func body(content: Content) -> some View {
+            content
+                .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 8)
+                .accessibilityAddTraits(.isModal)
+                .transition(
+                    WorkbenchMotion.transientPanelTransition(
+                        from: origin,
+                        usesReducedMotion: reduceMotion
+                    )
+                )
+        }
     }
 
     @ViewBuilder

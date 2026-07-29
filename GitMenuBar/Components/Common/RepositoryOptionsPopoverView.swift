@@ -38,6 +38,7 @@ struct RepositoryOptionsPopoverView: View {
         }
         .padding(WorkbenchMetrics.panelPadding)
         .frame(width: 280, alignment: .leading)
+        .workbenchPanelSurface(material: .thin)
     }
 
     private func actionRow(title: String, symbol: String) -> some View {
