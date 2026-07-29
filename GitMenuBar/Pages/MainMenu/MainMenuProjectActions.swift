@@ -12,7 +12,7 @@ extension MainMenuView {
 
     func addToRecents(_ path: String) {
         recentProjectsStore.add(path)
-        if gitManager.isGitRepository(at: path) {
+        if gitManager.isGitRepository(at: path), !projectMonitor.contains(path: path) {
             projectMonitor.add(path: path)
         }
         recentProjectReferences = recentProjectsStore.recentProjects()

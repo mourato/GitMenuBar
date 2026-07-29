@@ -38,6 +38,20 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         XCTAssertTrue(store.monitoredProjects().isEmpty)
     }
 
+    func testRenamePreservesProjectOrder() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defaults.removePersistentDomain(forName: #function)
+        let store = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
+        store.add("/tmp/first")
+        store.add("/tmp/second")
+        store.add("/tmp/third")
+
+        store.rename(path: "/tmp/second", name: "Second")
+
+        XCTAssertEqual(store.monitoredProjects().map(\.path), ["/tmp/third", "/tmp/second", "/tmp/first"])
+        XCTAssertEqual(store.monitoredProjects()[1].name, "Second")
+    }
+
     func testCleanSnapshotClassification() {
         let snapshot = ProjectStatusSnapshot(
             project: ProjectReference(path: "/tmp/project"), branchName: "main", isDetachedHead: false,

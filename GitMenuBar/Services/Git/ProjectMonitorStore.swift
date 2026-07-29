@@ -45,6 +45,10 @@ final class ProjectMonitorStore: ObservableObject {
         refresh(path: path)
     }
 
+    func contains(path: String) -> Bool {
+        projectStore.contains(path: path)
+    }
+
     func remove(path: String) {
         projectStore.remove(path: path)
         snapshots.removeValue(forKey: RecentProjectsStore.normalize(path))

@@ -48,8 +48,13 @@ final class MonitoredProjectsStore {
     }
 
     func rename(path: String, name: String) {
-        guard contains(path: path) else { return }
-        upsert(path: path, name: name)
+        let normalizedPath = RecentProjectsStore.normalize(path)
+        let projects = monitoredProjects().map { project in
+            project.path == normalizedPath
+                ? ProjectReference(path: project.path, name: name)
+                : project
+        }
+        write(projects)
     }
 
     @discardableResult
