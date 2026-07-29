@@ -175,7 +175,7 @@ extension MainMenuView {
         if reduceTransparency {
             Color(nsColor: .windowBackgroundColor)
         } else {
-            Color.black.opacity(0.035)
+            Color.black.opacity(0.05)
         }
     }
 
