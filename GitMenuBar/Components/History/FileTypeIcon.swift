@@ -10,6 +10,11 @@ enum FileTypeIconKind: String, Equatable, Sendable {
     case image
     case config
     case uiResource
+    case sourceCode
+    case web
+    case stylesheet
+    case package
+    case xcodeProject
     case generic
 }
 
@@ -43,39 +48,128 @@ private struct FileTypeIconColorPair {
     let darkHex: String
 }
 
+private struct FileTypeIconMapping {
+    let kind: FileTypeIconKind
+    let artwork: FileTypeIconArtwork
+    let fallbackSymbolName: String
+}
+
 enum FileTypeIcon {
     static func resolve(for path: String) -> FileTypeIconDescriptor {
         let fileName = (path as NSString).lastPathComponent
+        let normalizedFileName = fileName.lowercased()
         let fileExtension = (fileName as NSString).pathExtension.lowercased()
 
-        switch fileExtension {
-        case "swift":
-            return descriptor(for: .swift, artwork: .pierre("swift"), fallbackSymbolName: "swift")
-        case "md", "markdown":
-            return descriptor(for: .markdown, artwork: .pierre("markdown"), fallbackSymbolName: "doc.richtext")
-        case "json":
-            return descriptor(for: .json, artwork: .pierre("json"), fallbackSymbolName: "curlybraces")
-        case "yaml", "yml":
-            return descriptor(for: .yaml, artwork: .pierre("json"), fallbackSymbolName: "curlybraces")
-        case "sh", "bash", "zsh":
-            return descriptor(for: .shell, artwork: .pierre("bash"), fallbackSymbolName: "terminal")
-        case "png", "jpg", "jpeg", "gif", "webp", "svg", "heic", "pdf":
-            return descriptor(for: .image, artwork: .pierre("image"), fallbackSymbolName: "photo")
-        case "plist", "xcconfig", "entitlements":
-            return descriptor(for: .config, artwork: .pierre("default"), fallbackSymbolName: "doc.badge.gearshape")
-        case "xcassets", "storyboard", "xib":
-            return descriptor(for: .uiResource, artwork: .pierre("default"), fallbackSymbolName: "square.grid.2x2")
-        default:
-            if fileName.hasPrefix("Makefile") || fileName == "Dockerfile" {
-                return descriptor(for: .config, artwork: .pierre("default"), fallbackSymbolName: "doc.badge.gearshape")
-            }
-            return descriptor(for: .generic, artwork: .pierre("default"), fallbackSymbolName: "doc")
+        if let mapping = exactFileMappings[normalizedFileName] ?? extensionMappings[fileExtension] {
+            return descriptor(for: mapping)
         }
+
+        return descriptor(for: .generic, artwork: .pierre("default"), fallbackSymbolName: "doc")
     }
 
     static func directoryIconName(isExpanded: Bool) -> String {
         isExpanded ? "folder.fill" : "folder"
     }
+
+    private static let exactFileMappings: [String: FileTypeIconMapping] = [
+        "makefile": configMapping,
+        "dockerfile": configMapping,
+        ".gitignore": configMapping,
+        ".gitattributes": configMapping,
+        ".swiftformat": configMapping,
+        ".swiftlint.yml": configMapping,
+        "package.resolved": lockfileMapping,
+        "package-lock.json": lockfileMapping,
+        "yarn.lock": lockfileMapping,
+        "pnpm-lock.yaml": lockfileMapping,
+        "poetry.lock": lockfileMapping,
+        "gemfile.lock": lockfileMapping,
+        "package.json": packageMapping,
+        "gemfile": packageMapping,
+        "podfile": packageMapping,
+        "cartfile": packageMapping
+    ]
+
+    private static let extensionMappings: [String: FileTypeIconMapping] = [
+        "swift": FileTypeIconMapping(kind: .swift, artwork: .pierre("swift"), fallbackSymbolName: "swift"),
+        "md": FileTypeIconMapping(kind: .markdown, artwork: .pierre("markdown"), fallbackSymbolName: "doc.richtext"),
+        "markdown": FileTypeIconMapping(kind: .markdown, artwork: .pierre("markdown"), fallbackSymbolName: "doc.richtext"),
+        "json": FileTypeIconMapping(kind: .json, artwork: .pierre("json"), fallbackSymbolName: "curlybraces"),
+        "yaml": FileTypeIconMapping(kind: .yaml, artwork: .pierre("json"), fallbackSymbolName: "curlybraces"),
+        "yml": FileTypeIconMapping(kind: .yaml, artwork: .pierre("json"), fallbackSymbolName: "curlybraces"),
+        "sh": FileTypeIconMapping(kind: .shell, artwork: .pierre("bash"), fallbackSymbolName: "terminal"),
+        "bash": FileTypeIconMapping(kind: .shell, artwork: .pierre("bash"), fallbackSymbolName: "terminal"),
+        "zsh": FileTypeIconMapping(kind: .shell, artwork: .pierre("bash"), fallbackSymbolName: "terminal")
+    ]
+    .merging(mappings(for: imageExtensions, to: imageMapping)) { current, _ in current }
+    .merging(mappings(for: configExtensions, to: configMapping)) { current, _ in current }
+    .merging(mappings(for: uiResourceExtensions, to: uiResourceMapping)) { current, _ in current }
+    .merging(mappings(for: webExtensions, to: webMapping)) { current, _ in current }
+    .merging(mappings(for: stylesheetExtensions, to: stylesheetMapping)) { current, _ in current }
+    .merging(mappings(for: sourceCodeExtensions, to: sourceCodeMapping)) { current, _ in current }
+    .merging(mappings(for: xcodeProjectExtensions, to: xcodeProjectMapping)) { current, _ in current }
+
+    private static let colorPairs: [FileTypeIconKind: FileTypeIconColorPair] = [
+        .swift: colorPair(light: 0xD47628, dark: 0xFFA359),
+        .markdown: colorPair(light: 0x199F43, dark: 0x5ECC71),
+        .json: colorPair(light: 0xD47628, dark: 0xFFA359),
+        .yaml: colorPair(light: 0xD52C36, dark: 0xFF6762),
+        .shell: colorPair(light: 0x199F43, dark: 0x5ECC71),
+        .image: colorPair(light: 0xD32A61, dark: 0xFF678D),
+        .config: colorPair(light: 0x84848A, dark: 0xADADB1),
+        .uiResource: colorPair(light: 0x84848A, dark: 0xADADB1),
+        .sourceCode: colorPair(light: 0x5967D8, dark: 0x93A4FF),
+        .web: colorPair(light: 0x1A83A8, dark: 0x62C3E6),
+        .stylesheet: colorPair(light: 0x2563C9, dark: 0x73A7FF),
+        .package: colorPair(light: 0x8B6F2A, dark: 0xD8B65A),
+        .xcodeProject: colorPair(light: 0x3E7DBD, dark: 0x7DB7F2),
+        .generic: colorPair(light: 0x84848A, dark: 0xADADB1)
+    ]
+
+    private static let imageExtensions = ["png", "jpg", "jpeg", "gif", "webp", "svg", "heic", "pdf"]
+    private static let configExtensions = ["plist", "xcconfig", "entitlements", "toml", "ini", "env"]
+    private static let uiResourceExtensions = ["xcassets", "storyboard", "xib", "strings"]
+    private static let webExtensions = ["html", "htm"]
+    private static let stylesheetExtensions = ["css", "scss", "sass", "less"]
+    private static let sourceCodeExtensions = [
+        "js", "jsx", "ts", "tsx", "mjs", "cjs", "py", "go", "rb", "java", "kt", "kts", "rs", "c", "cc", "cpp",
+        "cxx", "h", "hpp", "m", "mm"
+    ]
+    private static let xcodeProjectExtensions = ["pbxproj", "xcscheme", "xcworkspacedata", "xcodeproj", "xcworkspace", "resolved"]
+
+    private static let configMapping = FileTypeIconMapping(
+        kind: .config,
+        artwork: .pierre("default"),
+        fallbackSymbolName: "doc.badge.gearshape"
+    )
+    private static let imageMapping = FileTypeIconMapping(kind: .image, artwork: .pierre("image"), fallbackSymbolName: "photo")
+    private static let uiResourceMapping = FileTypeIconMapping(
+        kind: .uiResource,
+        artwork: .pierre("default"),
+        fallbackSymbolName: "square.grid.2x2"
+    )
+    private static let sourceCodeMapping = FileTypeIconMapping(
+        kind: .sourceCode,
+        artwork: .system("curlybraces"),
+        fallbackSymbolName: "curlybraces"
+    )
+    private static let webMapping = FileTypeIconMapping(kind: .web, artwork: .system("globe"), fallbackSymbolName: "globe")
+    private static let stylesheetMapping = FileTypeIconMapping(
+        kind: .stylesheet,
+        artwork: .system("number"),
+        fallbackSymbolName: "number"
+    )
+    private static let packageMapping = FileTypeIconMapping(
+        kind: .package,
+        artwork: .system("shippingbox"),
+        fallbackSymbolName: "shippingbox"
+    )
+    private static let lockfileMapping = FileTypeIconMapping(kind: .package, artwork: .system("lock"), fallbackSymbolName: "lock")
+    private static let xcodeProjectMapping = FileTypeIconMapping(
+        kind: .xcodeProject,
+        artwork: .system("hammer"),
+        fallbackSymbolName: "hammer"
+    )
 
     private static func descriptor(
         for kind: FileTypeIconKind,
@@ -94,25 +188,23 @@ enum FileTypeIcon {
         )
     }
 
+    private static func descriptor(for mapping: FileTypeIconMapping) -> FileTypeIconDescriptor {
+        descriptor(
+            for: mapping.kind,
+            artwork: mapping.artwork,
+            fallbackSymbolName: mapping.fallbackSymbolName
+        )
+    }
+
     private static func colorPair(for kind: FileTypeIconKind) -> FileTypeIconColorPair {
-        switch kind {
-        case .swift:
-            return colorPair(light: 0xD47628, dark: 0xFFA359)
-        case .markdown:
-            return colorPair(light: 0x199F43, dark: 0x5ECC71)
-        case .json:
-            return colorPair(light: 0xD47628, dark: 0xFFA359)
-        case .yaml:
-            return colorPair(light: 0xD52C36, dark: 0xFF6762)
-        case .shell:
-            return colorPair(light: 0x199F43, dark: 0x5ECC71)
-        case .image:
-            return colorPair(light: 0xD32A61, dark: 0xFF678D)
-        case .config, .uiResource:
-            return colorPair(light: 0x84848A, dark: 0xADADB1)
-        case .generic:
-            return colorPair(light: 0x84848A, dark: 0xADADB1)
-        }
+        colorPairs[kind] ?? colorPair(light: 0x84848A, dark: 0xADADB1)
+    }
+
+    private static func mappings(
+        for extensions: [String],
+        to mapping: FileTypeIconMapping
+    ) -> [String: FileTypeIconMapping] {
+        Dictionary(uniqueKeysWithValues: extensions.map { ($0, mapping) })
     }
 
     private static func colorPair(light: UInt32, dark: UInt32) -> FileTypeIconColorPair {

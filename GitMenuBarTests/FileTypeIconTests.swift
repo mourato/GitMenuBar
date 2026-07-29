@@ -92,6 +92,67 @@ final class FileTypeIconTests: XCTestCase {
         XCTAssertEqual(descriptor.fallbackSymbolName, "doc.badge.gearshape")
     }
 
+    func testHiddenConfigFilesMapToConfigKind() {
+        for path in [".gitignore", ".gitattributes", ".swiftformat", ".swiftlint.yml"] {
+            let descriptor = FileTypeIcon.resolve(for: path)
+            XCTAssertEqual(descriptor.kind, .config, "Expected config kind for \(path)")
+            XCTAssertEqual(descriptor.fallbackSymbolName, "doc.badge.gearshape")
+        }
+    }
+
+    func testSourceCodeExtensionsMapToSourceCodeKind() {
+        for path in ["src/app.ts", "src/view.tsx", "scripts/tool.py", "cmd/main.go", "Sources/App.kt"] {
+            let descriptor = FileTypeIcon.resolve(for: path)
+            XCTAssertEqual(descriptor.kind, .sourceCode, "Expected sourceCode kind for \(path)")
+            XCTAssertEqual(descriptor.artwork, .system("curlybraces"))
+            XCTAssertEqual(descriptor.fallbackSymbolName, "curlybraces")
+        }
+    }
+
+    func testWebExtensionsMapToWebKind() {
+        let descriptor = FileTypeIcon.resolve(for: "public/index.html")
+
+        XCTAssertEqual(descriptor.kind, .web)
+        XCTAssertEqual(descriptor.artwork, .system("globe"))
+        XCTAssertEqual(descriptor.fallbackSymbolName, "globe")
+    }
+
+    func testStylesheetExtensionsMapToStylesheetKind() {
+        for path in ["styles/app.css", "styles/theme.scss"] {
+            let descriptor = FileTypeIcon.resolve(for: path)
+            XCTAssertEqual(descriptor.kind, .stylesheet, "Expected stylesheet kind for \(path)")
+            XCTAssertEqual(descriptor.artwork, .system("number"))
+            XCTAssertEqual(descriptor.fallbackSymbolName, "number")
+        }
+    }
+
+    func testPackageFilesMapToPackageKind() {
+        for path in ["package.json", "Gemfile", "Podfile"] {
+            let descriptor = FileTypeIcon.resolve(for: path)
+            XCTAssertEqual(descriptor.kind, .package, "Expected package kind for \(path)")
+            XCTAssertEqual(descriptor.artwork, .system("shippingbox"))
+            XCTAssertEqual(descriptor.fallbackSymbolName, "shippingbox")
+        }
+    }
+
+    func testLockfilesMapToPackageKind() {
+        for path in ["Package.resolved", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "Gemfile.lock"] {
+            let descriptor = FileTypeIcon.resolve(for: path)
+            XCTAssertEqual(descriptor.kind, .package, "Expected package kind for \(path)")
+            XCTAssertEqual(descriptor.artwork, .system("lock"))
+            XCTAssertEqual(descriptor.fallbackSymbolName, "lock")
+        }
+    }
+
+    func testXcodeProjectFilesMapToXcodeProjectKind() {
+        for path in ["project.pbxproj", "GitMenuBar.xcscheme", "contents.xcworkspacedata"] {
+            let descriptor = FileTypeIcon.resolve(for: path)
+            XCTAssertEqual(descriptor.kind, .xcodeProject, "Expected xcodeProject kind for \(path)")
+            XCTAssertEqual(descriptor.artwork, .system("hammer"))
+            XCTAssertEqual(descriptor.fallbackSymbolName, "hammer")
+        }
+    }
+
     func testDirectoryIconNameReflectsExpansion() {
         XCTAssertEqual(FileTypeIcon.directoryIconName(isExpanded: false), "folder")
         XCTAssertEqual(FileTypeIcon.directoryIconName(isExpanded: true), "folder.fill")

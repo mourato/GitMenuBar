@@ -153,9 +153,7 @@ struct AtomicCommitReviewSheet: View {
 
     private func fileRow(file: String, groupIndex: Int) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: "doc")
-                .font(WorkbenchTypography.caption)
-                .foregroundStyle(.secondary)
+            FileTypeIconView(path: file)
             Text(file)
                 .font(WorkbenchTypography.body)
                 .lineLimit(1)
