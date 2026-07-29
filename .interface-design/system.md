@@ -164,7 +164,7 @@ Current vertical order (do not invent a new IA without a plan):
 - Single horizontal line with native traffic lights (leading), project selector (principal / centered), and Settings gear (trailing). Visually separated across the full titlebar width; **no** header `workbenchPanelSurface` plate.
 - Main body adds top `sectionSpacing` under the titlebar so the first content control is not tight against the header.
 - **Commit Details** route reuses the same titlebar toolbar slots: principal title “Commit Details”, trailing Back (`chevron.backward` in the Settings slot). Do not use an in-content back/title bar on that route — missing toolbar chrome shifts traffic lights.
-- Repository Options (ellipsis) lives on the **current** project row inside the Projects popover only (hidden when options unavailable or row is not current). Keep project-button context menu + status-item / command-center entry points; remove header ellipsis and the popover footer “Repository Options…” duplicate.
+- Projects popover rows expose local item options through a hover-revealed ellipsis on every project row. The menu owns rename display name, reveal folder in Finder, and remove from GitMenuBar. The current row may additionally expose Repository Options… when `canPresentRepositoryOptions` is true, separated from local actions. Add Project lives in the Projects section header as icon chrome, not as a full-width row. Removal is local metadata only and uses a system confirmation alert. Keep project-button context menu + status-item / command-center entry points.
 - Opening row options: close Projects, then present Repository Options anchored to the project-selector control (existing pending-presentation flow).
 
 ### Usage quota cards

@@ -87,4 +87,41 @@ final class RecentProjectsStoreTests: XCTestCase {
         store.rename(path: "/tmp/client-a", name: "   ")
         XCTAssertEqual(store.displayName(for: "/tmp/client-a"), "client-a")
     }
+
+    func testRemoveDeletesOnlyMatchingProject() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defaults.removePersistentDomain(forName: #function)
+        let store = RecentProjectsStore(defaults: defaults, key: "recents")
+        store.add("/tmp/a"); store.add("/tmp/b"); store.add("/tmp/c")
+        store.remove(path: "/tmp/b")
+        XCTAssertEqual(store.recentPaths(), ["/tmp/c", "/tmp/a"])
+    }
+
+    func testRemoveNormalizesPathBeforeMatching() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defaults.removePersistentDomain(forName: #function)
+        let store = RecentProjectsStore(defaults: defaults, key: "recents")
+        store.add("/tmp/a")
+        store.remove(path: "/tmp/./a")
+        XCTAssertTrue(store.recentProjects().isEmpty)
+    }
+
+    func testRemoveMissingProjectIsNoOp() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defaults.removePersistentDomain(forName: #function)
+        let store = RecentProjectsStore(defaults: defaults, key: "recents")
+        store.add("/tmp/a")
+        store.remove(path: "/tmp/missing")
+        XCTAssertEqual(store.recentPaths(), ["/tmp/a"])
+    }
+
+    func testRemovePreservesCustomNamesOnRemainingProjects() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defaults.removePersistentDomain(forName: #function)
+        let store = RecentProjectsStore(defaults: defaults, key: "recents")
+        store.upsert(path: "/tmp/a", name: "Alpha")
+        store.upsert(path: "/tmp/b", name: "Beta")
+        store.remove(path: "/tmp/a")
+        XCTAssertEqual(store.recentProjects(), [ProjectReference(path: "/tmp/b", name: "Beta")])
+    }
 }

@@ -279,6 +279,9 @@ extension MainMenuView {
                                 showProjectSelector = false
                                 selectDirectory()
                             },
+                            onRenameProject: { path, name in renameProject(path: path, name: name) },
+                            onRevealProject: { path in revealProjectInFinder(path: path) },
+                            onRemoveProject: { path in removeProject(path: path) },
                             onShowRepositoryOptions: canPresentRepositoryOptions ? {
                                 requestRepositoryOptionsPopoverPresentation()
                             } : nil

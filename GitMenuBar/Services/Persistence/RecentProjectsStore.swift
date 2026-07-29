@@ -69,6 +69,12 @@ final class RecentProjectsStore {
         upsert(path: path, name: name)
     }
 
+    func remove(path: String) {
+        let normalizedPath = Self.normalize(path)
+        let remaining = recentProjects().filter { $0.path != normalizedPath }
+        write(remaining)
+    }
+
     func displayName(for path: String) -> String {
         guard !path.isEmpty else { return "" }
         return recentProjects().first { $0.path == Self.normalize(path) }?.name
