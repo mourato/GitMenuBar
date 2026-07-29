@@ -66,6 +66,37 @@ Grab the latest version from the [Releases page](https://github.com/saihgupr/Git
 2. Open `GitMenuBar.xcodeproj` in Xcode
 3. Hit `⌘R` to build and run
 
+For the CLI-first workflow:
+
+```bash
+make build
+```
+
+To build a Release app and replace the installed `/Applications/GitMenuBar.app`
+with the new version, run:
+
+```bash
+make install-app
+```
+
+`make install-app` launches an interactive runner with Release as the default.
+It builds through the repository's canonical build script, validates the app
+bundle, stages the replacement, backs up the existing installed app, rolls back
+on failure, and relaunches GitMenuBar when installation succeeds.
+
+For non-interactive automation or disposable install targets:
+
+```bash
+./scripts/build-and-run.sh --configuration Release --no-interactive --skip-launch
+./scripts/build-and-run.sh --configuration Release --no-interactive --applications-dir /tmp/apps --skip-launch
+```
+
+Debug iteration is also available without replacing the installed app:
+
+```bash
+./scripts/build-and-run.sh --configuration Debug
+```
+
 ## Getting Started
 
 ### 1. Select a Repository

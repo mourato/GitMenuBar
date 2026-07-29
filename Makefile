@@ -1,4 +1,4 @@
-.PHONY: help build build-release test lint lint-changed lint-fix agent-check guidance-check install-cli uninstall-cli dmg clean setup
+.PHONY: help build build-release test lint lint-changed lint-fix agent-check guidance-check install-app install-cli uninstall-cli dmg clean setup
 
 PROJECT_DIR := $(shell pwd)
 
@@ -13,6 +13,7 @@ help:
 	@echo "make lint-fix      Auto-fix format/lint issues"
 	@echo "make agent-check   Lint changed Swift files and build Debug app"
 	@echo "make guidance-check Validate agent guidance, plans, and skill references"
+	@echo "make install-app   Build Release and replace the installed app interactively"
 	@echo "make install-cli   Symlink gitmenubar to ~/.local/bin"
 	@echo "make uninstall-cli Remove ~/.local/bin/gitmenubar (symlink only)"
 	@echo "make dmg           Build and package DMG"
@@ -43,6 +44,9 @@ agent-check: lint-changed build
 
 guidance-check:
 	@./scripts/validate-agent-guidance.sh
+
+install-app:
+	@./scripts/build-and-run.sh
 
 install-cli:
 	@./scripts/install-cli.sh
