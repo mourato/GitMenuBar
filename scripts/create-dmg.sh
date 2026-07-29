@@ -12,33 +12,6 @@ STAGING_DIR="${DIST_DIR}/dmg_staging"
 DMG_PATH="${DIST_DIR}/${APP_PRODUCT_NAME}.dmg"
 VOLUME_NAME="${APP_PRODUCT_NAME}"
 
-resolve_signing_identity() {
-    if [[ -n "${GITMENUBAR_CODE_SIGN_IDENTITY:-}" ]]; then
-        printf '%s\n' "${GITMENUBAR_CODE_SIGN_IDENTITY}"
-        return 0
-    fi
-
-    security find-identity -v -p codesigning 2>/dev/null \
-        | awk -F '"' '
-            /"Developer ID Application:/ { print $2; found = 1; exit }
-            /"Prisma Local Code Signing"/ && local == "" { local = $2 }
-            /"Apple Development:/ && development == "" { development = $2 }
-            fallback == "" { fallback = $2 }
-            END {
-                if (found) {
-                    exit
-                }
-                if (local != "") {
-                    print local
-                } else if (development != "") {
-                    print development
-                } else if (fallback != "") {
-                    print fallback
-                }
-            }
-        '
-}
-
 mkdir -p "${DIST_DIR}"
 
 "${PROJECT_DIR}/scripts/run-build.sh" --configuration Release
@@ -48,16 +21,9 @@ if [[ ! -d "${APP_BUNDLE}" ]]; then
     exit 1
 fi
 
-SIGNING_IDENTITY="$(resolve_signing_identity)"
-if [[ -n "${SIGNING_IDENTITY}" ]]; then
-    echo "Signing app with: ${SIGNING_IDENTITY}"
-    codesign --force --deep --options runtime --timestamp=none --sign "${SIGNING_IDENTITY}" "${APP_BUNDLE}"
-    if [[ "${SIGNING_IDENTITY}" != Developer\ ID\ Application:* ]]; then
-        echo "Warning: ${SIGNING_IDENTITY} is valid for local development, but Gatekeeper distribution requires a notarized Developer ID Application build." >&2
-    fi
-else
-    echo "No codesigning identity found; DMG will contain an ad-hoc signed app." >&2
-fi
+echo "Signing app ad-hoc for local DMG installation."
+codesign --force --deep --sign - "${APP_BUNDLE}"
+codesign --verify --deep --strict --verbose=2 "${APP_BUNDLE}"
 
 rm -rf "${STAGING_DIR}"
 mkdir -p "${STAGING_DIR}"
@@ -71,11 +37,6 @@ hdiutil create \
     -fs HFS+ \
     -format UDZO \
     "${DMG_PATH}"
-
-if [[ -n "${SIGNING_IDENTITY}" ]]; then
-    echo "Signing DMG with: ${SIGNING_IDENTITY}"
-    codesign --force --timestamp=none --sign "${SIGNING_IDENTITY}" "${DMG_PATH}"
-fi
 
 rm -rf "${STAGING_DIR}"
 
