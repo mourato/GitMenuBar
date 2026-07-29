@@ -294,7 +294,7 @@ elif [ -z "$CONFIGURATION" ]; then
         3) exit 0 ;;
         *) fail "invalid choice: $choice" ;;
     esac
-    clean_choice="$(prompt "Clean .xcode-build first? y/N" "N")"
+    clean_choice="$(prompt "Clean .xcode-build first? Y/n" "Y")"
     case "$clean_choice" in
         y|Y|yes|YES) CLEAN=1 ;;
     esac
