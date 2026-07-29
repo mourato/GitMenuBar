@@ -11,7 +11,9 @@ struct CommitComposerSectionView: View {
     let generationError: String?
     let primaryButtonTitle: String
     let isPrimaryButtonDisabled: Bool
+    let canShowSplitCommits: Bool
     let onPrimaryAction: () -> Void
+    let onSplitCommits: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -40,10 +42,11 @@ struct CommitComposerSectionView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
-            .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
-            .disabled(isPrimaryButtonDisabled)
-            .keyboardShortcut(.defaultAction)
+            .primaryActionLayout(
+                canShowSplitCommits: canShowSplitCommits,
+                onSplitCommits: onSplitCommits,
+                isPrimaryButtonDisabled: isPrimaryButtonDisabled
+            )
 
             if let automaticMessageHint {
                 Text(automaticMessageHint)
@@ -65,11 +68,45 @@ struct CommitComposerSectionView: View {
     }
 }
 
+private extension View {
+    @ViewBuilder
+    func primaryActionLayout(
+        canShowSplitCommits: Bool,
+        onSplitCommits: @escaping () -> Void,
+        isPrimaryButtonDisabled: Bool
+    ) -> some View {
+        if canShowSplitCommits {
+            HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                self
+                    .frame(maxWidth: .infinity)
+                    .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
+                    .disabled(isPrimaryButtonDisabled)
+                    .keyboardShortcut(.defaultAction)
+
+                Button(action: onSplitCommits) {
+                    Label("Split", systemImage: "sparkles")
+                        .labelStyle(.titleAndIcon)
+                }
+                .controlSize(.large)
+                .workbenchSecondary()
+                .accessibilityLabel("Split into atomic commits")
+                .help("Group changes into logical commits")
+            }
+        } else {
+            frame(maxWidth: .infinity)
+                .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
+                .disabled(isPrimaryButtonDisabled)
+                .keyboardShortcut(.defaultAction)
+        }
+    }
+}
+
 private struct CommitComposerSectionPreviewContainer: View {
     @State private var message = "feat(ui): improve spacing"
     @FocusState private var isFocused: Bool
     let showsCommentField: Bool
     let automaticMessageHint: String?
+    let canShowSplitCommits: Bool
 
     var body: some View {
         CommitComposerSectionView(
@@ -83,7 +120,9 @@ private struct CommitComposerSectionPreviewContainer: View {
             generationError: nil,
             primaryButtonTitle: "Commit",
             isPrimaryButtonDisabled: false,
-            onPrimaryAction: {}
+            canShowSplitCommits: canShowSplitCommits,
+            onPrimaryAction: {},
+            onSplitCommits: {}
         )
         .padding()
         .frame(width: 360)
@@ -93,13 +132,15 @@ private struct CommitComposerSectionPreviewContainer: View {
 #Preview("Commit Composer") {
     CommitComposerSectionPreviewContainer(
         showsCommentField: true,
-        automaticMessageHint: nil
+        automaticMessageHint: nil,
+        canShowSplitCommits: true
     )
 }
 
 #Preview("Commit Composer Hidden Field") {
     CommitComposerSectionPreviewContainer(
         showsCommentField: false,
-        automaticMessageHint: "Commit messages will be generated automatically."
+        automaticMessageHint: "Commit messages will be generated automatically.",
+        canShowSplitCommits: false
     )
 }

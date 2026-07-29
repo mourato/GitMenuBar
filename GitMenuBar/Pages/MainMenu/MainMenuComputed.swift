@@ -371,7 +371,7 @@ extension MainMenuView {
     }
 
     var canShowAtomicCommits: Bool {
-        hasWorkingTreeChanges && aiCommitCoordinator.isReadyForGeneration
+        !gitManager.changedFiles.isEmpty && aiCommitCoordinator.isReadyForGeneration && !actionCoordinator.isBusy
     }
 
     var commandPaletteActionState: StatusBarContextMenuActionState {

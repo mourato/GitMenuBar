@@ -200,10 +200,10 @@ private struct WorkbenchButtonVariantsPreviewMatrix: View {
                 .workbenchSecondary()
 
             HStack {
-                Button("Atomic Commits") {}
+                Button("Split") {}
                     .workbenchGhost()
                 Spacer()
-                Button("Manage") {}
+                Button("Branches") {}
                     .workbenchGhost()
             }
 

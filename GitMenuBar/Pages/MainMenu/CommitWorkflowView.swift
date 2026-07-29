@@ -11,7 +11,9 @@ struct CommitWorkflowView: View {
     let generationError: String?
     let primaryButtonTitle: String
     let isPrimaryButtonDisabled: Bool
+    let canShowSplitCommits: Bool
     let onPrimaryAction: () -> Void
+    let onSplitCommits: () -> Void
     let onDidCommit: () -> Void
     let onRequestFocus: () -> Void
     let focusCommitFieldToken: Int
@@ -31,7 +33,9 @@ struct CommitWorkflowView: View {
             generationError: generationError,
             primaryButtonTitle: primaryButtonTitle,
             isPrimaryButtonDisabled: isPrimaryButtonDisabled,
-            onPrimaryAction: onPrimaryAction
+            canShowSplitCommits: canShowSplitCommits,
+            onPrimaryAction: onPrimaryAction,
+            onSplitCommits: onSplitCommits
         )
         .onAppear {
             onRequestFocus()
@@ -151,7 +155,9 @@ private struct CommitWorkflowPreviewContent: View {
             generationError: nil,
             primaryButtonTitle: "Commit",
             isPrimaryButtonDisabled: false,
+            canShowSplitCommits: true,
             onPrimaryAction: {},
+            onSplitCommits: {},
             onDidCommit: {},
             onRequestFocus: {},
             focusCommitFieldToken: 0,
