@@ -1,8 +1,3 @@
-//
-//  MainMenuOverlays.swift
-//  GitMenuBar
-//
-
 import SwiftUI
 
 extension MainMenuView {
@@ -35,10 +30,7 @@ extension MainMenuView {
 
                 transientPanelContent
             }
-            .animation(
-                WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
-                value: hasTransientPresentation
-            )
+            .animation(WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion), value: hasTransientPresentation)
             .transition(.opacity)
         }
     }
@@ -46,29 +38,18 @@ extension MainMenuView {
     @ViewBuilder
     private var transientPanelContent: some View {
         if showProjectSelector {
-            projectSelectorOverlayLayout
+            topCenteredOverlay(projectSelectorOverlay)
         } else if showRepositoryOptionsPopover {
-            repositoryOptionsOverlayLayout
+            topCenteredOverlay(repositoryOptionsOverlay)
         } else if showBranchSelector {
             branchSelectorOverlayLayout
         }
     }
 
-    private var projectSelectorOverlayLayout: some View {
+    private func topCenteredOverlay<Overlay: View>(_ overlay: Overlay) -> some View {
         HStack {
             Spacer(minLength: 0)
-            projectSelectorOverlay
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .padding(.top, WorkbenchMetrics.sectionSpacing)
-        .padding(.horizontal, WorkbenchMetrics.windowPadding)
-    }
-
-    private var repositoryOptionsOverlayLayout: some View {
-        HStack {
-            Spacer(minLength: 0)
-            repositoryOptionsOverlay
+            overlay
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -209,12 +190,7 @@ extension MainMenuView {
             content
                 .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 8)
                 .accessibilityAddTraits(.isModal)
-                .transition(
-                    WorkbenchMotion.transientPanelTransition(
-                        from: origin,
-                        usesReducedMotion: reduceMotion
-                    )
-                )
+                .transition(WorkbenchMotion.transientPanelTransition(from: origin, usesReducedMotion: reduceMotion))
         }
     }
 
