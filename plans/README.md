@@ -529,3 +529,50 @@ placement, Escape cancel-then-dismiss behavior for project rename, and
 - Adding a full dark command-palette modal treatment: rejected because these
   are compact transient panels, so the curtain should communicate active focus
   without making the whole menu feel like a blocking dialog.
+
+## Multi-project monitoring — 2026-07-29
+
+Locked via grill. Docs: `CONTEXT.md`,
+`docs/adr/0004-multi-project-monitoring-snapshots.md`, and
+`.interface-design/system.md`. Planned against commit `9ff2669`.
+
+Product locks: projects selected or added by the user become monitored by
+default; recents and monitored projects persist separately but removal from
+recents also removes from monitoring; `Stop Monitoring` keeps the project in
+recents; the main UI uses a Projects sidebar instead of the old
+project-management popover; sidebar rows keep hover-revealed ellipsis menus
+with native context-menu equivalents; local status refresh is automatic and
+lightweight; network fetch across projects is explicit.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 046 | Monitor multiple projects from a sidebar | P0 | L | 043, 044, 045 | DONE |
+
+### Dependency notes
+
+- Plan 046 depends on Plan 043 because it reuses `ProjectReference` as the
+  path/name identity.
+- Plan 046 depends on Plan 044 because it inherits row-local project actions:
+  rename, reveal, remove, and add project.
+- Plan 046 depends on Plan 045 because it intentionally replaces the transient
+  Projects overlay while preserving the app's post-popover crash-hardening
+  constraints for other overlays.
+- Execute serially. The persistence model, monitoring scheduler, sidebar
+  layout, header behavior, command routing, and status-item badge all share the
+  same project selection and attention-state model.
+
+### Findings considered and rejected
+
+- Instantiating one `GitManager` per project: rejected by ADR 0004 because the
+  existing manager is a selected-repository facade backed by mutable global
+  repository-path state.
+- Automatic background `git fetch` for every monitored project: rejected
+  because it can create latency, auth prompts, and network side effects.
+- Managing projects in both sidebar and popover: rejected because the sidebar
+  becomes the structural project surface.
+- Commit/push/pull actions on non-selected repositories: rejected for v1; full
+  Git workflows stay scoped to the selected project.
+- Search, pinning, drag sorting, groups/tags, and worktree auto-discovery:
+  deferred until the basic 10-project monitoring workflow proves useful.

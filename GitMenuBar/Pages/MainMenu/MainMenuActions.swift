@@ -57,11 +57,10 @@ extension MainMenuView {
     }
 
     var hasTransientPresentation: Bool {
-        showProjectSelector || showRepositoryOptionsPopover || showBranchSelector
+        showRepositoryOptionsPopover || showBranchSelector
     }
 
     func dismissTransientPresentations() {
-        showProjectSelector = false
         showRepositoryOptionsPopover = false
         showBranchSelector = false
         pendingRepositoryOptionsPresentation = false
@@ -80,6 +79,13 @@ extension MainMenuView {
         }
         dismissTransientPresentations()
         showProjectSelector = shouldPresent
+    }
+
+    func toggleProjectsSidebar() {
+        UserDefaults.standard.set(
+            !UserDefaults.standard.bool(forKey: AppPreferences.Keys.isProjectsSidebarCollapsed),
+            forKey: AppPreferences.Keys.isProjectsSidebarCollapsed
+        )
     }
 
     func toggleBranchSelectorPresentation() {

@@ -49,8 +49,8 @@ struct MainMenuProjectSelectorControl<ContextMenuContent: View>: View {
         .disabled(isInteractionDisabled)
         .opacity(isInteractionDisabled ? 0.5 : 1)
         .accessibilityLabel("Current repository")
-        .accessibilityValue(isProjectSelectorPresented ? "Project picker open" : "Project picker closed")
-        .accessibilityHint("Opens the recent repository picker.")
+        .accessibilityValue(isProjectSelectorPresented ? "Projects sidebar open" : "Projects sidebar closed")
+        .accessibilityHint("Shows the Projects sidebar.")
         .onHover { inside in
             guard !isInteractionDisabled else { return }
             isProjectHovered = inside

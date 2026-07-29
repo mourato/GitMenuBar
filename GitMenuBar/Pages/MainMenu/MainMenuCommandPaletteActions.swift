@@ -25,6 +25,12 @@ extension MainMenuView {
             executeWorkflowCommand(item.kind)
         case let .recentProject(path):
             switchRepository(path: path)
+        case .addProject:
+            selectDirectory()
+        case .refreshAllProjects:
+            projectMonitor.refreshAll()
+        case .fetchAllProjects:
+            projectMonitor.fetchAll()
         case .restartApp:
             showRestartConfirmation = true
         case .quitApp:

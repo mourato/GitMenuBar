@@ -36,6 +36,14 @@ _Avoid_: patch set, hunk group, logical commit (as a synonym in code names)
 
 ### Workflow integration
 
+**Monitored Project**:
+A local project that GitMenuBar keeps in its Projects surface so its Git attention state can be scanned alongside other projects. Monitoring is local app metadata; it does not rename, move, fetch, push, pull, or otherwise mutate the repository by itself.
+_Avoid_: watched repo, tracked repo, workspace, recent project (when monitoring intent is meant)
+
+**Attention State**:
+The compact project-level Git state that tells whether a Monitored Project needs developer action, is clean, is unavailable, or is still refreshing. It summarizes Git facts for scanning; it is not a replacement for the selected project's full working-tree view.
+_Avoid_: health status, repo score, notification state
+
 **Soft dependency**:
 Optional use of the Companion CLI from global delivery skills when the binary is on `PATH` and AI generation is ready; otherwise fall back to plain `git` without failing the harness setup.
 _Avoid_: hard requirement, mandatory gitmenubar, CLI gate

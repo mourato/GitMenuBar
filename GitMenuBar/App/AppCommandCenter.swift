@@ -15,6 +15,9 @@ enum AppCommandID: Hashable {
     case createBranch
     case mergeToDefault
     case chooseRepository
+    case addProject
+    case refreshAllProjects
+    case fetchAllProjects
     case revealRepositoryInFinder
     case openRepositoryOnGitHub
     case showRepositoryOptions
@@ -88,6 +91,9 @@ enum AppCommandCatalog {
             paletteKeywords: ["merge", "default", "main", "master", "branch"]
         ),
         .chooseRepository: .init(title: "Choose Repository", paletteSubtitle: nil, paletteKeywords: ["repository", "open"]),
+        .addProject: .init(title: "Add Project", paletteSubtitle: "Monitor another local repository", paletteKeywords: ["project", "add", "monitor"]),
+        .refreshAllProjects: .init(title: "Refresh All Projects", paletteSubtitle: "Refresh local project status", paletteKeywords: ["project", "refresh", "status"]),
+        .fetchAllProjects: .init(title: "Fetch All Projects", paletteSubtitle: "Fetch remote refs for monitored projects", paletteKeywords: ["project", "fetch", "remote"]),
         .revealRepositoryInFinder: .init(title: "Reveal in Finder", paletteSubtitle: nil, paletteKeywords: ["finder", "repository"]),
         .openRepositoryOnGitHub: .init(title: "Open on GitHub", paletteSubtitle: nil, paletteKeywords: ["github", "remote"]),
         .showRepositoryOptions: .init(title: "Repository Options", paletteSubtitle: nil, paletteKeywords: ["repository", "options"]),
@@ -124,6 +130,7 @@ enum AppCommandInvocation: Equatable {
 struct AppCommandSnapshot: Equatable {
     let states: [AppCommandID: AppCommandState]
     let recentProjects: [AppRecentProjectCommand]
+    let monitoredProjects: [AppRecentProjectCommand]
 }
 
 struct AppCommandContext: Equatable {
@@ -140,6 +147,39 @@ struct AppCommandContext: Equatable {
     let canShowBranchManagement: Bool
     let currentBranch: String
     let defaultBranchName: String
+    let monitoredProjects: [ProjectStatusSnapshot]
+
+    init(
+        actionState: StatusBarContextMenuActionState,
+        syncActionTitle: String,
+        currentRepoPath: String,
+        remoteUrl: String,
+        recentProjects: [ProjectReference],
+        isGitHubAuthenticated: Bool,
+        hasWorkingTreeChanges: Bool,
+        canDoAtomicCommits: Bool,
+        isBehindRemote: Bool,
+        isAheadOfRemote: Bool,
+        canShowBranchManagement: Bool,
+        currentBranch: String,
+        defaultBranchName: String,
+        monitoredProjects: [ProjectStatusSnapshot] = []
+    ) {
+        self.actionState = actionState
+        self.syncActionTitle = syncActionTitle
+        self.currentRepoPath = currentRepoPath
+        self.remoteUrl = remoteUrl
+        self.recentProjects = recentProjects
+        self.isGitHubAuthenticated = isGitHubAuthenticated
+        self.hasWorkingTreeChanges = hasWorkingTreeChanges
+        self.canDoAtomicCommits = canDoAtomicCommits
+        self.isBehindRemote = isBehindRemote
+        self.isAheadOfRemote = isAheadOfRemote
+        self.canShowBranchManagement = canShowBranchManagement
+        self.currentBranch = currentBranch
+        self.defaultBranchName = defaultBranchName
+        self.monitoredProjects = monitoredProjects
+    }
 }
 
 enum AppCommandResolver {
@@ -166,6 +206,9 @@ enum AppCommandResolver {
             .createBranch: state(.createBranch, isEnabled: context.canShowBranchManagement),
             .mergeToDefault: state(.mergeToDefault, isEnabled: canMergeToDefault),
             .chooseRepository: state(.chooseRepository, isEnabled: true),
+            .addProject: state(.addProject, isEnabled: true),
+            .refreshAllProjects: state(.refreshAllProjects, isEnabled: true),
+            .fetchAllProjects: state(.fetchAllProjects, isEnabled: true),
             .revealRepositoryInFinder: state(.revealRepositoryInFinder, isEnabled: hasCurrentRepository),
             .openRepositoryOnGitHub: state(.openRepositoryOnGitHub, isEnabled: canOpenRemoteRepository),
             .showRepositoryOptions: state(.showRepositoryOptions, isEnabled: canShowRepositoryOptions),
@@ -186,7 +229,29 @@ enum AppCommandResolver {
                 )
             }
 
-        return AppCommandSnapshot(states: states, recentProjects: Array(recentProjects))
+        let monitoredProjects = context.monitoredProjects
+            .filter { $0.project.path != currentRepoPath }
+            .sorted {
+                let lhsNeedsAttention = $0.classification != .clean
+                let rhsNeedsAttention = $1.classification != .clean
+                if lhsNeedsAttention != rhsNeedsAttention {
+                    return lhsNeedsAttention
+                }
+                return $0.project.name.localizedStandardCompare($1.project.name) == .orderedAscending
+            }
+            .map {
+                AppRecentProjectCommand(
+                    path: $0.project.path,
+                    title: $0.project.name,
+                    subtitle: $0.branchName.isEmpty ? "Unavailable" : $0.branchName
+                )
+            }
+
+        return AppCommandSnapshot(
+            states: states,
+            recentProjects: Array(recentProjects),
+            monitoredProjects: monitoredProjects
+        )
     }
 
     private static func state(_ commandID: AppCommandID, isEnabled: Bool) -> AppCommandState {
@@ -201,12 +266,14 @@ enum AppCommandResolver {
 final class AppCommandCenter: ObservableObject {
     @Published private(set) var states: [AppCommandID: AppCommandState] = [:]
     @Published private(set) var recentProjects: [AppRecentProjectCommand] = []
+    @Published private(set) var monitoredProjects: [AppRecentProjectCommand] = []
 
     var performInvocation: ((AppCommandInvocation) -> Void)?
 
     func apply(_ snapshot: AppCommandSnapshot) {
         states = snapshot.states
         recentProjects = snapshot.recentProjects
+        monitoredProjects = snapshot.monitoredProjects
     }
 
     func state(for commandID: AppCommandID) -> AppCommandState {

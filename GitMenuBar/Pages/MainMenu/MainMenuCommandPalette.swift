@@ -34,6 +34,9 @@ enum MainMenuCommandPaletteKind: Hashable {
     case switchToBranchList
     case switchBranch(branchName: String)
     case recentProject(path: String)
+    case addProject
+    case refreshAllProjects
+    case fetchAllProjects
     case restartApp
     case quitApp
 
@@ -63,6 +66,9 @@ enum MainMenuCommandPaletteKind: Hashable {
             return "branch.switch.\(branchName)"
         case let .recentProject(path):
             return "recent.\(path)"
+        case .addProject: return "project.add"
+        case .refreshAllProjects: return "project.refreshAll"
+        case .fetchAllProjects: return "project.fetchAll"
         case .restartApp:
             return "app.restart"
         case .quitApp:

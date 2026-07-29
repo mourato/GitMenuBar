@@ -129,7 +129,7 @@ Press feedback: scale ≈ **0.97** via shared press style; respect Reduce Motion
 
 ### Adoption scope
 
-- **This wave:** main panel + popovers attached to it; window shell also covers Settings (Plans 030–033)
+- **This wave:** main panel + sidebar / transient overlays attached to it; window shell also covers Settings (Plans 030–033)
 - **Deferred:** sheets button-kit migration, confirmation dialogs (opportunistic only; Plan 029 stub)
 
 Confirmation dialogs keep system alert patterns; do not restyle en masse.
@@ -151,7 +151,7 @@ Confirmation dialogs keep system alert patterns; do not restyle en masse.
 
 ## Main panel composition
 
-Current vertical order (do not invent a new IA without a plan):
+Current single-project vertical order (do not invent a new IA without a plan):
 
 1. Header (titlebar-aligned: traffic lights · project selector · Settings gear)
 2. Commit composer (Primary commit/sync)
@@ -159,16 +159,24 @@ Current vertical order (do not invent a new IA without a plan):
 4. Footer: branch chip · Ghost actions (Atomic / Manage)
 5. Optional usage quota cards (Mimir-style; secondary to Git workflow)
 
-### Header chrome
+For multi-project monitoring, the main window becomes a split workbench: a
+left Projects sidebar plus the existing selected-project detail column. The
+sidebar is visible by default when monitoring is active and can collapse to a
+narrow rail; the collapsed rail keeps project attention visible instead of
+disappearing completely.
+
+### Header chrome and Projects sidebar
 
 - Single horizontal line with native traffic lights (leading), project selector (principal / centered), and Settings gear (trailing). Visually separated across the full titlebar width; **no** header `workbenchPanelSurface` plate.
 - Main body adds top `sectionSpacing` under the titlebar so the first content control is not tight against the header.
 - **Commit Details** route reuses the same titlebar toolbar slots: principal title “Commit Details”, trailing Back (`chevron.backward` in the Settings slot). Do not use an in-content back/title bar on that route — missing toolbar chrome shifts traffic lights.
-- Projects popover rows expose local item options through a hover-revealed ellipsis icon on every project row. The menu owns Rename project, Reveal in Finder, and Remove project. Rename project edits inline in the selected project row: Return saves, Esc or Cancel exits without adding a new overlay. The current row may additionally expose Repository options when `canPresentRepositoryOptions` is true, separated from local actions. Add Project lives in the Projects section header as icon chrome, not as a full-width row. Removal is local metadata only and uses a system confirmation alert. Keep project-button context menu + status-item / command-center entry points.
+- Multi-project management lives in the Projects sidebar, not in the old Projects popover. The titlebar project control becomes active-project context and sidebar focus/toggle chrome; do not reintroduce a floating project-management list.
+- Projects sidebar rows expose local item options through a hover-revealed ellipsis icon on every project row, with a native context-menu equivalent. The menu owns Rename project, Reveal in Finder, Stop Monitoring, and Remove Project. Remove Project removes the project from recents and monitored projects; Stop Monitoring keeps it in recents. Removal is local metadata only and uses a system confirmation alert.
+- Add Project lives in the sidebar header as icon chrome, not as a full-width popover row. Empty project state may also expose Add Project inline in the main detail area.
+- Sidebar groups attention first: Needs Attention, Clean, Unavailable. Selection highlights the active project but does not outrank attention ordering.
 - Visible interface labels do not use trailing ellipses. If an action opens
   another layer or needs confirmation, communicate that through context,
   grouping, helper text, or the resulting system surface.
-- Opening row options: close Projects, then present Repository Options anchored to the project-selector control (existing pending-presentation flow).
 
 ### Usage quota cards
 

@@ -398,7 +398,8 @@ extension MainMenuView {
                 isAheadOfRemote: gitManager.isAheadOfRemote,
                 canShowBranchManagement: !currentRepoPath.isEmpty,
                 currentBranch: gitManager.currentBranch,
-                defaultBranchName: gitManager.defaultBranchName
+                defaultBranchName: gitManager.defaultBranchName,
+                monitoredProjects: Array(projectMonitor.snapshots.values)
             )
         )
     }
