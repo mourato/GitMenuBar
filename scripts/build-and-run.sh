@@ -119,6 +119,7 @@ running_pids_for_bundle() {
         command_path="$(ps -p "$pid" -o comm= 2>/dev/null || true)"
         [ "$command_path" = "$executable" ] && printf '%s\n' "$pid"
     done < <(pgrep -x "$APP_PRODUCT_NAME" 2>/dev/null || true)
+    return 0
 }
 
 wait_for_exit() {
