@@ -175,10 +175,7 @@ extension MainMenuView {
         if reduceTransparency {
             Color(nsColor: .windowBackgroundColor)
         } else {
-            ZStack {
-                Color.black.opacity(0.04)
-                Rectangle().fill(.ultraThinMaterial)
-            }
+            Color.black.opacity(0.035)
         }
     }
 
