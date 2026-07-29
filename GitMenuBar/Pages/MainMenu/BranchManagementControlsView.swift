@@ -59,7 +59,7 @@ struct BranchManagementControlsView: View {
                 .workbenchGhost()
             }
 
-            Button("Manage…") {
+            Button("Manage") {
                 onManage()
             }
             .workbenchGhost()

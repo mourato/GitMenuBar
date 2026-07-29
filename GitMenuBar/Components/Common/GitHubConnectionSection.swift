@@ -69,7 +69,7 @@ struct GitHubConnectionSection: View {
                 HStack(spacing: WorkbenchMetrics.compactSpacing) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Connecting...")
+                    Text("Connecting")
                         .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
                 }

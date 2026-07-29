@@ -30,7 +30,7 @@ struct RepositoryOptionsPopoverView: View {
 
             Button(role: .destructive, action: onDeleteRepository) {
                 actionRow(
-                    title: "Delete Repository…",
+                    title: "Delete Repository",
                     symbol: "trash"
                 )
             }

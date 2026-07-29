@@ -112,7 +112,7 @@ struct CreateRepoContentView: View {
                         ProgressView()
                             .scaleEffect(0.7)
                             .frame(width: 14, height: 14)
-                        Text("Creating...")
+                        Text("Creating")
                     } else {
                         Image(systemName: "arrow.up.circle.fill")
                         Text("Create & Publish to GitHub")

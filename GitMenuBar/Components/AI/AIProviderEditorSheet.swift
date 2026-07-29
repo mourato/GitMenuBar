@@ -28,6 +28,12 @@ struct AIProviderEditorSheet: View {
         _availableModels = State(initialValue: existingProvider?.availableModels ?? [])
     }
 
+    private var isTestConnectionDisabled: Bool {
+        isTestingConnection
+            || endpointURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(existingProvider == nil ? "Add AI Provider" : "Edit AI Provider")
@@ -60,13 +66,13 @@ struct AIProviderEditorSheet: View {
                 }
 
             HStack {
-                Button(isTestingConnection ? "Testing..." : "Test Connection") {
+                Button(isTestingConnection ? "Testing" : "Test Connection") {
                     Task {
                         await testConnection()
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isTestingConnection || endpointURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(isTestConnectionDisabled)
 
                 Spacer()
             }

@@ -52,7 +52,7 @@ struct BranchManagementRowView: View {
             if branch.isLocal {
                 Menu {
                     Button("Switch to \(branch.name)") { onSwitch() }
-                    Button("Rename…") { onRename() }
+                    Button("Rename") { onRename() }
                     if let onPush {
                         Button("Push to Remote") { onPush() }
                     }

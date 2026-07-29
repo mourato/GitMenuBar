@@ -40,7 +40,7 @@ enum AppCommandCatalog {
 
     private static let descriptors: [AppCommandID: AppCommandDescriptor] = [
         .openWindow: .init(title: "Open Window", paletteSubtitle: nil, paletteKeywords: ["window", "open"]),
-        .showSettings: .init(title: "Settings…", paletteSubtitle: nil, paletteKeywords: ["settings", "preferences"]),
+        .showSettings: .init(title: "Settings", paletteSubtitle: nil, paletteKeywords: ["settings", "preferences"]),
         .showCommandPalette: .init(title: "Command Palette", paletteSubtitle: nil, paletteKeywords: ["command", "palette"]),
         .commit: .init(
             title: "Commit",
@@ -63,7 +63,7 @@ enum AppCommandCatalog {
             paletteKeywords: ["atomic", "commit", "ai", "group", "split"]
         ),
         .branchManagement: .init(
-            title: "Manage Branches…",
+            title: "Manage Branches",
             paletteSubtitle: "View, create, rename, delete branches",
             paletteKeywords: ["branch", "manage", "crud", "remote"]
         ),
@@ -78,7 +78,7 @@ enum AppCommandCatalog {
             paletteKeywords: ["git", "pull", "update", "remote"]
         ),
         .createBranch: .init(
-            title: "Create Branch…",
+            title: "Create Branch",
             paletteSubtitle: "Create a new branch from current HEAD",
             paletteKeywords: ["branch", "create", "new"]
         ),
@@ -87,10 +87,10 @@ enum AppCommandCatalog {
             paletteSubtitle: "Merge current branch into default and clean up",
             paletteKeywords: ["merge", "default", "main", "master", "branch"]
         ),
-        .chooseRepository: .init(title: "Choose Repository…", paletteSubtitle: nil, paletteKeywords: ["repository", "open"]),
+        .chooseRepository: .init(title: "Choose Repository", paletteSubtitle: nil, paletteKeywords: ["repository", "open"]),
         .revealRepositoryInFinder: .init(title: "Reveal in Finder", paletteSubtitle: nil, paletteKeywords: ["finder", "repository"]),
         .openRepositoryOnGitHub: .init(title: "Open on GitHub", paletteSubtitle: nil, paletteKeywords: ["github", "remote"]),
-        .showRepositoryOptions: .init(title: "Repository Options…", paletteSubtitle: nil, paletteKeywords: ["repository", "options"]),
+        .showRepositoryOptions: .init(title: "Repository Options", paletteSubtitle: nil, paletteKeywords: ["repository", "options"]),
         .helpRepository: .init(title: "GitMenuBar on GitHub", paletteSubtitle: nil, paletteKeywords: ["help", "github"]),
         .reportIssue: .init(title: "Report Issue", paletteSubtitle: nil, paletteKeywords: ["issue", "bug"]),
         .quit: .init(

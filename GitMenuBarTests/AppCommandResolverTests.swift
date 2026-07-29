@@ -32,7 +32,7 @@ final class AppCommandResolverTests: XCTestCase {
         XCTAssertEqual(snapshot.states[AppCommandID.sync], AppCommandState(title: "Sync Changes", isEnabled: true))
         XCTAssertEqual(
             snapshot.states[AppCommandID.showRepositoryOptions],
-            AppCommandState(title: "Repository Options…", isEnabled: true)
+            AppCommandState(title: "Repository Options", isEnabled: true)
         )
         XCTAssertEqual(
             snapshot.states[AppCommandID.revealRepositoryInFinder],
@@ -83,7 +83,7 @@ final class AppCommandResolverTests: XCTestCase {
         )
         XCTAssertEqual(
             snapshot.states[AppCommandID.showRepositoryOptions],
-            AppCommandState(title: "Repository Options…", isEnabled: false)
+            AppCommandState(title: "Repository Options", isEnabled: false)
         )
         XCTAssertEqual(
             snapshot.states[AppCommandID.openRepositoryOnGitHub],

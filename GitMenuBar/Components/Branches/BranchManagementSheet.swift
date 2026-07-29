@@ -235,7 +235,7 @@ struct BranchManagementSheet: View {
                 Button {
                     showCreateBranch = true
                 } label: {
-                    Label("New Branch…", systemImage: "plus")
+                    Label("New Branch", systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
             } else if mode == .cleanup {

@@ -35,7 +35,7 @@ struct HistoryTimelineSectionView: View {
                     .controlSize(.small)
             }
 
-            Text(isLoading ? "Loading history…" : "No commits yet")
+            Text(isLoading ? "Loading history" : "No commits yet")
                 .font(WorkbenchTypography.caption)
                 .foregroundColor(.secondary)
         }

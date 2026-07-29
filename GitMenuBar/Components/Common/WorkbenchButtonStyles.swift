@@ -203,7 +203,7 @@ private struct WorkbenchButtonVariantsPreviewMatrix: View {
                 Button("Atomic Commits") {}
                     .workbenchGhost()
                 Spacer()
-                Button("Manage…") {}
+                Button("Manage") {}
                     .workbenchGhost()
             }
 
@@ -241,7 +241,7 @@ private struct WorkbenchButtonVariantsPreviewMatrix: View {
             Button(role: .destructive) {} label: {
                 HStack(spacing: WorkbenchMetrics.compactSpacing) {
                     Image(systemName: "trash")
-                    Text("Delete Repository…")
+                    Text("Delete Repository")
                         .font(WorkbenchTypography.body)
                     Spacer()
                 }

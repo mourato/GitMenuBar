@@ -161,7 +161,7 @@ struct CommitDetailHeaderToolbarContent: ToolbarContent {
                 .padding()
         },
         projectContextMenu: {
-            Button("Repository Options…") {}
+            Button("Repository options") {}
         }
     )
     .padding()
@@ -184,7 +184,7 @@ struct CommitDetailHeaderToolbarContent: ToolbarContent {
                             .padding()
                     },
                     projectContextMenu: {
-                        Button("Repository Options…") {}
+                        Button("Repository options") {}
                     },
                     repositoryOptionsContent: {
                         RepositoryOptionsPopoverView(

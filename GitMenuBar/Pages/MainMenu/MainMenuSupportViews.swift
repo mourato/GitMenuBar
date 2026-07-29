@@ -6,7 +6,7 @@ extension MainMenuView {
             ProgressView()
                 .controlSize(.small)
 
-            Text("Loading working tree…")
+            Text("Loading working tree")
                 .font(WorkbenchTypography.caption)
                 .foregroundColor(.secondary)
         }

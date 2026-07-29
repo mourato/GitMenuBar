@@ -289,7 +289,7 @@ extension MainMenuView {
                     },
                     projectContextMenu: {
                         if canPresentRepositoryOptions {
-                            Button("Repository Options…") {
+                            Button("Repository options") {
                                 requestRepositoryOptionsPopoverPresentation()
                             }
                         }

@@ -8,7 +8,7 @@ struct CompanionCLIInstallSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Button(isInstalling ? "Installing…" : "Install CLI") {
+            Button(isInstalling ? "Installing" : "Install CLI") {
                 installCLI()
             }
             .disabled(isInstalling)

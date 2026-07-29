@@ -9,7 +9,7 @@ struct RepositoryPathSection: View {
             .textFieldStyle(.roundedBorder)
             .font(WorkbenchTypography.field)
 
-        Button("Browse...", action: onBrowse)
+        Button("Browse", action: onBrowse)
             .buttonStyle(.borderless)
             .font(WorkbenchTypography.detail)
             .focusable(false)

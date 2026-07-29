@@ -44,7 +44,7 @@ struct AtomicCommitReviewSheet: View {
             Spacer()
             ProgressView()
                 .controlSize(.regular)
-            Text("Analyzing changes with AI…")
+            Text("Analyzing changes with AI")
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
             Spacer()
