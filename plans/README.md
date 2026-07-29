@@ -476,7 +476,7 @@ Repository Options entry, which stays separated from local project actions.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 044 | Move project management into the Projects popover | P1 | M | 043 | TODO |
+| 044 | Move project management into the Projects popover | P1 | M | 043 | DONE (800c0fb, review fix 8227004) |
 
 ### Dependency notes
 
