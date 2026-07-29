@@ -105,13 +105,6 @@ extension MainMenuView {
         )
     }
 
-    private var pinnedFooterSection: some View {
-        VStack(spacing: WorkbenchMetrics.groupSpacing) {
-            footerSection
-            UsageQuotaStripView()
-        }
-    }
-
     func commitDetailRouteView(commitID: String) -> some View {
         CommitDetailPageView(
             commit: gitManager.commitHistory.first(where: { $0.id == commitID }),
@@ -205,11 +198,16 @@ extension MainMenuView {
                         await gitManager.refreshAsync(includeReflogHistory: false)
                     }
 
-                    pinnedFooterSection
+                    footerSection
                 }
+                .padding(.top, WorkbenchMetrics.sectionSpacing)
+                .padding(.leading, WorkbenchMetrics.windowPadding)
+                .padding(.trailing, WorkbenchMetrics.windowPadding)
+                .padding(.bottom, WorkbenchMetrics.windowPadding)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-            .padding(.top, WorkbenchMetrics.sectionSpacing)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .workbenchScrollbarStyle()
             .toolbar {
                 MainMenuHeaderToolbarContent(
                     currentProjectName: currentProjectName,

@@ -26,6 +26,7 @@ enum WorkbenchWindowChrome {
 
         contentView.wantsLayer = true
         shell.updateAppearance()
+        WorkbenchScrollViewStyle.configureScrollViews(in: contentView)
     }
 
     static func makeHostedContentController<Content: View>(rootView: Content) -> NSViewController {
@@ -150,5 +151,10 @@ private final class WorkbenchHostedContentViewController: NSViewController {
         } else {
             assertionFailure("Expected NSHostingView<AnyView> for SwiftUI toolbar bridging")
         }
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        WorkbenchScrollViewStyle.configureScrollViews(in: view)
     }
 }

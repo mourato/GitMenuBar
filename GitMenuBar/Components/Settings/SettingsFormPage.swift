@@ -28,6 +28,7 @@ struct SettingsFormPage<Header: View, Content: View>: View {
                 alignment: .topLeading
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .workbenchScrollbarStyle()
         }
     }
 }
