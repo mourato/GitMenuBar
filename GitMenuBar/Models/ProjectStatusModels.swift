@@ -95,10 +95,11 @@ struct ProjectStatusReader {
             guard line.count >= 2 else { return }
             let index = line[line.startIndex]
             let worktree = line[line.index(line.startIndex, offsetBy: 1)]
-            if index != " " {
+            if index == "?" && worktree == "?" {
+                result.2 += 1
+            } else if index != " " {
                 result.0 += 1
-            }
-            if worktree == "?" {
+            } else if worktree == "?" {
                 result.2 += 1
             } else if worktree != " " {
                 result.1 += 1

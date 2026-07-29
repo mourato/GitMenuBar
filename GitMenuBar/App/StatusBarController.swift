@@ -45,7 +45,6 @@ final class StatusBarController: ObservableObject {
     var statusItem: NSStatusItem?
     private var mainWindow: NSWindow?
     var contextMenu: NSMenu?
-    private var badgeRefreshTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
     private var baseStatusImage: NSImage?
     private var remoteExistenceByPath: [String: RemoteExistenceState] = [:]
@@ -125,7 +124,6 @@ final class StatusBarController: ObservableObject {
         setupContextMenu()
         setupMainWindow()
         setupBadgeObservation()
-        setupBadgeRefreshTimer()
         setupShortcutHandlers()
         setupAuthenticationObservation()
         setupAppCommandObservation()
@@ -169,26 +167,10 @@ final class StatusBarController: ObservableObject {
     }
 
     private func setupBadgeObservation() {
-        gitManager.$uncommittedFiles
-            .receive(on: RunLoop.main)
-            .sink { [weak self] files in
-                self?.updateStatusItemBadge(count: files.count)
-            }
-            .store(in: &cancellables)
         projectMonitor.$snapshots
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updateStatusItemBadge(count: self?.projectMonitor.attentionCount ?? 0) }
             .store(in: &cancellables)
-    }
-
-    private func setupBadgeRefreshTimer() {
-        badgeRefreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            self?.gitManager.updateUncommittedFiles()
-        }
-
-        if let badgeRefreshTimer {
-            RunLoop.main.add(badgeRefreshTimer, forMode: .common)
-        }
     }
 
     private func setupShortcutHandlers() {
@@ -850,6 +832,9 @@ final class StatusBarController: ObservableObject {
             .showSettings: openSettingsWindow,
             .showCommandPalette: handleCommandPaletteShortcut,
             .chooseRepository: chooseRepository,
+            .addProject: chooseRepository,
+            .refreshAllProjects: projectMonitor.refreshAll,
+            .fetchAllProjects: projectMonitor.fetchAll,
             .revealRepositoryInFinder: revealCurrentRepositoryInFinder,
             .openRepositoryOnGitHub: openCurrentRepositoryOnGitHub,
             .showRepositoryOptions: presentRepositoryOptions,
@@ -937,6 +922,7 @@ final class StatusBarController: ObservableObject {
     private func selectRepository(_ path: String) {
         UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
         RecentProjectsStore().add(path)
+        projectMonitor.add(path: path)
         refreshAppCommands()
 
         if !gitManager.isGitRepository(at: path), githubAuthManager.isAuthenticated {

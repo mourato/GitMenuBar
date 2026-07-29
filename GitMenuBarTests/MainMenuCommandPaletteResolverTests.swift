@@ -30,7 +30,7 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
 
         XCTAssertEqual(
             items.filter { $0.section == .actions }.map(\.title),
-            ["Commit", "Commit & Push", "Sync Changes"]
+            ["Add Project", "Refresh All Projects", "Fetch All Projects", "Commit", "Commit & Push", "Sync Changes"]
         )
 
         let commitItem = items.first(where: { $0.kind == .commit })

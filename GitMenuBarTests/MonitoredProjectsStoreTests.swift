@@ -12,7 +12,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         store.add("/tmp/a")
         store.add("/tmp/c")
 
-        XCTAssertEqual(store.monitoredProjects().map(\.path), ["/tmp/b", "/tmp/a"])
+        XCTAssertEqual(store.monitoredProjects().map(\.path), ["/tmp/c", "/tmp/a"])
     }
 
     func testSeedsCurrentAndRecentsOnlyOnce() throws {

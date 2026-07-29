@@ -159,7 +159,11 @@ extension MainMenuView {
                     onSelect: switchRepository,
                     onReveal: revealProjectInFinder,
                     onStopMonitoring: { projectMonitor.remove(path: $0) },
-                    onRemove: removeProject
+                    onRemove: removeProject,
+                    onAdd: selectDirectory,
+                    onRefreshAll: projectMonitor.refreshAll,
+                    onFetchAll: projectMonitor.fetchAll,
+                    onRename: renameProject
                 )
                 VStack(spacing: WorkbenchMetrics.groupSpacing) {
                     CommitWorkflowView(
@@ -209,9 +213,9 @@ extension MainMenuView {
             .toolbar {
                 MainMenuHeaderToolbarContent(
                     currentProjectName: currentProjectName,
-                    isProjectSelectorPresented: showProjectSelector,
+                    isProjectSelectorPresented: false,
                     isCommandPalettePresented: isCommandPalettePresented,
-                    onToggleProjectSelector: toggleProjectSelectorPresentation,
+                    onToggleProjectSelector: toggleProjectsSidebar,
                     onOpenSettings: {
                         dismissTransientPresentations()
                         openSettingsWindow()

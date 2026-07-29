@@ -37,9 +37,7 @@ extension MainMenuView {
 
     @ViewBuilder
     private var transientPanelContent: some View {
-        if showProjectSelector {
-            topCenteredOverlay(projectSelectorOverlay)
-        } else if showRepositoryOptionsPopover {
+        if showRepositoryOptionsPopover {
             topCenteredOverlay(repositoryOptionsOverlay)
         } else if showBranchSelector {
             branchSelectorOverlayLayout
@@ -65,29 +63,6 @@ extension MainMenuView {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         .padding(.horizontal, WorkbenchMetrics.windowPadding)
         .padding(.bottom, WorkbenchMetrics.windowPadding * 2)
-    }
-
-    private var projectSelectorOverlay: some View {
-        ProjectSelectorPopoverView(
-            recentProjects: recentProjects,
-            currentRepoPath: currentRepoPath,
-            onSelectPath: { path in
-                dismissTransientPresentations()
-                switchRepository(path: path)
-            },
-            onBrowse: {
-                dismissTransientPresentations()
-                selectDirectory()
-            },
-            onRenameProject: { path, name in renameProject(path: path, name: name) },
-            onRevealProject: { path in revealProjectInFinder(path: path) },
-            onRemoveProject: { path in removeProject(path: path) },
-            onShowRepositoryOptions: canPresentRepositoryOptions ? {
-                requestRepositoryOptionsPopoverPresentation()
-            } : nil,
-            onDismiss: dismissTransientPresentations
-        )
-        .modifier(TransientPanelChrome(origin: .topCenter, reduceMotion: reduceMotion))
     }
 
     private var repositoryOptionsOverlay: some View {

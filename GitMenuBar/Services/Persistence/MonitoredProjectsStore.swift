@@ -34,7 +34,7 @@ final class MonitoredProjectsStore {
         var projects = monitoredProjects()
         let existing = projects.first { $0.path == normalizedPath }
         projects.removeAll { $0.path == normalizedPath }
-        projects.append(ProjectReference(path: normalizedPath, name: name ?? existing?.name))
+        projects.insert(ProjectReference(path: normalizedPath, name: name ?? existing?.name), at: 0)
         write(projects)
     }
 

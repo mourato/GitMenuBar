@@ -15,6 +15,9 @@ enum AppCommandID: Hashable {
     case createBranch
     case mergeToDefault
     case chooseRepository
+    case addProject
+    case refreshAllProjects
+    case fetchAllProjects
     case revealRepositoryInFinder
     case openRepositoryOnGitHub
     case showRepositoryOptions
@@ -88,6 +91,9 @@ enum AppCommandCatalog {
             paletteKeywords: ["merge", "default", "main", "master", "branch"]
         ),
         .chooseRepository: .init(title: "Choose Repository", paletteSubtitle: nil, paletteKeywords: ["repository", "open"]),
+        .addProject: .init(title: "Add Project", paletteSubtitle: "Monitor another local repository", paletteKeywords: ["project", "add", "monitor"]),
+        .refreshAllProjects: .init(title: "Refresh All Projects", paletteSubtitle: "Refresh local project status", paletteKeywords: ["project", "refresh", "status"]),
+        .fetchAllProjects: .init(title: "Fetch All Projects", paletteSubtitle: "Fetch remote refs for monitored projects", paletteKeywords: ["project", "fetch", "remote"]),
         .revealRepositoryInFinder: .init(title: "Reveal in Finder", paletteSubtitle: nil, paletteKeywords: ["finder", "repository"]),
         .openRepositoryOnGitHub: .init(title: "Open on GitHub", paletteSubtitle: nil, paletteKeywords: ["github", "remote"]),
         .showRepositoryOptions: .init(title: "Repository Options", paletteSubtitle: nil, paletteKeywords: ["repository", "options"]),
@@ -166,6 +172,9 @@ enum AppCommandResolver {
             .createBranch: state(.createBranch, isEnabled: context.canShowBranchManagement),
             .mergeToDefault: state(.mergeToDefault, isEnabled: canMergeToDefault),
             .chooseRepository: state(.chooseRepository, isEnabled: true),
+            .addProject: state(.addProject, isEnabled: true),
+            .refreshAllProjects: state(.refreshAllProjects, isEnabled: true),
+            .fetchAllProjects: state(.fetchAllProjects, isEnabled: true),
             .revealRepositoryInFinder: state(.revealRepositoryInFinder, isEnabled: hasCurrentRepository),
             .openRepositoryOnGitHub: state(.openRepositoryOnGitHub, isEnabled: canOpenRemoteRepository),
             .showRepositoryOptions: state(.showRepositoryOptions, isEnabled: canShowRepositoryOptions),

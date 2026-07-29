@@ -3,11 +3,17 @@ import SwiftUI
 struct ProjectsSidebarView: View {
     @EnvironmentObject private var monitor: ProjectMonitorStore
     @AppStorage(AppPreferences.Keys.isProjectsSidebarCollapsed) private var isCollapsed = false
+    @State private var renameProject: ProjectReference?
+    @State private var renameDraft = ""
     let currentPath: String
     let onSelect: (String) -> Void
     let onReveal: (String) -> Void
     let onStopMonitoring: (String) -> Void
     let onRemove: (String) -> Void
+    let onAdd: () -> Void
+    let onRefreshAll: () -> Void
+    let onFetchAll: () -> Void
+    let onRename: (String, String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -16,6 +22,11 @@ struct ProjectsSidebarView: View {
                     Text("Projects").font(.headline)
                 }
                 Spacer()
+                if !isCollapsed {
+                    Button(action: onAdd) { Image(systemName: "plus") }.help("Add project")
+                    Button(action: onRefreshAll) { Image(systemName: "arrow.clockwise") }.help("Refresh all projects")
+                    Button(action: onFetchAll) { Image(systemName: "arrow.down.circle") }.help("Fetch all projects")
+                }
                 Button { isCollapsed.toggle() } label: {
                     Image(systemName: isCollapsed ? "sidebar.right" : "sidebar.left")
                 }.help(isCollapsed ? "Expand projects" : "Collapse projects")
@@ -30,6 +41,22 @@ struct ProjectsSidebarView: View {
         .frame(width: isCollapsed ? 42 : 240, alignment: .top)
         .padding(.vertical, 10)
         .background(.quaternary.opacity(0.35))
+        .alert("Rename Project", isPresented: Binding(
+            get: { renameProject != nil }, set: {
+                if !$0 {
+                    renameProject = nil
+                }
+            }
+        )) {
+            TextField("Project name", text: $renameDraft)
+            Button("Cancel", role: .cancel) { renameProject = nil }
+            Button("Rename") {
+                if let project = renameProject {
+                    onRename(project.path, renameDraft)
+                }
+                renameProject = nil
+            }
+        }
     }
 
     private var groupedProjects: [(String, [ProjectStatusSnapshot])] {
@@ -62,6 +89,10 @@ struct ProjectsSidebarView: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
+            Button("Rename Project") {
+                renameDraft = snapshot.project.name
+                renameProject = snapshot.project
+            }
             Button("Reveal in Finder") { onReveal(snapshot.project.path) }
             Button("Stop Monitoring") { onStopMonitoring(snapshot.project.path) }
             Button("Remove Project", role: .destructive) { onRemove(snapshot.project.path) }
@@ -76,7 +107,8 @@ struct ProjectsSidebarView: View {
         onSelect: { _ in },
         onReveal: { _ in },
         onStopMonitoring: { _ in },
-        onRemove: { _ in }
+        onRemove: { _ in },
+        onAdd: {}, onRefreshAll: {}, onFetchAll: {}, onRename: { _, _ in }
     )
     .environmentObject(ProjectMonitorStore())
 }
