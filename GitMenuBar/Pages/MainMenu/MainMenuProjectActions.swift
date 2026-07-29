@@ -12,15 +12,15 @@ extension MainMenuView {
 
     func addToRecents(_ path: String) {
         recentProjectsStore.add(path)
-        projectMonitor.add(path: path)
+        if gitManager.isGitRepository(at: path) {
+            projectMonitor.add(path: path)
+        }
         recentProjectReferences = recentProjectsStore.recentProjects()
     }
 
     func renameProject(path: String, name: String) {
         recentProjectsStore.rename(path: path, name: name)
-        projectMonitor.monitoredProjects.first(where: { $0.path == RecentProjectsStore.normalize(path) }).map {
-            MonitoredProjectsStore().rename(path: $0.path, name: name)
-        }
+        projectMonitor.rename(path: path, name: name)
         recentProjectReferences = recentProjectsStore.recentProjects()
         refreshRenderSnapshot()
     }

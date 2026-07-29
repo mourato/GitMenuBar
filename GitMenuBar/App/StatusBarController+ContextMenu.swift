@@ -49,14 +49,14 @@ extension StatusBarController {
     }
 
     private func appendRecentProjectsMenu(to menu: NSMenu) {
-        guard !appCommandCenter.recentProjects.isEmpty else {
+        guard !appCommandCenter.monitoredProjects.isEmpty else {
             return
         }
 
-        let recentMenuItem = NSMenuItem(title: "Open Recent", action: nil, keyEquivalent: "")
-        let submenu = NSMenu(title: "Open Recent")
+        let recentMenuItem = NSMenuItem(title: "Open Monitored Project", action: nil, keyEquivalent: "")
+        let submenu = NSMenu(title: "Open Monitored Project")
 
-        for project in appCommandCenter.recentProjects {
+        for project in appCommandCenter.monitoredProjects {
             let item = NSMenuItem(
                 title: project.title,
                 action: #selector(handleRecentProjectContextMenuItem(_:)),

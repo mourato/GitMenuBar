@@ -806,7 +806,8 @@ final class StatusBarController: ObservableObject {
                 isAheadOfRemote: gitManager.isAheadOfRemote,
                 canShowBranchManagement: !(currentRepositoryPath()?.isEmpty ?? true),
                 currentBranch: gitManager.currentBranch,
-                defaultBranchName: gitManager.defaultBranchName
+                defaultBranchName: gitManager.defaultBranchName,
+                monitoredProjects: Array(projectMonitor.snapshots.values)
             )
         )
 
@@ -922,7 +923,9 @@ final class StatusBarController: ObservableObject {
     private func selectRepository(_ path: String) {
         UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
         RecentProjectsStore().add(path)
-        projectMonitor.add(path: path)
+        if gitManager.isGitRepository(at: path) {
+            projectMonitor.add(path: path)
+        }
         refreshAppCommands()
 
         if !gitManager.isGitRepository(at: path), githubAuthManager.isAuthenticated {

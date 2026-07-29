@@ -97,6 +97,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                 UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
                 self.recentProjectsStore.add(path)
+                self.statusBarController?.projectMonitor.add(path: path)
 
                 if exists {
                     DispatchQueue.main.async {
@@ -113,6 +114,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Git repo but not authenticated - just open normally
             UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
             recentProjectsStore.add(path)
+            statusBarController?.projectMonitor.add(path: path)
 
             DispatchQueue.main.async {
                 self.statusBarController?.openMainWindow()

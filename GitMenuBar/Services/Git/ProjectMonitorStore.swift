@@ -43,6 +43,25 @@ final class ProjectMonitorStore: ObservableObject {
         snapshots.removeValue(forKey: RecentProjectsStore.normalize(path))
     }
 
+    func rename(path: String, name: String) {
+        projectStore.rename(path: path, name: name)
+        let normalizedPath = RecentProjectsStore.normalize(path)
+        guard let snapshot = snapshots[normalizedPath] else { return }
+        snapshots[normalizedPath] = ProjectStatusSnapshot(
+            project: ProjectReference(path: snapshot.project.path, name: name),
+            branchName: snapshot.branchName,
+            isDetachedHead: snapshot.isDetachedHead,
+            stagedCount: snapshot.stagedCount,
+            unstagedCount: snapshot.unstagedCount,
+            untrackedCount: snapshot.untrackedCount,
+            aheadCount: snapshot.aheadCount,
+            behindCount: snapshot.behindCount,
+            hasUpstream: snapshot.hasUpstream,
+            lastRefreshedAt: snapshot.lastRefreshedAt,
+            lastErrorDescription: snapshot.lastErrorDescription
+        )
+    }
+
     func refresh(path: String) {
         guard let project = monitoredProjects.first(where: { $0.path == RecentProjectsStore.normalize(path) }) else { return }
         refresh(projects: [project])

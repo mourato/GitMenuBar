@@ -86,14 +86,27 @@ enum MainMenuCommandPaletteResolver {
         )
 
         let currentRepoPath = context.currentRepoPath.isEmpty ? "" : RecentProjectsStore.normalize(context.currentRepoPath)
-        for project in context.recentProjects.filter({ $0.path != currentRepoPath }).prefix(5) {
+        let projects = context.monitoredProjects
+            .filter { $0.project.path != currentRepoPath }
+            .sorted {
+                let lhsNeedsAttention = $0.classification != .clean
+                let rhsNeedsAttention = $1.classification != .clean
+                if lhsNeedsAttention != rhsNeedsAttention {
+                    return lhsNeedsAttention
+                }
+                return $0.project.name.localizedStandardCompare($1.project.name) == .orderedAscending
+            }
+        let projectCommands = projects.isEmpty
+            ? context.recentProjects.filter { $0.path != currentRepoPath }.prefix(5).map { ($0.path, $0.name) }
+            : projects.map { ($0.project.path, $0.project.name) }
+        for (path, name) in projectCommands {
             items.append(
                 MainMenuCommandPaletteItem(
-                    kind: .recentProject(path: project.path),
+                    kind: .recentProject(path: path),
                     section: .recentProjects,
-                    title: project.name,
-                    subtitle: PathDisplayFormatter.abbreviatedPath(project.path),
-                    keywords: ["project", "switch", project.name, project.path],
+                    title: name,
+                    subtitle: PathDisplayFormatter.abbreviatedPath(path),
+                    keywords: ["project", "switch", name, path],
                     isEnabled: true
                 )
             )
