@@ -153,47 +153,56 @@ extension MainMenuView {
 
     var mainView: some View {
         applyMainViewOverlays(
-            to: VStack(spacing: WorkbenchMetrics.groupSpacing) {
-                CommitWorkflowView(
-                    commentText: $commentText,
-                    isCommentFieldFocused: $isCommentFieldFocused,
-                    showsCommentField: showsCommentField,
-                    primaryButtonSystemImage: primaryButtonSystemImage,
-                    isPrimaryActionBusy: isPrimaryActionBusy,
-                    automaticMessageHint: automaticMessageHint,
-                    generationDisabledReason: shouldShowGenerationHint ? aiCommitCoordinator.generationDisabledReason : nil,
-                    generationError: displayedGenerationError,
-                    primaryButtonTitle: primaryButtonTitle,
-                    isPrimaryButtonDisabled: isPrimaryButtonDisabled,
-                    canShowSplitCommits: canShowAtomicCommits,
-                    onPrimaryAction: {
-                        Task {
-                            await performPrimaryAction()
-                        }
-                    },
-                    onSplitCommits: startAtomicCommitFlow,
-                    onDidCommit: {
-                        if hideCommitMessageField {
-                            isCommitFieldTemporarilyVisible = false
-                        }
-                    },
-                    onRequestFocus: requestCommitFieldFocus,
-                    focusCommitFieldToken: presentationModel.focusCommitFieldToken,
-                    actionCoordinator: actionCoordinator,
-                    commitHistoryEditCoordinator: commitHistoryEditCoordinator
+            to: HStack(spacing: 0) {
+                ProjectsSidebarView(
+                    currentPath: currentRepositoryPath,
+                    onSelect: switchRepository,
+                    onReveal: revealProjectInFinder,
+                    onStopMonitoring: { projectMonitor.remove(path: $0) },
+                    onRemove: removeProject
                 )
+                VStack(spacing: WorkbenchMetrics.groupSpacing) {
+                    CommitWorkflowView(
+                        commentText: $commentText,
+                        isCommentFieldFocused: $isCommentFieldFocused,
+                        showsCommentField: showsCommentField,
+                        primaryButtonSystemImage: primaryButtonSystemImage,
+                        isPrimaryActionBusy: isPrimaryActionBusy,
+                        automaticMessageHint: automaticMessageHint,
+                        generationDisabledReason: shouldShowGenerationHint ? aiCommitCoordinator.generationDisabledReason : nil,
+                        generationError: displayedGenerationError,
+                        primaryButtonTitle: primaryButtonTitle,
+                        isPrimaryButtonDisabled: isPrimaryButtonDisabled,
+                        canShowSplitCommits: canShowAtomicCommits,
+                        onPrimaryAction: {
+                            Task {
+                                await performPrimaryAction()
+                            }
+                        },
+                        onSplitCommits: startAtomicCommitFlow,
+                        onDidCommit: {
+                            if hideCommitMessageField {
+                                isCommitFieldTemporarilyVisible = false
+                            }
+                        },
+                        onRequestFocus: requestCommitFieldFocus,
+                        focusCommitFieldToken: presentationModel.focusCommitFieldToken,
+                        actionCoordinator: actionCoordinator,
+                        commitHistoryEditCoordinator: commitHistoryEditCoordinator
+                    )
 
-                ScrollView(.vertical, showsIndicators: !isCommandPalettePresented) {
-                    mainScrollContent
-                }
-                .scrollDisabled(isCommandPalettePresented)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .layoutPriority(1)
-                .refreshable {
-                    await gitManager.refreshAsync(includeReflogHistory: false)
-                }
+                    ScrollView(.vertical, showsIndicators: !isCommandPalettePresented) {
+                        mainScrollContent
+                    }
+                    .scrollDisabled(isCommandPalettePresented)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .layoutPriority(1)
+                    .refreshable {
+                        await gitManager.refreshAsync(includeReflogHistory: false)
+                    }
 
-                pinnedFooterSection
+                    pinnedFooterSection
+                }
             }
             .padding(.top, WorkbenchMetrics.sectionSpacing)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

@@ -68,6 +68,7 @@ final class StatusBarController: ObservableObject {
     let shortcutActionBridge = MainMenuShortcutActionBridge()
     let presentationModel = MainMenuPresentationModel()
     let usageQuotaStore = UsageQuotaStore()
+    let projectMonitor = ProjectMonitorStore()
 
     lazy var aiCommitCoordinator = AICommitCoordinator(
         providerStore: aiProviderStore,
@@ -130,6 +131,10 @@ final class StatusBarController: ObservableObject {
         setupAppCommandObservation()
 
         gitManager.updateUncommittedFiles()
+        projectMonitor.seed(
+            currentPath: UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? "",
+            recentProjects: RecentProjectsStore().recentProjects()
+        )
         refreshAppCommands()
     }
 
@@ -145,7 +150,7 @@ final class StatusBarController: ObservableObject {
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.target = self
 
-        updateStatusItemBadge(count: 0)
+        updateStatusItemBadge(count: projectMonitor.attentionCount)
     }
 
     private func updateStatusItemBadge(count: Int) {
@@ -169,6 +174,10 @@ final class StatusBarController: ObservableObject {
             .sink { [weak self] files in
                 self?.updateStatusItemBadge(count: files.count)
             }
+            .store(in: &cancellables)
+        projectMonitor.$snapshots
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateStatusItemBadge(count: self?.projectMonitor.attentionCount ?? 0) }
             .store(in: &cancellables)
     }
 
@@ -369,6 +378,7 @@ final class StatusBarController: ObservableObject {
         .environmentObject(shortcutActionBridge)
         .environmentObject(presentationModel)
         .environmentObject(usageQuotaStore)
+        .environmentObject(projectMonitor)
 
         return AnyView(rootView)
     }

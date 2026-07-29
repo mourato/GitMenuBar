@@ -4,6 +4,9 @@ enum AppPreferences {
     enum Keys {
         static let gitRepoPath = "gitRepoPath"
         static let recentRepoPaths = "recentRepoPaths"
+        static let monitoredProjects = "monitoredProjects"
+        static let monitoredProjectsSeeded = "monitoredProjectsSeeded"
+        static let isProjectsSidebarCollapsed = "isProjectsSidebarCollapsed"
         static let showFullPathInRecents = "showFullPathInRecents"
         static let isStagedSectionCollapsed = "isStagedSectionCollapsed"
         static let isUnstagedSectionCollapsed = "isUnstagedSectionCollapsed"

@@ -25,6 +25,7 @@ struct MainMenuView: View {
     @EnvironmentObject var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
     @EnvironmentObject var shortcutActionBridge: MainMenuShortcutActionBridge
     @EnvironmentObject var presentationModel: MainMenuPresentationModel
+    @EnvironmentObject var projectMonitor: ProjectMonitorStore
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Environment(\.accessibilityReduceTransparency) var reduceTransparency
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
