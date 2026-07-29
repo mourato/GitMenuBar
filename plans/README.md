@@ -495,3 +495,37 @@ Repository Options entry, which stays separated from local project actions.
   destructive local action and Apple-style system confirmation is required.
 - Treating "Remove project" as repository deletion: rejected; it must
   never delete folders, Git data, or GitHub remotes.
+
+## Transient overlay experience hardening — 2026-07-29
+
+Plan [045](045-polish-transient-overlay-experience.md) polishes the custom
+Projects, Repository Options, and Branch selector overlays after the SwiftUI
+popover removal in commit `5419723`. The selected behavior is still custom
+in-window transient overlays, not a return to `.popover`/`NSPopover`; the work
+adds a light visible curtain, shared floating-panel elevation, origin-coherent
+placement, Escape cancel-then-dismiss behavior for project rename, and
+`WorkbenchMotion`-backed transitions.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 045 | Polish transient overlay experience after removing SwiftUI popovers | P1 | M | 044 (DONE) | DONE (`7b8292e`, review fix `cdb5b6b`) |
+
+### Dependency notes
+
+- Plan 045 depends on Plan 044 because it preserves the Projects popover local
+  management flow and its current-row Repository Options handoff.
+- Execute serially because all three transient overlays share dismissal state,
+  visual depth, motion, and keyboard behavior.
+
+### Findings considered and rejected
+
+- Reintroducing SwiftUI `.popover`, `NSPopover`, or AppKit `showRelativeToRect`:
+  rejected because commit `5419723` intentionally moved these surfaces away
+  from the crash-prone `_NSPopoverWindow` path.
+- Renaming `*PopoverView` types in this plan: deferred because it is P3 naming
+  cleanup and would add API churn without improving the immediate interaction.
+- Adding a full dark command-palette modal treatment: rejected because these
+  are compact transient panels, so the curtain should communicate active focus
+  without making the whole menu feel like a blocking dialog.
