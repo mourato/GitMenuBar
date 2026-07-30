@@ -161,19 +161,31 @@ Current single-project vertical order (do not invent a new IA without a plan):
 
 For multi-project monitoring, the main window becomes a split workbench: a
 left Projects sidebar plus the existing selected-project detail column. The
-sidebar is visible by default when monitoring is active and can collapse to a
-narrow rail; the collapsed rail keeps project attention visible instead of
-disappearing completely.
+sidebar is visible by default when monitoring is active and can collapse fully
+off the left edge while the fixed sidebar toggle remains in the window header.
 
 ### Header chrome and Projects sidebar
 
-- Single horizontal line with native traffic lights (leading), project selector (principal / centered), and Settings gear (trailing). Visually separated across the full titlebar width; **no** header `workbenchPanelSurface` plate.
-- Main body adds top `sectionSpacing` under the titlebar so the first content control is not tight against the header.
-- **Commit Details** route reuses the same titlebar toolbar slots: principal title “Commit Details”, trailing Back (`chevron.backward` in the Settings slot). Do not use an in-content back/title bar on that route — missing toolbar chrome shifts traffic lights.
+- The main window keeps the native `NSWindow` titlebar only to preserve the
+  macOS traffic-light controls. Configure it as transparent full-size content
+  (`.fullSizeContentView`, hidden title, transparent titlebar, no separator),
+  and make the SwiftUI root content occupy the top safe area. Do not add a
+  standalone top bar above the app content.
+- Keep one shared header height across the sidebar and content column. The
+  sidebar reserves a 28 pt top band for the native traffic lights plus the
+  fixed sidebar toggle, Add Project, Refresh All Projects, and Fetch All
+  Projects; the content column uses the same band for the centered
+  project/route title and trailing Settings gear.
+- Main body adds top `sectionSpacing` under the header zone so the first content control is not tight against the header.
+- **Commit Details** route reuses the content-column header: leading Back
+  (`chevron.backward`), centered “Commit Details”, trailing Settings gear. It
+  must not replace or cover the Projects sidebar.
 - Multi-project management lives in the Projects sidebar, not in the old Projects popover. The titlebar project control becomes active-project context and sidebar focus/toggle chrome; do not reintroduce a floating project-management list.
 - Projects sidebar rows expose local item options through a hover-revealed ellipsis icon on every project row, with a native context-menu equivalent. The menu owns Rename project, Reveal in Finder, Stop Monitoring, and Remove Project. Remove Project removes the project from recents and monitored projects; Stop Monitoring keeps it in recents. Removal is local metadata only and uses a system confirmation alert.
-- Add Project lives in the sidebar header as icon chrome, not as a full-width popover row. Empty project state may also expose Add Project inline in the main detail area.
+- Add Project lives in the Projects controls row as icon chrome, not as a full-width popover row. Empty project state may also expose Add Project inline in the main detail area.
 - Sidebar groups attention first: Needs Attention, Clean, Unavailable. Selection highlights the active project but does not outrank attention ordering.
+- Usage quota cards live in the sidebar footer and stay pinned to the bottom of
+  the sidebar regardless of the number of monitored projects.
 - Visible interface labels do not use trailing ellipses. If an action opens
   another layer or needs confirmation, communicate that through context,
   grouping, helper text, or the resulting system surface.
