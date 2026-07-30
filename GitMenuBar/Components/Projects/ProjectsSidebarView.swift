@@ -14,15 +14,13 @@ struct ProjectsSidebarView: View {
     let onReveal: (String) -> Void
     let onStopMonitoring: (String) -> Void
     let onRemove: (String) -> Void
-    let onAdd: () -> Void
-    let onRefreshAll: () -> Void
-    let onFetchAll: () -> Void
     let onRename: (String, String) -> Void
 
     var body: some View {
         ZStack(alignment: .trailing) {
             VStack(alignment: .leading, spacing: 8) {
-                header
+                sidebarControls
+
                 ScrollView(.vertical, showsIndicators: true) {
                     projectGroups
                 }
@@ -31,7 +29,7 @@ struct ProjectsSidebarView: View {
 
                 sidebarFooter
             }
-            .padding(.top, ProjectsSidebarMetrics.topSafePadding)
+            .padding(.top, ProjectsSidebarMetrics.headerHeight + WorkbenchMetrics.sectionSpacing)
             .padding(.bottom, WorkbenchMetrics.windowPadding)
             .frame(width: sidebarWidth, alignment: .topLeading)
             .frame(maxHeight: .infinity, alignment: .topLeading)
@@ -42,7 +40,7 @@ struct ProjectsSidebarView: View {
         }
         .frame(width: sidebarWidth, alignment: .topLeading)
         .frame(maxHeight: .infinity, alignment: .topLeading)
-        .background(.quaternary.opacity(0.35))
+        .background(sidebarBackground)
         .alert("Rename Project", isPresented: Binding(
             get: { renameProject != nil },
             set: {
@@ -62,27 +60,26 @@ struct ProjectsSidebarView: View {
         }
     }
 
-    private var header: some View {
-        HStack {
-            if !isCollapsed {
+    @ViewBuilder
+    private var sidebarBackground: some View {
+        if isCollapsed {
+            Color.clear
+        } else {
+            Rectangle()
+                .fill(.quaternary.opacity(0.35))
+        }
+    }
+
+    @ViewBuilder
+    private var sidebarControls: some View {
+        if !isCollapsed {
+            HStack {
                 Text("Projects")
                     .font(.headline)
+                Spacer()
             }
-            Spacer()
-            if !isCollapsed {
-                Button(action: onAdd) { Image(systemName: "plus") }
-                    .help("Add project")
-                Button(action: onRefreshAll) { Image(systemName: "arrow.clockwise") }
-                    .help("Refresh all projects")
-                Button(action: onFetchAll) { Image(systemName: "arrow.down.circle") }
-                    .help("Fetch all projects")
-            }
-            Button { isCollapsed.toggle() } label: {
-                Image(systemName: isCollapsed ? "sidebar.right" : "sidebar.left")
-            }
-            .help(isCollapsed ? "Expand projects" : "Collapse projects")
+            .padding(.horizontal, 10)
         }
-        .padding(.horizontal, 10)
     }
 
     private var projectGroups: some View {
@@ -216,13 +213,14 @@ struct ProjectsSidebarView: View {
 }
 
 enum ProjectsSidebarMetrics {
-    static let collapsedWidth: Double = 48
+    static let collapsedWidth: Double = 0
     static let defaultWidth: Double = 240
     static let minWidth: Double = 220
     static let maxWidth: Double = 360
     static let keyboardResizeStep: Double = 16
     static let resizeHitWidth: CGFloat = 8
-    static let topSafePadding: CGFloat = 52
+    static let headerHeight: CGFloat = 28
+    static let sidebarToggleLeadingPadding: CGFloat = 88
 }
 
 #Preview {
@@ -232,9 +230,6 @@ enum ProjectsSidebarMetrics {
         onReveal: { _ in },
         onStopMonitoring: { _ in },
         onRemove: { _ in },
-        onAdd: {},
-        onRefreshAll: {},
-        onFetchAll: {},
         onRename: { _, _ in }
     )
     .environmentObject(ProjectMonitorStore())

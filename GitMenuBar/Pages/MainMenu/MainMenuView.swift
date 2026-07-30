@@ -133,11 +133,8 @@ struct MainMenuView: View {
                 .padding(.horizontal, WorkbenchMetrics.windowPadding)
                 .padding(.bottom, WorkbenchMetrics.windowPadding)
                 .transition(routeTransition)
-            case .main:
+            case .main, .historyDetail:
                 mainView
-                    .transition(routeTransition)
-            case let .historyDetail(commitID):
-                commitDetailRouteView(commitID: commitID)
                     .transition(routeTransition)
             }
         }

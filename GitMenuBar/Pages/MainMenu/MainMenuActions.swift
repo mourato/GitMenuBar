@@ -82,10 +82,9 @@ extension MainMenuView {
     }
 
     func toggleProjectsSidebar() {
-        UserDefaults.standard.set(
-            !UserDefaults.standard.bool(forKey: AppPreferences.Keys.isProjectsSidebarCollapsed),
-            forKey: AppPreferences.Keys.isProjectsSidebarCollapsed
-        )
+        withAnimation(WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion)) {
+            isProjectsSidebarCollapsed.toggle()
+        }
     }
 
     func toggleBranchSelectorPresentation() {

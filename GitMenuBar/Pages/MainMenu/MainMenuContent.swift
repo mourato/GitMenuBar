@@ -105,7 +105,66 @@ extension MainMenuView {
         )
     }
 
-    func commitDetailRouteView(commitID: String) -> some View {
+    @ViewBuilder
+    private var routeContent: some View {
+        switch presentationModel.route {
+        case .main, .createRepo:
+            mainRouteContent
+        case let .historyDetail(commitID):
+            commitDetailRouteView(commitID: commitID)
+        }
+    }
+
+    private var mainRouteContent: some View {
+        VStack(spacing: WorkbenchMetrics.groupSpacing) {
+            CommitWorkflowView(
+                commentText: $commentText,
+                isCommentFieldFocused: $isCommentFieldFocused,
+                showsCommentField: showsCommentField,
+                primaryButtonSystemImage: primaryButtonSystemImage,
+                isPrimaryActionBusy: isPrimaryActionBusy,
+                automaticMessageHint: automaticMessageHint,
+                generationDisabledReason: shouldShowGenerationHint ? aiCommitCoordinator.generationDisabledReason : nil,
+                generationError: displayedGenerationError,
+                primaryButtonTitle: primaryButtonTitle,
+                isPrimaryButtonDisabled: isPrimaryButtonDisabled,
+                canShowSplitCommits: canShowAtomicCommits,
+                onPrimaryAction: {
+                    Task {
+                        await performPrimaryAction()
+                    }
+                },
+                onSplitCommits: startAtomicCommitFlow,
+                onDidCommit: {
+                    if hideCommitMessageField {
+                        isCommitFieldTemporarilyVisible = false
+                    }
+                },
+                onRequestFocus: requestCommitFieldFocus,
+                focusCommitFieldToken: presentationModel.focusCommitFieldToken,
+                actionCoordinator: actionCoordinator,
+                commitHistoryEditCoordinator: commitHistoryEditCoordinator
+            )
+
+            ScrollView(.vertical, showsIndicators: !isCommandPalettePresented) {
+                mainScrollContent
+            }
+            .scrollDisabled(isCommandPalettePresented)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .layoutPriority(1)
+            .refreshable {
+                await gitManager.refreshAsync(includeReflogHistory: false)
+            }
+
+            footerSection
+        }
+    }
+
+    private func commitDetailRouteView(commitID: String) -> some View {
+        commitDetailContent(commitID: commitID)
+    }
+
+    private func commitDetailContent(commitID: String) -> some View {
         CommitDetailPageView(
             commit: gitManager.commitHistory.first(where: { $0.id == commitID }),
             currentHash: gitManager.currentHash,
@@ -131,102 +190,46 @@ extension MainMenuView {
             },
             onOpenLocalFile: { gitManager.openFile(path: $0) }
         )
-        .padding(.horizontal, WorkbenchMetrics.windowPadding)
-        .padding(.bottom, WorkbenchMetrics.windowPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .toolbar {
-            CommitDetailHeaderToolbarContent(
-                onBack: {
-                    dismissTransientPresentations()
-                    presentationModel.showMain()
-                }
-            )
-        }
     }
 
     var mainView: some View {
         applyMainViewOverlays(
-            to: HStack(spacing: 0) {
-                ProjectsSidebarView(
-                    currentPath: currentRepositoryPath,
-                    onSelect: switchRepository,
-                    onReveal: revealProjectInFinder,
-                    onStopMonitoring: { projectMonitor.remove(path: $0) },
-                    onRemove: removeProject,
-                    onAdd: selectDirectory,
-                    onRefreshAll: projectMonitor.refreshAll,
-                    onFetchAll: projectMonitor.fetchAll,
-                    onRename: renameProject
-                )
-                VStack(spacing: WorkbenchMetrics.groupSpacing) {
-                    CommitWorkflowView(
-                        commentText: $commentText,
-                        isCommentFieldFocused: $isCommentFieldFocused,
-                        showsCommentField: showsCommentField,
-                        primaryButtonSystemImage: primaryButtonSystemImage,
-                        isPrimaryActionBusy: isPrimaryActionBusy,
-                        automaticMessageHint: automaticMessageHint,
-                        generationDisabledReason: shouldShowGenerationHint ? aiCommitCoordinator.generationDisabledReason : nil,
-                        generationError: displayedGenerationError,
-                        primaryButtonTitle: primaryButtonTitle,
-                        isPrimaryButtonDisabled: isPrimaryButtonDisabled,
-                        canShowSplitCommits: canShowAtomicCommits,
-                        onPrimaryAction: {
-                            Task {
-                                await performPrimaryAction()
-                            }
-                        },
-                        onSplitCommits: startAtomicCommitFlow,
-                        onDidCommit: {
-                            if hideCommitMessageField {
-                                isCommitFieldTemporarilyVisible = false
-                            }
-                        },
-                        onRequestFocus: requestCommitFieldFocus,
-                        focusCommitFieldToken: presentationModel.focusCommitFieldToken,
-                        actionCoordinator: actionCoordinator,
-                        commitHistoryEditCoordinator: commitHistoryEditCoordinator
+            to: ZStack(alignment: .topLeading) {
+                HStack(spacing: 0) {
+                    ProjectsSidebarView(
+                        currentPath: currentRepositoryPath,
+                        onSelect: switchRepository,
+                        onReveal: revealProjectInFinder,
+                        onStopMonitoring: { projectMonitor.remove(path: $0) },
+                        onRemove: removeProject,
+                        onRename: renameProject
                     )
 
-                    ScrollView(.vertical, showsIndicators: !isCommandPalettePresented) {
-                        mainScrollContent
-                    }
-                    .scrollDisabled(isCommandPalettePresented)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .layoutPriority(1)
-                    .refreshable {
-                        await gitManager.refreshAsync(includeReflogHistory: false)
-                    }
+                    VStack(spacing: 0) {
+                        routeHeaderContent
+                            .padding(.leading, WorkbenchMetrics.windowPadding)
+                            .padding(.trailing, WorkbenchMetrics.windowPadding)
+                            .frame(height: ProjectsSidebarMetrics.headerHeight)
+                            .frame(maxWidth: .infinity, alignment: .center)
 
-                    footerSection
+                        routeContent
+                            .padding(.top, WorkbenchMetrics.sectionSpacing)
+                            .padding(.leading, WorkbenchMetrics.windowPadding)
+                            .padding(.trailing, WorkbenchMetrics.windowPadding)
+                            .padding(.bottom, WorkbenchMetrics.windowPadding)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
-                .padding(.top, WorkbenchMetrics.sectionSpacing)
-                .padding(.leading, WorkbenchMetrics.windowPadding)
-                .padding(.trailing, WorkbenchMetrics.windowPadding)
-                .padding(.bottom, WorkbenchMetrics.windowPadding)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
+                windowHeaderLeadingControls
+                    .frame(height: ProjectsSidebarMetrics.headerHeight, alignment: .center)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .ignoresSafeArea(.container, edges: .top)
             .workbenchScrollbarStyle()
-            .toolbar {
-                MainMenuHeaderToolbarContent(
-                    currentProjectName: currentProjectName,
-                    isProjectSelectorPresented: false,
-                    isCommandPalettePresented: isCommandPalettePresented,
-                    onToggleProjectSelector: toggleProjectsSidebar,
-                    onOpenSettings: {
-                        dismissTransientPresentations()
-                        openSettingsWindow()
-                    },
-                    projectContextMenu: {
-                        if canPresentRepositoryOptions {
-                            Button("Repository options") {
-                                requestRepositoryOptionsPopoverPresentation()
-                            }
-                        }
-                    }
-                )
-            }
             .onExitCommand {
                 if isCommandPalettePresented {
                     closeCommandPalette()
