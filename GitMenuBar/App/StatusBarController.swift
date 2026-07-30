@@ -13,12 +13,13 @@ import SwiftUI
 final class StatusBarController: ObservableObject {
     private enum Constants {
         static let statusIconPointSize = NSSize(width: 16, height: 16)
-        static let windowInitialSize = NSSize(width: 440, height: 720)
-        static let windowMinimumSize = NSSize(width: 400, height: 640)
+        static let windowInitialSize = NSSize(width: 700, height: 720)
+        static let windowMinimumSize = NSSize(width: 550, height: 640)
         static let windowPresentationDuration: TimeInterval = 0.20
         static let windowPresentationReducedMotionDuration: TimeInterval = 0.01
+        static let autoHideBlurEvaluationDelay: TimeInterval = 0.08
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
-        static let mainWindowToolbarIdentifier = NSToolbar.Identifier("GitMenuBar.MainWindowToolbar")
+        static let screenCaptureUIBundleIdentifier = "com.apple.screencaptureui"
         static let appFocusedShortcutNames: [KeyboardShortcuts.Name] = [
             .commandPalette, .commit, .sync, .push, .branchManagement, .createBranch
         ]
@@ -297,9 +298,10 @@ final class StatusBarController: ObservableObject {
         window.title = "GitMenuBar"
         window.isReleasedWhenClosed = false
         window.setContentSize(Constants.windowInitialSize)
-        window.minSize = Constants.windowMinimumSize
+        window.contentMinSize = Constants.windowMinimumSize
         window.setFrameAutosaveName(Constants.windowAutosaveName)
         hasPositionedWindowInitially = window.setFrameUsingName(Constants.windowAutosaveName, force: false)
+        normalizeMainWindowSize(window)
 
         let contentController = WorkbenchWindowChrome.makeHostedContentController(rootView: makeRootView())
         window.contentViewController = contentController
@@ -326,17 +328,8 @@ final class StatusBarController: ObservableObject {
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.titlebarSeparatorStyle = .none
-        window.isMovableByWindowBackground = true
-        configureMainWindowToolbar(window)
-    }
-
-    private func configureMainWindowToolbar(_ window: NSWindow) {
-        let toolbar = NSToolbar(identifier: Constants.mainWindowToolbarIdentifier)
-        toolbar.displayMode = .iconOnly
-        toolbar.allowsUserCustomization = false
-        toolbar.autosavesConfiguration = false
-        window.toolbar = toolbar
-        window.toolbarStyle = .unifiedCompact
+        window.hasShadow = true
+        window.isMovableByWindowBackground = false
     }
 
     private func makeRootView() -> AnyView {
@@ -372,7 +365,16 @@ final class StatusBarController: ObservableObject {
 
     private func handleMainWindowDidResignKey() {
         guard shouldAutoHideOnBlur, !isMainWindowPresentingSheet else { return }
-        hideMainWindow()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.autoHideBlurEvaluationDelay) { [weak self] in
+            guard let self,
+                  self.shouldAutoHideOnBlur,
+                  !self.isMainWindowPresentingSheet,
+                  !self.isSystemScreenCaptureUIFrontmost
+            else { return }
+
+            self.hideMainWindow()
+        }
     }
 
     private var isMainWindowPresentingSheet: Bool {
@@ -381,6 +383,10 @@ final class StatusBarController: ObservableObject {
 
     private var shouldAutoHideOnBlur: Bool {
         MainWindowPreferences.isAutoHideOnBlurEnabled() && !isAutoHideSuspended
+    }
+
+    private var isSystemScreenCaptureUIFrontmost: Bool {
+        NSWorkspace.shared.frontmostApplication?.bundleIdentifier == Constants.screenCaptureUIBundleIdentifier
     }
 
     private var isMainWindowVisible: Bool {
@@ -551,6 +557,7 @@ final class StatusBarController: ObservableObject {
         }
 
         if restoreMainWindowFrameIfAvailable(mainWindow) {
+            normalizeMainWindowSize(mainWindow)
             hasPositionedWindowInitially = true
         } else {
             switch placementStrategy {
@@ -688,6 +695,17 @@ final class StatusBarController: ObservableObject {
         let originY = max(minY, maxY)
 
         window.setFrameOrigin(NSPoint(x: originX, y: originY))
+    }
+
+    private func normalizeMainWindowSize(_ window: NSWindow) {
+        let currentContentRect = window.contentRect(forFrameRect: window.frame)
+        let normalizedContentSize = NSSize(
+            width: max(currentContentRect.width, Constants.windowMinimumSize.width),
+            height: max(currentContentRect.height, Constants.windowMinimumSize.height)
+        )
+
+        guard normalizedContentSize != currentContentRect.size else { return }
+        window.setContentSize(normalizedContentSize)
     }
 
     private func hideMainWindow() {

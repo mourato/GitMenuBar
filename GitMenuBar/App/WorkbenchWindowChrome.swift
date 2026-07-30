@@ -122,6 +122,9 @@ private final class WorkbenchHostedContentViewController: NSViewController {
 
     override func loadView() {
         let container = NSView()
+        container.wantsLayer = true
+        container.layer?.cornerRadius = WorkbenchMetrics.largeCornerRadius
+        container.layer?.masksToBounds = true
         view = container
 
         let shell = WorkbenchWindowShellView()
@@ -146,10 +149,8 @@ private final class WorkbenchHostedContentViewController: NSViewController {
         hostingController.view.wantsLayer = true
         hostingController.view.layer?.backgroundColor = NSColor.clear.cgColor
 
-        if let hostingView = hostingController.view as? NSHostingView<AnyView> {
-            hostingView.sceneBridgingOptions = [.toolbars]
-        } else {
-            assertionFailure("Expected NSHostingView<AnyView> for SwiftUI toolbar bridging")
+        if !(hostingController.view is NSHostingView<AnyView>) {
+            assertionFailure("Expected NSHostingView<AnyView> for hosted window content")
         }
     }
 
