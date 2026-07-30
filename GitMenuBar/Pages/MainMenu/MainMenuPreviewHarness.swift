@@ -11,11 +11,17 @@ struct MainMenuPreviewHarness<Content: View>: View {
     @StateObject private var shortcutActionBridge = MainMenuShortcutActionBridge()
     @StateObject private var presentationModel = MainMenuPresentationModel()
     @StateObject private var usageQuotaStore = UsageQuotaStore()
+    @StateObject private var projectMonitor = ProjectMonitorStore()
 
     private let width: CGFloat
+    private let showsTransparentTitlebar: Bool
     private let content: Content
 
-    init(width: CGFloat = 400, @ViewBuilder content: () -> Content) {
+    init(
+        width: CGFloat = 400,
+        showsTransparentTitlebar: Bool = false,
+        @ViewBuilder content: () -> Content
+    ) {
         let previewGitManager = GitManager(repositoryPathOverride: NSHomeDirectory())
         let previewGitHubAuthManager = GitHubAuthManager(
             tokenStore: InMemoryGitHubTokenStore(),
@@ -48,6 +54,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
         )
 
         self.width = width
+        self.showsTransparentTitlebar = showsTransparentTitlebar
         self.content = content()
     }
 
@@ -63,12 +70,44 @@ struct MainMenuPreviewHarness<Content: View>: View {
             .environmentObject(shortcutActionBridge)
             .environmentObject(presentationModel)
             .environmentObject(usageQuotaStore)
+            .environmentObject(projectMonitor)
             .frame(width: width)
+            .modifier(TransparentTitlebarPreviewChrome(isVisible: showsTransparentTitlebar))
     }
 }
 
 #Preview("Preview Harness") {
-    MainMenuPreviewHarness {
+    MainMenuPreviewHarness(showsTransparentTitlebar: true) {
         MainMenuView()
+    }
+}
+
+private struct TransparentTitlebarPreviewChrome: ViewModifier {
+    let isVisible: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous))
+            .overlay(alignment: .topLeading) {
+                if isVisible {
+                    previewTrafficLights
+                        .padding(.leading, 20)
+                        .frame(height: ProjectsSidebarMetrics.headerHeight, alignment: .center)
+                        .allowsHitTesting(false)
+                }
+            }
+    }
+
+    private var previewTrafficLights: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color(red: 1.0, green: 0.36, blue: 0.32))
+            Circle()
+                .fill(Color(red: 1.0, green: 0.75, blue: 0.18))
+            Circle()
+                .fill(Color(red: 0.22, green: 0.80, blue: 0.33))
+        }
+        .frame(width: 52, height: 12)
+        .accessibilityHidden(true)
     }
 }

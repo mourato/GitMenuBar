@@ -106,3 +106,11 @@ extension MainMenuView {
         }
     }
 }
+
+#Preview("Main Menu Header Chrome") {
+    MainMenuPreviewHarness(width: 700, showsTransparentTitlebar: true) {
+        MainMenuView()
+            .frame(height: 96)
+            .clipped()
+    }
+}

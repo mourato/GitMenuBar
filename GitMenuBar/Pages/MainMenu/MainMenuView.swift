@@ -403,7 +403,7 @@ extension MainMenuView {
 }
 
 #Preview("Main Menu Root") {
-    MainMenuPreviewHarness {
+    MainMenuPreviewHarness(showsTransparentTitlebar: true) {
         MainMenuView()
     }
 }

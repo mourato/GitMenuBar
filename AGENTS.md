@@ -22,6 +22,7 @@ If a tradeoff is required, choose **correctness and robustness** over short-term
 - `make lint`
 - `make lint-changed`
 - `make lint-fix`
+- `make check-preview`
 - `make agent-check`
 - `make install-cli`
 - `make uninstall-cli`
@@ -61,6 +62,10 @@ If a tradeoff is required, choose **correctness and robustness** over short-term
 
 - Any new Swift file that renders interface (`View`, `NSViewRepresentable`, `NSViewControllerRepresentable`) must include at least one `#Preview`.
 - Previews can live in the same file or a dedicated `*Preview.swift` companion file, but every UI-rendering file must be covered.
+- Preview companions should live in the same directory as the rendered view and reference at least one view type from the covered source file.
+- Run `make check-preview` before closing UI work. It checks changed Swift UI candidates under `GitMenuBar/Components` and `GitMenuBar/Pages`; use `./scripts/check-preview.sh --all` for a full project audit.
+- Main-window previews must mirror the transparent full-size titlebar setup. Use `MainMenuPreviewHarness(showsTransparentTitlebar: true)` for previews that render `MainMenuView`, main menu chrome, or other top-of-window surfaces so header controls do not overlap the macOS traffic-light area.
+- Component-only previews should not simulate the full window/titlebar unless they render main-window chrome.
 - Pull requests that introduce UI files without preview coverage are incomplete.
 
 ## Skills

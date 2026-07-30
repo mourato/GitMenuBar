@@ -396,7 +396,7 @@ extension MainMenuView {
 }
 
 #Preview("Main Overlays") {
-    MainMenuPreviewHarness {
+    MainMenuPreviewHarness(showsTransparentTitlebar: true) {
         MainMenuView()
     }
 }

@@ -320,7 +320,7 @@ extension MainMenuView {
 }
 
 #Preview("Main Content") {
-    MainMenuPreviewHarness {
+    MainMenuPreviewHarness(showsTransparentTitlebar: true) {
         MainMenuView()
     }
 }

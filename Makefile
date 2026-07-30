@@ -1,4 +1,4 @@
-.PHONY: help build build-release test lint lint-changed lint-fix agent-check guidance-check install-app install-cli uninstall-cli dmg clean setup
+.PHONY: help build build-release test lint lint-changed lint-fix check-preview agent-check guidance-check install-app install-cli uninstall-cli dmg clean setup
 
 PROJECT_DIR := $(shell pwd)
 
@@ -11,6 +11,7 @@ help:
 	@echo "make lint          Run SwiftFormat/SwiftLint checks"
 	@echo "make lint-changed  Lint only files changed since HEAD"
 	@echo "make lint-fix      Auto-fix format/lint issues"
+	@echo "make check-preview Check changed UI files for SwiftUI preview coverage"
 	@echo "make agent-check   Lint changed Swift files and build Debug app"
 	@echo "make guidance-check Validate agent guidance, plans, and skill references"
 	@echo "make install-app   Build Release and replace the installed app interactively"
@@ -39,6 +40,9 @@ lint-changed:
 	else \
 		./scripts/lint.sh $$FILES; \
 	fi
+
+check-preview:
+	@./scripts/check-preview.sh
 
 agent-check: lint-changed build
 
