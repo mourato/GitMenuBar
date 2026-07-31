@@ -299,7 +299,7 @@ private enum UsageQuotaTrafficLightColor {
     )
 }
 
-#Preview("Usage Quota Strip – Dual Provider") {
+#Preview("Usage Quota Strip – Multi Provider") {
     UsageQuotaStripPreviewHarness(
         snapshots: [
             PreviewUsageQuotaSnapshotFactory.codex(
@@ -311,6 +311,10 @@ private enum UsageQuotaTrafficLightColor {
             PreviewUsageQuotaSnapshotFactory.cursor(
                 remainingPercent: 41,
                 resetInterval: 86400 * 12
+            ),
+            PreviewUsageQuotaSnapshotFactory.openrouter(
+                remainingPercent: 42,
+                balanceText: "$12.50 left"
             )
         ]
     )
@@ -388,6 +392,18 @@ private enum PreviewUsageQuotaSnapshotFactory {
             isAvailable: true,
             isStale: isStale,
             statusNote: "cursor usage-summary api"
+        )
+    }
+
+    static func openrouter(remainingPercent: Int, balanceText: String) -> UsageQuotaSnapshot {
+        UsageQuotaSnapshot(
+            providerID: .openrouter,
+            displayName: "OpenRouter",
+            sessionWindow: UsageWindow(remainingPercent: remainingPercent, resetAt: nil, label: "Credits"),
+            weeklyWindow: nil,
+            creditValueText: balanceText,
+            isAvailable: true,
+            statusNote: "openrouter credits api"
         )
     }
 }

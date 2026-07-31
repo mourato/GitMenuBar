@@ -41,6 +41,14 @@ final class UsageQuotaStore: ObservableObject {
         }
     }
 
+    @Published var showOpenRouterUsageQuota: Bool {
+        didSet {
+            guard showOpenRouterUsageQuota != oldValue else { return }
+            defaults.set(showOpenRouterUsageQuota, forKey: AppPreferences.Keys.showOpenRouterUsageQuota)
+            handlePreferenceChange()
+        }
+    }
+
     private let defaults: UserDefaults
     private let snapshotStore: UsageQuotaSnapshotStore
     private let providers: [any UsageQuotaProviding]
@@ -50,7 +58,7 @@ final class UsageQuotaStore: ObservableObject {
     init(
         defaults: UserDefaults = .standard,
         snapshotStore: UsageQuotaSnapshotStore = UsageQuotaSnapshotStore(),
-        providers: [any UsageQuotaProviding] = [CodexUsageProvider(), CursorUsageProvider()]
+        providers: [any UsageQuotaProviding] = [CodexUsageProvider(), CursorUsageProvider(), OpenRouterUsageProvider()]
     ) {
         self.defaults = defaults
         self.snapshotStore = snapshotStore
@@ -58,6 +66,7 @@ final class UsageQuotaStore: ObservableObject {
         showAIUsageQuotas = defaults.object(forKey: AppPreferences.Keys.showAIUsageQuotas) as? Bool ?? false
         showCodexUsageQuota = defaults.object(forKey: AppPreferences.Keys.showCodexUsageQuota) as? Bool ?? true
         showCursorUsageQuota = defaults.object(forKey: AppPreferences.Keys.showCursorUsageQuota) as? Bool ?? true
+        showOpenRouterUsageQuota = defaults.object(forKey: AppPreferences.Keys.showOpenRouterUsageQuota) as? Bool ?? true
         handlePreferenceChange(loadCachedOnly: true)
     }
 
@@ -124,6 +133,8 @@ final class UsageQuotaStore: ObservableObject {
             return showCodexUsageQuota
         case .cursor:
             return showCursorUsageQuota
+        case .openrouter:
+            return showOpenRouterUsageQuota
         }
     }
 
