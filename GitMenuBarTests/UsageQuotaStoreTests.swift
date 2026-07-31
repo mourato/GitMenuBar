@@ -83,6 +83,21 @@ final class UsageQuotaStoreTests: XCTestCase {
         XCTAssertTrue(store.visibleSnapshots.isEmpty)
     }
 
+    func testOpenRouterToggleHidesVisibleSnapshots() async {
+        let provider = FakeUsageQuotaProvider(
+            id: .openrouter,
+            snapshot: Self.openRouterSampleSnapshot()
+        )
+        let store = makeStore(provider: provider)
+        store.showAIUsageQuotas = true
+
+        await waitUntil { !store.visibleSnapshots.isEmpty }
+
+        store.showOpenRouterUsageQuota = false
+
+        XCTAssertTrue(store.visibleSnapshots.isEmpty)
+    }
+
     func testCursorDisabledProviderIsSkippedDuringRefresh() async {
         let codexProvider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
         let cursorProvider = FakeUsageQuotaProvider(
@@ -190,6 +205,18 @@ final class UsageQuotaStoreTests: XCTestCase {
             creditValueText: "$12.00 left",
             isAvailable: true,
             statusNote: "cursor usage-summary api"
+        )
+    }
+
+    private static func openRouterSampleSnapshot() -> UsageQuotaSnapshot {
+        UsageQuotaSnapshot(
+            providerID: .openrouter,
+            displayName: "OpenRouter",
+            sessionWindow: UsageWindow(remainingPercent: 60, resetAt: nil, label: "Credits"),
+            weeklyWindow: nil,
+            creditValueText: "$6.00 left",
+            isAvailable: true,
+            statusNote: "openrouter credits api"
         )
     }
 

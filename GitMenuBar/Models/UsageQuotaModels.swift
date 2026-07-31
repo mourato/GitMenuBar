@@ -3,6 +3,7 @@ import Foundation
 enum UsageProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
     case codex
     case cursor
+    case openrouter
 
     var id: String {
         rawValue
@@ -14,6 +15,8 @@ enum UsageProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
             return "Codex"
         case .cursor:
             return "Cursor"
+        case .openrouter:
+            return "OpenRouter"
         }
     }
 }

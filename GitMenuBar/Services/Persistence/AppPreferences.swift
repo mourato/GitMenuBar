@@ -20,6 +20,7 @@ enum AppPreferences {
         static let showAIUsageQuotas = "showAIUsageQuotas"
         static let showCodexUsageQuota = "showCodexUsageQuota"
         static let showCursorUsageQuota = "showCursorUsageQuota"
+        static let showOpenRouterUsageQuota = "showOpenRouterUsageQuota"
     }
 
     enum AppearanceMode: String, CaseIterable, Identifiable {
