@@ -592,7 +592,7 @@ Balance). Planned against commit `8176c3d`.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 047 | OpenRouter usage quota provider (credit balance) | P2 | M | 023, 024, 033 (DONE) | TODO |
+| 047 | OpenRouter usage quota provider (credit balance) | P2 | M | 023, 024, 033 (DONE) | DONE (`683cbff`) |
 
 ### Dependency notes
 
