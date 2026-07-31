@@ -8,6 +8,19 @@ language for GitMenuBar surfaces; keep it free of implementation detail.
 
 ### Product surfaces
 
+**AI usage quotas**:
+The monitored AI quota surface in the main panel (Settings → AI → Usage Quotas),
+distinct from AI Commit Generation. Each **Usage Provider** (Codex, Cursor,
+OpenRouter) publishes one **Snapshot**: last successful non-secret quota reading.
+_Avoid_: quota as part of AI commit generation, usage meter, AI status
+
+**Credit Balance**:
+The OpenRouter quota measurement: monetary credits on the account
+(`total credits purchased − total usage`), shown as a remaining percent of
+purchased credits plus a `$` balance. Unlike Codex/Cursor it has no reset
+window, so the card shows no reset countdown.
+_Avoid_: window, reset (for OpenRouter), token budget
+
 **Companion CLI**:
 The shell-facing product binary `gitmenubar`, shipped with the macOS app and intended primarily for agents. It is the same product as the menu bar app, not a separate tool.
 _Avoid_: GitMenuBar CLI tool (as a different product), agent git helper, standalone commit CLI

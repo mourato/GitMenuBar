@@ -576,3 +576,36 @@ lightweight; network fetch across projects is explicit.
   Git workflows stay scoped to the selected project.
 - Search, pinning, drag sorting, groups/tags, and worktree auto-discovery:
   deferred until the basic 10-project monitoring workflow proves useful.
+
+## OpenRouter usage quota provider — 2026-07-31
+
+Grill decisions (all "recommended" accepted): OpenRouter enters only as a
+**Usage Provider** measuring the account **Credit Balance** via the official
+`/api/v1/credits` endpoint; card shows a percent bar derived from
+`total_usage/total_credits` plus `$X.XX left` (no reset countdown); API key is a
+Settings `SecureField` stored in the Keychain (fixed account, no env fallback);
+OpenRouter toggle defaults on; no `/key` spend-limit enrichment, no CLI changes,
+no status-item glyphs. Vocabulary sunk in `CONTEXT.md` (AI usage quotas, Credit
+Balance). Planned against commit `8176c3d`.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 047 | OpenRouter usage quota provider (credit balance) | P2 | M | 023, 024, 033 (DONE) | TODO |
+
+### Dependency notes
+
+- Plan 047 consumes the `UsageQuota*` domain (023), provider pattern (024), and
+  Mimir-style cards (033); it must not change the card layout or status-item badge.
+
+### Findings considered and rejected
+
+- `/key` spend-limit enrichment (key-level limits, daily/weekly/monthly spend):
+  rejected for v1 — the request is account-level monetary credits; a key spending
+  limit as primary meter is a follow-up if wanted.
+- `OPENROUTER_API_KEY` env fallback: rejected because a menu bar app launched
+  from Finder/Dock does not inherit shell env; the Settings Keychain field is
+  the predictable source.
+- Adding OpenRouter as an AI commit-message provider: rejected — commit
+  providers and usage monitors are different domains (Plan 023 precedent).
