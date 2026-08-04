@@ -119,12 +119,15 @@ enum ProjectStatusPorcelainParser {
         case let record where record.hasPrefix("# branch.oid "):
             branchObjectID = String(record.dropFirst("# branch.oid ".count))
         case let record where record.hasPrefix("# branch.upstream "):
-            result.hasUpstream = true
+            result.hasUpstream = !record.dropFirst("# branch.upstream ".count).isEmpty
         case let record where record.hasPrefix("# branch.ab "):
             let values = record.split(separator: " ")
             guard values.count == 4 else { return true }
-            result.aheadCount = Int(values[2].dropFirst()) ?? 0
-            result.behindCount = Int(values[3].dropFirst()) ?? 0
+            guard values[2].first == "+", values[3].first == "-",
+                  let ahead = Int(values[2].dropFirst()),
+                  let behind = Int(values[3].dropFirst()) else { return true }
+            result.aheadCount = ahead
+            result.behindCount = behind
         default:
             return false
         }
@@ -144,7 +147,7 @@ enum ProjectStatusPorcelainParser {
         if index != "." {
             result.stagedCount += 1
         }
-        if index == ".", worktree != "." {
+        if worktree != "." {
             result.unstagedCount += 1
         }
     }
@@ -160,11 +163,19 @@ struct ProjectStatusReader {
         )
         guard !status.failure else {
             let exists = FileManager.default.fileExists(atPath: project.path)
+            let errorDescription: String
+            if !exists {
+                errorDescription = "Folder unavailable"
+            } else if status.output.localizedCaseInsensitiveContains("not a git repository") {
+                errorDescription = "Not a Git repository"
+            } else {
+                errorDescription = status.output
+            }
             return ProjectStatusSnapshot(
                 project: project, branchName: "", isDetachedHead: false, stagedCount: 0,
                 unstagedCount: 0, untrackedCount: 0, aheadCount: 0, behindCount: 0,
                 hasUpstream: false, lastRefreshedAt: nil,
-                lastErrorDescription: exists ? "Not a Git repository" : "Folder unavailable"
+                lastErrorDescription: errorDescription
             )
         }
 

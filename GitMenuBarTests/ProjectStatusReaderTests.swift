@@ -22,6 +22,18 @@ final class ProjectStatusReaderTests: XCTestCase {
         )
     }
 
+    func testParsesMixedChangesAndIgnoresMalformedBranchHeaders() {
+        let output = "# branch.head main\0# branch.upstream \0# branch.ab +x -2\0"
+            + "1 MM 100644 a a a mixed\0"
+        let result = ProjectStatusPorcelainParser.parse(output)
+
+        XCTAssertEqual(result.stagedCount, 1)
+        XCTAssertEqual(result.unstagedCount, 1)
+        XCTAssertEqual(result.aheadCount, 0)
+        XCTAssertEqual(result.behindCount, 0)
+        XCTAssertFalse(result.hasUpstream)
+    }
+
     func testParsesDetachedAndMalformedHeadersWithDefaults() {
         let fixture = "# branch.oid 0123456789abcdef\0# branch.head (detached)\0"
             + "# branch.ab malformed\0u malformed\0"
@@ -44,5 +56,20 @@ final class ProjectStatusReaderTests: XCTestCase {
 
         XCTAssertEqual(missing.lastErrorDescription, "Folder unavailable")
         XCTAssertEqual(nonGit.lastErrorDescription, "Not a Git repository")
+    }
+
+    func testReaderPreservesGitStatusFailureDescription() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("GitMenuBarStatusFailure-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        _ = try runGit(["init", "-q"], in: root)
+        try Data("broken".utf8).write(to: root.appendingPathComponent(".git/index"))
+
+        let snapshot = ProjectStatusReader(runner: GitCommandRunner())
+            .read(project: ProjectReference(path: root.path))
+
+        XCTAssertNotNil(snapshot.lastErrorDescription)
+        XCTAssertNotEqual(snapshot.lastErrorDescription, "Not a Git repository")
     }
 }

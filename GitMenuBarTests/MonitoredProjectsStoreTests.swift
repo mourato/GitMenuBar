@@ -97,5 +97,6 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         )
 
         XCTAssertEqual(store.monitoredProjects().map(\.path), [validPath])
+        XCTAssertEqual(monitor.snapshots[validPath]?.project.path, validPath)
     }
 }
