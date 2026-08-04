@@ -21,7 +21,7 @@ final class StatusBarController: ObservableObject {
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
         static let screenCaptureUIBundleIdentifier = "com.apple.screencaptureui"
         static let appFocusedShortcutNames: [KeyboardShortcuts.Name] = [
-            .commandPalette, .commit, .sync, .push, .branchManagement, .createBranch
+            .commandPalette, .commit, .sync, .atomicCommits, .push, .branchManagement, .createBranch
         ]
     }
 
@@ -196,6 +196,12 @@ final class StatusBarController: ObservableObject {
         KeyboardShortcuts.onKeyDown(for: .sync) { [weak self] in
             Task { @MainActor in
                 self?.handleActionShortcut(.sync)
+            }
+        }
+
+        KeyboardShortcuts.onKeyDown(for: .atomicCommits) { [weak self] in
+            Task { @MainActor in
+                self?.handleActionShortcut(.atomicCommits)
             }
         }
 
@@ -1107,6 +1113,8 @@ final class StatusBarController: ObservableObject {
             return "commit"
         case .sync:
             return "sync"
+        case .atomicCommits:
+            return "atomicCommits"
         }
     }
 }

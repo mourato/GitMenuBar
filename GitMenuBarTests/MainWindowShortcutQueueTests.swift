@@ -33,4 +33,15 @@ final class MainWindowShortcutQueueTests: XCTestCase {
         XCTAssertEqual(actions, [.commit, .sync])
         XCTAssertTrue(queue.pendingActions.isEmpty)
     }
+
+    func testDequeueSupportsAtomicCommitsAction() {
+        var queue = MainWindowShortcutQueue()
+
+        queue.enqueue(.atomicCommits)
+
+        XCTAssertEqual(
+            queue.dequeueAllIfReady(isWindowVisible: true, isMainRoute: true),
+            [.atomicCommits]
+        )
+    }
 }

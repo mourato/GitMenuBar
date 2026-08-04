@@ -3,6 +3,7 @@ import Combine
 enum MainMenuShortcutAction: Equatable {
     case commit
     case sync
+    case atomicCommits
 }
 
 @MainActor

@@ -21,6 +21,11 @@ extension KeyboardShortcuts.Name {
         default: .init(.s, modifiers: [.option, .command])
     )
 
+    static let atomicCommits = Self(
+        "atomicCommits",
+        default: .init(.s, modifiers: [.command, .shift])
+    )
+
     static let push = Self(
         "push",
         default: .init(.p, modifiers: [.option, .command])

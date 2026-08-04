@@ -258,6 +258,8 @@ extension MainMenuView {
                     Task {
                         await actionCoordinator.performSync()
                     }
+                case .atomicCommits:
+                    startAtomicCommitFlow()
                 }
             }
         )
