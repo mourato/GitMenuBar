@@ -22,6 +22,16 @@ enum GitExecution {
         await MainActor.run(body: update)
     }
 
+    static func publishOnMainActor(
+        ifCurrent session: GitRefreshSession?,
+        _ update: @escaping @MainActor () -> Void
+    ) async {
+        await MainActor.run {
+            guard session?.isCurrent() ?? true else { return }
+            update()
+        }
+    }
+
     static func executeGitCommand(
         in directory: String,
         args: [String],

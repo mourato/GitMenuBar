@@ -26,4 +26,14 @@ final class GitRepositoryContext {
             defaults.set(newValue, forKey: AppPreferences.Keys.gitRepoPath)
         }
     }
+
+    static func normalizedPath(_ path: String) -> String {
+        URL(fileURLWithPath: path).standardizedFileURL.path
+    }
+}
+
+struct GitRefreshSession {
+    let repositoryPath: String
+    let generation: Int
+    let isCurrent: @MainActor () -> Bool
 }

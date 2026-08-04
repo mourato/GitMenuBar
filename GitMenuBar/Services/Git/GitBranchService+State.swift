@@ -77,9 +77,13 @@ extension GitBranchService {
     }
 
     func updateBranchInfoAsync() async {
-        let repositoryPath = storedRepoPath
+        await updateBranchInfoAsync(session: nil)
+    }
+
+    func updateBranchInfoAsync(session: GitRefreshSession?) async {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {
-            await publishOnMainActor {
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
                 self.currentBranch = "main"
                 self.isAheadOfRemote = false
                 self.currentHash = ""
@@ -136,7 +140,7 @@ extension GitBranchService {
             )
         }
 
-        await publishOnMainActor {
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
             self.currentBranch = snapshot.branchName
             self.isAheadOfRemote = snapshot.isAhead
             self.currentHash = snapshot.currentHash
@@ -190,9 +194,13 @@ extension GitBranchService {
     }
 
     func fetchBranchesAsync() async {
-        let repositoryPath = storedRepoPath
+        await fetchBranchesAsync(session: nil)
+    }
+
+    func fetchBranchesAsync(session: GitRefreshSession?) async {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {
-            await publishOnMainActor {
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
                 self.availableBranches = []
             }
             return
@@ -217,7 +225,7 @@ extension GitBranchService {
             ).sorted()
         }
 
-        await publishOnMainActor {
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
             self.availableBranches = branches
         }
     }
@@ -233,9 +241,13 @@ extension GitBranchService {
     }
 
     func checkRemoteStatusAsync() async {
-        let repositoryPath = storedRepoPath
+        await checkRemoteStatusAsync(session: nil)
+    }
+
+    func checkRemoteStatusAsync(session: GitRefreshSession?) async {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {
-            await publishOnMainActor {
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
                 self.isRemoteAhead = false
                 self.isBehindRemote = false
                 self.behindCount = 0
@@ -260,7 +272,7 @@ extension GitBranchService {
             return (behindCount: behind, isRemoteAhead: behind > 0, isBehindRemote: behind > 0)
         }
 
-        await publishOnMainActor {
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
             self.behindCount = snapshot.behindCount
             self.isRemoteAhead = snapshot.isRemoteAhead
             self.isBehindRemote = snapshot.isBehindRemote
