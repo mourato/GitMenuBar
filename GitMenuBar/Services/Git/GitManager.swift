@@ -50,6 +50,10 @@ class GitManager: ObservableObject {
     private let repositoryContext: GitRepositoryContext
     private let commandRunner: GitCommandRunner
     private let workingTreeParser: WorkingTreeParser
+    private var selectedRefreshTask: Task<Void, Never>?
+    private var selectedRefreshGeneration = 0
+    private var selectedRefreshPath = ""
+    var selectedRefreshOperation: ((GitRefreshSession) async -> Void)?
     let branchService: GitBranchService
     let atomicCommitService: GitAtomicCommitService
     let commitHistoryService: GitCommitHistoryService
@@ -118,6 +122,10 @@ class GitManager: ObservableObject {
         await GitExecution.publishOnMainActor(update)
     }
 
+    deinit {
+        selectedRefreshTask?.cancel()
+    }
+
     private func makeMissingRepositoryError() -> NSError {
         GitExecution.missingRepositoryError()
     }
@@ -150,16 +158,33 @@ class GitManager: ObservableObject {
     }
 
     func refreshAsync(includeReflogHistory: Bool? = nil) async {
-        await updateLocalCommitCountAsync()
-        await updateUncommittedFilesAsync()
-        await updateBranchInfoAsync()
-        await updateRemoteUrlAsync()
-        await fetchCommitHistoryAsync(includeReflog: includeReflogHistory)
-        await fetchBranchesAsync()
-        await resolveBranchInfoAsync()
-        await getDefaultBranchNameAsync()
-        await checkRemoteStatusAsync()
-        await checkRepoVisibilityAsync()
+        await refreshAsync(includeReflogHistory: includeReflogHistory, session: nil)
+    }
+
+    private func refreshAsync(
+        includeReflogHistory: Bool?,
+        session: GitRefreshSession?
+    ) async {
+        guard !Task.isCancelled else { return }
+        await updateLocalCommitCountAsync(session: session)
+        guard !Task.isCancelled else { return }
+        await updateUncommittedFilesAsync(session: session)
+        guard !Task.isCancelled else { return }
+        await updateBranchInfoAsync(session: session)
+        guard !Task.isCancelled else { return }
+        await updateRemoteUrlAsync(session: session)
+        guard !Task.isCancelled else { return }
+        await fetchCommitHistoryAsync(includeReflog: includeReflogHistory, session: session)
+        guard !Task.isCancelled else { return }
+        await fetchBranchesAsync(session: session)
+        guard !Task.isCancelled else { return }
+        _ = await resolveBranchInfoAsync(session: session)
+        guard !Task.isCancelled else { return }
+        _ = await getDefaultBranchNameAsync(session: session)
+        guard !Task.isCancelled else { return }
+        await checkRemoteStatusAsync(session: session)
+        guard !Task.isCancelled else { return }
+        await checkRepoVisibilityAsync(session: session)
     }
 
     func refresh(
@@ -170,6 +195,41 @@ class GitManager: ObservableObject {
             guard let self else { return }
             await refreshAsync(includeReflogHistory: includeReflogHistory)
             await publishOnMainActor {
+                completion?()
+            }
+        }
+    }
+
+    func refreshSelectedRepository(
+        path: String? = nil,
+        includeReflogHistory: Bool? = nil,
+        completion: (() -> Void)? = nil
+    ) {
+        if let path {
+            storedRepoPath = path
+        }
+        selectedRefreshTask?.cancel()
+        selectedRefreshGeneration += 1
+        selectedRefreshPath = GitRepositoryContext.normalizedPath(storedRepoPath)
+        let generation = selectedRefreshGeneration
+        let sessionPath = selectedRefreshPath
+        let session = GitRefreshSession(
+            repositoryPath: selectedRefreshPath,
+            generation: generation
+        ) { [weak self] in
+            guard let self else { return false }
+            return self.selectedRefreshGeneration == generation && self.selectedRefreshPath == sessionPath
+        }
+        let operation = selectedRefreshOperation
+        selectedRefreshTask = Task { [weak self] in
+            guard let self else { return }
+            if let operation {
+                await operation(session)
+            } else {
+                await self.refreshAsync(includeReflogHistory: includeReflogHistory, session: session)
+            }
+            guard !Task.isCancelled else { return }
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
                 completion?()
             }
         }
@@ -509,9 +569,13 @@ class GitManager: ObservableObject {
     }
 
     func updateRemoteUrlAsync() async {
-        let repositoryPath = storedRepoPath
+        await updateRemoteUrlAsync(session: nil)
+    }
+
+    private func updateRemoteUrlAsync(session: GitRefreshSession?) async {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {
-            await publishOnMainActor {
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
                 self.remoteUrl = ""
             }
             return
@@ -525,7 +589,7 @@ class GitManager: ObservableObject {
             return GitHubRemoteURLParser.normalizedWebURL(from: result.output)
         }
 
-        await publishOnMainActor {
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
             self.remoteUrl = remoteURL
         }
     }
@@ -541,9 +605,13 @@ class GitManager: ObservableObject {
     }
 
     func updateLocalCommitCountAsync() async {
-        let repositoryPath = storedRepoPath
+        await updateLocalCommitCountAsync(session: nil)
+    }
+
+    private func updateLocalCommitCountAsync(session: GitRefreshSession?) async {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {
-            await publishOnMainActor {
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
                 self.commitCount = 0
             }
             return
@@ -568,7 +636,7 @@ class GitManager: ObservableObject {
             return Int(revListResult.output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
         }
 
-        await publishOnMainActor {
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
             self.commitCount = count
         }
     }
@@ -584,9 +652,13 @@ class GitManager: ObservableObject {
     }
 
     func updateUncommittedFilesAsync() async {
-        let repositoryPath = storedRepoPath
+        await updateUncommittedFilesAsync(session: nil)
+    }
+
+    private func updateUncommittedFilesAsync(session: GitRefreshSession?) async {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {
-            await publishOnMainActor {
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
                 self.uncommittedFiles = []
                 self.stagedFiles = []
                 self.changedFiles = []
@@ -648,7 +720,7 @@ class GitManager: ObservableObject {
             )
         }
 
-        await publishOnMainActor {
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
             self.stagedFiles = snapshot.stagedFiles
             self.changedFiles = snapshot.changedFiles
             self.uncommittedFiles = snapshot.uncommittedFiles
@@ -1118,6 +1190,10 @@ class GitManager: ObservableObject {
         await branchService.updateBranchInfoAsync()
     }
 
+    private func updateBranchInfoAsync(session: GitRefreshSession?) async {
+        await branchService.updateBranchInfoAsync(session: session)
+    }
+
     func resetToLastCommit() {
         guard !storedRepoPath.isEmpty else {
             print("Error: No repository path configured")
@@ -1260,6 +1336,18 @@ class GitManager: ObservableObject {
 
     func fetchCommitHistoryAsync(limit: Int? = nil, includeReflog: Bool? = nil) async {
         await commitHistoryService.fetchCommitHistoryAsync(limit: limit, includeReflog: includeReflog)
+    }
+
+    private func fetchCommitHistoryAsync(
+        limit: Int? = nil,
+        includeReflog: Bool? = nil,
+        session: GitRefreshSession?
+    ) async {
+        await commitHistoryService.fetchCommitHistoryAsync(
+            limit: limit,
+            includeReflog: includeReflog,
+            session: session
+        )
     }
 
     func loadMoreCommitHistory(batchSize: Int = 25) {
@@ -1493,6 +1581,10 @@ class GitManager: ObservableObject {
         await branchService.fetchBranchesAsync()
     }
 
+    private func fetchBranchesAsync(session: GitRefreshSession?) async {
+        await branchService.fetchBranchesAsync(session: session)
+    }
+
     // MARK: - Branch Management (Local/Remote separation)
 
     func fetchLocalBranchesAsync() async -> [String] {
@@ -1515,8 +1607,16 @@ class GitManager: ObservableObject {
         await branchService.getDefaultBranchNameAsync()
     }
 
+    private func getDefaultBranchNameAsync(session: GitRefreshSession?) async -> String {
+        await branchService.getDefaultBranchNameAsync(session: session)
+    }
+
     func resolveBranchInfoAsync() async -> [BranchInfo] {
         await branchService.resolveBranchInfoAsync()
+    }
+
+    private func resolveBranchInfoAsync(session: GitRefreshSession?) async -> [BranchInfo] {
+        await branchService.resolveBranchInfoAsync(session: session)
     }
 
     func resolveWorktreeSnapshotAsync() async -> Result<GitWorktreeSnapshot, Error> {
@@ -1562,6 +1662,10 @@ class GitManager: ObservableObject {
         await branchService.checkRemoteStatusAsync()
     }
 
+    private func checkRemoteStatusAsync(session: GitRefreshSession?) async {
+        await branchService.checkRemoteStatusAsync(session: session)
+    }
+
     func checkRepoVisibility(completion: (() -> Void)? = nil) {
         Task { [weak self] in
             guard let self else { return }
@@ -1573,9 +1677,13 @@ class GitManager: ObservableObject {
     }
 
     func checkRepoVisibilityAsync() async {
-        let repositoryPath = storedRepoPath
+        await checkRepoVisibilityAsync(session: nil)
+    }
+
+    private func checkRepoVisibilityAsync(session: GitRefreshSession?) async {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {
-            await publishOnMainActor {
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
                 self.isPrivate = false
             }
             return
@@ -1596,7 +1704,7 @@ class GitManager: ObservableObject {
                 owner: reference.owner,
                 name: reference.repository
             )
-            await publishOnMainActor {
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
                 self.isPrivate = repository.private
             }
         } catch {

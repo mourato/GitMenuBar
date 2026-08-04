@@ -193,7 +193,7 @@ extension MainMenuView {
         gitManager.resetSelectedRepositoryState()
         setCurrentRepositoryPath(path)
         addToRecents(path)
-        gitManager.refresh(includeReflogHistory: false) {
+        gitManager.refreshSelectedRepository(path: path, includeReflogHistory: false) {
             presentationModel.finishRefresh()
         }
     }

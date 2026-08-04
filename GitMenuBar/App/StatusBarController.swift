@@ -955,7 +955,7 @@ final class StatusBarController: ObservableObject {
         }
 
         openMainWindow()
-        gitManager.refresh(includeReflogHistory: false)
+        gitManager.refreshSelectedRepository(includeReflogHistory: false)
     }
 
     private func revealCurrentRepositoryInFinder() {
@@ -1025,7 +1025,7 @@ final class StatusBarController: ObservableObject {
         presentationModel.startRefresh()
         logWindowOpen(trace, message: "refresh started")
 
-        gitManager.refresh { [weak self] in
+        gitManager.refreshSelectedRepository { [weak self] in
             guard let self else { return }
 
             self.presentationModel.finishRefresh()

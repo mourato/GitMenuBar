@@ -7,7 +7,11 @@ import Foundation
 
 extension GitBranchService {
     func fetchLocalBranchesAsync() async -> [String] {
-        let repositoryPath = storedRepoPath
+        await fetchLocalBranchesAsync(session: nil)
+    }
+
+    private func fetchLocalBranchesAsync(session: GitRefreshSession?) async -> [String] {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else { return [] }
 
         return await runOnBackground {
@@ -22,7 +26,11 @@ extension GitBranchService {
     }
 
     func fetchRemoteBranchesAsync() async -> [String] {
-        let repositoryPath = storedRepoPath
+        await fetchRemoteBranchesAsync(session: nil)
+    }
+
+    private func fetchRemoteBranchesAsync(session: GitRefreshSession?) async -> [String] {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else { return [] }
 
         return await runOnBackground {
@@ -40,7 +48,11 @@ extension GitBranchService {
     }
 
     func getDefaultBranchNameAsync() async -> String {
-        let repositoryPath = storedRepoPath
+        await getDefaultBranchNameAsync(session: nil)
+    }
+
+    func getDefaultBranchNameAsync(session: GitRefreshSession?) async -> String {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else { return "main" }
 
         let detected: String? = await runOnBackground { () -> String? in
@@ -55,17 +67,16 @@ extension GitBranchService {
         }
 
         if let detected, !detected.isEmpty {
-            await publishOnMainActor { self.defaultBranchName = detected }
+            await GitExecution.publishOnMainActor(ifCurrent: session) { self.defaultBranchName = detected }
             return detected
         }
 
-        let fallback = await defaultBranchNameFallback()
-        await publishOnMainActor { self.defaultBranchName = fallback }
+        let fallback = await defaultBranchNameFallback(repositoryPath: repositoryPath)
+        await GitExecution.publishOnMainActor(ifCurrent: session) { self.defaultBranchName = fallback }
         return fallback
     }
 
-    private func defaultBranchNameFallback() async -> String {
-        let repositoryPath = storedRepoPath
+    private func defaultBranchNameFallback(repositoryPath: String) async -> String {
         let local = await runOnBackground {
             self.executeGitCommand(in: repositoryPath, args: ["branch", "--format=%(refname:short)"]).output
                 .components(separatedBy: .newlines)
@@ -82,11 +93,15 @@ extension GitBranchService {
     }
 
     func resolveBranchInfoAsync() async -> [BranchInfo] {
-        let repositoryPath = storedRepoPath
+        await resolveBranchInfoAsync(session: nil)
+    }
+
+    func resolveBranchInfoAsync(session: GitRefreshSession?) async -> [BranchInfo] {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else { return [] }
 
-        let localBranches = await fetchLocalBranchesAsync()
-        let remoteBranches = await fetchRemoteBranchesAsync()
+        let localBranches = await fetchLocalBranchesAsync(session: session)
+        let remoteBranches = await fetchRemoteBranchesAsync(session: session)
         let currentBranch = await runOnBackground {
             self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "--abbrev-ref", "HEAD"])
                 .output
@@ -100,7 +115,8 @@ extension GitBranchService {
                 let trackingStatus = self.resolveTrackingStatus(
                     localName: localName,
                     currentBranch: currentBranch,
-                    remoteBranches: remoteBranches
+                    remoteBranches: remoteBranches,
+                    repositoryPath: repositoryPath
                 )
                 let lastCommitDate = self.lastCommitDate(for: localName, repositoryPath: repositoryPath)
                 result.append(
@@ -133,7 +149,7 @@ extension GitBranchService {
             return result
         }
 
-        await publishOnMainActor {
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
             self.branchInfos = infos
         }
 
@@ -146,9 +162,9 @@ extension GitBranchService {
     private func resolveTrackingStatus(
         localName: String,
         currentBranch _: String,
-        remoteBranches: [String]
+        remoteBranches: [String],
+        repositoryPath: String
     ) -> BranchTrackingStatus {
-        let repositoryPath = storedRepoPath
         let upstreamCheck = executeGitCommand(in: repositoryPath, args: ["rev-parse", "--verify", "--quiet", "\(localName)@{u}"])
         if upstreamCheck.failure {
             return .noRemote

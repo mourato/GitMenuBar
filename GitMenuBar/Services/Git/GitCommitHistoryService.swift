@@ -81,12 +81,20 @@ final class GitCommitHistoryService: ObservableObject {
     }
 
     func fetchCommitHistoryAsync(limit: Int? = nil, includeReflog: Bool? = nil) async {
+        await fetchCommitHistoryAsync(limit: limit, includeReflog: includeReflog, session: nil)
+    }
+
+    func fetchCommitHistoryAsync(
+        limit: Int? = nil,
+        includeReflog: Bool? = nil,
+        session: GitRefreshSession?
+    ) async {
         let resolvedLimit = max(1, limit ?? commitHistoryLimit)
         let resolvedIncludeReflog = includeReflog ?? includesReflogCommitsInHistory
-        let repositoryPath = storedRepoPath
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
 
         guard !repositoryPath.isEmpty else {
-            await publishOnMainActor {
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
                 self.includesReflogCommitsInHistory = resolvedIncludeReflog
                 self.commitHistoryLimit = resolvedLimit
                 self.commitHistory = []
@@ -102,7 +110,7 @@ final class GitCommitHistoryService: ObservableObject {
             )
         }
 
-        await publishOnMainActor {
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
             self.includesReflogCommitsInHistory = resolvedIncludeReflog
             self.commitHistoryLimit = resolvedLimit
             self.commitHistory = commits
