@@ -2,6 +2,10 @@
 import XCTest
 
 final class GitManagerRefreshTests: XCTestCase {
+    func testNormalizingEmptyRepositoryPathRemainsEmpty() {
+        XCTAssertEqual(GitRepositoryContext.normalizedPath(""), "")
+    }
+
     func testSupersededSelectedRefreshCannotPublishOrFinish() async {
         let manager = GitManager(repositoryPathOverride: "")
         let firstStarted = XCTestExpectation(description: "first refresh starts")
@@ -25,12 +29,12 @@ final class GitManagerRefreshTests: XCTestCase {
             }
         }
 
-        manager.refreshSelectedRepository(path: "/tmp/project-a") {
+        await manager.refreshSelectedRepository(path: "/tmp/project-a") {
             completions += 1
         }
         await fulfillment(of: [firstStarted])
 
-        manager.refreshSelectedRepository(path: "/tmp/project-b") {
+        await manager.refreshSelectedRepository(path: "/tmp/project-b") {
             completions += 1
             secondFinished.fulfill()
         }

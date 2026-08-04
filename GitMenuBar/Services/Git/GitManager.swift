@@ -200,6 +200,7 @@ class GitManager: ObservableObject {
         }
     }
 
+    @MainActor
     func refreshSelectedRepository(
         path: String? = nil,
         includeReflogHistory: Bool? = nil,

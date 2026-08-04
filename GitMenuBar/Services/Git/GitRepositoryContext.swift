@@ -28,7 +28,8 @@ final class GitRepositoryContext {
     }
 
     static func normalizedPath(_ path: String) -> String {
-        URL(fileURLWithPath: path).standardizedFileURL.path
+        guard !path.isEmpty else { return "" }
+        return URL(fileURLWithPath: path).standardizedFileURL.path
     }
 }
 

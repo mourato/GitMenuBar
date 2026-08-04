@@ -942,11 +942,13 @@ final class StatusBarController: ObservableObject {
     }
 
     private func selectRepository(_ path: String) {
+        let wasVisible = isMainWindowVisible
         UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
         RecentProjectsStore().add(path)
         if gitManager.isGitRepository(at: path) {
             projectMonitor.add(path: path)
         }
+        gitManager.resetSelectedRepositoryState()
         refreshAppCommands()
 
         if !gitManager.isGitRepository(at: path), githubAuthManager.isAuthenticated {
@@ -955,7 +957,12 @@ final class StatusBarController: ObservableObject {
         }
 
         openMainWindow()
-        gitManager.refreshSelectedRepository(includeReflogHistory: false)
+        guard wasVisible else { return }
+
+        presentationModel.startRefresh()
+        gitManager.refreshSelectedRepository(path: path, includeReflogHistory: false) {
+            self.presentationModel.finishRefresh()
+        }
     }
 
     private func revealCurrentRepositoryInFinder() {
