@@ -29,15 +29,29 @@ final class ProjectMonitorStore: ObservableObject {
     }
 
     func seed(currentPath: String, recentProjects: [ProjectReference]) {
-        let validRecentProjects = recentProjects.filter { isValidRepository($0.path) }
-        let validCurrentPath = isValidRepository(currentPath) ? currentPath : ""
-        _ = projectStore.seedIfNeeded(currentPath: validCurrentPath, recentProjects: validRecentProjects)
-        refreshAll()
-    }
-
-    private func isValidRepository(_ path: String) -> Bool {
-        guard !path.isEmpty else { return false }
-        return !runner.runGitCommand(in: path, args: ["rev-parse", "--show-toplevel"]).failure
+        let reader = ProjectStatusReader(runner: runner)
+        var seededSnapshots: [String: ProjectStatusSnapshot] = [:]
+        func read(_ project: ProjectReference) -> ProjectStatusSnapshot {
+            if let snapshot = seededSnapshots[project.path] {
+                return snapshot
+            }
+            let snapshot = reader.read(project: project)
+            seededSnapshots[project.path] = snapshot
+            return snapshot
+        }
+        let current = currentPath.isEmpty ? nil : ProjectReference(path: currentPath)
+        let validCurrentPath = current.flatMap { read($0).lastErrorDescription == nil ? $0.path : nil } ?? ""
+        let validRecentProjects = recentProjects.filter { read($0).lastErrorDescription == nil }
+        _ = projectStore.seedIfNeeded(
+            currentPath: validCurrentPath,
+            recentProjects: validRecentProjects
+        )
+        for snapshot in seededSnapshots.values where snapshot.lastErrorDescription == nil {
+            snapshots[snapshot.project.path] = snapshot
+        }
+        if projectStore.monitoredProjects().contains(where: { snapshots[$0.path] == nil }) {
+            refreshAll()
+        }
     }
 
     func add(path: String, name: String? = nil) {
