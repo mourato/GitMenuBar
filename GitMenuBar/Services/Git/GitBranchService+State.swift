@@ -22,37 +22,14 @@ extension GitBranchService {
 
             let branchName = branchResult.failure ? "main" : branchResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            // Check if ahead of remote using upstream tracking
-            let revListResult = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-list", "--count", "@{u}..HEAD"])
-
-            var isAhead = false
-            if revListResult.failure {
-                // Fallback checks
-                let revListMain = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-list", "--count", "HEAD", "^origin/main"])
-                if !revListMain.failure, let count = Int(revListMain.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                    isAhead = count > 0
-                } else {
-                    let revListDefaultBranchFallback = self.executeGitCommand(
-                        in: self.storedRepoPath,
-                        args: ["rev-list", "--count", "HEAD", "^origin/master"]
-                    )
-                    let fallbackCount = Int(
-                        revListDefaultBranchFallback.output.trimmingCharacters(in: .whitespacesAndNewlines)
-                    )
-                    if !revListDefaultBranchFallback.failure, let fallbackCount {
-                        isAhead = fallbackCount > 0
-                    }
-                }
-            } else if let count = Int(revListResult.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                isAhead = count > 0
-            }
+            let aheadCount = self.trackingAheadCount(repositoryPath: self.storedRepoPath)
 
             // Get current hash
             let hashResult = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-parse", "HEAD"])
             let hash = hashResult.failure ? "" : hashResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
 
             DispatchQueue.main.async {
-                self.isAheadOfRemote = isAhead
+                self.isAheadOfRemote = aheadCount > 0
                 self.currentHash = hash
 
                 // Detect detached HEAD state
@@ -77,10 +54,10 @@ extension GitBranchService {
     }
 
     func updateBranchInfoAsync() async {
-        await updateBranchInfoAsync(session: nil)
+        _ = await updateBranchInfoAsync(session: nil)
     }
 
-    func updateBranchInfoAsync(session: GitRefreshSession?) async {
+    func updateBranchInfoAsync(session: GitRefreshSession?) async -> Int {
         let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {
             await GitExecution.publishOnMainActor(ifCurrent: session) {
@@ -89,33 +66,14 @@ extension GitBranchService {
                 self.currentHash = ""
                 self.isDetachedHead = false
             }
-            return
+            return 0
         }
 
         let snapshot = await runOnBackground {
             let branchResult = self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "--abbrev-ref", "HEAD"])
             let branchName = branchResult.failure ? "main" : branchResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            let revListResult = self.executeGitCommand(in: repositoryPath, args: ["rev-list", "--count", "@{u}..HEAD"])
-
-            var isAhead = false
-            if revListResult.failure {
-                let revListMain = self.executeGitCommand(in: repositoryPath, args: ["rev-list", "--count", "HEAD", "^origin/main"])
-                if !revListMain.failure, let count = Int(revListMain.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                    isAhead = count > 0
-                } else {
-                    let revListDefaultBranchFallback = self.executeGitCommand(
-                        in: repositoryPath,
-                        args: ["rev-list", "--count", "HEAD", "^origin/master"]
-                    )
-                    let fallbackCount = Int(revListDefaultBranchFallback.output.trimmingCharacters(in: .whitespacesAndNewlines))
-                    if !revListDefaultBranchFallback.failure, let fallbackCount {
-                        isAhead = fallbackCount > 0
-                    }
-                }
-            } else if let count = Int(revListResult.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                isAhead = count > 0
-            }
+            let aheadCount = self.trackingAheadCount(repositoryPath: repositoryPath)
 
             let hashResult = self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "HEAD"])
             let hash = hashResult.failure ? "" : hashResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -134,7 +92,8 @@ extension GitBranchService {
             return (
                 branchName: detachedBranchName,
                 activeBranchName: branchName,
-                isAhead: isAhead,
+                isAhead: aheadCount > 0,
+                aheadCount: aheadCount,
                 currentHash: hash,
                 isDetachedHead: isDetachedHead
             )
@@ -149,6 +108,22 @@ extension GitBranchService {
                 self.lastActiveBranch = snapshot.activeBranchName
             }
         }
+        return snapshot.aheadCount
+    }
+
+    private func trackingAheadCount(repositoryPath: String) -> Int {
+        let result = executeGitCommand(in: repositoryPath, args: ["rev-list", "--count", "@{u}..HEAD"])
+        if !result.failure, let count = Int(result.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            return count
+        }
+
+        for branch in ["main", "master"] {
+            let fallback = executeGitCommand(in: repositoryPath, args: ["rev-list", "--count", "HEAD", "^origin/\(branch)"])
+            if !fallback.failure, let count = Int(fallback.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                return count
+            }
+        }
+        return 0
     }
 
     func fetchBranches(completion: (() -> Void)? = nil) {

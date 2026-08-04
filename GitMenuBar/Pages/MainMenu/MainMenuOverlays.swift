@@ -145,9 +145,12 @@ extension MainMenuView {
             },
             onMergeToDefaultBranch: { branch in
                 dismissTransientPresentations()
-                featureBranchName = branch
-                defaultBranchName = gitManager.defaultBranchName
-                showMergeToDefaultConfirmation = true
+                Task {
+                    let detectedDefaultBranch = await gitManager.getDefaultBranchNameAsync()
+                    featureBranchName = branch
+                    defaultBranchName = detectedDefaultBranch
+                    showMergeToDefaultConfirmation = true
+                }
             },
             onNewBranch: {
                 dismissTransientPresentations()

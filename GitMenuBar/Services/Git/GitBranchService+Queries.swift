@@ -100,54 +100,24 @@ extension GitBranchService {
         let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else { return [] }
 
-        let localBranches = await fetchLocalBranchesAsync(session: session)
-        let remoteBranches = await fetchRemoteBranchesAsync(session: session)
         let currentBranch = await runOnBackground {
             self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "--abbrev-ref", "HEAD"])
                 .output
                 .trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
-        let infos = await runOnBackground {
-            var result: [BranchInfo] = []
-
-            for localName in localBranches {
-                let trackingStatus = self.resolveTrackingStatus(
-                    localName: localName,
-                    currentBranch: currentBranch,
-                    remoteBranches: remoteBranches,
-                    repositoryPath: repositoryPath
-                )
-                let lastCommitDate = self.lastCommitDate(for: localName, repositoryPath: repositoryPath)
-                result.append(
-                    BranchInfo(
-                        name: localName,
-                        isLocal: true,
-                        isRemote: false,
-                        isCurrent: localName == currentBranch,
-                        trackingStatus: trackingStatus,
-                        lastCommitDate: lastCommitDate
-                    )
-                )
-            }
-
-            let localSet = Set(localBranches)
-            for remoteName in remoteBranches where !localSet.contains(remoteName) {
-                let lastCommitDate = self.lastCommitDate(for: "origin/\(remoteName)", repositoryPath: repositoryPath)
-                result.append(
-                    BranchInfo(
-                        name: remoteName,
-                        isLocal: false,
-                        isRemote: true,
-                        isCurrent: false,
-                        trackingStatus: .noRemote,
-                        lastCommitDate: lastCommitDate
-                    )
-                )
-            }
-
-            return result
+        let output = await runOnBackground {
+            self.executeGitCommand(
+                in: repositoryPath,
+                args: [
+                    "for-each-ref",
+                    "--format=%(refname:short)%00%(upstream:short)%00%(committerdate:unix)%00%(upstream:track,nobracket)%00",
+                    "refs/heads",
+                    "refs/remotes/origin"
+                ]
+            ).output
         }
+        let infos = parseBranchInfoOutput(output, currentBranch: currentBranch)
 
         await GitExecution.publishOnMainActor(ifCurrent: session) {
             self.branchInfos = infos
@@ -156,53 +126,70 @@ extension GitBranchService {
         return infos
     }
 
-    /// Note: tracking-status resolution issues one synchronous git round-trip per
-    /// local branch. Acceptable for typical repos; batch via a single `for-each-ref`
-    /// if branch counts grow large.
-    private func resolveTrackingStatus(
-        localName: String,
-        currentBranch _: String,
-        remoteBranches: [String],
-        repositoryPath: String
-    ) -> BranchTrackingStatus {
-        let upstreamCheck = executeGitCommand(in: repositoryPath, args: ["rev-parse", "--verify", "--quiet", "\(localName)@{u}"])
-        if upstreamCheck.failure {
-            return .noRemote
+    func parseBranchInfoOutput(_ output: String, currentBranch: String) -> [BranchInfo] {
+        var infos: [BranchInfo] = []
+        var localNames = Set<String>()
+
+        for record in output.split(separator: "\n", omittingEmptySubsequences: true) {
+            let fields = record.split(separator: "\0", omittingEmptySubsequences: false).map(String.init)
+            guard fields.count >= 4 else { continue }
+            let ref = fields[0]
+            guard !ref.isEmpty else { continue }
+            let upstream = fields[1]
+            let date = TimeInterval(fields[2]).map(Date.init(timeIntervalSince1970:))
+            let track = fields[3]
+
+            if ref == "origin" {
+                continue
+            }
+            if ref.hasPrefix("origin/") {
+                let name = String(ref.dropFirst("origin/".count))
+                guard !name.isEmpty, name != "HEAD" else { continue }
+                guard !localNames.contains(name) else { continue }
+                infos.append(BranchInfo(name: name, isLocal: false, isRemote: true, isCurrent: false, trackingStatus: .noRemote, lastCommitDate: date))
+                continue
+            }
+
+            localNames.insert(ref)
+            infos.append(
+                BranchInfo(
+                    name: ref,
+                    isLocal: true,
+                    isRemote: false,
+                    isCurrent: ref == currentBranch,
+                    trackingStatus: trackingStatus(upstream: upstream, track: track),
+                    lastCommitDate: date
+                )
+            )
         }
 
-        let remoteRef = "origin/\(localName)"
-        let remoteRefExists = !executeGitCommand(
-            in: repositoryPath,
-            args: ["show-ref", "--verify", "--quiet", "refs/remotes/\(remoteRef)"]
-        ).failure
-        if !remoteBranches.contains(localName), !remoteRefExists {
-            return .noRemote
-        }
-
-        let counts = executeGitCommand(in: repositoryPath, args: ["rev-list", "--left-right", "--count", "\(remoteRef)...\(localName)"])
-        guard !counts.failure else { return .unknown }
-        let parts = counts.output.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: .whitespacesAndNewlines)
-        guard parts.count == 2, let behind = Int(parts[0]), let ahead = Int(parts[1]) else {
-            return .unknown
-        }
-
-        if ahead == 0, behind == 0 {
-            return .upToDate
-        }
-        if ahead > 0, behind == 0 {
-            return .ahead(ahead)
-        }
-        if ahead == 0, behind > 0 {
-            return .behind(behind)
-        }
-        return .diverged(ahead: ahead, behind: behind)
+        return infos.filter { !$0.isRemote || !localNames.contains($0.name) }
     }
 
-    private func lastCommitDate(for ref: String, repositoryPath: String) -> Date? {
-        let result = executeGitCommand(in: repositoryPath, args: ["log", "-1", "--format=%ct", ref])
-        guard !result.failure else { return nil }
-        let trimmed = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let timestamp = TimeInterval(trimmed) else { return nil }
-        return Date(timeIntervalSince1970: timestamp)
+    private func trackingStatus(upstream: String, track: String) -> BranchTrackingStatus {
+        guard !upstream.isEmpty else { return .noRemote }
+        guard !track.isEmpty else { return .upToDate }
+        if track == "gone" {
+            return .noRemote
+        }
+
+        var ahead: Int?
+        var behind: Int?
+        for part in track.split(separator: ",") {
+            let values = part.split(separator: " ")
+            guard values.count == 2, let count = Int(values[1]) else { return .unknown }
+            switch values[0] {
+            case "ahead": ahead = count
+            case "behind": behind = count
+            default: return .unknown
+            }
+        }
+
+        switch (ahead ?? 0, behind ?? 0) {
+        case (0, 0): return .upToDate
+        case let (ahead, 0): return .ahead(ahead)
+        case let (0, behind): return .behind(behind)
+        case let (ahead, behind): return .diverged(ahead: ahead, behind: behind)
+        }
     }
 }

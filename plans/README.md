@@ -642,3 +642,75 @@ AI-provider, or recent-project rows.
   the existing small components are enough.
 - Removing every small semantic chip or native input outline: rejected; those
   communicate state or affordance and are not group containers.
+
+## Project-switch responsiveness and Projects sidebar UX — 2026-08-04
+
+Audit scope: selected-project switching, Git refresh orchestration, compact
+multi-project monitoring, and the Projects sidebar interaction. Planned
+against commit `b2beedd`.
+
+Findings: project selection already routes through one `Button`, but its
+rectangular hit target is implicit; the selected refresh is serial, starts
+without a session identity, and can publish stale results; window-open refresh
+duplicates the working-tree query; untracked files can launch one Git process
+per file; branch detail is queried before the Branch Management sheet needs it;
+and the compact monitor repeats several Git reads per project.
+
+Product constraints: preserve the ADR 0004 split between the selected
+repository's full `GitManager` state and compact `ProjectStatusSnapshot`
+attention state; automatic monitoring remains local/lightweight; network
+fetches remain explicit; Staged and Unstaged remain separate; no new
+per-project GitManager, cache, dependency, or speculative UI debounce.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 049 | Make the entire Projects sidebar row select its project | P0 | S | — | DONE |
+| 050 | Show an immediate, single refresh state when switching projects | P0 | M | 049 recommended | DONE |
+| 051 | Make selected-project refreshes cancellable and identity-safe | P0 | L | 050 | DONE |
+| 052 | Reduce selected-project Git process count and defer noncritical detail | P1 | L | 051 | DONE |
+| 053 | Batch compact status reads for monitored projects | P1 | M | 050; 051 recommended | TODO |
+
+### Dependency notes
+
+- **Plan 049** is an independent, low-risk UX win and should land first when
+  possible; it changes only the existing sidebar row hit target.
+- **Plan 050** makes selection truthful immediately and removes the known
+  duplicate working-tree refresh. It deliberately does not solve stale
+  results from overlapping tasks.
+- **Plan 051** must follow 050 because it owns the refresh-session identity,
+  cancellation, and publication gate used by later parallel/local query work.
+- **Plan 052** reduces Git process count and moves branch/network detail to
+  point-of-use screens. Reviewer required for porcelain/branch semantics and
+  explicit network policy.
+- **Plan 053** is independent at the source level after the selection/monitor
+  ownership contract is stable. It keeps the existing two-read concurrency
+  bound and no-auto-fetch rule.
+
+### Recommended execution order
+
+1. **Plan 049** — immediate sidebar hit-target win.
+2. **Plan 050** — one visible refresh entrypoint and no duplicate status read.
+3. **Plan 051** — cancellation and stale-result protection.
+4. **Plan 052** — selected-project Git query reduction and deferred detail.
+5. **Plan 053** — one-command compact monitor snapshots; it may execute in a
+   separate isolated workstream after Plan 050 if no shared files conflict.
+
+### Findings considered and rejected/deferred
+
+- One `GitManager` per monitored project: rejected by ADR 0004; it would race
+  the existing selected-repository facade and multiply mutable state.
+- Automatic `git fetch` for selected or monitored projects: rejected; it adds
+  network latency, authentication prompts, and remote side effects to a local
+  refresh path.
+- A custom cache, Git daemon, SQLite index, or new dependency: deferred until
+  measured process reduction proves local Git reads are still the dominant
+  cost after Plans 050–053.
+- Speculative `debounce`, `EquatableView`, or a second render store for
+  `MainMenuView`: deferred; current code already precomputes a render snapshot,
+  and no Instruments trace yet proves SwiftUI invalidation exceeds Git
+  latency. Add a follow-up only with measured evidence.
+- Unbounded parallel Git commands: rejected; read-only local phases may be
+  bounded after Plan 051, but fetch/push/pull/mutations must not overlap
+  unsafely with reads.

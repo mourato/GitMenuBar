@@ -77,9 +77,12 @@ extension MainMenuView {
         case .createBranch:
             showCreateBranch = true
         case let .mergeToDefault(featureBranch):
-            featureBranchName = featureBranch
-            defaultBranchName = gitManager.defaultBranchName
-            showMergeCleanupDialog = true
+            Task {
+                let detectedDefaultBranch = await gitManager.getDefaultBranchNameAsync()
+                featureBranchName = featureBranch
+                defaultBranchName = detectedDefaultBranch
+                showMergeCleanupDialog = true
+            }
         case .switchToBranchList:
             presentBranchSelector()
         case let .switchBranch(branchName):

@@ -7,11 +7,7 @@ final class WorkingTreeParser {
         let untrackedPaths: Set<String>
     }
 
-    private let runner: GitCommandRunner
-
-    init(runner: GitCommandRunner) {
-        self.runner = runner
-    }
+    init(runner _: GitCommandRunner) {}
 
     func parsePorcelainStatus(_ output: String) -> PorcelainStatus {
         var stagedStatuses: [String: WorkingTreeFileStatus] = [:]
@@ -78,21 +74,9 @@ final class WorkingTreeParser {
         paths: Set<String>,
         repositoryPath: String
     ) -> [String: LineDiffStats] {
-        var map: [String: LineDiffStats] = [:]
-        for path in paths {
-            let output = runner.runGitCommand(
-                in: repositoryPath,
-                args: ["diff", "--no-index", "--numstat", "--", "/dev/null", path]
-            ).output
-
-            if let parsed = parseNumstat(output)[path] {
-                map[path] = parsed
-                continue
-            }
-
-            map[path] = LineDiffStats(added: lineCountForFile(path, repositoryPath: repositoryPath), removed: 0)
+        paths.reduce(into: [:]) { result, path in
+            result[path] = LineDiffStats(added: lineCountForFile(path, repositoryPath: repositoryPath), removed: 0)
         }
-        return map
     }
 
     private func visualStatus(for statusCode: Character) -> WorkingTreeFileStatus {
@@ -121,7 +105,13 @@ final class WorkingTreeParser {
     }
 
     private func lineCountForFile(_ path: String, repositoryPath: String) -> Int {
-        let fullPath = (repositoryPath as NSString).appendingPathComponent(path)
+        let repositoryURL = URL(fileURLWithPath: repositoryPath).standardizedFileURL
+        let fullURL = repositoryURL.appendingPathComponent(path).standardizedFileURL
+        guard fullURL.path == repositoryURL.path || fullURL.path.hasPrefix(repositoryURL.path + "/") else {
+            return 0
+        }
+
+        let fullPath = fullURL.path
         guard let content = try? String(contentsOfFile: fullPath, encoding: .utf8), !content.isEmpty else {
             return 0
         }

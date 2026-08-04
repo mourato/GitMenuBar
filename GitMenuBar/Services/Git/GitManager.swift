@@ -166,25 +166,17 @@ class GitManager: ObservableObject {
         session: GitRefreshSession?
     ) async {
         guard !Task.isCancelled else { return }
-        await updateLocalCommitCountAsync(session: session)
-        guard !Task.isCancelled else { return }
         await updateUncommittedFilesAsync(session: session)
         guard !Task.isCancelled else { return }
-        await updateBranchInfoAsync(session: session)
+        let commitCount = await updateBranchInfoAsync(session: session)
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
+            self.commitCount = commitCount
+        }
         guard !Task.isCancelled else { return }
         await updateRemoteUrlAsync(session: session)
         guard !Task.isCancelled else { return }
         await fetchCommitHistoryAsync(includeReflog: includeReflogHistory, session: session)
         guard !Task.isCancelled else { return }
-        await fetchBranchesAsync(session: session)
-        guard !Task.isCancelled else { return }
-        _ = await resolveBranchInfoAsync(session: session)
-        guard !Task.isCancelled else { return }
-        _ = await getDefaultBranchNameAsync(session: session)
-        guard !Task.isCancelled else { return }
-        await checkRemoteStatusAsync(session: session)
-        guard !Task.isCancelled else { return }
-        await checkRepoVisibilityAsync(session: session)
     }
 
     func refresh(
@@ -1188,10 +1180,10 @@ class GitManager: ObservableObject {
     }
 
     func updateBranchInfoAsync() async {
-        await branchService.updateBranchInfoAsync()
+        _ = await branchService.updateBranchInfoAsync()
     }
 
-    private func updateBranchInfoAsync(session: GitRefreshSession?) async {
+    private func updateBranchInfoAsync(session: GitRefreshSession?) async -> Int {
         await branchService.updateBranchInfoAsync(session: session)
     }
 
