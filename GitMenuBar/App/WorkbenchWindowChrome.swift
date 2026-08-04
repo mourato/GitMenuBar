@@ -62,7 +62,7 @@ final class WorkbenchWindowShellView: NSView {
     private func setUpViews() {
         wantsLayer = true
 
-        visualEffectView.material = .underWindowBackground
+        visualEffectView.material = .windowBackground
         visualEffectView.blendingMode = .behindWindow
         visualEffectView.state = .active
         visualEffectView.translatesAutoresizingMaskIntoConstraints = false
