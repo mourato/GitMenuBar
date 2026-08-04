@@ -1,22 +1,18 @@
 import SwiftUI
 
 /// Owns the single native grouped Form and its vertical scrolling for a settings page.
-struct SettingsFormPage<Header: View, Content: View>: View {
-    private let header: Header
+struct SettingsFormPage<Content: View>: View {
     private let content: Content
 
     init(
-        @ViewBuilder header: () -> Header,
         @ViewBuilder content: () -> Content
     ) {
-        self.header = header()
         self.content = content()
     }
 
     var body: some View {
         GeometryReader { geometry in
             Form {
-                header
                 content
             }
             .formStyle(.grouped)
@@ -35,8 +31,6 @@ struct SettingsFormPage<Header: View, Content: View>: View {
 
 #Preview("Settings Form Page — 560") {
     SettingsFormPage {
-        SettingsFormSectionHeader(title: "Preferences", icon: "gearshape")
-    } content: {
         Section("Workflow") {
             Picker("Confirmation delay", selection: .constant(6)) {
                 Text("6 seconds").tag(6)
@@ -57,8 +51,6 @@ struct SettingsFormPage<Header: View, Content: View>: View {
 
 #Preview("Settings Form Page — 600") {
     SettingsFormPage {
-        SettingsFormSectionHeader(title: "Preferences", icon: "gearshape")
-    } content: {
         Section("Workflow") {
             Toggle("Automatically start recording", isOn: .constant(true))
                 .toggleStyle(.switch)

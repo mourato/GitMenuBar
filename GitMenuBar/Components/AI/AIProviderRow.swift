@@ -44,8 +44,6 @@ struct AIProviderRowView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(Color.gray.opacity(0.08))
-        .cornerRadius(6)
     }
 }
 

@@ -13,8 +13,6 @@ struct GeneralSettingsPaneView: View {
 
     var body: some View {
         SettingsFormPage {
-            SettingsFormSectionHeader(title: "General", icon: "gearshape")
-        } content: {
             Section {
                 Toggle(
                     "Open at Login",
@@ -95,8 +93,6 @@ struct GitSettingsPaneView: View {
 
     var body: some View {
         SettingsFormPage {
-            SettingsFormSectionHeader(title: "Git", icon: "arrow.triangle.branch")
-        } content: {
             Section {
                 Toggle("Hide commit message field", isOn: $hideCommitMessageField)
                     .toggleStyle(.switch)
@@ -241,8 +237,6 @@ struct AISettingsPaneView: View {
 
     var body: some View {
         SettingsFormPage {
-            SettingsFormSectionHeader(title: "AI", icon: "sparkles")
-        } content: {
             Section {
                 AISettingsSectionView()
             } header: {
@@ -273,8 +267,6 @@ struct ShortcutsSettingsPaneView: View {
 
     var body: some View {
         SettingsFormPage {
-            SettingsFormSectionHeader(title: "Shortcuts", icon: "keyboard")
-        } content: {
             Section {
                 KeyboardShortcutsSection()
             } header: {

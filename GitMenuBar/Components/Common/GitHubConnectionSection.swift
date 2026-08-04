@@ -2,7 +2,6 @@ import SwiftUI
 
 struct GitHubConnectionSection: View {
     @EnvironmentObject private var githubAuthManager: GitHubAuthManager
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     let setAutoHideSuspended: (Bool) -> Void
 
@@ -22,7 +21,6 @@ struct GitHubConnectionSection: View {
                 }
                 .padding(.horizontal, WorkbenchMetrics.compactSpacing)
                 .padding(.vertical, WorkbenchMetrics.microSpacing)
-                .githubConnectionCardChrome(contrast: colorSchemeContrast)
             } else if githubAuthManager.isAuthenticating {
                 authenticatingView
             } else {
@@ -78,7 +76,6 @@ struct GitHubConnectionSection: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, WorkbenchMetrics.sectionSpacing)
         .padding(.horizontal, WorkbenchMetrics.sectionSpacing)
-        .githubConnectionCardChrome(contrast: colorSchemeContrast)
     }
 
     private var disconnectedView: some View {
@@ -104,25 +101,6 @@ struct GitHubConnectionSection: View {
         }
         .padding(.horizontal, WorkbenchMetrics.compactSpacing)
         .padding(.vertical, WorkbenchMetrics.microSpacing)
-        .githubConnectionCardChrome(contrast: colorSchemeContrast)
-    }
-}
-
-private struct GitHubConnectionCardChromeModifier: ViewModifier {
-    let contrast: ColorSchemeContrast
-
-    func body(content: Content) -> some View {
-        content
-            .overlay(
-                RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous)
-                    .strokeBorder(WorkbenchPalette.neutralBorder(contrast: contrast), lineWidth: 1)
-            )
-    }
-}
-
-private extension View {
-    func githubConnectionCardChrome(contrast: ColorSchemeContrast) -> some View {
-        modifier(GitHubConnectionCardChromeModifier(contrast: contrast))
     }
 }
 

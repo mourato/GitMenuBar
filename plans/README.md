@@ -609,3 +609,36 @@ Balance). Planned against commit `8176c3d`.
   the predictable source.
 - Adding OpenRouter as an AI commit-message provider: rejected — commit
   providers and usage monitors are different domains (Plan 023 precedent).
+
+## Settings Form flattening — 2026-08-04
+
+Plan [048](048-settings-form-flatten-cardless.md) aligns the already-migrated
+GitMenuBar Settings panes with the sibling `gugu` composition: one grouped
+native `Form` per tab, native `Section`s as the grouping surface, no duplicate
+pane-title row inside the Form, and no permanent card plates around GitHub,
+AI-provider, or recent-project rows.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 048 | Flatten Settings panes to one native Form grouping surface | P1 | S | 034, 035 (DONE) | DONE (validated in working tree) |
+
+### Dependency notes
+
+- Plans 034 and 035 already provide the Form surface and pane IA; Plan 048 is
+  a follow-up visual flattening pass and must not reopen their deferred
+  sidebar/search/package decisions.
+- Execute serially because the shared `SettingsFormPage` API and the three
+  embedded row surfaces are one visual contract.
+
+### Findings considered and rejected
+
+- Replacing `sindresorhus/Settings` with a custom sidebar or
+  `NavigationSplitView`: rejected for this slice; the current toolbar panes
+  already match the sibling's tabbed window and the request is about content
+  grouping.
+- Adding a new generic Form-row abstraction: rejected; native Form rows and
+  the existing small components are enough.
+- Removing every small semantic chip or native input outline: rejected; those
+  communicate state or affordance and are not group containers.

@@ -21,8 +21,9 @@ struct RecentPathRowView: View {
                 Spacer()
             }
             .frame(minHeight: rowHeight)
+            .contentShape(Rectangle())
         }
-        .workbenchRow()
+        .buttonStyle(.plain)
     }
 }
 
