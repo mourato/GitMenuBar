@@ -75,12 +75,90 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
     }
 }
 
+enum ProjectStatusPorcelainParser {
+    struct Result: Equatable {
+        var branchName = ""
+        var isDetachedHead = false
+        var stagedCount = 0
+        var unstagedCount = 0
+        var untrackedCount = 0
+        var aheadCount = 0
+        var behindCount = 0
+        var hasUpstream = false
+    }
+
+    static func parse(_ output: String) -> Result {
+        var result = Result()
+        var branchObjectID = ""
+
+        for record in output.split(separator: "\0", omittingEmptySubsequences: true) {
+            if parseHeader(record, result: &result, branchObjectID: &branchObjectID) {
+                continue
+            }
+            parseStatus(record, result: &result)
+        }
+
+        if result.isDetachedHead {
+            result.branchName = String(branchObjectID.prefix(7))
+        }
+        return result
+    }
+
+    private static func parseHeader(
+        _ record: Substring,
+        result: inout Result,
+        branchObjectID: inout String
+    ) -> Bool {
+        switch record {
+        case let record where record.hasPrefix("# branch.head "):
+            let value = String(record.dropFirst("# branch.head ".count))
+            result.isDetachedHead = value == "(detached)"
+            if !result.isDetachedHead {
+                result.branchName = value
+            }
+        case let record where record.hasPrefix("# branch.oid "):
+            branchObjectID = String(record.dropFirst("# branch.oid ".count))
+        case let record where record.hasPrefix("# branch.upstream "):
+            result.hasUpstream = true
+        case let record where record.hasPrefix("# branch.ab "):
+            let values = record.split(separator: " ")
+            guard values.count == 4 else { return true }
+            result.aheadCount = Int(values[2].dropFirst()) ?? 0
+            result.behindCount = Int(values[3].dropFirst()) ?? 0
+        default:
+            return false
+        }
+        return true
+    }
+
+    private static func parseStatus(_ record: Substring, result: inout Result) {
+        if record.hasPrefix("?") {
+            result.untrackedCount += 1
+            return
+        }
+        guard record.first == "1" || record.first == "2" || record.first == "u" else { return }
+        let fields = record.split(separator: " ", maxSplits: 2)
+        guard let status = fields.dropFirst().first, status.count == 2 else { return }
+        let index = status[status.startIndex]
+        let worktree = status[status.index(status.startIndex, offsetBy: 1)]
+        if index != "." {
+            result.stagedCount += 1
+        }
+        if index == ".", worktree != "." {
+            result.unstagedCount += 1
+        }
+    }
+}
+
 struct ProjectStatusReader {
     let runner: GitCommandRunner
 
     func read(project: ProjectReference, now: Date = Date()) -> ProjectStatusSnapshot {
-        let root = runner.runGitCommand(in: project.path, args: ["rev-parse", "--show-toplevel"])
-        guard !root.failure else {
+        let status = runner.runGitCommand(
+            in: project.path,
+            args: ["status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"]
+        )
+        guard !status.failure else {
             let exists = FileManager.default.fileExists(atPath: project.path)
             return ProjectStatusSnapshot(
                 project: project, branchName: "", isDetachedHead: false, stagedCount: 0,
@@ -90,46 +168,13 @@ struct ProjectStatusReader {
             )
         }
 
-        let status = runner.runGitCommand(in: project.path, args: ["status", "--porcelain", "-uall"])
-        let counts = status.output.split(whereSeparator: \.isNewline).reduce(into: (0, 0, 0)) { result, line in
-            guard line.count >= 2 else { return }
-            let index = line[line.startIndex]
-            let worktree = line[line.index(line.startIndex, offsetBy: 1)]
-            if index == "?" && worktree == "?" {
-                result.2 += 1
-            } else if index != " " {
-                result.0 += 1
-            } else if worktree == "?" {
-                result.2 += 1
-            } else if worktree != " " {
-                result.1 += 1
-            }
-        }
-        let branch = runner.runGitCommand(in: project.path, args: ["symbolic-ref", "--quiet", "--short", "HEAD"])
-        let isDetached = branch.failure
-        let branchName: String
-        if isDetached {
-            branchName = runner.runGitCommand(in: project.path, args: ["rev-parse", "--short", "HEAD"])
-                .output.trimmingCharacters(in: .whitespacesAndNewlines)
-        } else {
-            branchName = branch.output.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        let upstream = runner.runGitCommand(in: project.path, args: ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
-        var ahead = 0
-        var behind = 0
-        if !upstream.failure {
-            let counts = runner.runGitCommand(in: project.path, args: ["rev-list", "--left-right", "--count", "@{u}...HEAD"]).output
-                .split(whereSeparator: \.isWhitespace).compactMap { Int($0) }
-            if counts.count == 2 {
-                behind = counts[0]; ahead = counts[1]
-            }
-        }
+        let parsed = ProjectStatusPorcelainParser.parse(status.output)
         return ProjectStatusSnapshot(
-            project: project, branchName: branchName, isDetachedHead: isDetached,
-            stagedCount: counts.0, unstagedCount: counts.1, untrackedCount: counts.2,
-            aheadCount: ahead, behindCount: behind, hasUpstream: !upstream.failure,
+            project: project, branchName: parsed.branchName, isDetachedHead: parsed.isDetachedHead,
+            stagedCount: parsed.stagedCount, unstagedCount: parsed.unstagedCount, untrackedCount: parsed.untrackedCount,
+            aheadCount: parsed.aheadCount, behindCount: parsed.behindCount, hasUpstream: parsed.hasUpstream,
             lastRefreshedAt: now,
-            lastErrorDescription: status.failure ? status.output : nil
+            lastErrorDescription: nil
         )
     }
 }

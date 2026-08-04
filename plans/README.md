@@ -670,7 +670,7 @@ per-project GitManager, cache, dependency, or speculative UI debounce.
 | 050 | Show an immediate, single refresh state when switching projects | P0 | M | 049 recommended | DONE |
 | 051 | Make selected-project refreshes cancellable and identity-safe | P0 | L | 050 | DONE |
 | 052 | Reduce selected-project Git process count and defer noncritical detail | P1 | L | 051 | DONE |
-| 053 | Batch compact status reads for monitored projects | P1 | M | 050; 051 recommended | TODO |
+| 053 | Batch compact status reads for monitored projects | P1 | M | 050; 051 recommended | DONE |
 
 ### Dependency notes
 
