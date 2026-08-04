@@ -146,7 +146,7 @@ extension MainMenuView {
             onMergeToDefaultBranch: { branch in
                 dismissTransientPresentations()
                 Task {
-                    let detectedDefaultBranch = await gitManager.getDefaultBranchNameAsync()
+                    guard let detectedDefaultBranch = await gitManager.getSelectedDefaultBranchNameAsync() else { return }
                     featureBranchName = branch
                     defaultBranchName = detectedDefaultBranch
                     showMergeToDefaultConfirmation = true

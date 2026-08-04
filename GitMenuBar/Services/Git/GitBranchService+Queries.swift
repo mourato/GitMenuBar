@@ -111,7 +111,7 @@ extension GitBranchService {
                 in: repositoryPath,
                 args: [
                     "for-each-ref",
-                    "--format=%(refname:short)%00%(upstream:short)%00%(committerdate:unix)%00%(upstream:track,nobracket)%00",
+                    "--format=%(refname)%00%(upstream:short)%00%(committerdate:unix)%00%(upstream:track,nobracket)%00",
                     "refs/heads",
                     "refs/remotes/origin"
                 ]
@@ -133,23 +133,22 @@ extension GitBranchService {
         for record in output.split(separator: "\n", omittingEmptySubsequences: true) {
             let fields = record.split(separator: "\0", omittingEmptySubsequences: false).map(String.init)
             guard fields.count >= 4 else { continue }
-            let ref = fields[0]
-            guard !ref.isEmpty else { continue }
+            let fullRef = fields[0]
+            guard !fullRef.isEmpty else { continue }
             let upstream = fields[1]
             let date = TimeInterval(fields[2]).map(Date.init(timeIntervalSince1970:))
             let track = fields[3]
 
-            if ref == "origin" {
-                continue
-            }
-            if ref.hasPrefix("origin/") {
-                let name = String(ref.dropFirst("origin/".count))
+            if fullRef.hasPrefix("refs/remotes/origin/") {
+                let name = String(fullRef.dropFirst("refs/remotes/origin/".count))
                 guard !name.isEmpty, name != "HEAD" else { continue }
                 guard !localNames.contains(name) else { continue }
                 infos.append(BranchInfo(name: name, isLocal: false, isRemote: true, isCurrent: false, trackingStatus: .noRemote, lastCommitDate: date))
                 continue
             }
 
+            guard fullRef.hasPrefix("refs/heads/") else { continue }
+            let ref = String(fullRef.dropFirst("refs/heads/".count))
             localNames.insert(ref)
             infos.append(
                 BranchInfo(

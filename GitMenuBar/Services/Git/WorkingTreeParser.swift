@@ -105,8 +105,12 @@ final class WorkingTreeParser {
     }
 
     private func lineCountForFile(_ path: String, repositoryPath: String) -> Int {
-        let repositoryURL = URL(fileURLWithPath: repositoryPath).standardizedFileURL
-        let fullURL = repositoryURL.appendingPathComponent(path).standardizedFileURL
+        guard !repositoryPath.isEmpty else { return 0 }
+        let repositoryURL = URL(fileURLWithPath: repositoryPath).standardizedFileURL.resolvingSymlinksInPath()
+        let fullURL = repositoryURL
+            .appendingPathComponent(path)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
         guard fullURL.path == repositoryURL.path || fullURL.path.hasPrefix(repositoryURL.path + "/") else {
             return 0
         }

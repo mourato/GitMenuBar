@@ -255,14 +255,15 @@ final class GitManagerBranchOperationsTests: XCTestCase {
 
     func testParseBranchInfoOutputPreservesTrackingSemantics() {
         let fields = [
-            "main", "origin/main", "100", "",
-            "ahead", "origin/ahead", "101", "ahead 2",
-            "behind", "origin/behind", "102", "behind 3",
-            "diverged", "origin/diverged", "103", "ahead 4, behind 5",
-            "none", "", "104", "",
-            "origin/remote-only", "", "105", "",
-            "origin/HEAD", "", "106", "",
-            "malformed", "origin/malformed", "107", "wat"
+            "refs/heads/main", "origin/main", "100", "",
+            "refs/heads/ahead", "origin/ahead", "101", "ahead 2",
+            "refs/heads/behind", "origin/behind", "102", "behind 3",
+            "refs/heads/diverged", "origin/diverged", "103", "ahead 4, behind 5",
+            "refs/heads/none", "", "104", "",
+            "refs/heads/origin", "", "105", "",
+            "refs/remotes/origin/remote-only", "", "106", "",
+            "refs/remotes/origin/HEAD", "", "107", "",
+            "refs/heads/malformed", "origin/malformed", "108", "wat"
         ]
         let output = stride(from: 0, to: fields.count, by: 4)
             .map { fields[$0 ..< $0 + 4].joined(separator: "\0") + "\0" }
@@ -278,6 +279,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertEqual(infos.first { $0.name == "none" }?.trackingStatus, .noRemote)
         XCTAssertEqual(infos.first { $0.name == "malformed" }?.trackingStatus, .unknown)
         XCTAssertEqual(infos.first { $0.name == "remote-only" }?.displayName, "origin/remote-only")
+        XCTAssertTrue(infos.first { $0.name == "origin" }?.isLocal == true)
         XCTAssertFalse(infos.contains { $0.name == "HEAD" })
         XCTAssertTrue(infos.first { $0.name == "main" }?.isCurrent == true)
         XCTAssertEqual(infos.first { $0.name == "main" }?.lastCommitDate, Date(timeIntervalSince1970: 100))

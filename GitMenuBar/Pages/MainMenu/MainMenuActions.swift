@@ -99,7 +99,7 @@ extension MainMenuView {
         dismissTransientPresentations()
         showBranchSelector = shouldPresent
         if shouldPresent, gitManager.availableBranches.isEmpty {
-            Task { await gitManager.fetchBranchesAsync() }
+            Task { await gitManager.fetchSelectedBranchesAsync() }
         }
     }
 
@@ -114,7 +114,7 @@ extension MainMenuView {
         dismissTransientPresentations()
         showBranchSelector = true
         if gitManager.availableBranches.isEmpty {
-            Task { await gitManager.fetchBranchesAsync() }
+            Task { await gitManager.fetchSelectedBranchesAsync() }
         }
     }
 

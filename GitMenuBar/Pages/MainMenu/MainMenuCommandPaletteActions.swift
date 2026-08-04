@@ -78,7 +78,7 @@ extension MainMenuView {
             showCreateBranch = true
         case let .mergeToDefault(featureBranch):
             Task {
-                let detectedDefaultBranch = await gitManager.getDefaultBranchNameAsync()
+                guard let detectedDefaultBranch = await gitManager.getSelectedDefaultBranchNameAsync() else { return }
                 featureBranchName = featureBranch
                 defaultBranchName = detectedDefaultBranch
                 showMergeCleanupDialog = true

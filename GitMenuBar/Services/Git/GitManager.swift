@@ -75,6 +75,7 @@ class GitManager: ObservableObject {
             repositoryContext: repositoryContext,
             commandRunner: commandRunner
         )
+        selectedRefreshPath = GitRepositoryContext.normalizedPath(storedRepoPath)
         self.branchService.refreshHandler = { [weak self] block in
             self?.refresh(completion: block)
         }
@@ -206,13 +207,7 @@ class GitManager: ObservableObject {
         selectedRefreshPath = GitRepositoryContext.normalizedPath(storedRepoPath)
         let generation = selectedRefreshGeneration
         let sessionPath = selectedRefreshPath
-        let session = GitRefreshSession(
-            repositoryPath: selectedRefreshPath,
-            generation: generation
-        ) { [weak self] in
-            guard let self else { return false }
-            return self.selectedRefreshGeneration == generation && self.selectedRefreshPath == sessionPath
-        }
+        let session = makeSelectedRefreshSession(path: sessionPath, generation: generation)
         let operation = selectedRefreshOperation
         selectedRefreshTask = Task { [weak self] in
             guard let self else { return }
@@ -225,6 +220,39 @@ class GitManager: ObservableObject {
             await GitExecution.publishOnMainActor(ifCurrent: session) {
                 completion?()
             }
+        }
+    }
+
+    @MainActor
+    func fetchSelectedBranchesAsync() async {
+        let session = makeCurrentSelectedRefreshSession()
+        guard session.isCurrent() else { return }
+        await fetchBranchesAsync(session: session)
+    }
+
+    @MainActor
+    func getSelectedDefaultBranchNameAsync() async -> String? {
+        let session = makeCurrentSelectedRefreshSession()
+        guard session.isCurrent() else { return nil }
+        let defaultBranch = await getDefaultBranchNameAsync(session: session)
+        return session.isCurrent() ? defaultBranch : nil
+    }
+
+    @MainActor
+    private func makeCurrentSelectedRefreshSession() -> GitRefreshSession {
+        makeSelectedRefreshSession(
+            path: GitRepositoryContext.normalizedPath(storedRepoPath),
+            generation: selectedRefreshGeneration
+        )
+    }
+
+    @MainActor
+    private func makeSelectedRefreshSession(path: String, generation: Int) -> GitRefreshSession {
+        GitRefreshSession(repositoryPath: path, generation: generation) { [weak self] in
+            guard let self else { return false }
+            return self.selectedRefreshGeneration == generation
+                && self.selectedRefreshPath == path
+                && GitRepositoryContext.normalizedPath(self.storedRepoPath) == path
         }
     }
 

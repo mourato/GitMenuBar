@@ -39,17 +39,27 @@ final class WorkingTreeParserTests: XCTestCase {
         try FileManager.default.createDirectory(at: repositoryURL, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: repositoryURL) }
 
+        let outsideURL = repositoryURL.deletingLastPathComponent()
+            .appendingPathComponent("WorkingTreeParserTests-outside-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: outsideURL) }
+        try "outside\n".write(to: outsideURL, atomically: true, encoding: .utf8)
+
         try FileManager.default.createDirectory(at: repositoryURL.appendingPathComponent("nested"), withIntermediateDirectories: true)
         try "one\ntwo\n".write(to: repositoryURL.appendingPathComponent("nested/file.txt"), atomically: true, encoding: .utf8)
+        try FileManager.default.createSymbolicLink(
+            at: repositoryURL.appendingPathComponent("nested/escape"),
+            withDestinationURL: outsideURL
+        )
         try Data([0, 255, 1]).write(to: repositoryURL.appendingPathComponent("binary"))
         try "".write(to: repositoryURL.appendingPathComponent("empty"), atomically: true, encoding: .utf8)
 
         let diffs = parser.lineDiffForUntrackedFiles(
-            paths: ["nested/file.txt", "binary", "empty", "../outside"],
+            paths: ["nested/file.txt", "nested/escape", "binary", "empty", "../outside"],
             repositoryPath: repositoryURL.path
         )
 
         XCTAssertEqual(diffs["nested/file.txt"], LineDiffStats(added: 2, removed: 0))
+        XCTAssertEqual(diffs["nested/escape"], LineDiffStats(added: 0, removed: 0))
         XCTAssertEqual(diffs["binary"], LineDiffStats(added: 0, removed: 0))
         XCTAssertEqual(diffs["empty"], LineDiffStats(added: 0, removed: 0))
         XCTAssertEqual(diffs["../outside"], LineDiffStats(added: 0, removed: 0))
