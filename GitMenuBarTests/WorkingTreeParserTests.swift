@@ -32,4 +32,26 @@ final class WorkingTreeParserTests: XCTestCase {
         XCTAssertEqual(numstat["Sources/App.swift"], LineDiffStats(added: 10, removed: 2))
         XCTAssertEqual(numstat["Sources/NewFile.swift"], LineDiffStats(added: 3, removed: 0))
     }
+
+    func testLineDiffForUntrackedFilesReadsRegularFilesWithoutGitDiff() throws {
+        let repositoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("WorkingTreeParserTests-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: repositoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: repositoryURL) }
+
+        try FileManager.default.createDirectory(at: repositoryURL.appendingPathComponent("nested"), withIntermediateDirectories: true)
+        try "one\ntwo\n".write(to: repositoryURL.appendingPathComponent("nested/file.txt"), atomically: true, encoding: .utf8)
+        try Data([0, 255, 1]).write(to: repositoryURL.appendingPathComponent("binary"))
+        try "".write(to: repositoryURL.appendingPathComponent("empty"), atomically: true, encoding: .utf8)
+
+        let diffs = parser.lineDiffForUntrackedFiles(
+            paths: ["nested/file.txt", "binary", "empty", "../outside"],
+            repositoryPath: repositoryURL.path
+        )
+
+        XCTAssertEqual(diffs["nested/file.txt"], LineDiffStats(added: 2, removed: 0))
+        XCTAssertEqual(diffs["binary"], LineDiffStats(added: 0, removed: 0))
+        XCTAssertEqual(diffs["empty"], LineDiffStats(added: 0, removed: 0))
+        XCTAssertEqual(diffs["../outside"], LineDiffStats(added: 0, removed: 0))
+    }
 }

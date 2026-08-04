@@ -253,6 +253,36 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertEqual(BranchTrackingStatus.unknown.description, "Unknown")
     }
 
+    func testParseBranchInfoOutputPreservesTrackingSemantics() {
+        let fields = [
+            "main", "origin/main", "100", "",
+            "ahead", "origin/ahead", "101", "ahead 2",
+            "behind", "origin/behind", "102", "behind 3",
+            "diverged", "origin/diverged", "103", "ahead 4, behind 5",
+            "none", "", "104", "",
+            "origin/remote-only", "", "105", "",
+            "origin/HEAD", "", "106", "",
+            "malformed", "origin/malformed", "107", "wat"
+        ]
+        let output = stride(from: 0, to: fields.count, by: 4)
+            .map { fields[$0 ..< $0 + 4].joined(separator: "\0") + "\0" }
+            .joined(separator: "\n")
+
+        let manager = GitManager(repositoryPathOverride: "")
+        let infos = manager.branchService.parseBranchInfoOutput(output, currentBranch: "main")
+
+        XCTAssertEqual(infos.first { $0.name == "main" }?.trackingStatus, .upToDate)
+        XCTAssertEqual(infos.first { $0.name == "ahead" }?.trackingStatus, .ahead(2))
+        XCTAssertEqual(infos.first { $0.name == "behind" }?.trackingStatus, .behind(3))
+        XCTAssertEqual(infos.first { $0.name == "diverged" }?.trackingStatus, .diverged(ahead: 4, behind: 5))
+        XCTAssertEqual(infos.first { $0.name == "none" }?.trackingStatus, .noRemote)
+        XCTAssertEqual(infos.first { $0.name == "malformed" }?.trackingStatus, .unknown)
+        XCTAssertEqual(infos.first { $0.name == "remote-only" }?.displayName, "origin/remote-only")
+        XCTAssertFalse(infos.contains { $0.name == "HEAD" })
+        XCTAssertTrue(infos.first { $0.name == "main" }?.isCurrent == true)
+        XCTAssertEqual(infos.first { $0.name == "main" }?.lastCommitDate, Date(timeIntervalSince1970: 100))
+    }
+
     /// Locks in the facade wiring: branch state computed by `GitBranchService`
     /// must be reflected on `GitManager`'s public branch properties via the
     /// Combine pipe.

@@ -98,6 +98,9 @@ extension MainMenuView {
         }
         dismissTransientPresentations()
         showBranchSelector = shouldPresent
+        if shouldPresent, gitManager.availableBranches.isEmpty {
+            Task { await gitManager.fetchBranchesAsync() }
+        }
     }
 
     func presentBranchSelector() {
@@ -110,6 +113,9 @@ extension MainMenuView {
         }
         dismissTransientPresentations()
         showBranchSelector = true
+        if gitManager.availableBranches.isEmpty {
+            Task { await gitManager.fetchBranchesAsync() }
+        }
     }
 
     func createNewBranch() {
