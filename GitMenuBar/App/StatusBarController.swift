@@ -93,9 +93,6 @@ final class StatusBarController: ObservableObject {
         usageQuotaStore: usageQuotaStore,
         onSetAutoHideSuspended: { [weak self] suspended in
             self?.setAutoHideSuspended(suspended)
-        },
-        onRequestCreateRepo: { [weak self] path in
-            self?.openMainWindowWithCreateRepo(path: path)
         }
     )
 

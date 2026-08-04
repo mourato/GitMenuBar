@@ -74,12 +74,9 @@ struct GeneralSettingsPaneView: View {
 }
 
 struct GitSettingsPaneView: View {
-    @AppStorage(AppPreferences.Keys.showFullPathInRecents) private var showFullPathInRecents = false
     @AppStorage(AppPreferences.Keys.hideCommitMessageField) private var hideCommitMessageField = false
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
 
-    @State private var repositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
-    @State private var recentProjects = RecentProjectsStore().recentProjects()
     @State private var showWipeConfirmation = false
     @State private var isWiping = false
     @State private var wipeError: String?
@@ -87,9 +84,6 @@ struct GitSettingsPaneView: View {
     let gitManager: GitManager
     let githubAuthManager: GitHubAuthManager
     let onSetAutoHideSuspended: (Bool) -> Void
-    let onRequestCreateRepo: (String) -> Void
-
-    private let recentProjectsStore = RecentProjectsStore()
 
     var body: some View {
         SettingsFormPage {
@@ -103,29 +97,6 @@ struct GitSettingsPaneView: View {
                     "When enabled, GitMenuBar hides the text field and prefers automatic commit messages. "
                         + "If automatic generation is unavailable, the field is shown when needed."
                 )
-            }
-
-            Section {
-                RepositoryPathSection(
-                    repositoryPath: Binding(
-                        get: { PathDisplayFormatter.abbreviatedPath(repositoryPath) },
-                        set: { updateRepositoryPath(PathDisplayFormatter.expandedPath($0)) }
-                    ),
-                    onBrowse: browseRepository
-                )
-            } header: {
-                SettingsFormSectionHeader(title: "Repository Path", icon: "folder")
-            }
-
-            Section {
-                RecentProjectsSection(
-                    recentProjects: recentProjects,
-                    currentRepoPath: repositoryPath,
-                    showFullPathInRecents: $showFullPathInRecents,
-                    onSelectPath: selectRecentPath
-                )
-            } header: {
-                SettingsFormSectionHeader(title: "Recent Projects", icon: "clock")
             }
 
             Section {
@@ -171,43 +142,6 @@ struct GitSettingsPaneView: View {
             Text(wipeError ?? "An unknown error occurred.")
         }
         .preferredColorScheme(preferredColorScheme)
-    }
-
-    private func browseRepository() {
-        onSetAutoHideSuspended(true)
-
-        DirectoryPickerService().selectDirectory(activateApp: true) { selectedPath in
-            self.onSetAutoHideSuspended(false)
-
-            guard let selectedPath else { return }
-            self.applyRepositorySelection(selectedPath, mayOpenCreateRepo: true)
-        }
-    }
-
-    private func selectRecentPath(_ path: String) {
-        applyRepositorySelection(path, mayOpenCreateRepo: true)
-    }
-
-    private func updateRepositoryPath(_ path: String) {
-        repositoryPath = path
-        UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
-    }
-
-    private func applyRepositorySelection(_ path: String, mayOpenCreateRepo: Bool) {
-        let normalizedPath = PathDisplayFormatter.expandedPath(path)
-        guard !normalizedPath.isEmpty else { return }
-
-        updateRepositoryPath(normalizedPath)
-        recentProjectsStore.add(normalizedPath)
-        recentProjects = recentProjectsStore.recentProjects()
-
-        if !gitManager.isGitRepository(at: normalizedPath), mayOpenCreateRepo, githubAuthManager.isAuthenticated {
-            NSApp.keyWindow?.performClose(nil)
-            onRequestCreateRepo(normalizedPath)
-            return
-        }
-
-        gitManager.refresh(includeReflogHistory: false)
     }
 
     private func wipeRepository() {
@@ -304,8 +238,7 @@ private enum SettingsAppearance {
     return GitSettingsPaneView(
         gitManager: gitManager,
         githubAuthManager: githubAuthManager,
-        onSetAutoHideSuspended: { _ in },
-        onRequestCreateRepo: { _ in }
+        onSetAutoHideSuspended: { _ in }
     )
     .environmentObject(githubAuthManager)
 }

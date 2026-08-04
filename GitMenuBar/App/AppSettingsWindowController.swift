@@ -25,8 +25,7 @@ final class AppSettingsWindowController {
         aiProviderStore: AIProviderStore,
         aiCommitCoordinator: AICommitCoordinator,
         usageQuotaStore: UsageQuotaStore,
-        onSetAutoHideSuspended: @escaping (Bool) -> Void,
-        onRequestCreateRepo: @escaping (String) -> Void
+        onSetAutoHideSuspended: @escaping (Bool) -> Void
     ) {
         let generalPane = Settings.Pane(
             identifier: .gitMenuBarGeneral,
@@ -47,8 +46,7 @@ final class AppSettingsWindowController {
                 GitSettingsPaneView(
                     gitManager: gitManager,
                     githubAuthManager: githubAuthManager,
-                    onSetAutoHideSuspended: onSetAutoHideSuspended,
-                    onRequestCreateRepo: onRequestCreateRepo
+                    onSetAutoHideSuspended: onSetAutoHideSuspended
                 )
                 .environmentObject(githubAuthManager)
             }
