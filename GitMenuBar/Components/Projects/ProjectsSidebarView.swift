@@ -188,6 +188,7 @@ struct ProjectsSidebarView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
             .background(
                 snapshot.project.path == RecentProjectsStore.normalize(currentPath)
                     ? Color.accentColor.opacity(0.18)
