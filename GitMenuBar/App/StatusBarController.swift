@@ -126,7 +126,6 @@ final class StatusBarController: ObservableObject {
         setupAuthenticationObservation()
         setupAppCommandObservation()
 
-        gitManager.updateUncommittedFiles()
         projectMonitor.seed(
             currentPath: UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? "",
             recentProjects: RecentProjectsStore().recentProjects()
@@ -1026,15 +1025,12 @@ final class StatusBarController: ObservableObject {
         presentationModel.startRefresh()
         logWindowOpen(trace, message: "refresh started")
 
-        gitManager.updateUncommittedFiles { [weak self] in
+        gitManager.refresh { [weak self] in
             guard let self else { return }
 
-            self.logWindowOpen(trace, message: "working tree loaded")
-            self.gitManager.refresh {
-                self.presentationModel.finishRefresh()
-                self.flushPendingShortcutActionsIfReady()
-                self.logWindowOpen(trace, message: "refresh completed")
-            }
+            self.presentationModel.finishRefresh()
+            self.flushPendingShortcutActionsIfReady()
+            self.logWindowOpen(trace, message: "refresh completed")
         }
     }
 
