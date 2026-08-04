@@ -126,6 +126,29 @@ class GitManager: ObservableObject {
         commitHistoryService.canLoadMoreCommitHistory
     }
 
+    func resetSelectedRepositoryState() {
+        uncommittedFiles = []
+        stagedFiles = []
+        changedFiles = []
+        currentBranch = ""
+        isAheadOfRemote = false
+        remoteUrl = ""
+        commitHistory = []
+        isDetachedHead = false
+        currentHash = ""
+        lastActiveBranch = ""
+        worktreeSnapshot = nil
+        availableBranches = []
+        branchInfos = []
+        defaultBranchName = ""
+        isRemoteAhead = false
+        isBehindRemote = false
+        remoteBranchName = ""
+        behindCount = 0
+        isPrivate = false
+        commitCount = 0
+    }
+
     func refreshAsync(includeReflogHistory: Bool? = nil) async {
         await updateLocalCommitCountAsync()
         await updateUncommittedFilesAsync()

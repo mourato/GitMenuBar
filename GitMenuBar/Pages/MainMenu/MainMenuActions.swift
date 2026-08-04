@@ -187,9 +187,15 @@ extension MainMenuView {
             return
         }
 
+        showProjectSelector = false
+        dismissTransientPresentations()
+        presentationModel.startRefresh()
+        gitManager.resetSelectedRepositoryState()
         setCurrentRepositoryPath(path)
         addToRecents(path)
-        gitManager.refresh(includeReflogHistory: false)
+        gitManager.refresh(includeReflogHistory: false) {
+            presentationModel.finishRefresh()
+        }
     }
 
     func resetToLastCommit() {
