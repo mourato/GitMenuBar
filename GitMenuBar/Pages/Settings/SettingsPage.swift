@@ -77,10 +77,6 @@ struct GitSettingsPaneView: View {
     @AppStorage(AppPreferences.Keys.hideCommitMessageField) private var hideCommitMessageField = false
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
 
-    @State private var showWipeConfirmation = false
-    @State private var isWiping = false
-    @State private var wipeError: String?
-
     let gitManager: GitManager
     let githubAuthManager: GitHubAuthManager
     let onSetAutoHideSuspended: (Bool) -> Void
@@ -104,61 +100,8 @@ struct GitSettingsPaneView: View {
             } header: {
                 SettingsFormSectionHeader(title: "GitHub", icon: "globe")
             }
-
-            Section {
-                Button("Wipe Repository History", role: .destructive) {
-                    showWipeConfirmation = true
-                }
-                .disabled(!githubAuthManager.isAuthenticated || gitManager.remoteUrl.isEmpty)
-                .help("Reset repository to a single commit, erasing all history")
-            } header: {
-                SettingsFormSectionHeader(title: "Danger Zone", icon: "exclamationmark.triangle")
-            } footer: {
-                Text("Permanently erase commit history and reset to a single Initial commit. Current files are preserved.")
-            }
-        }
-        .alert("Wipe Repository History?", isPresented: $showWipeConfirmation) {
-            Button("Cancel", role: .cancel) {}
-            Button("Wipe", role: .destructive) {
-                wipeRepository()
-            }
-            .disabled(isWiping)
-        } message: {
-            Text(
-                "This will permanently erase all commit history and reset the repository to a single \"Initial commit\". " +
-                    "Your current files will be preserved. This action cannot be undone."
-            )
-        }
-        .alert("Wipe Failed", isPresented: .init(
-            get: { wipeError != nil },
-            set: {
-                if !$0 {
-                    wipeError = nil
-                }
-            }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(wipeError ?? "An unknown error occurred.")
         }
         .preferredColorScheme(preferredColorScheme)
-    }
-
-    private func wipeRepository() {
-        isWiping = true
-
-        gitManager.wipeRepository { result in
-            DispatchQueue.main.async {
-                isWiping = false
-
-                switch result {
-                case .success:
-                    gitManager.refresh(includeReflogHistory: false)
-                case let .failure(error):
-                    wipeError = error.localizedDescription
-                }
-            }
-        }
     }
 
     private var preferredColorScheme: ColorScheme? {
