@@ -8,7 +8,7 @@ final class AICommitCoordinatorTests: XCTestCase {
         let provider = makeProvider(hasStoredAPIKey: false)
         providerStore.upsertProvider(provider)
 
-        let apiKeyStore = SpyAIAPIKeyStore(storage: [provider.id: "secret-key"])
+        let apiKeyStore = SpyAIAPIKeyStore(storage: [AIProviderCredentialID(provider: provider): "secret-key"])
         let coordinator = makeCoordinator(
             providerStore: providerStore,
             apiKeyStore: apiKeyStore
@@ -45,7 +45,7 @@ final class AICommitCoordinatorTests: XCTestCase {
         let provider = makeProvider(hasStoredAPIKey: true)
         providerStore.upsertProvider(provider)
 
-        let apiKeyStore = SpyAIAPIKeyStore(storage: [provider.id: "secret-key"])
+        let apiKeyStore = SpyAIAPIKeyStore(storage: [AIProviderCredentialID(provider: provider): "secret-key"])
         let coordinator = makeCoordinator(
             providerStore: providerStore,
             apiKeyStore: apiKeyStore,
@@ -120,7 +120,7 @@ final class AICommitCoordinatorTests: XCTestCase {
         let provider = makeProvider(hasStoredAPIKey: true)
         providerStore.upsertProvider(provider)
 
-        let apiKeyStore = SpyAIAPIKeyStore(storage: [provider.id: "secret-key"])
+        let apiKeyStore = SpyAIAPIKeyStore(storage: [AIProviderCredentialID(provider: provider): "secret-key"])
         let session = makeMockedURLSession()
         var capturedPrompt = ""
 
@@ -221,31 +221,35 @@ final class AICommitCoordinatorTests: XCTestCase {
 }
 
 private final class SpyAIAPIKeyStore: AIAPIKeyStore {
-    private var storage: [UUID: String]
+    private var storage: [AIProviderCredentialID: String]
 
     private(set) var readCount = 0
     private(set) var saveCount = 0
     private(set) var deleteCount = 0
 
-    init(storage: [UUID: String] = [:]) {
+    init(storage: [AIProviderCredentialID: String] = [:]) {
         self.storage = storage
     }
 
-    func saveAPIKey(_ apiKey: String, for providerId: UUID) {
+    func saveAPIKey(_ apiKey: String, for providerId: AIProviderCredentialID) throws {
         saveCount += 1
         storage[providerId] = apiKey
     }
 
-    func apiKey(for providerId: UUID) -> String? {
+    func apiKey(for providerId: AIProviderCredentialID) throws -> String? {
         readCount += 1
         return storage[providerId]
     }
 
-    func fetchAllAPIKeys() -> [UUID: String] {
+    func fetchAllAPIKeys() throws -> [AIProviderCredentialID: String] {
         storage
     }
 
-    func deleteAPIKey(for providerId: UUID) {
+    func replaceAPIKeys(_ values: [AIProviderCredentialID: String]) throws {
+        storage = values
+    }
+
+    func deleteAPIKey(for providerId: AIProviderCredentialID) throws {
         deleteCount += 1
         storage.removeValue(forKey: providerId)
     }

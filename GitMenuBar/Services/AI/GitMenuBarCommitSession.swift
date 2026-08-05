@@ -196,8 +196,13 @@ final class GitMenuBarCommitSession {
     }
 
     private func resolvedAPIKey(for provider: AIProviderConfig) -> String {
-        let apiKey = keychainStore.apiKey(for: provider.id)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let apiKey: String
+        do {
+            apiKey = try (keychainStore.apiKey(for: AIProviderCredentialID(provider: provider)) ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        } catch {
+            return ""
+        }
         let hasStoredAPIKey = !apiKey.isEmpty
 
         if provider.hasStoredAPIKey != hasStoredAPIKey {

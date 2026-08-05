@@ -1,15 +1,57 @@
 import Foundation
 
+/// Compatibility adapter for the existing settings surface; it delegates to the shared blob.
+protocol OpenRouterAPIKeyStoring: Sendable {
+    func loadKey() -> String?
+    func saveKey(_ apiKey: String)
+    func deleteKey()
+}
+
+struct OpenRouterAPIKeyStore: OpenRouterAPIKeyStoring {
+    private let store: any AIAPIKeyStore
+
+    init(store: any AIAPIKeyStore = CachedAIAPIKeyStore.shared) {
+        self.store = store
+    }
+
+    func loadKey() -> String? {
+        try? store.apiKey(for: .openrouter)
+    }
+
+    func saveKey(_ apiKey: String) {
+        try? store.saveAPIKey(apiKey, for: .openrouter)
+    }
+
+    func deleteKey() {
+        try? store.deleteAPIKey(for: .openrouter)
+    }
+}
+
+final class InMemoryOpenRouterAPIKeyStore: OpenRouterAPIKeyStoring, @unchecked Sendable {
+    private let store = InMemoryAIAPIKeyStore()
+    func loadKey() -> String? {
+        try? store.apiKey(for: .openrouter)
+    }
+
+    func saveKey(_ apiKey: String) {
+        try? store.saveAPIKey(apiKey, for: .openrouter)
+    }
+
+    func deleteKey() {
+        try? store.deleteAPIKey(for: .openrouter)
+    }
+}
+
 struct OpenRouterUsageProvider: UsageQuotaProviding {
     let id: UsageProviderID = .openrouter
 
     private let urlSession: URLSession
-    private let keyStore: any OpenRouterAPIKeyStoring
+    private let keyStore: any AIAPIKeyStore
     private let stateStore: OpenRouterUsageStateStore
 
     init(
         urlSession: URLSession = .shared,
-        keyStore: any OpenRouterAPIKeyStoring = OpenRouterAPIKeyStore(),
+        keyStore: any AIAPIKeyStore = AIKeychainStore(),
         stateStore: OpenRouterUsageStateStore = OpenRouterUsageStateStore()
     ) {
         self.urlSession = urlSession
@@ -18,7 +60,16 @@ struct OpenRouterUsageProvider: UsageQuotaProviding {
     }
 
     func fetchSnapshot() async -> UsageQuotaSnapshot {
-        guard let apiKey = keyStore.loadKey(), !apiKey.isEmpty else {
+        let apiKey: String
+        do {
+            guard let storedKey = try keyStore.apiKey(for: .openrouter), !storedKey.isEmpty else {
+                return .unavailable(providerID: .openrouter, statusNote: "add OpenRouter API key in Settings")
+            }
+            apiKey = storedKey
+        } catch {
+            return .unavailable(providerID: .openrouter, statusNote: "OpenRouter credential unavailable")
+        }
+        if apiKey.isEmpty {
             return .unavailable(providerID: .openrouter, statusNote: "add OpenRouter API key in Settings")
         }
 

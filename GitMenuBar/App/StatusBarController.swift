@@ -67,7 +67,7 @@ final class StatusBarController: ObservableObject {
     let aiCommitMessageService = AICommitMessageService()
     let shortcutActionBridge = MainMenuShortcutActionBridge()
     let presentationModel = MainMenuPresentationModel()
-    let usageQuotaStore = UsageQuotaStore()
+    let usageQuotaStore: UsageQuotaStore
     let projectMonitor = ProjectMonitorStore()
 
     lazy var aiCommitCoordinator = AICommitCoordinator(
@@ -102,10 +102,11 @@ final class StatusBarController: ObservableObject {
         if AppExecutionContext.usesEphemeralCredentialStores {
             aiKeychainStore = InMemoryAIAPIKeyStore()
         } else {
-            let cachedStore = CachedAIAPIKeyStore(backingStore: AIKeychainStore())
-            cachedStore.preloadAllKeys() // Eagerly load all keys to avoid multiple keychain prompts
+            let cachedStore = CachedAIAPIKeyStore.shared
+            try? cachedStore.preloadAllKeys() // Retry on demand if the Keychain is locked.
             aiKeychainStore = cachedStore
         }
+        usageQuotaStore = UsageQuotaStore(providers: [CodexUsageProvider(), CursorUsageProvider(), OpenRouterUsageProvider(keyStore: aiKeychainStore)])
 
         // Wire up token provider for git push operations
         gitManager.tokenProvider = { [weak githubAuthManager] in

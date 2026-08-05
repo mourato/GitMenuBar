@@ -6,6 +6,10 @@ language for GitMenuBar surfaces; keep it free of implementation detail.
 
 ## Language
 
+**AI provider credential**:
+The API credential shared by product surfaces that call the same AI backend.
+It remains distinct from the AI usage quotas and AI Commit Generation surfaces.
+
 ### Product surfaces
 
 **AI usage quotas**:
