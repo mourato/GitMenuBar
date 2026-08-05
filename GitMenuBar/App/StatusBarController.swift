@@ -271,6 +271,7 @@ final class StatusBarController: ObservableObject {
                 for: UserDefaults.didChangeNotification,
                 object: UserDefaults.standard
             )
+            .receive(on: RunLoop.main)
             .map { _ in () }
             .eraseToAnyPublisher()
         ]
