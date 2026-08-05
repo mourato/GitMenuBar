@@ -98,6 +98,24 @@ final class UsageQuotaStoreTests: XCTestCase {
         XCTAssertTrue(store.visibleSnapshots.isEmpty)
     }
 
+    func testOpenRouterWithoutSharedCredentialPublishesUnavailableSnapshot() async {
+        let provider = OpenRouterUsageProvider(
+            keyStore: InMemoryAIAPIKeyStore(),
+            stateStore: OpenRouterUsageStateStore(defaults: defaults)
+        )
+        let store = UsageQuotaStore(
+            defaults: defaults,
+            snapshotStore: snapshotStore,
+            providers: [provider]
+        )
+        store.showAIUsageQuotas = true
+
+        await waitUntil { store.snapshots.first?.providerID == .openrouter }
+
+        XCTAssertEqual(store.snapshots.first?.statusNote, "add OpenRouter API key in Settings")
+        XCTAssertTrue(store.visibleSnapshots.isEmpty)
+    }
+
     func testCursorDisabledProviderIsSkippedDuringRefresh() async {
         let codexProvider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
         let cursorProvider = FakeUsageQuotaProvider(

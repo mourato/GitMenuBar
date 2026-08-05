@@ -4,53 +4,21 @@ struct AISettingsSectionView: View {
     @EnvironmentObject private var aiProviderStore: AIProviderStore
     @EnvironmentObject private var aiCommitCoordinator: AICommitCoordinator
 
-    @State private var editingProvider: AIProviderConfig?
-    @State private var showingProviderEditor = false
+    @State private var showingProviderManagement = false
 
     var body: some View {
         Group {
-            if aiProviderStore.providers.isEmpty {
-                Text("No AI providers configured yet.")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(aiProviderStore.providers) { provider in
-                    AIProviderRowView(
-                        provider: provider,
-                        isDefault: aiProviderStore.preferences.defaultProviderId == provider.id,
-                        onEdit: {
-                            editingProvider = provider
-                            showingProviderEditor = true
-                        },
-                        onDelete: {
-                            aiCommitCoordinator.deleteAPIKey(for: provider.id)
-                            aiProviderStore.deleteProvider(id: provider.id)
-                        }
-                    )
-                }
-            }
-
+            defaultProviderPicker
+            defaultModelPicker
             Button("Add Provider") {
-                editingProvider = nil
-                showingProviderEditor = true
+                showingProviderManagement = true
             }
             .buttonStyle(.borderless)
-            .focusable(false)
-
-            if !aiProviderStore.providers.isEmpty {
-                defaultProviderPicker
-                defaultModelPicker
-            }
         }
-        .sheet(isPresented: $showingProviderEditor) {
-            AIProviderEditorSheet(
-                existingProvider: editingProvider,
-                onSave: { provider, apiKey in
-                    aiProviderStore.upsertProvider(provider)
-                    aiCommitCoordinator.saveAPIKey(apiKey, for: provider.id)
-                }
-            )
-            .environmentObject(aiCommitCoordinator)
+        .sheet(isPresented: $showingProviderManagement) {
+            AIProviderManagementSheet()
+                .environmentObject(aiProviderStore)
+                .environmentObject(aiCommitCoordinator)
         }
     }
 
@@ -62,48 +30,42 @@ struct AISettingsSectionView: View {
                 set: { aiProviderStore.updateDefaultProvider($0) }
             )
         ) {
-            ForEach(aiProviderStore.providers) { provider in
-                Text(provider.name).tag(Optional(provider.id))
+            if aiProviderStore.providers.isEmpty {
+                Text("No provider configured").tag(UUID?.none)
+            } else {
+                ForEach(aiProviderStore.providers) { provider in
+                    Text(provider.name).tag(Optional(provider.id))
+                }
             }
         }
         .pickerStyle(.menu)
+        .disabled(aiProviderStore.providers.isEmpty)
     }
 
     @ViewBuilder
     private var defaultModelPicker: some View {
-        if let provider = aiProviderStore.defaultProvider {
-            let models = provider.availableModels.isEmpty
-                ? [provider.selectedModel].filter { !$0.isEmpty }
-                : provider.availableModels
+        let provider = aiProviderStore.defaultProvider
+        let models = provider?.availableModels.isEmpty == false
+            ? provider?.availableModels ?? []
+            : provider?.selectedModel.isEmpty == false ? [provider?.selectedModel ?? ""] : []
 
-            if !models.isEmpty {
-                Picker(
-                    "Default Model",
-                    selection: Binding(
-                        get: {
-                            let current = aiProviderStore.preferences.defaultModel
-                            return current.isEmpty ? models[0] : current
-                        },
-                        set: { aiProviderStore.updateDefaultModel($0) }
-                    )
-                ) {
-                    ForEach(models, id: \.self) { model in
-                        Text(model).tag(model)
-                    }
-                }
-                .pickerStyle(.menu)
+        Picker(
+            "Default Model",
+            selection: Binding(
+                get: { aiProviderStore.preferences.defaultModel },
+                set: { aiProviderStore.updateDefaultModel($0) }
+            )
+        ) {
+            if models.isEmpty {
+                Text("No model configured").tag("")
             } else {
-                TextField(
-                    "Model name",
-                    text: Binding(
-                        get: { aiProviderStore.preferences.defaultModel },
-                        set: { aiProviderStore.updateDefaultModel($0) }
-                    )
-                )
-                .textFieldStyle(.roundedBorder)
-                .font(WorkbenchTypography.caption)
+                ForEach(models, id: \.self) { model in
+                    Text(model).tag(model)
+                }
             }
         }
+        .pickerStyle(.menu)
+        .disabled(models.isEmpty)
     }
 }
 

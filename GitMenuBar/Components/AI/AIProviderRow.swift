@@ -31,16 +31,16 @@ struct AIProviderRowView: View {
                     .cornerRadius(4)
             }
 
-            Button("Edit", action: onEdit)
+            Button("Edit \(provider.name)", action: onEdit)
                 .buttonStyle(.borderless)
                 .font(.caption)
-                .focusable(false)
+                .accessibilityLabel("Edit \(provider.name)")
 
-            Button("Delete", action: onDelete)
+            Button("Delete \(provider.name)", role: .destructive, action: onDelete)
                 .buttonStyle(.borderless)
                 .font(.caption)
-                .foregroundColor(.red)
-                .focusable(false)
+                .foregroundStyle(.red)
+                .accessibilityLabel("Delete \(provider.name)")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)

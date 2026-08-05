@@ -1,47 +1,5 @@
 import Foundation
 
-/// Compatibility adapter for the existing settings surface; it delegates to the shared blob.
-protocol OpenRouterAPIKeyStoring: Sendable {
-    func loadKey() -> String?
-    func saveKey(_ apiKey: String)
-    func deleteKey()
-}
-
-struct OpenRouterAPIKeyStore: OpenRouterAPIKeyStoring {
-    private let store: any AIAPIKeyStore
-
-    init(store: any AIAPIKeyStore = CachedAIAPIKeyStore.shared) {
-        self.store = store
-    }
-
-    func loadKey() -> String? {
-        try? store.apiKey(for: .openrouter)
-    }
-
-    func saveKey(_ apiKey: String) {
-        try? store.saveAPIKey(apiKey, for: .openrouter)
-    }
-
-    func deleteKey() {
-        try? store.deleteAPIKey(for: .openrouter)
-    }
-}
-
-final class InMemoryOpenRouterAPIKeyStore: OpenRouterAPIKeyStoring, @unchecked Sendable {
-    private let store = InMemoryAIAPIKeyStore()
-    func loadKey() -> String? {
-        try? store.apiKey(for: .openrouter)
-    }
-
-    func saveKey(_ apiKey: String) {
-        try? store.saveAPIKey(apiKey, for: .openrouter)
-    }
-
-    func deleteKey() {
-        try? store.deleteAPIKey(for: .openrouter)
-    }
-}
-
 struct OpenRouterUsageProvider: UsageQuotaProviding {
     let id: UsageProviderID = .openrouter
 

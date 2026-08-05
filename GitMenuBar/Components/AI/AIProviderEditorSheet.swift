@@ -5,10 +5,11 @@ struct AIProviderEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let existingProvider: AIProviderConfig?
-    let onSave: (AIProviderConfig, String) -> Void
+    let onSave: (AIProviderConfig, String) -> Result<Void, Error>
 
     @State private var providerName: String
     @State private var providerType: AIProviderType
+    @State private var previousProviderType: AIProviderType
     @State private var endpointURL: String
     @State private var apiKey: String
     @State private var selectedModel: String
@@ -16,12 +17,13 @@ struct AIProviderEditorSheet: View {
     @State private var isTestingConnection = false
     @State private var validationError: String?
 
-    init(existingProvider: AIProviderConfig?, onSave: @escaping (AIProviderConfig, String) -> Void) {
+    init(existingProvider: AIProviderConfig?, onSave: @escaping (AIProviderConfig, String) -> Result<Void, Error>) {
         self.existingProvider = existingProvider
         self.onSave = onSave
 
         _providerName = State(initialValue: existingProvider?.name ?? "")
         _providerType = State(initialValue: existingProvider?.type ?? .openAI)
+        _previousProviderType = State(initialValue: existingProvider?.type ?? .openAI)
         _endpointURL = State(initialValue: existingProvider?.endpointURL ?? AIProviderType.openAI.defaultEndpoint)
         _apiKey = State(initialValue: "")
         _selectedModel = State(initialValue: existingProvider?.selectedModel ?? "")
@@ -52,9 +54,11 @@ struct AIProviderEditorSheet: View {
             TextField("Endpoint URL", text: $endpointURL)
                 .textFieldStyle(.roundedBorder)
                 .onChange(of: providerType) { _, type in
-                    if endpointURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    let currentEndpoint = endpointURL.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if currentEndpoint.isEmpty || currentEndpoint == previousProviderType.defaultEndpoint {
                         endpointURL = type.defaultEndpoint
                     }
+                    previousProviderType = type
                 }
 
             SecureField("API Key", text: $apiKey)
@@ -174,8 +178,12 @@ struct AIProviderEditorSheet: View {
             updatedAt: Date()
         )
 
-        onSave(provider, trimmedAPIKey)
-        dismiss()
+        switch onSave(provider, trimmedAPIKey) {
+        case .success:
+            dismiss()
+        case .failure:
+            validationError = "Could not save provider. Check Keychain access and try again."
+        }
     }
 }
 
@@ -190,6 +198,6 @@ struct AIProviderEditorSheet: View {
         gitManager: gitManager
     )
 
-    return AIProviderEditorSheet(existingProvider: nil, onSave: { _, _ in })
+    AIProviderEditorSheet(existingProvider: nil, onSave: { _, _ in Result<Void, Error>.success(()) })
         .environmentObject(coordinator)
 }

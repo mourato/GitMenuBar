@@ -27,7 +27,7 @@ final class AIProviderStoreTests: XCTestCase {
 
         store.upsertProvider(provider)
         store.updateDefaultProvider(provider.id)
-        store.updateDefaultModel("gpt-4.1")
+        store.updateDefaultModel("model-2")
 
         let reloadedStore = AIProviderStore(dataStore: dataStore)
 
@@ -35,7 +35,7 @@ final class AIProviderStoreTests: XCTestCase {
         XCTAssertEqual(reloadedStore.providers.first?.name, "OpenAI Team")
         XCTAssertEqual(reloadedStore.providers.first?.hasStoredAPIKey, true)
         XCTAssertEqual(reloadedStore.preferences.defaultProviderId, provider.id)
-        XCTAssertEqual(reloadedStore.preferences.defaultModel, "gpt-4.1")
+        XCTAssertEqual(reloadedStore.preferences.defaultModel, "model-2")
     }
 
     func testReassignsDefaultProviderWhenCurrentDefaultIsDeleted() {
@@ -52,6 +52,86 @@ final class AIProviderStoreTests: XCTestCase {
         XCTAssertEqual(store.providers.count, 1)
         XCTAssertEqual(store.providers.first?.id, firstProvider.id)
         XCTAssertEqual(store.preferences.defaultProviderId, firstProvider.id)
+    }
+
+    func testSwitchingDefaultProviderKeepsModelSupportedByBothProviders() {
+        let store = AIProviderStore(dataStore: dataStore)
+        let firstProvider = makeProvider(name: "First")
+        let secondProvider = makeProvider(name: "Second", type: .anthropic)
+        store.upsertProvider(firstProvider)
+        store.upsertProvider(secondProvider)
+        store.updateDefaultProvider(firstProvider.id)
+        store.updateDefaultModel("model-2")
+
+        store.updateDefaultProvider(secondProvider.id)
+
+        XCTAssertEqual(store.preferences.defaultModel, "model-2")
+    }
+
+    func testSwitchingDefaultProviderReplacesUnsupportedModelWithSelectedModel() {
+        let store = AIProviderStore(dataStore: dataStore)
+        let firstProvider = makeProvider(name: "First")
+        let secondProvider = AIProviderConfig(
+            name: "Second",
+            type: .anthropic,
+            endpointURL: AIProviderType.anthropic.defaultEndpoint,
+            selectedModel: "claude-sonnet",
+            availableModels: ["claude-sonnet", "claude-haiku"]
+        )
+        store.upsertProvider(firstProvider)
+        store.upsertProvider(secondProvider)
+        store.updateDefaultProvider(firstProvider.id)
+        store.updateDefaultModel("model-2")
+
+        store.updateDefaultProvider(secondProvider.id)
+
+        XCTAssertEqual(store.preferences.defaultModel, "claude-sonnet")
+    }
+
+    func testProviderWithoutModelListUsesItsSelectedModel() {
+        let store = AIProviderStore(dataStore: dataStore)
+        let firstProvider = makeProvider(name: "First")
+        let secondProvider = AIProviderConfig(
+            name: "Second",
+            type: .anthropic,
+            endpointURL: AIProviderType.anthropic.defaultEndpoint,
+            selectedModel: "custom-model"
+        )
+        store.upsertProvider(firstProvider)
+        store.upsertProvider(secondProvider)
+        store.updateDefaultProvider(firstProvider.id)
+        store.updateDefaultModel("")
+
+        store.updateDefaultProvider(secondProvider.id)
+
+        XCTAssertEqual(store.preferences.defaultModel, "custom-model")
+    }
+
+    func testDeletingDefaultProviderNormalizesReplacementModel() {
+        let store = AIProviderStore(dataStore: dataStore)
+        let firstProvider = AIProviderConfig(
+            name: "First",
+            type: .openAI,
+            endpointURL: AIProviderType.openAI.defaultEndpoint,
+            selectedModel: "gpt-4.1",
+            availableModels: ["gpt-4.1"]
+        )
+        let secondProvider = AIProviderConfig(
+            name: "Second",
+            type: .anthropic,
+            endpointURL: AIProviderType.anthropic.defaultEndpoint,
+            selectedModel: "claude-sonnet",
+            availableModels: ["claude-sonnet"]
+        )
+        store.upsertProvider(firstProvider)
+        store.upsertProvider(secondProvider)
+        store.updateDefaultProvider(secondProvider.id)
+        store.updateDefaultModel("claude-sonnet")
+
+        store.deleteProvider(id: secondProvider.id)
+
+        XCTAssertEqual(store.preferences.defaultProviderId, firstProvider.id)
+        XCTAssertEqual(store.preferences.defaultModel, "gpt-4.1")
     }
 
     func testLegacyProviderPayloadDefaultsStoredKeyFlagToFalse() {
