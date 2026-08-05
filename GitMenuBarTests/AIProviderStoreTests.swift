@@ -81,7 +81,7 @@ final class AIProviderStoreTests: XCTestCase {
         store.upsertProvider(firstProvider)
         store.upsertProvider(secondProvider)
         store.updateDefaultProvider(firstProvider.id)
-        store.updateDefaultModel("")
+        store.updateDefaultModel("model-2")
 
         store.updateDefaultProvider(secondProvider.id)
 
