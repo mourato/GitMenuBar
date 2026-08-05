@@ -5,13 +5,16 @@ struct OpenRouterUsageProvider: UsageQuotaProviding {
 
     private let urlSession: URLSession
     private let keyStore: any OpenRouterAPIKeyStoring
+    private let stateStore: OpenRouterUsageStateStore
 
     init(
         urlSession: URLSession = .shared,
-        keyStore: any OpenRouterAPIKeyStoring = OpenRouterAPIKeyStore()
+        keyStore: any OpenRouterAPIKeyStoring = OpenRouterAPIKeyStore(),
+        stateStore: OpenRouterUsageStateStore = OpenRouterUsageStateStore()
     ) {
         self.urlSession = urlSession
         self.keyStore = keyStore
+        self.stateStore = stateStore
     }
 
     func fetchSnapshot() async -> UsageQuotaSnapshot {
@@ -32,10 +35,14 @@ struct OpenRouterUsageProvider: UsageQuotaProviding {
         do {
             let (data, response) = try await urlSession.data(for: request)
             guard (response as? HTTPURLResponse).map({ 200 ... 299 ~= $0.statusCode }) == true,
-                  let snapshot = OpenRouterUsageParsing.snapshot(fromCreditsData: data) else {
+                  let parsed = OpenRouterUsageParsing.parse(
+                      fromCreditsData: data,
+                      previousState: stateStore.load()
+                  ) else {
                 return .unavailable(providerID: .openrouter, statusNote: "openrouter credits unavailable")
             }
-            return snapshot
+            stateStore.save(parsed.state)
+            return parsed.snapshot
         } catch {
             return .unavailable(providerID: .openrouter, statusNote: "openrouter credits unavailable")
         }
