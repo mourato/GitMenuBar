@@ -4,10 +4,12 @@ import SwiftUI
 struct ProjectsSidebarView: View {
     @EnvironmentObject private var monitor: ProjectMonitorStore
     @AppStorage(AppPreferences.Keys.isProjectsSidebarCollapsed) private var isCollapsed = false
+    @AppStorage(AppPreferences.Keys.isCleanProjectsGroupCollapsed) private var isCleanGroupCollapsed = false
     @AppStorage(AppPreferences.Keys.projectsSidebarWidth) private var expandedWidth = ProjectsSidebarMetrics.defaultWidth
     @State private var renameProject: ProjectReference?
     @State private var renameDraft = ""
     @State private var resizeDragStartWidth: Double?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let currentPath: String
     let onSelect: (String) -> Void
@@ -85,14 +87,20 @@ struct ProjectsSidebarView: View {
     private var projectGroups: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(groupedProjects, id: \.0) { title, snapshots in
-                if !isCollapsed {
-                    Text(title.uppercased())
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 10)
-                }
-                ForEach(snapshots) { snapshot in
-                    row(snapshot)
+                VStack(alignment: .leading, spacing: ProjectsSidebarMetrics.rowSpacing) {
+                    if !isCollapsed {
+                        groupHeader(title: title, count: snapshots.count)
+                    }
+                    if title != "Clean" || !isCleanGroupCollapsed {
+                        ForEach(snapshots) { snapshot in
+                            row(snapshot)
+                        }
+                        .transition(
+                            reduceMotion
+                                ? .opacity
+                                : .opacity.combined(with: .move(edge: .top))
+                        )
+                    }
                 }
             }
         }
@@ -190,6 +198,7 @@ struct ProjectsSidebarView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: ProjectsSidebarMetrics.rowHeight)
             .contentShape(Rectangle())
             .background(
                 snapshot.project.path == RecentProjectsStore.normalize(currentPath)
@@ -215,6 +224,50 @@ struct ProjectsSidebarView: View {
         return "\(snapshot.project.name), \(snapshot.lineDiff.added) lines added, \(snapshot.lineDiff.removed) lines deleted"
     }
 
+    @ViewBuilder
+    private func groupHeader(title: String, count: Int) -> some View {
+        if title == "Clean" {
+            Button {
+                withAnimation(
+                    WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion)
+                ) {
+                    isCleanGroupCollapsed.toggle()
+                }
+            } label: {
+                groupHeaderLabel(title: title, count: count, showsDisclosure: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Clean projects, \(count)")
+            .accessibilityValue(isCleanGroupCollapsed ? "Collapsed" : "Expanded")
+            .accessibilityHint(
+                isCleanGroupCollapsed ? "Expands clean projects." : "Collapses clean projects."
+            )
+        } else {
+            groupHeaderLabel(title: title, count: count, showsDisclosure: false)
+        }
+    }
+
+    private func groupHeaderLabel(title: String, count: Int, showsDisclosure: Bool) -> some View {
+        HStack(spacing: 4) {
+            if showsDisclosure {
+                Image(systemName: isCleanGroupCollapsed ? "chevron.right" : "chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+            }
+            Text(title.uppercased())
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text("\(count)")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
     private func clampedWidth(_ width: Double) -> Double {
         min(max(width, ProjectsSidebarMetrics.minWidth), ProjectsSidebarMetrics.maxWidth)
     }
@@ -225,6 +278,8 @@ enum ProjectsSidebarMetrics {
     static let defaultWidth: Double = 240
     static let minWidth: Double = 220
     static let maxWidth: Double = 360
+    static let rowHeight: CGFloat = 32
+    static let rowSpacing: CGFloat = 4
     static let keyboardResizeStep: Double = 16
     static let resizeHitWidth: CGFloat = 8
     static let headerHeight: CGFloat = 28

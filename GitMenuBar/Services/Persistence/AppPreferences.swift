@@ -7,6 +7,7 @@ enum AppPreferences {
         static let monitoredProjects = "monitoredProjects"
         static let monitoredProjectsSeeded = "monitoredProjectsSeeded"
         static let isProjectsSidebarCollapsed = "isProjectsSidebarCollapsed"
+        static let isCleanProjectsGroupCollapsed = "isCleanProjectsGroupCollapsed"
         static let projectsSidebarWidth = "projectsSidebarWidth"
         static let isStagedSectionCollapsed = "isStagedSectionCollapsed"
         static let isUnstagedSectionCollapsed = "isUnstagedSectionCollapsed"
