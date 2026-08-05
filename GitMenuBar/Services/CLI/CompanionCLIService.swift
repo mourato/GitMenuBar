@@ -41,9 +41,9 @@ public struct CompanionCLIService: Sendable {
 
     public init() {}
 
-    func makeSession(options: CompanionCLIScopeOptions) throws -> GitMenuBarCommitSession {
+    func makeSession(options: CompanionCLIScopeOptions) async throws -> GitMenuBarCommitSession {
         do {
-            return try GitMenuBarCommitSession(repositoryPathScope: options.repositoryPathScope)
+            return try await GitMenuBarCommitSession(repositoryPathScope: options.repositoryPathScope)
         } catch let error as GitMenuBarCommitSessionError {
             throw Error.invalidRepository(error.localizedDescription ?? "Invalid repository.")
         }
@@ -78,7 +78,9 @@ public struct CompanionCLIService: Sendable {
 
         let scope = options.resolvedDiffScopeValue()
             ?? (session.providerStore.preferences.defaultScopeMode == .stagedWithFallbackAll ? DiffScope.staged : .all)
-        let files = filePaths(for: scope, gitManager: gitManager)
+        let files = await MainActor.run {
+            filePaths(for: scope, gitManager: gitManager)
+        }
 
         guard !files.isEmpty else {
             throw Error.operational("No changed files found for the selected scope.")
@@ -111,7 +113,9 @@ public struct CompanionCLIService: Sendable {
         let gitManager = session.gitManager
         await gitManager.updateUncommittedFilesAsync()
 
-        let changedFiles = gitManager.changedFilesCLI
+        let changedFiles = await MainActor.run {
+            gitManager.changedFilesCLI
+        }
         guard !changedFiles.isEmpty else {
             throw Error.operational("No changed files found for atomic grouping.")
         }
@@ -151,11 +155,13 @@ public struct CompanionCLIService: Sendable {
         let gitManager = session.gitManager
         await gitManager.updateUncommittedFilesAsync()
 
-        let allowedFiles = Set(
-            gitManager.changedFilesCLI.map(\.path)
-                + gitManager.stagedFilesCLI.map(\.path)
-                + gitManager.uncommittedFilesCLI
-        )
+        let allowedFiles = await MainActor.run {
+            Set(
+                gitManager.changedFilesCLI.map(\.path)
+                    + gitManager.stagedFilesCLI.map(\.path)
+                    + gitManager.uncommittedFilesCLI
+            )
+        }
 
         let plan: AtomicCommitPlan
         do {
@@ -197,6 +203,7 @@ public struct CompanionCLIService: Sendable {
         }
     }
 
+    @MainActor
     private func filePaths(for scope: DiffScope, gitManager: GitManager) -> [String] {
         switch scope {
         case .staged:

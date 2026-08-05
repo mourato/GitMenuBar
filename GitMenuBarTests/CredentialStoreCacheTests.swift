@@ -35,7 +35,7 @@ final class CredentialStoreCacheTests: XCTestCase {
     }
 }
 
-private final class SpyAIAPIKeyBackingStore: AIAPIKeyStore {
+private final class SpyAIAPIKeyBackingStore: AIAPIKeyStore, @unchecked Sendable {
     private var storage: [AIProviderCredentialID: String]
 
     private(set) var readCount = 0
@@ -66,7 +66,7 @@ private final class SpyAIAPIKeyBackingStore: AIAPIKeyStore {
     }
 }
 
-private final class SpyGitHubTokenBackingStore: GitHubTokenStore {
+private final class SpyGitHubTokenBackingStore: GitHubTokenStore, @unchecked Sendable {
     private var token: String?
 
     private(set) var readCount = 0

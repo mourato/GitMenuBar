@@ -10,7 +10,7 @@ import Foundation
 /// copy-pasted `runOnBackground` / `publishOnMainActor` / `executeGitCommand`
 /// helpers that previously lived in each type.
 enum GitExecution {
-    static func runOnBackground<T>(_ operation: @escaping () -> T) async -> T {
+    static func runOnBackground<T: Sendable>(_ operation: @escaping @Sendable () -> T) async -> T {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 continuation.resume(returning: operation())

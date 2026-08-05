@@ -1,8 +1,9 @@
 import Foundation
 
+@MainActor
 final class GitAtomicCommitService: ObservableObject {
-    private let repositoryContext: GitRepositoryContext
-    private let commandRunner: GitCommandRunner
+    private nonisolated(unsafe) let repositoryContext: GitRepositoryContext
+    private nonisolated(unsafe) let commandRunner: GitCommandRunner
 
     init(repositoryContext: GitRepositoryContext, commandRunner: GitCommandRunner) {
         self.repositoryContext = repositoryContext
@@ -13,7 +14,7 @@ final class GitAtomicCommitService: ObservableObject {
         repositoryContext.repositoryPath
     }
 
-    private func runOnBackground<T>(_ operation: @escaping () -> T) async -> T {
+    private func runOnBackground<T: Sendable>(_ operation: @escaping @Sendable () -> T) async -> T {
         await GitExecution.runOnBackground(operation)
     }
 
@@ -21,7 +22,7 @@ final class GitAtomicCommitService: ObservableObject {
         await GitExecution.publishOnMainActor(update)
     }
 
-    private func executeGitCommand(
+    private nonisolated func executeGitCommand(
         in directory: String,
         args: [String],
         useAuth: Bool = false

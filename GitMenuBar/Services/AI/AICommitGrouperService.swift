@@ -11,7 +11,7 @@ protocol AtomicGroupingAIProviding {
 
 extension AICommitMessageService: AtomicGroupingAIProviding {}
 
-final class AICommitGrouperService: ObservableObject {
+final class AICommitGrouperService: ObservableObject, @unchecked Sendable {
     private let aiService: AtomicGroupingAIProviding
     private let messagePolicy: CommitMessagePolicy
 

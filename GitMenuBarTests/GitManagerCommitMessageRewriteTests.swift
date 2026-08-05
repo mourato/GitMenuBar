@@ -1,6 +1,7 @@
 @testable import GitMenuBar
 import XCTest
 
+@MainActor
 final class GitManagerCommitMessageRewriteTests: XCTestCase {
     func testRewriteHeadCommitMessageUpdatesHead() throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)

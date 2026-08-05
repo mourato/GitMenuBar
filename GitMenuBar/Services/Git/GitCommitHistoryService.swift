@@ -1,14 +1,15 @@
 import Foundation
 
+@MainActor
 final class GitCommitHistoryService: ObservableObject {
     private static let defaultCommitHistoryLimit = 25
 
     @Published var commitHistory: [Commit] = []
     @Published private(set) var commitHistoryLimit = GitCommitHistoryService.defaultCommitHistoryLimit
 
-    private let repositoryContext: GitRepositoryContext
+    private nonisolated(unsafe) let repositoryContext: GitRepositoryContext
     private let commandRunner: GitCommandRunner
-    private let commitHistoryParser: CommitHistoryParser
+    private nonisolated(unsafe) let commitHistoryParser: CommitHistoryParser
     private var includesReflogCommitsInHistory = false
 
     init(repositoryContext: GitRepositoryContext, commandRunner: GitCommandRunner) {
@@ -17,11 +18,11 @@ final class GitCommitHistoryService: ObservableObject {
         commitHistoryParser = CommitHistoryParser(runner: commandRunner)
     }
 
-    private var storedRepoPath: String {
+    private nonisolated var storedRepoPath: String {
         repositoryContext.repositoryPath
     }
 
-    private func runOnBackground<T>(_ operation: @escaping () -> T) async -> T {
+    private func runOnBackground<T: Sendable>(_ operation: @escaping @Sendable () -> T) async -> T {
         await GitExecution.runOnBackground(operation)
     }
 
@@ -29,7 +30,7 @@ final class GitCommitHistoryService: ObservableObject {
         await GitExecution.publishOnMainActor(update)
     }
 
-    private func executeGitCommand(
+    private nonisolated func executeGitCommand(
         in directory: String,
         args: [String],
         useAuth: Bool = false,
@@ -123,16 +124,9 @@ final class GitCommitHistoryService: ObservableObject {
     }
 
     func isMergeCommit(_ hash: String, completion: @escaping (Result<Bool, Error>) -> Void) {
-        guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.resolveMergeCommitStatus(for: hash)
-            DispatchQueue.main.async {
-                completion(result)
-            }
+        Task {
+            let result = await checkIsMergeCommitAsync(hash)
+            completion(result)
         }
     }
 
@@ -148,15 +142,12 @@ final class GitCommitHistoryService: ObservableObject {
     }
 
     func isCommitPublishedToUpstream(_ hash: String, completion: @escaping (Result<Bool, Error>) -> Void) {
-        guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.resolveCommitPublishedStatus(for: hash)
-            DispatchQueue.main.async {
-                completion(result)
+        Task {
+            do {
+                let result = try await isCommitPublishedToUpstreamAsync(hash)
+                completion(.success(result))
+            } catch {
+                completion(.failure(error))
             }
         }
     }
@@ -180,15 +171,12 @@ final class GitCommitHistoryService: ObservableObject {
     }
 
     func diffForCommit(_ hash: String, completion: @escaping (Result<String, Error>) -> Void) {
-        guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.resolveDiffForCommit(hash)
-            DispatchQueue.main.async {
-                completion(result)
+        Task {
+            do {
+                let result = try await diffForCommitAsync(hash)
+                completion(.success(result))
+            } catch {
+                completion(.failure(error))
             }
         }
     }
@@ -213,7 +201,7 @@ final class GitCommitHistoryService: ObservableObject {
 
     // MARK: - Private Helpers
 
-    private func resolveMergeCommitStatus(for hash: String) -> Result<Bool, Error> {
+    private nonisolated func resolveMergeCommitStatus(for hash: String) -> Result<Bool, Error> {
         let result = executeGitCommand(in: storedRepoPath, args: ["rev-list", "--parents", "-n", "1", hash])
         guard !result.failure else {
             return .failure(NSError(domain: "GitManager", code: 5, userInfo: [NSLocalizedDescriptionKey: "Failed to inspect commit: \(result.output)"]))
@@ -226,7 +214,7 @@ final class GitCommitHistoryService: ObservableObject {
         return .success(hashes.count > 2)
     }
 
-    private func resolveCommitPublishedStatus(for hash: String) -> Result<Bool, Error> {
+    private nonisolated func resolveCommitPublishedStatus(for hash: String) -> Result<Bool, Error> {
         let upstreamResult = executeGitCommand(in: storedRepoPath, args: ["rev-parse", "--verify", "@{u}"])
         if upstreamResult.failure {
             return .success(false)
@@ -240,7 +228,7 @@ final class GitCommitHistoryService: ObservableObject {
         return .success(!containsResult.failure)
     }
 
-    private func resolveDiffForCommit(_ hash: String) -> Result<String, Error> {
+    private nonisolated func resolveDiffForCommit(_ hash: String) -> Result<String, Error> {
         let result = executeGitCommand(
             in: storedRepoPath,
             args: ["show", "--format=", "--no-renames", "--no-ext-diff", hash]

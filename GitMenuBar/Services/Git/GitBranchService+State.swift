@@ -8,48 +8,53 @@ import Foundation
 extension GitBranchService {
     func updateBranchInfo(completion: (() -> Void)? = nil) {
         guard !storedRepoPath.isEmpty else {
-            DispatchQueue.main.async {
-                self.currentBranch = "main"
-                self.isAheadOfRemote = false
-                completion?()
-            }
+            currentBranch = "main"
+            isAheadOfRemote = false
+            completion?()
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
+            let repositoryPath = storedRepoPath
             // Get current branch
-            let branchResult = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-parse", "--abbrev-ref", "HEAD"])
+            let branchResult = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "--abbrev-ref", "HEAD"])
+            }
 
             let branchName = branchResult.failure ? "main" : branchResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            let aheadCount = self.trackingAheadCount(repositoryPath: self.storedRepoPath)
+            let aheadCount = await runOnBackground {
+                self.trackingAheadCount(repositoryPath: repositoryPath)
+            }
 
             // Get current hash
-            let hashResult = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-parse", "HEAD"])
+            let hashResult = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "HEAD"])
+            }
             let hash = hashResult.failure ? "" : hashResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            DispatchQueue.main.async {
-                self.isAheadOfRemote = aheadCount > 0
-                self.currentHash = hash
+            self.isAheadOfRemote = aheadCount > 0
+            self.currentHash = hash
 
-                // Detect detached HEAD state
-                if branchName == "HEAD" {
-                    self.isDetachedHead = true
-                    // Try to get a nicer name like (detached at <short_hash>)
-                    let shortHashResult = self.executeGitCommand(in: self.storedRepoPath, args: ["rev-parse", "--short", "HEAD"])
-                    if !shortHashResult.failure {
-                        self.currentBranch = "(detached at \(shortHashResult.output.trimmingCharacters(in: .whitespacesAndNewlines)))"
-                    } else {
-                        self.currentBranch = "(detached)"
-                    }
-                } else {
-                    self.isDetachedHead = false
-                    self.currentBranch = branchName
-                    self.lastActiveBranch = branchName
+            // Detect detached HEAD state
+            if branchName == "HEAD" {
+                self.isDetachedHead = true
+                // Try to get a nicer name like (detached at <short_hash>)
+                let shortHashResult = await runOnBackground {
+                    self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "--short", "HEAD"])
                 }
-
-                completion?()
+                if !shortHashResult.failure {
+                    self.currentBranch = "(detached at \(shortHashResult.output.trimmingCharacters(in: .whitespacesAndNewlines)))"
+                } else {
+                    self.currentBranch = "(detached)"
+                }
+            } else {
+                self.isDetachedHead = false
+                self.currentBranch = branchName
+                self.lastActiveBranch = branchName
             }
+
+            completion?()
         }
     }
 
@@ -111,7 +116,7 @@ extension GitBranchService {
         return snapshot.aheadCount
     }
 
-    private func trackingAheadCount(repositoryPath: String) -> Int {
+    private nonisolated func trackingAheadCount(repositoryPath: String) -> Int {
         let result = executeGitCommand(in: repositoryPath, args: ["rev-list", "--count", "@{u}..HEAD"])
         if !result.failure, let count = Int(result.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
             return count
@@ -128,16 +133,17 @@ extension GitBranchService {
 
     func fetchBranches(completion: (() -> Void)? = nil) {
         guard !storedRepoPath.isEmpty else {
-            DispatchQueue.main.async {
-                self.availableBranches = []
-                completion?()
-            }
+            availableBranches = []
+            completion?()
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
+            let repositoryPath = storedRepoPath
             // Get all branches (local and remote)
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["branch", "-a", "--format=%(refname:short)"])
+            let result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["branch", "-a", "--format=%(refname:short)"])
+            }
 
             if !result.failure {
                 var branches = result.output
@@ -155,15 +161,11 @@ extension GitBranchService {
                 // Remove duplicates (local + remote same branch)
                 branches = Array(Set(branches)).sorted()
 
-                DispatchQueue.main.async {
-                    self.availableBranches = branches
-                    completion?()
-                }
+                self.availableBranches = branches
+                completion?()
             } else {
-                DispatchQueue.main.async {
-                    self.availableBranches = []
-                    completion?()
-                }
+                self.availableBranches = []
+                completion?()
             }
         }
     }

@@ -45,7 +45,7 @@ final class AIKeychainStoreTests: XCTestCase {
     }
 }
 
-private final class FakeAIKeychainItemClient: AIKeychainItemClient {
+private final class FakeAIKeychainItemClient: AIKeychainItemClient, @unchecked Sendable {
     var data: Data?
     var writeError: Error?
     private(set) var writeCount = 0
@@ -232,7 +232,7 @@ private final class FakeMigrationClient: KeychainMigratorItemClient {
     }
 }
 
-private final class FakeMigrationStore: AIAPIKeyStore {
+private final class FakeMigrationStore: AIAPIKeyStore, @unchecked Sendable {
     var values: [AIProviderCredentialID: String] = [:]
     let readBack: [AIProviderCredentialID: String]
     let writeError: Error?

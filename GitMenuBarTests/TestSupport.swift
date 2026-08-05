@@ -3,7 +3,7 @@ import Foundation
 import XCTest
 
 final class MockURLProtocol: URLProtocol {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+    nonisolated(unsafe) static var requestHandler: (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))?
 
     override static func canInit(with _: URLRequest) -> Bool {
         true
@@ -40,6 +40,27 @@ func makeMockedURLSession() -> URLSession {
 }
 
 let gitRepoPathLock = NSLock()
+
+/// Thread-safe box for capturing request payloads from `MockURLProtocol` handlers
+/// that run on background `URLSession` threads.
+final class PromptCapture: @unchecked Sendable {
+    var value = ""
+    func set(_ text: String) {
+        value = text
+    }
+
+    func clear() {
+        value = ""
+    }
+}
+
+/// Thread-safe list capture for handlers that record multiple request payloads.
+final class PromptListCapture: @unchecked Sendable {
+    var values: [String] = []
+    func append(_ text: String) {
+        values.append(text)
+    }
+}
 
 @discardableResult
 func runGit(_ args: [String], in directory: URL) throws -> String {
@@ -84,10 +105,8 @@ func withGitRepoPath<T>(_ path: String, execute: () throws -> T) rethrows -> T {
     return try execute()
 }
 
+@MainActor
 func withGitRepoPath<T>(_ path: String, execute: () async throws -> T) async rethrows -> T {
-    gitRepoPathLock.lock()
-    defer { gitRepoPathLock.unlock() }
-
     let defaults = UserDefaults.standard
     let previous = defaults.string(forKey: AppPreferences.Keys.gitRepoPath)
     defaults.set(path, forKey: AppPreferences.Keys.gitRepoPath)

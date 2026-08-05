@@ -32,7 +32,7 @@ extension GitBranchService {
         }
     }
 
-    private func makeWorktreeSnapshotInput(
+    private nonisolated func makeWorktreeSnapshotInput(
         repositoryPath: String,
         defaultBranchName: String
     ) -> Result<GitWorktreeAnalysisInput, Error> {
@@ -91,7 +91,7 @@ extension GitBranchService {
         return .success(input)
     }
 
-    private func queryWorktrees(in repositoryPath: String) -> Result<[GitWorktreeInfo], Error> {
+    private nonisolated func queryWorktrees(in repositoryPath: String) -> Result<[GitWorktreeInfo], Error> {
         let result = executeGitCommand(in: repositoryPath, args: ["worktree", "list", "--porcelain"])
         guard !result.failure else {
             return .failure(worktreeQueryError("Failed to list Git worktrees: \(result.output)"))
@@ -105,7 +105,7 @@ extension GitBranchService {
         return .success(worktrees)
     }
 
-    private func queryCurrentBranchName(in repositoryPath: String) -> String? {
+    private nonisolated func queryCurrentBranchName(in repositoryPath: String) -> String? {
         let result = executeGitCommand(
             in: repositoryPath,
             args: ["rev-parse", "--abbrev-ref", "HEAD"]
@@ -117,7 +117,7 @@ extension GitBranchService {
         return name == "HEAD" ? nil : name
     }
 
-    private func queryBranchReferences(
+    private nonisolated func queryBranchReferences(
         in repositoryPath: String,
         isRemote: Bool
     ) -> Result<[GitBranchReference], Error> {
@@ -137,7 +137,7 @@ extension GitBranchService {
         return .success(parseReferences(result.output, isRemote: isRemote))
     }
 
-    private func queryMergedBranchNames(
+    private nonisolated func queryMergedBranchNames(
         in repositoryPath: String,
         defaultRef: String,
         scope: String
@@ -157,7 +157,7 @@ extension GitBranchService {
         return .success(Set(parseNames(result.output)))
     }
 
-    private func queryMergedRemoteBranchNames(
+    private nonisolated func queryMergedRemoteBranchNames(
         in repositoryPath: String,
         defaultBranchName: String
     ) -> Set<String>? {
@@ -188,7 +188,7 @@ extension GitBranchService {
         )
     }
 
-    private func updateWorkingTreeStates(
+    private nonisolated func updateWorkingTreeStates(
         _ worktrees: [GitWorktreeInfo]
     ) -> [GitWorktreeInfo] {
         worktrees.map { worktree in
@@ -208,7 +208,7 @@ extension GitBranchService {
         }
     }
 
-    private func parseReferences(
+    private nonisolated func parseReferences(
         _ output: String,
         isRemote: Bool
     ) -> [GitBranchReference] {
@@ -227,7 +227,7 @@ extension GitBranchService {
             .filter { $0.name != "HEAD" }
     }
 
-    private func workingTreeState(
+    private nonisolated func workingTreeState(
         for result: (output: String, failure: Bool)
     ) -> GitWorktreeWorkingTreeState {
         guard !result.failure else {
@@ -238,14 +238,14 @@ extension GitBranchService {
             : .dirty
     }
 
-    private func parseNames(_ output: String) -> [String] {
+    private nonisolated func parseNames(_ output: String) -> [String] {
         output
             .components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
     }
 
-    private func worktreeQueryError(_ description: String) -> NSError {
+    private nonisolated func worktreeQueryError(_ description: String) -> NSError {
         NSError(
             domain: "GitManager",
             code: 60,

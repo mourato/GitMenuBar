@@ -60,8 +60,9 @@ extension GitBranchService {
         guard !mergeResult.failure else {
             // On failure, switch back and restore the stash.
             if !currentWasDefault {
+                let restoreBranch = currentBranch
                 _ = await runOnBackground {
-                    self.executeGitCommand(in: repositoryPath, args: ["checkout", self.currentBranch])
+                    self.executeGitCommand(in: repositoryPath, args: ["checkout", restoreBranch])
                 }
             }
             if stashed {

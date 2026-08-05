@@ -792,3 +792,14 @@ CI, or whole-product UX audit.
 - `make check-preview`: known baseline failure on a clean tree because
   `scripts/check-preview.sh` expands an empty Bash 3.2 array under `set -u`;
   Plan 055 uses an explicit-file preview gate and does not modify the script.
+
+## Swift 6.2 baseline batch
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|---|---|---:|---:|---|---|
+| [057](057-establish-swift-6-2-agent-baseline.md) | Establish the Swift 6.2 agent baseline | P0 | L | 015; reconcile current dirty worktree | TODO |
+
+Plan 057 extends the completed delivery-gate work in plan 015. It is the
+canonical migration for all app, test, and CLI targets: Swift 6.2, complete
+strict concurrency, formatter/lint alignment, targeted agent checks, and the
+required behavior-preserving source rewrites.

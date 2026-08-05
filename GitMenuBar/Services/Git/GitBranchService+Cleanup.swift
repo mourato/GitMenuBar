@@ -22,7 +22,7 @@ extension GitBranchService {
         return .success(result)
     }
 
-    private func performCleanup(
+    private nonisolated func performCleanup(
         targets: [GitCleanupTarget],
         snapshot: GitWorktreeSnapshot,
         repositoryPath: String
@@ -35,7 +35,7 @@ extension GitBranchService {
         return GitCleanupBatchResult(items: results)
     }
 
-    private func cleanup(
+    private nonisolated func cleanup(
         target: GitCleanupTarget,
         snapshot: GitWorktreeSnapshot,
         repositoryPath: String
@@ -93,7 +93,7 @@ extension GitBranchService {
         }
     }
 
-    private func localBranchValidationFailure(
+    private nonisolated func localBranchValidationFailure(
         info: GitBranchCleanupInfo,
         snapshot: GitWorktreeSnapshot,
         repositoryPath: String,
@@ -132,7 +132,7 @@ extension GitBranchService {
         return nil
     }
 
-    private func worktreeValidationFailure(
+    private nonisolated func worktreeValidationFailure(
         info: GitWorktreeCleanupInfo,
         snapshot: GitWorktreeSnapshot,
         repositoryPath: String
@@ -168,7 +168,7 @@ extension GitBranchService {
         )
     }
 
-    private func worktreeStateValidationFailure(
+    private nonisolated func worktreeStateValidationFailure(
         currentInfo: GitWorktreeInfo,
         analyzedInfo: GitWorktreeCleanupInfo
     ) -> String? {
@@ -187,7 +187,7 @@ extension GitBranchService {
         return nil
     }
 
-    private func worktreeBranchValidationFailure(
+    private nonisolated func worktreeBranchValidationFailure(
         currentInfo: GitWorktreeInfo,
         snapshot: GitWorktreeSnapshot,
         repositoryPath: String
@@ -208,7 +208,7 @@ extension GitBranchService {
         return nil
     }
 
-    private func remoteBranchValidationFailure(
+    private nonisolated func remoteBranchValidationFailure(
         info: GitBranchCleanupInfo,
         snapshot: GitWorktreeSnapshot,
         repositoryPath: String
@@ -236,7 +236,7 @@ extension GitBranchService {
         return nil
     }
 
-    private func worktreeInfo(at path: String, repositoryPath: String) -> GitWorktreeInfo? {
+    private nonisolated func worktreeInfo(at path: String, repositoryPath: String) -> GitWorktreeInfo? {
         let result = executeGitCommand(in: repositoryPath, args: ["worktree", "list", "--porcelain"])
         guard !result.failure else { return nil }
         return try? WorktreeParser().parse(result.output).first {
@@ -244,7 +244,7 @@ extension GitBranchService {
         }
     }
 
-    private func isBranchCheckedOut(_ name: String, repositoryPath: String) -> Bool {
+    private nonisolated func isBranchCheckedOut(_ name: String, repositoryPath: String) -> Bool {
         let result = executeGitCommand(in: repositoryPath, args: ["worktree", "list", "--porcelain"])
         guard !result.failure, let worktrees = try? WorktreeParser().parse(result.output) else {
             return true
@@ -252,7 +252,7 @@ extension GitBranchService {
         return worktrees.contains { $0.branchName == name }
     }
 
-    private func isClean(path: String) -> Bool {
+    private nonisolated func isClean(path: String) -> Bool {
         let result = executeGitCommand(
             in: path,
             args: ["status", "--porcelain", "--untracked-files=all"]
@@ -260,11 +260,11 @@ extension GitBranchService {
         return !result.failure && result.output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private func branchHash(name: String, repositoryPath: String) -> String? {
+    private nonisolated func branchHash(name: String, repositoryPath: String) -> String? {
         refHash(ref: "refs/heads/\(name)", repositoryPath: repositoryPath)
     }
 
-    private func refHash(ref: String, repositoryPath: String) -> String? {
+    private nonisolated func refHash(ref: String, repositoryPath: String) -> String? {
         let result = executeGitCommand(
             in: repositoryPath,
             args: ["rev-parse", "--verify", ref]
@@ -273,7 +273,7 @@ extension GitBranchService {
         return result.output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func currentBranchName(repositoryPath: String) -> String? {
+    private nonisolated func currentBranchName(repositoryPath: String) -> String? {
         let result = executeGitCommand(
             in: repositoryPath,
             args: ["rev-parse", "--abbrev-ref", "HEAD"]
@@ -283,7 +283,7 @@ extension GitBranchService {
         return name == "HEAD" ? nil : name
     }
 
-    private func isMerged(
+    private nonisolated func isMerged(
         branchName: String,
         defaultBranchRef: String,
         repositoryPath: String,
@@ -306,15 +306,15 @@ extension GitBranchService {
         }
     }
 
-    private var protectedBranchNames: Set<String> {
+    private nonisolated var protectedBranchNames: Set<String> {
         ["main", "master", "develop"]
     }
 
-    private func standardizedPath(_ path: String) -> String {
+    private nonisolated func standardizedPath(_ path: String) -> String {
         URL(fileURLWithPath: path).standardizedFileURL.path
     }
 
-    private func cleanupError(_ description: String) -> NSError {
+    private nonisolated func cleanupError(_ description: String) -> NSError {
         NSError(
             domain: "GitManager",
             code: 70,

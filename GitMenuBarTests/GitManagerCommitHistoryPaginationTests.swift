@@ -1,6 +1,7 @@
 @testable import GitMenuBar
 import XCTest
 
+@MainActor
 final class GitManagerCommitHistoryPaginationTests: XCTestCase {
     func testLoadMoreCommitHistoryIncreasesFetchLimitBy25() throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)

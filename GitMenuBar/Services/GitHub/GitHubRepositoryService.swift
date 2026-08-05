@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 final class GitHubRepositoryService {
     private let authManager: GitHubAuthManager
     private lazy var apiClient = GitHubAPIClient(authManager: authManager)

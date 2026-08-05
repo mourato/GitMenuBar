@@ -12,7 +12,8 @@ import Foundation
 ///
 /// Threading mirrors `GitManager`: heavy git work runs on a background queue and
 /// published state is written on the main thread via `DispatchQueue.main.async`
-/// / `MainActor.run`, so the class itself is not actor-isolated.
+/// / `MainActor.run`.
+@MainActor
 final class GitBranchService: ObservableObject {
     @Published var currentBranch: String = "main"
     @Published var isAheadOfRemote: Bool = false
@@ -28,8 +29,8 @@ final class GitBranchService: ObservableObject {
     @Published var lastActiveBranch: String = ""
     @Published var worktreeSnapshot: GitWorktreeSnapshot?
 
-    private let repositoryContext: GitRepositoryContext
-    private let commandRunner: GitCommandRunner
+    private nonisolated(unsafe) let repositoryContext: GitRepositoryContext
+    private nonisolated(unsafe) let commandRunner: GitCommandRunner
 
     /// Injected by `GitManager` so branch mutations can trigger a full app
     /// refresh (commit history, working tree, …) which lives outside this service.
@@ -45,7 +46,7 @@ final class GitBranchService: ObservableObject {
         repositoryContext.repositoryPath
     }
 
-    func runOnBackground<T>(_ operation: @escaping () -> T) async -> T {
+    func runOnBackground<T: Sendable>(_ operation: @escaping @Sendable () -> T) async -> T {
         await GitExecution.runOnBackground(operation)
     }
 
@@ -53,7 +54,7 @@ final class GitBranchService: ObservableObject {
         await GitExecution.publishOnMainActor(update)
     }
 
-    func executeGitCommand(
+    nonisolated func executeGitCommand(
         in directory: String,
         args: [String],
         useAuth: Bool = false

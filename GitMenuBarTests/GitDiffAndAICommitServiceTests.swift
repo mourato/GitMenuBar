@@ -1,6 +1,7 @@
 @testable import GitMenuBar
 import XCTest
 
+@MainActor
 final class GitDiffAndAICommitServiceTests: XCTestCase {
     override func tearDown() {
         MockURLProtocol.requestHandler = nil
@@ -63,14 +64,14 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
         let session = makeMockedURLSession()
         let service = AICommitMessageService(maxDiffCharacters: 10000, session: session)
 
-        var capturedPrompt = ""
+        let capturedPrompt = PromptCapture()
 
-        MockURLProtocol.requestHandler = { request in
-            let body = self.requestBodyData(from: request)
+        MockURLProtocol.requestHandler = { @Sendable request in
+            let body = Self.requestBodyData(from: request)
             if let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
                 let messages = json["messages"] as? [[String: Any]]
                 let userMessage = messages?.first(where: { ($0["role"] as? String) == "user" })
-                capturedPrompt = userMessage?["content"] as? String ?? ""
+                capturedPrompt.set(userMessage?["content"] as? String ?? "")
             }
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"feat: generated\"}}]}"
@@ -98,7 +99,7 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
         )
 
         XCTAssertEqual(generated, "feat: generated")
-        XCTAssertTrue(capturedPrompt.contains("Diff scope used: All."))
+        XCTAssertTrue(capturedPrompt.value.contains("Diff scope used: All."))
     }
 
     func testServiceAppliesDeterministicDiffTruncationNotice() async throws {
@@ -110,14 +111,14 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
         let session = makeMockedURLSession()
         let service = AICommitMessageService(maxDiffCharacters: 100, session: session)
 
-        var capturedPrompt = ""
+        let capturedPrompt = PromptCapture()
 
-        MockURLProtocol.requestHandler = { request in
-            let body = self.requestBodyData(from: request)
+        MockURLProtocol.requestHandler = { @Sendable request in
+            let body = Self.requestBodyData(from: request)
             if let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
                 let messages = json["messages"] as? [[String: Any]]
                 let userMessage = messages?.first(where: { ($0["role"] as? String) == "user" })
-                capturedPrompt = userMessage?["content"] as? String ?? ""
+                capturedPrompt.set(userMessage?["content"] as? String ?? "")
             }
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"fix: generated\"}}]}"
@@ -144,7 +145,7 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
             )
         )
 
-        XCTAssertTrue(capturedPrompt.contains("Diff truncated to 100 characters"))
+        XCTAssertTrue(capturedPrompt.value.contains("Diff truncated to 100 characters"))
     }
 
     func testServiceIncludesMultipleFilesForUnstagedScope() async throws {
@@ -157,14 +158,14 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
         let session = makeMockedURLSession()
         let service = AICommitMessageService(maxDiffCharacters: 10000, session: session)
-        var capturedPrompt = ""
+        let capturedPrompt = PromptCapture()
 
-        MockURLProtocol.requestHandler = { request in
-            let body = self.requestBodyData(from: request)
+        MockURLProtocol.requestHandler = { @Sendable request in
+            let body = Self.requestBodyData(from: request)
             if let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
                 let messages = json["messages"] as? [[String: Any]]
                 let userMessage = messages?.first(where: { ($0["role"] as? String) == "user" })
-                capturedPrompt = userMessage?["content"] as? String ?? ""
+                capturedPrompt.set(userMessage?["content"] as? String ?? "")
             }
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"feat: generated\"}}]}"
@@ -191,8 +192,8 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
             )
         )
 
-        XCTAssertTrue(capturedPrompt.contains("File: a.txt"))
-        XCTAssertTrue(capturedPrompt.contains("File: z.txt"))
+        XCTAssertTrue(capturedPrompt.value.contains("File: a.txt"))
+        XCTAssertTrue(capturedPrompt.value.contains("File: z.txt"))
     }
 
     func testServiceReservesDiffBudgetForLaterFiles() async throws {
@@ -205,14 +206,14 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
         let session = makeMockedURLSession()
         let service = AICommitMessageService(maxDiffCharacters: 280, session: session)
-        var capturedPrompt = ""
+        let capturedPrompt = PromptCapture()
 
-        MockURLProtocol.requestHandler = { request in
-            let body = self.requestBodyData(from: request)
+        MockURLProtocol.requestHandler = { @Sendable request in
+            let body = Self.requestBodyData(from: request)
             if let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
                 let messages = json["messages"] as? [[String: Any]]
                 let userMessage = messages?.first(where: { ($0["role"] as? String) == "user" })
-                capturedPrompt = userMessage?["content"] as? String ?? ""
+                capturedPrompt.set(userMessage?["content"] as? String ?? "")
             }
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"feat: generated\"}}]}"
@@ -239,7 +240,7 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
             )
         )
 
-        XCTAssertTrue(capturedPrompt.contains("File: z.txt"))
+        XCTAssertTrue(capturedPrompt.value.contains("File: z.txt"))
     }
 
     func testServiceProducesDeterministicPromptOrderingAndTruncationMetadata() async throws {
@@ -262,10 +263,10 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
         let session = makeMockedURLSession()
         let service = AICommitMessageService(maxDiffCharacters: 240, session: session)
-        var prompts: [String] = []
+        let prompts = PromptListCapture()
 
-        MockURLProtocol.requestHandler = { request in
-            let body = self.requestBodyData(from: request)
+        MockURLProtocol.requestHandler = { @Sendable request in
+            let body = Self.requestBodyData(from: request)
             if let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
                 let messages = json["messages"] as? [[String: Any]]
                 let userMessage = messages?.first(where: { ($0["role"] as? String) == "user" })
@@ -306,23 +307,23 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(prompts.count, 2)
-        XCTAssertEqual(prompts[0], prompts[1])
-        XCTAssertTrue(prompts[0].contains("Files in scope (3): a.txt, b.txt, c.txt."))
-        XCTAssertTrue(prompts[0].contains("Overflow summary:"))
+        XCTAssertEqual(prompts.values.count, 2)
+        XCTAssertEqual(prompts.values[0], prompts.values[1])
+        XCTAssertTrue(prompts.values[0].contains("Files in scope (3): a.txt, b.txt, c.txt."))
+        XCTAssertTrue(prompts.values[0].contains("Overflow summary:"))
     }
 
     func testServiceSupportsGeneratingMessageFromExplicitCommitDiff() async throws {
         let session = makeMockedURLSession()
         let service = AICommitMessageService(maxDiffCharacters: 10000, session: session)
-        var capturedPrompt = ""
+        let capturedPrompt = PromptCapture()
 
-        MockURLProtocol.requestHandler = { request in
-            let body = self.requestBodyData(from: request)
+        MockURLProtocol.requestHandler = { @Sendable request in
+            let body = Self.requestBodyData(from: request)
             if let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
                 let messages = json["messages"] as? [[String: Any]]
                 let userMessage = messages?.first(where: { ($0["role"] as? String) == "user" })
-                capturedPrompt = userMessage?["content"] as? String ?? ""
+                capturedPrompt.set(userMessage?["content"] as? String ?? "")
             }
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"feat: explicit diff\"}}]}"
@@ -353,11 +354,11 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
         )
 
         XCTAssertEqual(generated, "feat: explicit diff")
-        XCTAssertTrue(capturedPrompt.contains("Diff scope used: Selected commit."))
-        XCTAssertTrue(capturedPrompt.contains("File: README.md"))
+        XCTAssertTrue(capturedPrompt.value.contains("Diff scope used: Selected commit."))
+        XCTAssertTrue(capturedPrompt.value.contains("File: README.md"))
     }
 
-    private func requestBodyData(from request: URLRequest) -> Data {
+    private nonisolated static func requestBodyData(from request: URLRequest) -> Data {
         if let body = request.httpBody {
             return body
         }

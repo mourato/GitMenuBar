@@ -291,7 +291,7 @@ private enum FileTypeIconSVG {
 }
 
 private enum FileTypeIconRenderer {
-    private static let cache = NSCache<NSString, NSImage>()
+    private nonisolated(unsafe) static let cache = NSCache<NSString, NSImage>()
 
     static func image(for artwork: FileTypeIconArtwork, colorHex: String) -> NSImage? {
         guard case let .pierre(name) = artwork,

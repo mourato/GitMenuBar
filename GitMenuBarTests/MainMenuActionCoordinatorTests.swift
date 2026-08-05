@@ -377,7 +377,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
     }
 }
 
-private final class SpyAIAPIKeyStore: AIAPIKeyStore {
+private final class SpyAIAPIKeyStore: AIAPIKeyStore, @unchecked Sendable {
     private var storage: [AIProviderCredentialID: String]
 
     private(set) var readCount = 0

@@ -16,6 +16,7 @@ struct GitHubRelease: Decodable {
     }
 }
 
+@MainActor
 final class UpdateChecker {
     static let shared = UpdateChecker()
 

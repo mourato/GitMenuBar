@@ -2,6 +2,7 @@ import AppKit
 @testable import GitMenuBar
 import XCTest
 
+@MainActor
 final class DirectoryPickerServiceTests: XCTestCase {
     func testConfigurePanelShowsHiddenDirectoriesAndPreservesDirectorySelectionDefaults() {
         let panel = NSOpenPanel()

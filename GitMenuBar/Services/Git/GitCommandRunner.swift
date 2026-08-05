@@ -1,6 +1,6 @@
 import Foundation
 
-final class GitCommandRunner {
+final class GitCommandRunner: @unchecked Sendable {
     private enum Askpass {
         static let tokenEnvironmentKey = "GITMENUBAR_GIT_ASKPASS_TOKEN"
     }

@@ -1,6 +1,7 @@
 @testable import GitMenuBar
 import XCTest
 
+@MainActor
 final class GitManagerBranchOperationsTests: XCTestCase {
     /// Sets up a local repo that already has a remote-tracking ref for
     /// `origin/feature/pushed` and configures the local `feature/pushed` branch to
@@ -176,7 +177,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
             }
             deleteExpectation.fulfill()
         }
-        wait(for: [deleteExpectation], timeout: 3)
+        await fulfillment(of: [deleteExpectation], timeout: 3)
 
         let localBranches = await gitManager.fetchLocalBranchesAsync()
         XCTAssertFalse(localBranches.contains("feature/to-push"))

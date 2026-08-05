@@ -1,6 +1,7 @@
 @testable import GitMenuBar
 import XCTest
 
+@MainActor
 final class GitManagerMergeTests: XCTestCase {
     private func makeFeatureBranch(named name: String, in repoURL: URL) throws {
         try runGit(["checkout", "-b", name], in: repoURL)

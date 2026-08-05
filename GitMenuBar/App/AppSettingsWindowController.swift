@@ -3,10 +3,10 @@ import Combine
 import Settings
 
 private extension Settings.PaneIdentifier {
-    static let gitMenuBarGeneral = Self("gitmenubar.general")
-    static let gitMenuBarGit = Self("gitmenubar.git")
-    static let gitMenuBarAI = Self("gitmenubar.ai")
-    static let gitMenuBarShortcuts = Self("gitmenubar.shortcuts")
+    nonisolated(unsafe) static let gitMenuBarGeneral = Self("gitmenubar.general")
+    nonisolated(unsafe) static let gitMenuBarGit = Self("gitmenubar.git")
+    nonisolated(unsafe) static let gitMenuBarAI = Self("gitmenubar.ai")
+    nonisolated(unsafe) static let gitMenuBarShortcuts = Self("gitmenubar.shortcuts")
 }
 
 @MainActor

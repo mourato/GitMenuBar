@@ -25,7 +25,6 @@ final class CursorAuthTokenReaderTests: XCTestCase {
 
         let configuration = CursorAuthTokenReader.Configuration(
             databaseURL: databaseURL,
-            fileManager: .default,
             tempDirectory: tempDirectory
         )
 
@@ -38,7 +37,6 @@ final class CursorAuthTokenReaderTests: XCTestCase {
 
         let configuration = CursorAuthTokenReader.Configuration(
             databaseURL: databaseURL,
-            fileManager: .default,
             tempDirectory: tempDirectory
         )
 
@@ -49,7 +47,6 @@ final class CursorAuthTokenReaderTests: XCTestCase {
         let databaseURL = tempDirectory.appendingPathComponent("does-not-exist.vscdb")
         let configuration = CursorAuthTokenReader.Configuration(
             databaseURL: databaseURL,
-            fileManager: .default,
             tempDirectory: tempDirectory
         )
 

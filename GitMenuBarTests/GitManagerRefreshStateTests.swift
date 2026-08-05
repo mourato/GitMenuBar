@@ -1,6 +1,7 @@
 @testable import GitMenuBar
 import XCTest
 
+@MainActor
 final class GitManagerRefreshStateTests: XCTestCase {
     func testResetSelectedRepositoryStateClearsDisplayedRepositoryData() {
         let manager = GitManager(repositoryPathOverride: "/tmp/repository")

@@ -1,6 +1,7 @@
 @testable import GitMenuBar
 import XCTest
 
+@MainActor
 final class GitManagerWorktreeCleanupTests: XCTestCase {
     func testBatchCleanupRemovesMergedBranchAndCleanWorktree() async throws {
         let repositoryURL = try createTemporaryGitRepository(testName: #function)

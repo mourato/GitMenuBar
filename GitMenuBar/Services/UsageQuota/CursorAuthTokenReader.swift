@@ -8,27 +8,24 @@ enum CursorAuthTokenReader {
 
     struct Configuration: Sendable {
         let databaseURL: URL
-        let fileManager: FileManager
         let tempDirectory: URL
 
         init(
             databaseURL: URL? = nil,
-            fileManager: FileManager = .default,
             tempDirectory: URL? = nil
         ) {
-            self.fileManager = fileManager
-            self.databaseURL = databaseURL ?? CursorAuthTokenReader.defaultDatabaseURL(fileManager: fileManager)
-            self.tempDirectory = tempDirectory ?? fileManager.temporaryDirectory
+            self.databaseURL = databaseURL ?? CursorAuthTokenReader.defaultDatabaseURL()
+            self.tempDirectory = tempDirectory ?? FileManager.default.temporaryDirectory
         }
     }
 
-    static func defaultDatabaseURL(fileManager: FileManager = .default) -> URL {
-        fileManager.homeDirectoryForCurrentUser
+    static func defaultDatabaseURL() -> URL {
+        FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Cursor/User/globalStorage/state.vscdb")
     }
 
     static func readAccessToken(configuration: Configuration = Configuration()) -> String? {
-        guard configuration.fileManager.fileExists(atPath: configuration.databaseURL.path) else {
+        guard FileManager.default.fileExists(atPath: configuration.databaseURL.path) else {
             return nil
         }
 
@@ -38,12 +35,11 @@ enum CursorAuthTokenReader {
 
         let copiedURL = configuration.tempDirectory
             .appendingPathComponent("gitmenubar-cursor-state-\(UUID().uuidString).vscdb")
-        defer { removeCopiedDatabaseBundle(at: copiedURL, fileManager: configuration.fileManager) }
+        defer { removeCopiedDatabaseBundle(at: copiedURL) }
 
         guard copyDatabaseBundle(
             from: configuration.databaseURL,
-            to: copiedURL,
-            fileManager: configuration.fileManager
+            to: copiedURL
         ) else {
             return nil
         }
@@ -90,27 +86,27 @@ enum CursorAuthTokenReader {
         return String(cString: cString)
     }
 
-    private static func copyDatabaseBundle(from source: URL, to destination: URL, fileManager: FileManager) -> Bool {
+    private static func copyDatabaseBundle(from source: URL, to destination: URL) -> Bool {
         do {
-            try fileManager.copyItem(at: source, to: destination)
+            try FileManager.default.copyItem(at: source, to: destination)
         } catch {
             return false
         }
 
         for suffix in ["-wal", "-shm"] {
             let sidecar = URL(fileURLWithPath: source.path + suffix)
-            guard fileManager.fileExists(atPath: sidecar.path) else { continue }
+            guard FileManager.default.fileExists(atPath: sidecar.path) else { continue }
             let copiedSidecar = URL(fileURLWithPath: destination.path + suffix)
-            try? fileManager.removeItem(at: copiedSidecar)
-            try? fileManager.copyItem(at: sidecar, to: copiedSidecar)
+            try? FileManager.default.removeItem(at: copiedSidecar)
+            try? FileManager.default.copyItem(at: sidecar, to: copiedSidecar)
         }
 
         return true
     }
 
-    private static func removeCopiedDatabaseBundle(at databaseURL: URL, fileManager: FileManager) {
+    private static func removeCopiedDatabaseBundle(at databaseURL: URL) {
         for path in [databaseURL.path, databaseURL.path + "-wal", databaseURL.path + "-shm"] {
-            try? fileManager.removeItem(atPath: path)
+            try? FileManager.default.removeItem(atPath: path)
         }
     }
 }

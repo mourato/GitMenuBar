@@ -7,7 +7,7 @@ final class ProjectMonitorStore: ObservableObject {
 
     private let projectStore: MonitoredProjectsStore
     private let runner: GitCommandRunner
-    private var refreshTimer: Timer?
+    private nonisolated(unsafe) var refreshTimer: Timer?
     private var isRefreshing = false
 
     init(projectStore: MonitoredProjectsStore = MonitoredProjectsStore(), runner: GitCommandRunner = GitCommandRunner()) {

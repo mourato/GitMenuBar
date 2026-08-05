@@ -63,6 +63,7 @@ enum GitHubRepositoryResponseValidator {
     }
 }
 
+@MainActor
 class GitHubAPIClient {
     private let baseURL = "https://api.github.com"
     private let authManager: GitHubAuthManager

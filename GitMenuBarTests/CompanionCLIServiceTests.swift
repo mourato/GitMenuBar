@@ -28,7 +28,7 @@ final class CompanionCLIServiceTests: XCTestCase {
         XCTAssertEqual(message, "feat: add CLI")
     }
 
-    func testMakeSessionRejectsNonGitDirectory() {
+    func testMakeSessionRejectsNonGitDirectory() async {
         let options = CompanionCLIScopeOptions(
             repositoryPathScope: "/tmp",
             staged: false,
@@ -38,7 +38,7 @@ final class CompanionCLIServiceTests: XCTestCase {
         )
 
         do {
-            _ = try service.makeSession(options: options)
+            _ = try await service.makeSession(options: options)
             XCTFail("Expected invalid repository")
         } catch let error as CompanionCLIService.Error {
             XCTAssertEqual(error.exitCode, .invalidRepository)
@@ -50,7 +50,7 @@ final class CompanionCLIServiceTests: XCTestCase {
 
     func testResolveMessageWithOverrideDoesNotRequireAIReadiness() async throws {
         let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
-        let session = GitMenuBarCommitSession(
+        let session = await GitMenuBarCommitSession(
             repositoryPath: "/tmp",
             providerStore: providerStore,
             keychainStore: InMemoryAIAPIKeyStore(),
@@ -96,7 +96,7 @@ final class CompanionCLIServiceTests: XCTestCase {
 
     func testResolveMessageWithoutProviderUsesNotReadyExitCode() async {
         let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
-        let session = GitMenuBarCommitSession(
+        let session = await GitMenuBarCommitSession(
             repositoryPath: "/tmp",
             providerStore: providerStore,
             keychainStore: InMemoryAIAPIKeyStore(),
@@ -129,12 +129,14 @@ final class CompanionCLIServiceTests: XCTestCase {
         try "base\n".write(to: trackedFile, atomically: true, encoding: .utf8)
         try "base\n".write(to: otherFile, atomically: true, encoding: .utf8)
 
-        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let gitManager = await MainActor.run {
+            GitManager(repositoryPathOverride: repoURL.path)
+        }
         try "base\nfeature\n".write(to: trackedFile, atomically: true, encoding: .utf8)
         try "base\nother\n".write(to: otherFile, atomically: true, encoding: .utf8)
         await gitManager.updateUncommittedFilesAsync()
 
-        let session = GitMenuBarCommitSession(
+        let session = await GitMenuBarCommitSession(
             repositoryPath: repoURL.path,
             providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
             keychainStore: InMemoryAIAPIKeyStore(),

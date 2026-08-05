@@ -122,14 +122,14 @@ final class AICommitCoordinatorTests: XCTestCase {
 
         let apiKeyStore = SpyAIAPIKeyStore(storage: [AIProviderCredentialID(provider: provider): "secret-key"])
         let session = makeMockedURLSession()
-        var capturedPrompt = ""
+        let capturedPrompt = PromptCapture()
 
-        MockURLProtocol.requestHandler = { request in
-            let body = self.requestBodyData(from: request)
+        MockURLProtocol.requestHandler = { @Sendable request in
+            let body = Self.requestBodyData(from: request)
             if let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
                 let messages = json["messages"] as? [[String: Any]]
                 let userMessage = messages?.first(where: { ($0["role"] as? String) == "user" })
-                capturedPrompt = userMessage?["content"] as? String ?? ""
+                capturedPrompt.set(userMessage?["content"] as? String ?? "")
             }
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"feat: rewritten\"}}]}"
@@ -160,8 +160,8 @@ final class AICommitCoordinatorTests: XCTestCase {
         )
 
         XCTAssertEqual(message, "feat: rewritten")
-        XCTAssertTrue(capturedPrompt.contains("Diff scope used: Selected commit."))
-        XCTAssertTrue(capturedPrompt.contains("File: README.md"))
+        XCTAssertTrue(capturedPrompt.value.contains("Diff scope used: Selected commit."))
+        XCTAssertTrue(capturedPrompt.value.contains("File: README.md"))
     }
 
     private func makeProviderStore() -> AIProviderStore {
@@ -192,7 +192,7 @@ final class AICommitCoordinatorTests: XCTestCase {
         )
     }
 
-    private func requestBodyData(from request: URLRequest) -> Data {
+    private nonisolated static func requestBodyData(from request: URLRequest) -> Data {
         if let body = request.httpBody {
             return body
         }
@@ -220,7 +220,7 @@ final class AICommitCoordinatorTests: XCTestCase {
     }
 }
 
-private final class SpyAIAPIKeyStore: AIAPIKeyStore {
+private final class SpyAIAPIKeyStore: AIAPIKeyStore, @unchecked Sendable {
     private var storage: [AIProviderCredentialID: String]
 
     private(set) var readCount = 0

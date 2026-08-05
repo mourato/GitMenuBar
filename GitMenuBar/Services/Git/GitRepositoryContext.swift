@@ -1,6 +1,6 @@
 import Foundation
 
-final class GitRepositoryContext {
+final class GitRepositoryContext: @unchecked Sendable {
     private let defaults: UserDefaults
     private let overridePath: String?
 

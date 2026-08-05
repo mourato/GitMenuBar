@@ -1,6 +1,7 @@
 @testable import GitMenuBar
 import XCTest
 
+@MainActor
 final class GitWorktreeIntegrationTests: XCTestCase {
     func testSnapshotRepresentsMergedUnmergedAndWorktreeStates() async throws {
         let repositoryURL = try createTemporaryGitRepository(testName: #function)

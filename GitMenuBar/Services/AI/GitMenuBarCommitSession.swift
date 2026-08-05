@@ -51,14 +51,17 @@ final class GitMenuBarCommitSession {
         messagePolicy: CommitMessagePolicy = .shared,
         messageService: AICommitMessageService? = nil,
         commandRunner: GitCommandRunner = GitCommandRunner()
-    ) throws {
-        repositoryPath = try Self.resolveGitRoot(from: repositoryPathScope, using: commandRunner)
+    ) async throws {
+        let resolvedPath = try Self.resolveGitRoot(from: repositoryPathScope, using: commandRunner)
+        repositoryPath = resolvedPath
         self.providerStore = providerStore
         self.keychainStore = keychainStore
         self.messagePolicy = messagePolicy
         let resolvedMessageService = messageService ?? AICommitMessageService(messagePolicy: messagePolicy)
         self.messageService = resolvedMessageService
-        gitManager = GitManager(repositoryPathOverride: repositoryPath)
+        gitManager = await MainActor.run {
+            GitManager(repositoryPathOverride: resolvedPath)
+        }
         grouper = AICommitGrouperService(
             aiService: resolvedMessageService,
             messagePolicy: messagePolicy
@@ -71,14 +74,17 @@ final class GitMenuBarCommitSession {
         keychainStore: any AIAPIKeyStore,
         messagePolicy: CommitMessagePolicy = .shared,
         messageService: AICommitMessageService? = nil
-    ) {
+    ) async {
         self.repositoryPath = repositoryPath
         self.providerStore = providerStore
         self.keychainStore = keychainStore
         self.messagePolicy = messagePolicy
         let resolvedMessageService = messageService ?? AICommitMessageService(messagePolicy: messagePolicy)
         self.messageService = resolvedMessageService
-        gitManager = GitManager(repositoryPathOverride: repositoryPath)
+        let resolvedPath = repositoryPath
+        gitManager = await MainActor.run {
+            GitManager(repositoryPathOverride: resolvedPath)
+        }
         grouper = AICommitGrouperService(
             aiService: resolvedMessageService,
             messagePolicy: messagePolicy

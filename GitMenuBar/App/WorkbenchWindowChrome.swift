@@ -2,11 +2,13 @@ import AppKit
 import SwiftUI
 
 enum WorkbenchWindowChrome {
+    @MainActor
     static func configureTransparentWindow(_ window: NSWindow) {
         window.isOpaque = false
         window.backgroundColor = .clear
     }
 
+    @MainActor
     static func installShell(in contentView: NSView) {
         if let existingShell = contentView.subviews.compactMap({ $0 as? WorkbenchWindowShellView }).first {
             existingShell.updateAppearance()
@@ -29,6 +31,7 @@ enum WorkbenchWindowChrome {
         WorkbenchScrollViewStyle.configureScrollViews(in: contentView)
     }
 
+    @MainActor
     static func makeHostedContentController(rootView: some View) -> NSViewController {
         WorkbenchHostedContentViewController(rootView: AnyView(rootView))
     }

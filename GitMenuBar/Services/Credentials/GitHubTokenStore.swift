@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-protocol GitHubTokenStore {
+protocol GitHubTokenStore: Sendable {
     func saveToken(_ token: String)
     func storedToken() -> String?
     func deleteStoredToken()
@@ -75,7 +75,7 @@ final class GitHubKeychainTokenStore: GitHubTokenStore {
     }
 }
 
-final class InMemoryGitHubTokenStore: GitHubTokenStore {
+final class InMemoryGitHubTokenStore: GitHubTokenStore, @unchecked Sendable {
     private var token: String?
 
     init(token: String? = nil) {
@@ -95,7 +95,7 @@ final class InMemoryGitHubTokenStore: GitHubTokenStore {
     }
 }
 
-final class CachedGitHubTokenStore: GitHubTokenStore {
+final class CachedGitHubTokenStore: GitHubTokenStore, @unchecked Sendable {
     private enum CacheEntry {
         case unresolved
         case missing

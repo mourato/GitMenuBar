@@ -8,6 +8,7 @@ import Combine
 import Foundation
 
 // swiftlint:disable file_length
+@MainActor
 class GitManager: ObservableObject {
     @Published var commitCount: Int = 0
     @Published var isCommitting: Bool = false
@@ -43,8 +44,8 @@ class GitManager: ObservableObject {
     var githubAPIClient: GitHubAPIClient?
 
     private let repositoryContext: GitRepositoryContext
-    private let commandRunner: GitCommandRunner
-    private let workingTreeParser: WorkingTreeParser
+    private nonisolated(unsafe) let commandRunner: GitCommandRunner
+    private nonisolated(unsafe) let workingTreeParser: WorkingTreeParser
     private var selectedRefreshTask: Task<Void, Never>?
     private var selectedRefreshGeneration = 0
     private var selectedRefreshPath = ""
@@ -105,12 +106,12 @@ class GitManager: ObservableObject {
         commitHistoryService.$commitHistoryLimit.assign(to: &$commitHistoryLimit)
     }
 
-    private var storedRepoPath: String {
+    private nonisolated var storedRepoPath: String {
         get { repositoryContext.repositoryPath }
         set { repositoryContext.repositoryPath = newValue }
     }
 
-    private func runOnBackground<T>(_ operation: @escaping () -> T) async -> T {
+    private func runOnBackground<T: Sendable>(_ operation: @escaping @Sendable () -> T) async -> T {
         await GitExecution.runOnBackground(operation)
     }
 
@@ -385,21 +386,19 @@ class GitManager: ObservableObject {
 
     /// Check if the remote repository actually exists on GitHub
     func remoteRepositoryExists(at path: String, completion: @escaping (Bool) -> Void) {
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
             // First check if remote is configured.
-            let remoteConfigResult = self.executeGitCommand(in: path, args: ["config", "--get", "remote.origin.url"])
+            let remoteConfigResult = await runOnBackground {
+                self.executeGitCommand(in: path, args: ["config", "--get", "remote.origin.url"])
+            }
             guard !remoteConfigResult.failure else {
-                DispatchQueue.main.async {
-                    completion(false)
-                }
+                completion(false)
                 return
             }
 
             let remoteURL = remoteConfigResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !remoteURL.isEmpty else {
-                DispatchQueue.main.async {
-                    completion(false)
-                }
+                completion(false)
                 return
             }
 
@@ -409,29 +408,21 @@ class GitManager: ObservableObject {
             // - https://github.com/owner/repo.git
             // - git@github.com:owner/repo.git
             guard let reference = GitHubRemoteURLParser.parse(remoteURL) else {
-                DispatchQueue.main.async {
-                    completion(true)
-                }
+                completion(true)
                 return
             }
 
             // Check if repo exists using GitHub API.
             guard let apiClient = self.githubAPIClient else {
-                DispatchQueue.main.async {
-                    completion(true)
-                }
+                completion(true)
                 return
             }
 
-            Task {
-                let exists = await apiClient.checkRepositoryURLExists(
-                    owner: reference.owner,
-                    repo: reference.repository
-                )
-                DispatchQueue.main.async {
-                    completion(exists)
-                }
-            }
+            let exists = await apiClient.checkRepositoryURLExists(
+                owner: reference.owner,
+                repo: reference.repository
+            )
+            completion(exists)
         }
     }
 
@@ -747,19 +738,18 @@ class GitManager: ObservableObject {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["add", "--", path])
+        Task { @MainActor in
+            let repositoryPath = storedRepoPath
+            let result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["add", "--", path])
+            }
             if result.failure {
-                DispatchQueue.main.async {
-                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to stage '\(path)': \(result.output)"])))
-                }
+                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to stage '\(path)': \(result.output)"])))
                 return
             }
 
-            DispatchQueue.main.async {
-                self.updateUncommittedFiles {
-                    completion?(.success(()))
-                }
+            await updateUncommittedFiles {
+                completion?(.success(()))
             }
         }
     }
@@ -770,19 +760,18 @@ class GitManager: ObservableObject {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["add", "-A"])
+        Task { @MainActor in
+            let repositoryPath = storedRepoPath
+            let result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["add", "-A"])
+            }
             if result.failure {
-                DispatchQueue.main.async {
-                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to stage all changes: \(result.output)"])))
-                }
+                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to stage all changes: \(result.output)"])))
                 return
             }
 
-            DispatchQueue.main.async {
-                self.updateUncommittedFiles {
-                    completion?(.success(()))
-                }
+            await updateUncommittedFiles {
+                completion?(.success(()))
             }
         }
     }
@@ -817,24 +806,25 @@ class GitManager: ObservableObject {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            var result = self.executeGitCommand(in: self.storedRepoPath, args: ["restore", "--staged", "--", "."])
+        Task { @MainActor in
+            let repositoryPath = storedRepoPath
+            var result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--", "."])
+            }
             if result.failure {
                 // Fallback for environments where restore is unavailable.
-                result = self.executeGitCommand(in: self.storedRepoPath, args: ["reset", "HEAD", "--", "."])
+                result = await runOnBackground {
+                    self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--", "."])
+                }
             }
 
             if result.failure {
-                DispatchQueue.main.async {
-                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to unstage all changes: \(result.output)"])))
-                }
+                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to unstage all changes: \(result.output)"])))
                 return
             }
 
-            DispatchQueue.main.async {
-                self.updateUncommittedFiles {
-                    completion?(.success(()))
-                }
+            await updateUncommittedFiles {
+                completion?(.success(()))
             }
         }
     }
@@ -845,24 +835,25 @@ class GitManager: ObservableObject {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            var result = self.executeGitCommand(in: self.storedRepoPath, args: ["restore", "--staged", "--", path])
+        Task { @MainActor in
+            let repositoryPath = storedRepoPath
+            var result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--", path])
+            }
             if result.failure {
                 // Fallback for environments where restore is unavailable.
-                result = self.executeGitCommand(in: self.storedRepoPath, args: ["reset", "HEAD", "--", path])
+                result = await runOnBackground {
+                    self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--", path])
+                }
             }
 
             if result.failure {
-                DispatchQueue.main.async {
-                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to unstage '\(path)': \(result.output)"])))
-                }
+                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to unstage '\(path)': \(result.output)"])))
                 return
             }
 
-            DispatchQueue.main.async {
-                self.updateUncommittedFiles {
-                    completion?(.success(()))
-                }
+            await updateUncommittedFiles {
+                completion?(.success(()))
             }
         }
     }
@@ -885,9 +876,10 @@ class GitManager: ObservableObject {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
+            let repositoryPath = storedRepoPath
+            let fullPath = (repositoryPath as NSString).appendingPathComponent(path)
             var result: (output: String, failure: Bool)
-            let fullPath = (self.storedRepoPath as NSString).appendingPathComponent(path)
 
             if status == .untracked {
                 // Untracked file: just remove it
@@ -902,15 +894,23 @@ class GitManager: ObservableObject {
             } else {
                 // If it's staged, we should unstage it and then discard it
                 // Using git checkout -- path or git restore --staged --worktree
-                result = self.executeGitCommand(in: self.storedRepoPath, args: ["restore", "--staged", "--worktree", "--", path])
+                result = await runOnBackground {
+                    self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--worktree", "--", path])
+                }
                 if result.failure {
                     // Fallback
-                    _ = self.executeGitCommand(in: self.storedRepoPath, args: ["reset", "HEAD", "--", path])
-                    result = self.executeGitCommand(in: self.storedRepoPath, args: ["checkout", "--", path])
+                    _ = await runOnBackground {
+                        self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--", path])
+                    }
+                    result = await runOnBackground {
+                        self.executeGitCommand(in: repositoryPath, args: ["checkout", "--", path])
+                    }
 
                     // If it was a newly added file but already tracked in index (A), check if we need to remove it
                     if FileManager.default.fileExists(atPath: fullPath) {
-                        let lsResult = self.executeGitCommand(in: self.storedRepoPath, args: ["ls-files", "--error-unmatch", path])
+                        let lsResult = await runOnBackground {
+                            self.executeGitCommand(in: repositoryPath, args: ["ls-files", "--error-unmatch", path])
+                        }
                         if lsResult.failure {
                             try? FileManager.default.removeItem(atPath: fullPath)
                             result = ("", false)
@@ -920,16 +920,12 @@ class GitManager: ObservableObject {
             }
 
             if result.failure {
-                DispatchQueue.main.async {
-                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to discard '\(path)': \(result.output)"])))
-                }
+                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to discard '\(path)': \(result.output)"])))
                 return
             }
 
-            DispatchQueue.main.async {
-                self.updateUncommittedFiles {
-                    completion?(.success(()))
-                }
+            await updateUncommittedFiles {
+                completion?(.success(()))
             }
         }
     }
@@ -940,28 +936,31 @@ class GitManager: ObservableObject {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
+            let repositoryPath = storedRepoPath
             // Restore tracked files
-            var result = self.executeGitCommand(in: self.storedRepoPath, args: ["restore", "--", "."])
+            var result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["restore", "--", "."])
+            }
             if result.failure {
-                result = self.executeGitCommand(in: self.storedRepoPath, args: ["checkout", "--", "."])
+                result = await runOnBackground {
+                    self.executeGitCommand(in: repositoryPath, args: ["checkout", "--", "."])
+                }
             }
 
             // Clean untracked files
-            let cleanResult = self.executeGitCommand(in: self.storedRepoPath, args: ["clean", "-fd"])
+            let cleanResult = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["clean", "-fd"])
+            }
 
             if result.failure || cleanResult.failure {
                 let errorMsg = result.failure ? result.output : cleanResult.output
-                DispatchQueue.main.async {
-                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to discard untracked changes: \(errorMsg)"])))
-                }
+                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to discard untracked changes: \(errorMsg)"])))
                 return
             }
 
-            DispatchQueue.main.async {
-                self.updateUncommittedFiles {
-                    completion?(.success(()))
-                }
+            await updateUncommittedFiles {
+                completion?(.success(()))
             }
         }
     }
@@ -972,45 +971,50 @@ class GitManager: ObservableObject {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
+            let repositoryPath = storedRepoPath
             // First get all staged files
-            let diffResult = self.executeGitCommand(in: self.storedRepoPath, args: ["diff", "--cached", "--name-only"])
+            let diffResult = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["diff", "--cached", "--name-only"])
+            }
             if diffResult.failure {
-                DispatchQueue.main.async {
-                    completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to get staged files: \(diffResult.output)"])))
-                }
+                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to get staged files: \(diffResult.output)"])))
                 return
             }
 
             let files = diffResult.output.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
 
             guard !files.isEmpty else {
-                DispatchQueue.main.async {
-                    completion?(.success(()))
-                }
+                completion?(.success(()))
                 return
             }
 
             // Restore those files from index and worktree
-            var result = self.executeGitCommand(in: self.storedRepoPath, args: ["restore", "--staged", "--worktree", "--"] + files)
+            var result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--worktree", "--"] + files)
+            }
             if result.failure {
-                _ = self.executeGitCommand(in: self.storedRepoPath, args: ["reset", "HEAD", "--"] + files)
-                result = self.executeGitCommand(in: self.storedRepoPath, args: ["checkout", "--"] + files)
+                _ = await runOnBackground {
+                    self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--"] + files)
+                }
+                result = await runOnBackground {
+                    self.executeGitCommand(in: repositoryPath, args: ["checkout", "--"] + files)
+                }
 
                 // For files that were 'Added' but didn't exist in HEAD, 'checkout' will fail or just complain. We should carefully delete them.
                 for file in files {
-                    let fullPath = (self.storedRepoPath as NSString).appendingPathComponent(file)
-                    let lsResult = self.executeGitCommand(in: self.storedRepoPath, args: ["ls-files", "--error-unmatch", file])
+                    let fullPath = (repositoryPath as NSString).appendingPathComponent(file)
+                    let lsResult = await runOnBackground {
+                        self.executeGitCommand(in: repositoryPath, args: ["ls-files", "--error-unmatch", file])
+                    }
                     if lsResult.failure, FileManager.default.fileExists(atPath: fullPath) {
                         try? FileManager.default.removeItem(atPath: fullPath)
                     }
                 }
             }
 
-            DispatchQueue.main.async {
-                self.updateUncommittedFiles {
-                    completion?(.success(()))
-                }
+            await updateUncommittedFiles {
+                completion?(.success(()))
             }
         }
     }
@@ -1044,6 +1048,36 @@ class GitManager: ObservableObject {
         let stagedDiff = diffStaged()
         let unstagedDiff = diffUnstaged()
         return [stagedDiff, unstagedDiff]
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .joined(separator: "\n\n")
+    }
+
+    func diffStagedAsync() async -> String {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else { return "" }
+        return await runOnBackground {
+            let result = self.executeGitCommand(in: repositoryPath, args: ["diff", "--cached", "--", "."])
+            return result.failure ? "" : result.output
+        }
+    }
+
+    func diffUnstagedAsync() async -> String {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else { return "" }
+        return await runOnBackground {
+            let trackedResult = self.executeGitCommand(in: repositoryPath, args: ["diff", "--", "."])
+            let trackedDiff = trackedResult.failure ? "" : trackedResult.output
+            let untrackedDiff = self.diffForUntrackedFiles(at: repositoryPath)
+            return [trackedDiff, untrackedDiff]
+                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                .joined(separator: "\n\n")
+        }
+    }
+
+    func diffAllAsync() async -> String {
+        async let stagedDiff = diffStagedAsync()
+        async let unstagedDiff = diffUnstagedAsync()
+        return await [stagedDiff, unstagedDiff]
             .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             .joined(separator: "\n\n")
     }
@@ -1169,8 +1203,9 @@ class GitManager: ObservableObject {
         }
     }
 
-    private func diffForUntrackedFiles() -> String {
-        let untrackedResult = executeGitCommand(in: storedRepoPath, args: ["ls-files", "--others", "--exclude-standard"])
+    private nonisolated func diffForUntrackedFiles(at repositoryPath: String? = nil) -> String {
+        let path = repositoryPath ?? storedRepoPath
+        let untrackedResult = executeGitCommand(in: path, args: ["ls-files", "--others", "--exclude-standard"])
         if untrackedResult.failure {
             return ""
         }
@@ -1185,7 +1220,7 @@ class GitManager: ObservableObject {
         }
 
         let sections = files.map { file -> String in
-            let diffResult = executeGitCommand(in: storedRepoPath, args: ["diff", "--no-index", "--", "/dev/null", file])
+            let diffResult = executeGitCommand(in: path, args: ["diff", "--no-index", "--", "/dev/null", file])
             let output = diffResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
             if output.isEmpty {
                 return "diff --git a/\(file) b/\(file)\nnew file mode 100644\n+<unable to render diff>"
@@ -1214,9 +1249,12 @@ class GitManager: ObservableObject {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
+            let repositoryPath = storedRepoPath
             // Reset to last commit (discard all changes)
-            let resetResult = self.executeGitCommand(in: self.storedRepoPath, args: ["reset", "--hard", "HEAD"])
+            let resetResult = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["reset", "--hard", "HEAD"])
+            }
 
             if resetResult.failure {
                 print("Error resetting to last commit: \(resetResult.output)")
@@ -1231,7 +1269,7 @@ class GitManager: ObservableObject {
         }
     }
 
-    private func amendHeadCommitMessage(_ newMessage: String) -> Result<Void, Error> {
+    private nonisolated func amendHeadCommitMessage(_ newMessage: String) -> Result<Void, Error> {
         let result = executeGitCommand(
             in: storedRepoPath,
             args: [
@@ -1252,7 +1290,7 @@ class GitManager: ObservableObject {
         return .success(())
     }
 
-    private func rewordHistoricalCommitMessage(commitHash: String, newMessage: String) -> Result<Void, Error> {
+    private nonisolated func rewordHistoricalCommitMessage(commitHash: String, newMessage: String) -> Result<Void, Error> {
         let parentResult = executeGitCommand(in: storedRepoPath, args: ["rev-parse", "\(commitHash)^"])
         let isRootCommit = parentResult.failure
         let parentReference = parentResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1290,7 +1328,7 @@ class GitManager: ObservableObject {
         return .success(())
     }
 
-    private func sequenceEditorScript() -> String {
+    private nonisolated func sequenceEditorScript() -> String {
         """
         #!/bin/sh
         todo_file="$1"
@@ -1315,14 +1353,14 @@ class GitManager: ObservableObject {
         """
     }
 
-    private func messageEditorScript() -> String {
+    private nonisolated func messageEditorScript() -> String {
         """
         #!/bin/sh
         cat "$COMMIT_MESSAGE_FILE" > "$1"
         """
     }
 
-    private func writeTemporaryScript(contents: String, executable: Bool) -> String? {
+    private nonisolated func writeTemporaryScript(contents: String, executable: Bool) -> String? {
         let path = FileManager.default.temporaryDirectory
             .appendingPathComponent("gitmenubar-\(UUID().uuidString)")
             .path
@@ -1338,7 +1376,7 @@ class GitManager: ObservableObject {
         }
     }
 
-    private func cleanupTemporaryArtifacts(_ paths: [String]) {
+    private nonisolated func cleanupTemporaryArtifacts(_ paths: [String]) {
         for path in paths {
             try? FileManager.default.removeItem(atPath: path)
         }
@@ -1371,22 +1409,23 @@ class GitManager: ObservableObject {
     func resetToCommit(_ hash: String) {
         guard !storedRepoPath.isEmpty else { return }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
+            let repositoryPath = storedRepoPath
             // Do a hard reset to the specified commit while staying on the current branch
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["reset", "--hard", hash])
+            let result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["reset", "--hard", hash])
+            }
 
             if result.failure {
                 print("Error resetting to commit: \(result.output)")
             } else {
-                DispatchQueue.main.async {
-                    self.refresh(includeReflogHistory: true)
-                    print("Reset to commit: \(hash)")
-                }
+                self.refresh(includeReflogHistory: true)
+                print("Reset to commit: \(hash)")
             }
         }
     }
 
-    private func executeGitCommand(
+    private nonisolated func executeGitCommand(
         in directory: String,
         args: [String],
         useAuth: Bool = false,
@@ -1593,21 +1632,20 @@ class GitManager: ObservableObject {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task { @MainActor in
+            let repositoryPath = storedRepoPath
             // Create a new branch originating from the upstream branch of our current branch
             // git checkout -b <newBranchName> @{u}
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["checkout", "-b", newBranchName, "@{u}"])
+            let result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["checkout", "-b", newBranchName, "@{u}"])
+            }
 
             if result.failure {
-                DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "GitManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create branch from remote: \(result.output)"])))
-                }
+                completion(.failure(NSError(domain: "GitManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create branch from remote: \(result.output)"])))
             } else {
                 print("Successfully created branch \(newBranchName) from remote")
-                DispatchQueue.main.async {
-                    self.refresh {
-                        completion(.success(()))
-                    }
+                await refresh {
+                    completion(.success(()))
                 }
             }
         }

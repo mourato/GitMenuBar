@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 final class DirectoryPickerService {
     func selectDirectory(
         title: String = "Select Git Repository",

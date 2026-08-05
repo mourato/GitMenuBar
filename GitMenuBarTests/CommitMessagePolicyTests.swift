@@ -175,9 +175,9 @@ final class CommitMessagePolicyTests: XCTestCase {
 
 @MainActor
 final class GitMenuBarCommitSessionTests: XCTestCase {
-    func testReadinessIsFalseWithoutProviderKeyAndModel() {
+    func testReadinessIsFalseWithoutProviderKeyAndModel() async {
         let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
-        let session = GitMenuBarCommitSession(
+        let session = await GitMenuBarCommitSession(
             repositoryPath: "/tmp",
             providerStore: providerStore,
             keychainStore: InMemoryAIAPIKeyStore(),
@@ -191,7 +191,7 @@ final class GitMenuBarCommitSessionTests: XCTestCase {
         )
     }
 
-    func testReadinessIsTrueWithProviderKeyAndModel() {
+    func testReadinessIsTrueWithProviderKeyAndModel() async {
         let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
         let provider = AIProviderConfig(
             name: "OpenAI",
@@ -203,7 +203,7 @@ final class GitMenuBarCommitSessionTests: XCTestCase {
         )
         providerStore.upsertProvider(provider)
 
-        let session = GitMenuBarCommitSession(
+        let session = await GitMenuBarCommitSession(
             repositoryPath: "/tmp",
             providerStore: providerStore,
             keychainStore: InMemoryAIAPIKeyStore(storage: [.openai: "secret-key"]),

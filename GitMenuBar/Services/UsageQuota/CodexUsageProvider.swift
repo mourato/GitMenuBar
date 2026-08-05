@@ -8,17 +8,14 @@ struct CodexUsageProvider: UsageQuotaProviding {
     let id: UsageProviderID = .codex
 
     private let urlSession: URLSession
-    private let fileManager: FileManager
     private let homeDirectory: URL
 
     init(
         urlSession: URLSession = .shared,
-        fileManager: FileManager = .default,
         homeDirectory: URL? = nil
     ) {
         self.urlSession = urlSession
-        self.fileManager = fileManager
-        self.homeDirectory = homeDirectory ?? fileManager.homeDirectoryForCurrentUser
+        self.homeDirectory = homeDirectory ?? FileManager.default.homeDirectoryForCurrentUser
     }
 
     func fetchSnapshot() async -> UsageQuotaSnapshot {
@@ -57,7 +54,7 @@ struct CodexUsageProvider: UsageQuotaProviding {
 
     private func fetchFromLocalSessions() -> UsageQuotaSnapshot? {
         let sessionsDirectory = homeDirectory.appendingPathComponent(".codex/sessions")
-        guard let file = CodexUsageParsing.latestJSONLFile(in: sessionsDirectory, fileManager: fileManager),
+        guard let file = CodexUsageParsing.latestJSONLFile(in: sessionsDirectory, fileManager: .default),
               let text = try? String(contentsOf: file, encoding: .utf8)
         else {
             return nil

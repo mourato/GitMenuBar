@@ -142,22 +142,22 @@ public struct CompanionCLIErrorPayload: Codable, Sendable, Equatable {
 
 public extension CompanionCLIService {
     func proposeMessage(options: CompanionCLIScopeOptions) async throws -> String {
-        let session = try makeSession(options: options)
+        let session = try await makeSession(options: options)
         return try await resolveMessage(session: session, options: options)
     }
 
     func proposeCommit(options: CompanionCLIScopeOptions) async throws -> CompanionCLICommitPlan {
-        let session = try makeSession(options: options)
+        let session = try await makeSession(options: options)
         return try await buildCommitPlan(session: session, options: options)
     }
 
     func applyCommit(plan: CompanionCLICommitPlan, options: CompanionCLIScopeOptions) async throws {
-        let session = try makeSession(options: options)
+        let session = try await makeSession(options: options)
         try await applyCommitPlan(session: session, plan: plan)
     }
 
     func proposeAtomicPlan(options: CompanionCLIScopeOptions) async throws -> CompanionCLIAtomicPlan {
-        let session = try makeSession(options: options)
+        let session = try await makeSession(options: options)
         return try await buildAtomicPlan(session: session, options: options)
     }
 
@@ -165,7 +165,7 @@ public extension CompanionCLIService {
         plan: CompanionCLIAtomicPlan,
         options: CompanionCLIScopeOptions
     ) async throws -> CompanionCLIAtomicApplyProgress? {
-        let session = try makeSession(options: options)
+        let session = try await makeSession(options: options)
         return try await applyAtomicPlan(session: session, plan: plan)
     }
 }

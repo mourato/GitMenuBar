@@ -1,6 +1,7 @@
 @testable import GitMenuBar
 import XCTest
 
+@MainActor
 final class GitWorkingTreeStateTests: XCTestCase {
     func testStagedFileAppearsOnlyInStagedSectionWithLineDiff() throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)

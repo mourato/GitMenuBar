@@ -42,6 +42,7 @@ struct WorkingTreeLineDiffView: View {
     }
 }
 
+@MainActor
 func workingTreeRowIconButton(
     systemName: String,
     help: String,

@@ -7,7 +7,7 @@ enum AIKeychainStoreError: Error, Equatable {
     case malformedLegacyItem(service: String)
 }
 
-protocol AIKeychainItemClient {
+protocol AIKeychainItemClient: Sendable {
     func read(service: String, account: String) throws -> Data?
     func write(_ data: Data, service: String, account: String) throws
     func delete(service: String, account: String) throws
@@ -78,7 +78,7 @@ private struct AIKeychainPayload: Codable, Equatable {
     var values: [String: String]
 }
 
-protocol AIAPIKeyStore {
+protocol AIAPIKeyStore: Sendable {
     func saveAPIKey(_ apiKey: String, for credentialID: AIProviderCredentialID) throws
     func apiKey(for credentialID: AIProviderCredentialID) throws -> String?
     func fetchAllAPIKeys() throws -> [AIProviderCredentialID: String]
@@ -86,7 +86,7 @@ protocol AIAPIKeyStore {
     func deleteAPIKey(for credentialID: AIProviderCredentialID) throws
 }
 
-final class AIKeychainStore: AIAPIKeyStore {
+final class AIKeychainStore: AIAPIKeyStore, @unchecked Sendable {
     static let serviceName = "com.mourato.GitMenuBar"
     static let accountName = "ai-api-keys.v1"
 
@@ -155,7 +155,7 @@ final class AIKeychainStore: AIAPIKeyStore {
     }
 }
 
-final class InMemoryAIAPIKeyStore: AIAPIKeyStore {
+final class InMemoryAIAPIKeyStore: AIAPIKeyStore, @unchecked Sendable {
     private var storage: [AIProviderCredentialID: String]
 
     init(storage: [AIProviderCredentialID: String] = [:]) {
@@ -201,7 +201,7 @@ final class InMemoryAIAPIKeyStore: AIAPIKeyStore {
     }
 }
 
-final class CachedAIAPIKeyStore: AIAPIKeyStore {
+final class CachedAIAPIKeyStore: AIAPIKeyStore, @unchecked Sendable {
     static let shared = CachedAIAPIKeyStore(backingStore: AIKeychainStore())
     private enum CacheEntry { case missing, value(String) }
     private let backingStore: any AIAPIKeyStore

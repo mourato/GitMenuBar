@@ -1,6 +1,6 @@
 import Foundation
 
-final class AICommitMessageService {
+final class AICommitMessageService: @unchecked Sendable {
     struct ParsedDiffSection {
         let path: String
         let content: String
@@ -188,44 +188,38 @@ final class AICommitMessageService {
         preferredScopeMode: AICommitDefaultScopeMode,
         overrideScope: DiffScope?
     ) async throws -> StructuredDiffPayload {
-        try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                var effectiveScope = selectedScope
-                var rawDiff = self.diff(for: selectedScope, gitManager: gitManager)
+        var effectiveScope = selectedScope
+        var rawDiff = await diff(for: selectedScope, gitManager: gitManager)
 
-                let shouldFallbackToAll = overrideScope == nil &&
-                    preferredScopeMode == .stagedWithFallbackAll &&
-                    selectedScope == .staged &&
-                    rawDiff.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                if shouldFallbackToAll {
-                    effectiveScope = .all
-                    rawDiff = self.diff(for: .all, gitManager: gitManager)
-                }
-
-                let normalizedDiff = rawDiff.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !normalizedDiff.isEmpty else {
-                    continuation.resume(throwing: AIError.noDiffAvailable)
-                    return
-                }
-
-                let payload = self.assemblePayload(
-                    scope: effectiveScope,
-                    scopeDescription: effectiveScope.title,
-                    rawDiff: normalizedDiff
-                )
-                continuation.resume(returning: payload)
-            }
+        let shouldFallbackToAll = overrideScope == nil &&
+            preferredScopeMode == .stagedWithFallbackAll &&
+            selectedScope == .staged &&
+            rawDiff.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if shouldFallbackToAll {
+            effectiveScope = .all
+            rawDiff = await diff(for: .all, gitManager: gitManager)
         }
+
+        let normalizedDiff = rawDiff.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedDiff.isEmpty else {
+            throw AIError.noDiffAvailable
+        }
+
+        return assemblePayload(
+            scope: effectiveScope,
+            scopeDescription: effectiveScope.title,
+            rawDiff: normalizedDiff
+        )
     }
 
-    private func diff(for scope: DiffScope, gitManager: GitManager) -> String {
+    private func diff(for scope: DiffScope, gitManager: GitManager) async -> String {
         switch scope {
         case .staged:
-            gitManager.diffStaged()
+            await gitManager.diffStagedAsync()
         case .unstaged:
-            gitManager.diffUnstaged()
+            await gitManager.diffUnstagedAsync()
         case .all:
-            gitManager.diffAll()
+            await gitManager.diffAllAsync()
         }
     }
 

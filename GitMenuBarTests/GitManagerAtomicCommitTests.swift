@@ -1,6 +1,7 @@
 @testable import GitMenuBar
 import XCTest
 
+@MainActor
 final class GitManagerAtomicCommitTests: XCTestCase {
     func testDiffForChangedFilesAsyncReturnsExpectedMap() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
@@ -9,12 +10,12 @@ final class GitManagerAtomicCommitTests: XCTestCase {
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
         let initialExpectation = expectation(description: "working tree refresh")
         gitManager.updateUncommittedFiles { initialExpectation.fulfill() }
-        wait(for: [initialExpectation], timeout: 3)
+        await fulfillment(of: [initialExpectation], timeout: 3)
 
         try "base\nchanged\n".write(to: fileURL, atomically: true, encoding: .utf8)
         let refreshExpectation = expectation(description: "working tree refresh after edit")
         gitManager.updateUncommittedFiles { refreshExpectation.fulfill() }
-        wait(for: [refreshExpectation], timeout: 3)
+        await fulfillment(of: [refreshExpectation], timeout: 3)
 
         let diffs = await gitManager.diffForChangedFilesAsync()
 

@@ -60,12 +60,14 @@ extension GitBranchService {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Create and checkout new branch from HEAD
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["checkout", "-b", trimmedName])
+        Task {
+            let repositoryPath = storedRepoPath
+            let result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["checkout", "-b", trimmedName])
+            }
 
             if result.failure {
-                DispatchQueue.main.async {
+                await publishOnMainActor {
                     completion(.failure(self.branchError(
                         code: 3,
                         description: "Failed to create branch: \(result.output)"
@@ -73,7 +75,7 @@ extension GitBranchService {
                 }
             } else {
                 print("Successfully created and switched to branch \(trimmedName)")
-                DispatchQueue.main.async {
+                await publishOnMainActor {
                     self.refreshHandler {
                         completion(.success(()))
                     }
@@ -88,22 +90,27 @@ extension GitBranchService {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task {
+            let repositoryPath = storedRepoPath
             // Check if we have uncommitted changes
-            let statusResult = self.executeGitCommand(in: self.storedRepoPath, args: ["status", "--porcelain"])
+            let statusResult = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["status", "--porcelain"])
+            }
             let hasChanges = !statusResult.output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
             var stashCreated = false
 
             // If we have changes, stash them first
             if hasChanges {
-                let stashResult = self.executeGitCommand(
-                    in: self.storedRepoPath,
-                    args: ["stash", "push", "-u", "-m", "GitMenuBar auto-stash for branch switch"]
-                )
+                let stashResult = await runOnBackground {
+                    self.executeGitCommand(
+                        in: repositoryPath,
+                        args: ["stash", "push", "-u", "-m", "GitMenuBar auto-stash for branch switch"]
+                    )
+                }
 
                 if stashResult.failure {
-                    DispatchQueue.main.async {
+                    await publishOnMainActor {
                         completion(.failure(self.branchError(
                             code: 2,
                             description: "Failed to save changes: \(stashResult.output)"
@@ -116,14 +123,18 @@ extension GitBranchService {
             }
 
             // Try to switch/checkout branch
-            let checkoutResult = self.executeGitCommand(in: self.storedRepoPath, args: ["checkout", branchName])
+            let checkoutResult = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["checkout", branchName])
+            }
 
             if checkoutResult.failure {
                 // If checkout failed and we stashed, try to restore the stash
                 if stashCreated {
-                    _ = self.executeGitCommand(in: self.storedRepoPath, args: ["stash", "pop"])
+                    _ = await runOnBackground {
+                        self.executeGitCommand(in: repositoryPath, args: ["stash", "pop"])
+                    }
                 }
-                DispatchQueue.main.async {
+                await publishOnMainActor {
                     completion(.failure(self.branchError(
                         code: 3,
                         description: "Failed to switch branch: \(checkoutResult.output)"
@@ -136,11 +147,13 @@ extension GitBranchService {
 
             // If we stashed changes, restore them
             if stashCreated {
-                let popResult = self.executeGitCommand(in: self.storedRepoPath, args: ["stash", "pop"])
+                let popResult = await runOnBackground {
+                    self.executeGitCommand(in: repositoryPath, args: ["stash", "pop"])
+                }
 
                 if popResult.failure {
                     // Stash pop failed - likely due to conflicts
-                    DispatchQueue.main.async {
+                    await publishOnMainActor {
                         completion(.failure(self.branchError(
                             code: 4,
                             description: "Switched branches, but couldn't reapply your changes due to conflicts. "
@@ -153,7 +166,7 @@ extension GitBranchService {
             }
 
             // Refresh all status after switch
-            DispatchQueue.main.async {
+            await publishOnMainActor {
                 self.refreshHandler {
                     completion(.success(()))
                 }
@@ -174,14 +187,20 @@ extension GitBranchService {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task {
+            let repositoryPath = storedRepoPath
             // Create branch from specified branch or current HEAD
-            var args = ["checkout", "-b", trimmedName]
-            if let fromBranch, !fromBranch.isEmpty {
-                args.append(fromBranch)
-            }
+            let args = {
+                var args = ["checkout", "-b", trimmedName]
+                if let fromBranch, !fromBranch.isEmpty {
+                    args.append(fromBranch)
+                }
+                return args
+            }()
 
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: args)
+            let result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: args)
+            }
 
             if result.failure {
                 // Parse common error cases for friendly messages
@@ -200,13 +219,13 @@ extension GitBranchService {
                     friendlyMessage = errorSnippet.trimmingCharacters(in: .whitespacesAndNewlines)
                 }
 
-                DispatchQueue.main.async {
+                await publishOnMainActor {
                     completion(.failure(self.branchError(code: 3, description: friendlyMessage)))
                 }
             } else {
                 print("Successfully created and switched to branch: \(trimmedName)")
                 // Refresh all status after creating branch
-                DispatchQueue.main.async {
+                await publishOnMainActor {
                     self.refreshHandler {
                         completion(.success(()))
                     }
@@ -221,21 +240,24 @@ extension GitBranchService {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task {
+            let repositoryPath = storedRepoPath
             // Perform the merge
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["merge", fromBranch])
+            let result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["merge", fromBranch])
+            }
 
             if result.failure {
                 // Check if it's a merge conflict
                 if result.output.contains("CONFLICT") || result.output.contains("Automatic merge failed") {
-                    DispatchQueue.main.async {
+                    await publishOnMainActor {
                         completion(.failure(self.branchError(
                             code: 4,
                             description: "Merge conflict! Please resolve manually."
                         )))
                     }
                 } else {
-                    DispatchQueue.main.async {
+                    await publishOnMainActor {
                         completion(.failure(self.branchError(
                             code: 3,
                             description: "Failed to merge: \(result.output)"
@@ -245,7 +267,7 @@ extension GitBranchService {
             } else {
                 print("Successfully merged \(fromBranch) into current branch")
                 // Refresh all status after merge
-                DispatchQueue.main.async {
+                await publishOnMainActor {
                     self.refreshHandler {
                         completion(.success(()))
                     }
@@ -269,12 +291,15 @@ extension GitBranchService {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task {
+            let repositoryPath = storedRepoPath
             // Try to delete the branch locally first
-            let localResult = self.executeGitCommand(in: self.storedRepoPath, args: ["branch", "--delete", branchName])
+            let localResult = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["branch", "--delete", branchName])
+            }
 
             if localResult.failure {
-                DispatchQueue.main.async {
+                await publishOnMainActor {
                     completion(.failure(self.branchError(
                         code: 3,
                         description: "Failed to delete local branch: \(localResult.output)"
@@ -286,7 +311,7 @@ extension GitBranchService {
             print("Successfully deleted local branch: \(branchName)")
 
             // Explicitly refresh branch list to update UI immediately
-            DispatchQueue.main.async {
+            await publishOnMainActor {
                 self.fetchBranches {
                     self.refreshHandler {
                         completion(.success(()))
@@ -308,14 +333,17 @@ extension GitBranchService {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task {
+            let repositoryPath = storedRepoPath
             // Rename branch (using -m)
             // If it's the current branch, we don't need to specify the old name, but providing it works too
 
-            let result = self.executeGitCommand(in: self.storedRepoPath, args: ["branch", "-m", oldName, trimmedNewName])
+            let result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["branch", "-m", oldName, trimmedNewName])
+            }
 
             if result.failure {
-                DispatchQueue.main.async {
+                await publishOnMainActor {
                     completion(.failure(self.branchError(
                         code: 3,
                         description: "Failed to rename branch: \(result.output)"
@@ -323,7 +351,7 @@ extension GitBranchService {
                 }
             } else {
                 print("Successfully renamed branch from \(oldName) to \(trimmedNewName)")
-                DispatchQueue.main.async {
+                await publishOnMainActor {
                     self.refreshHandler {
                         completion(.success(()))
                     }
