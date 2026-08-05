@@ -23,7 +23,7 @@ Actions that usually require navigating GitHub settings, like creating new repos
 Designed for developers who want to stay focused on their work without managing terminal commands or navigating large Git client interfaces. It removes unnecessary interface complexity and surfaces only the actions most developers need during active work.
 
 ### Safety First
-The application emphasizes safe workflows by clearly explaining actions and providing protective prompts when changes could lead to data loss. For operations like Wipe, it even creates automatic `.git` backups before proceeding.
+The application emphasizes safe workflows by clearly explaining actions and providing protective prompts when changes could lead to data loss.
 
 
 
@@ -35,7 +35,6 @@ The application emphasizes safe workflows by clearly explaining actions and prov
 - **Flexible Pulling & Rebasing**: When your local branch is behind, syncing gives you the choice to merge, rebase, or pull changes to a fresh branch.
 - **Smart Branching**: Switch, create, and merge branches with automatic handling of uncommitted changes.
 - **History & Recovery**: Browse full commit history and reset to any previous state easily.
-- **Wipe & Restart**: Perfect for project templates. Resets repository history while preserving current files, with automatic safety backups.
 - **Native Experience**: A lightweight (5.2 MB) Swift app that lives in your menu bar and stays out of your way.
 
 <p align="center">
@@ -115,7 +114,7 @@ To enable push/pull and repository management, go to **Settings** → **Connect 
 
 **Maintenance**: Long-press the repository name at the top of the menu to toggle Public/Private visibility or delete the repository from GitHub.
 
-**Resetting**: Use the **Reset** button in the main view to discard local changes, or **Wipe** in Settings for a fresh start with a clean history.
+**Resetting**: Use the **Reset** button in the main view to discard local changes.
 
 **Command Line Tip**: You can quickly open any folder in GitMenuBar from your terminal using:
 ```bash

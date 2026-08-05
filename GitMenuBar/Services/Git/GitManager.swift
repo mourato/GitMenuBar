@@ -9,11 +9,6 @@ import Foundation
 
 // swiftlint:disable type_body_length file_length
 class GitManager: ObservableObject {
-    private struct RepositoryWipeError: Error {
-        let code: Int
-        let description: String
-    }
-
     @Published var commitCount: Int = 0
     @Published var isCommitting: Bool = false
     @Published var uncommittedFiles: [String] = []
@@ -1393,174 +1388,6 @@ class GitManager: ObservableObject {
         }
     }
 
-    /// Wipes the repository history, leaving only a single "Initial commit" with current files
-    /// Uses the orphan branch approach to completely remove all history
-    func wipeRepository(completion: @escaping (Result<Void, Error>) -> Void) {
-        guard !storedRepoPath.isEmpty else {
-            completion(.failure(makeRepositoryWipeNSError(code: 1, description: "No repository path configured")))
-            return
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                self.ensureBackupIgnorePatternForRepositoryWipe()
-                let backupPath = try self.backupGitDirectoryForRepositoryWipe()
-                print("Backed up .git folder to: \(backupPath)")
-
-                let branchToWipe = try self.detectBranchToWipe()
-                try self.createOrphanBranchForRepositoryWipe()
-                try self.stageFilesForRepositoryWipe()
-                try self.createInitialCommitForRepositoryWipe()
-                try self.replaceBranchHistory(branchToWipe: branchToWipe)
-
-                _ = self.executeGitCommand(in: self.storedRepoPath, args: ["gc", "--prune=now"])
-                DispatchQueue.main.async {
-                    self.refresh()
-                    completion(.success(()))
-                }
-            } catch let error as RepositoryWipeError {
-                self.reportRepositoryWipeFailure(error, completion: completion)
-            } catch {
-                self.reportRepositoryWipeFailure(
-                    RepositoryWipeError(code: 0, description: error.localizedDescription),
-                    completion: completion
-                )
-            }
-        }
-    }
-
-    private func makeRepositoryWipeNSError(code: Int, description: String) -> NSError {
-        NSError(domain: "GitManager", code: code, userInfo: [NSLocalizedDescriptionKey: description])
-    }
-
-    private func reportRepositoryWipeFailure(
-        _ error: RepositoryWipeError,
-        completion: @escaping (Result<Void, Error>) -> Void
-    ) {
-        DispatchQueue.main.async {
-            completion(.failure(self.makeRepositoryWipeNSError(code: error.code, description: error.description)))
-        }
-    }
-
-    private func ensureBackupIgnorePatternForRepositoryWipe() {
-        let gitignorePath = (storedRepoPath as NSString).appendingPathComponent(".gitignore")
-        let backupIgnorePattern = ".git-backup-*"
-
-        do {
-            var gitignoreContent = ""
-            if FileManager.default.fileExists(atPath: gitignorePath) {
-                gitignoreContent = try String(contentsOfFile: gitignorePath, encoding: .utf8)
-            }
-
-            guard !gitignoreContent.contains(backupIgnorePattern) else {
-                return
-            }
-
-            if !gitignoreContent.isEmpty, !gitignoreContent.hasSuffix("\n") {
-                gitignoreContent += "\n"
-            }
-            gitignoreContent += backupIgnorePattern + "\n"
-            try gitignoreContent.write(toFile: gitignorePath, atomically: true, encoding: .utf8)
-            print("Added \(backupIgnorePattern) to .gitignore")
-        } catch {
-            print("Warning: Could not update .gitignore: \(error.localizedDescription)")
-        }
-    }
-
-    private func backupGitDirectoryForRepositoryWipe() throws -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyyMMdd-HHmmss"
-        let timestamp = dateFormatter.string(from: Date())
-        let backupPath = ".git-backup-\(timestamp)"
-
-        let backupResult = executeCommand(in: storedRepoPath, executable: "/bin/cp", args: ["-R", ".git", backupPath])
-        guard !backupResult.failure else {
-            throw RepositoryWipeError(
-                code: 0,
-                description: "Failed to backup .git folder: \(backupResult.output)"
-            )
-        }
-
-        return backupPath
-    }
-
-    private func detectBranchToWipe() throws -> String {
-        let branchParseResult = executeGitCommand(in: storedRepoPath, args: ["rev-parse", "--abbrev-ref", "HEAD"])
-        guard !branchParseResult.failure else {
-            throw RepositoryWipeError(
-                code: 2,
-                description: "Failed to detect current branch: \(branchParseResult.output)"
-            )
-        }
-
-        let branchToWipe = branchParseResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard branchToWipe != "HEAD" else {
-            throw RepositoryWipeError(
-                code: 2,
-                description: "Cannot wipe in detached HEAD state. Please checkout a branch first."
-            )
-        }
-
-        return branchToWipe
-    }
-
-    private func createOrphanBranchForRepositoryWipe() throws {
-        let orphanResult = executeGitCommand(in: storedRepoPath, args: ["checkout", "--orphan", "temp_wipe_branch"])
-        guard !orphanResult.failure else {
-            throw RepositoryWipeError(
-                code: 2,
-                description: "Failed to create orphan branch: \(orphanResult.output)"
-            )
-        }
-    }
-
-    private func stageFilesForRepositoryWipe() throws {
-        let addResult = executeGitCommand(in: storedRepoPath, args: ["add", "-A"])
-        guard !addResult.failure else {
-            throw RepositoryWipeError(code: 3, description: "Failed to stage files: \(addResult.output)")
-        }
-    }
-
-    private func createInitialCommitForRepositoryWipe() throws {
-        let commitResult = executeGitCommand(
-            in: storedRepoPath,
-            args: ["commit", "--no-gpg-sign", "-m", "Initial commit"]
-        )
-        guard !commitResult.failure else {
-            throw RepositoryWipeError(
-                code: 4,
-                description: "Failed to create initial commit: \(commitResult.output)"
-            )
-        }
-    }
-
-    private func replaceBranchHistory(branchToWipe: String) throws {
-        let deleteBranchResult = executeGitCommand(in: storedRepoPath, args: ["branch", "-D", branchToWipe])
-        if deleteBranchResult.failure {
-            print("Warning: Could not delete old branch \(branchToWipe): \(deleteBranchResult.output)")
-        }
-
-        let renameResult = executeGitCommand(in: storedRepoPath, args: ["branch", "-m", branchToWipe])
-        guard !renameResult.failure else {
-            throw RepositoryWipeError(
-                code: 5,
-                description: "Failed to rename branch to \(branchToWipe): \(renameResult.output)"
-            )
-        }
-
-        let forcePushResult = executeGitCommand(
-            in: storedRepoPath,
-            args: ["push", "-u", "-f", "origin", branchToWipe],
-            useAuth: true
-        )
-        guard !forcePushResult.failure else {
-            throw RepositoryWipeError(
-                code: 6,
-                description: "Failed to force push to \(branchToWipe): \(forcePushResult.output)"
-            )
-        }
-    }
-
     private func executeGitCommand(
         in directory: String,
         args: [String],
@@ -1573,22 +1400,6 @@ class GitManager: ObservableObject {
             useAuth: useAuth,
             additionalEnvironment: additionalEnvironment,
             using: commandRunner
-        )
-    }
-
-    private func executeCommand(
-        in directory: String,
-        executable: String,
-        args: [String],
-        useAuth: Bool = false,
-        additionalEnvironment: [String: String] = [:]
-    ) -> (output: String, failure: Bool) {
-        commandRunner.runCommand(
-            in: directory,
-            executable: executable,
-            args: args,
-            useAuth: useAuth,
-            additionalEnvironment: additionalEnvironment
         )
     }
 
