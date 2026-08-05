@@ -715,8 +715,80 @@ per-project GitManager, cache, dependency, or speculative UI debounce.
   bounded after Plan 051, but fetch/push/pull/mutations must not overlap
   unsafely with reads.
 
-## AI settings credential surface — 2026-08-05
+## AI settings, shared credentials, and removal of unused wipe — 2026-08-05
+
+Audit baseline: commit `75341b1`, clean worktree before plan authoring. The
+audit covered the live Settings UI, AI provider persistence and editor flows,
+OpenRouter usage-quota integration, Keychain migration/cache paths, the
+confirmed `vozinha` Keychain pattern, current README claims, and targeted
+tests/previews. It did not constitute a full performance, dependency, release,
+CI, or whole-product UX audit.
+
+### Execution order & status
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 055 | Simplificar a superfície de AI Settings e reutilizar a credencial compartilhada | P1 | M | 054 | DONE |
+| [054](054-consolidate-ai-provider-credentials.md) | Consolidate AI provider credentials in one versioned Keychain item | P0 | L | — | DONE |
+| [055](055-rework-ai-settings-and-quota-credential-surface.md) | Simplify AI Settings and reuse the shared credential surface | P1 | M | 054 | DONE |
+| [056](056-remove-repository-history-wipe.md) | Remove Wipe Repository History | P1 | M | — | DONE |
+
+### Confirmed product constraints
+
+- One credential identity represents the real backend: `openrouter`,
+  `google`, `openai`, `anthropic`, or a stable custom-provider identity.
+- The consolidated item contains only AI provider API keys. GitHub remains
+  separate; Codex/Cursor local credentials remain outside it.
+- Provider editors remain the place where keys are entered. Usage Quotas loses
+  its duplicate OpenRouter field and consumes the shared store.
+- The main AI Commit Generation group contains exactly `Default Provider`,
+  `Default Model`, and `Add Provider`, in that order. Existing provider
+  management moves behind Add Provider.
+- Google/Gemini identity is prepared for future sharing, without adding Gemini
+  quota support in this slice.
+- Migration must validate read-back before deleting old entries; conflicts are
+  preserved and never resolved silently. The new AI blob uses
+  `WhenUnlockedThisDeviceOnly`.
+- Wipe is removed entirely from live UI, implementation, and current README
+  copy. Ordinary reset/history flows and historical plan/review records stay.
+
+### Dependency notes
+
+- Plan 054 is the only prerequisite for Plan 055 because the editor and quota
+  surface must consume one error-aware credential contract.
+- Plan 056 is independent and may run in parallel in an isolated worktree;
+  integrate it with a final combined lint/test pass.
+- Recommended serial order is 054 → 055, with 056 scheduled whenever the
+  repository is not concurrently changing its two in-scope files.
+- Plan 054 shipped as merge `15bfd0e` from implementation `4661537`; review
+  remediations are `05be5d1` and `abcef63`. Its temporary OpenRouter adapter
+  was explicitly removed by Plan 055 before the batch was considered complete.
+- Plan 055 shipped as merge `4e04a67` from implementation `69023f7`; review
+  remediation is `e245e00`. Its final UI gate used explicit candidate files;
+  manual VoiceOver smoke testing remains a handoff check because this
+  environment has no native accessibility session.
+- Plan 056 shipped as merge `6e2d3df` from implementation `83b8550`; its live
+  reference scan, Settings preview, lint, and tests passed.
+
+### Findings considered and rejected/deferred
+
+- Requiring a successful network connection test before saving a provider was
+  rejected: offline/custom providers must remain configurable; persistence
+  failures are the hard error boundary instead.
+- Adding Gemini quota support now was rejected by confirmation; only the
+  shared Google/Gemini credential identity is prepared.
+- Moving GitHub, Codex, or Cursor credentials into the consolidated blob was
+  rejected as outside the requested AI-provider scope.
+- Rewriting completed plans and code-review records to remove historical wipe
+  mentions was rejected; they remain historical records.
+- Updating stale architecture documentation, fixing the clean-tree preview
+  script, and adding CI are valid separate improvements but are deferred from
+  this focused slice.
+
+### Baseline validation
+
+- `make test`: passed on the unchanged source baseline.
+- `make lint`: passed; existing warnings remain, with no source diff introduced.
+- `make guidance-check`: passed before and after plan authoring is required.
+- `make check-preview`: known baseline failure on a clean tree because
+  `scripts/check-preview.sh` expands an empty Bash 3.2 array under `set -u`;
+  Plan 055 uses an explicit-file preview gate and does not modify the script.
