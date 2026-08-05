@@ -25,24 +25,24 @@ final class OpenRouterUsageParsingTests: XCTestCase {
         XCTAssertEqual(snapshot?.providerID, .openrouter)
     }
 
-    func testMissingBaselineUsesTenDollarFallback() throws {
+    func testMissingBaselineUsesCurrentBalanceAsFallback() throws {
         let parsed = try XCTUnwrap(OpenRouterUsageParsing.parse(
-            fromCreditsData: data(forCredits: 100, usage: 90)
+            fromCreditsData: data(forCredits: 100, usage: 91.18)
         ))
 
-        XCTAssertEqual(parsed.state.quotaBaseCredits, 10)
-        XCTAssertEqual(parsed.state.usageAtQuotaBase, 90)
+        XCTAssertEqual(parsed.state.quotaBaseCredits, 8.82, accuracy: 0.0001)
+        XCTAssertEqual(parsed.state.usageAtQuotaBase, 91.18, accuracy: 0.0001)
         XCTAssertEqual(parsed.snapshot.sessionWindow?.remainingPercent, 100)
-        XCTAssertEqual(parsed.snapshot.creditValueText, "$10.00 left")
+        XCTAssertEqual(parsed.snapshot.creditValueText, "$8.82 left")
 
         let afterTopUp = try XCTUnwrap(OpenRouterUsageParsing.parse(
-            fromCreditsData: data(forCredits: 110, usage: 91),
+            fromCreditsData: data(forCredits: 110, usage: 92.18),
             previousState: parsed.state
         ))
 
-        XCTAssertEqual(afterTopUp.state.quotaBaseCredits, 20)
+        XCTAssertEqual(afterTopUp.state.quotaBaseCredits, 18.82, accuracy: 0.0001)
         XCTAssertEqual(afterTopUp.snapshot.sessionWindow?.remainingPercent, 95)
-        XCTAssertEqual(afterTopUp.snapshot.creditValueText, "$19.00 left")
+        XCTAssertEqual(afterTopUp.snapshot.creditValueText, "$17.82 left")
     }
 
     func testTopUpPreservesBalanceFromBeforeTopUp() throws {

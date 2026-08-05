@@ -38,7 +38,7 @@ struct OpenRouterUsageState: Codable, Equatable, Sendable {
 
 struct OpenRouterUsageStateStore: @unchecked Sendable {
     private let defaults: UserDefaults
-    private let key = "openRouterUsageState.v1"
+    private let key = "openRouterUsageState.v2"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -58,8 +58,6 @@ struct OpenRouterUsageStateStore: @unchecked Sendable {
 /// Parsing helpers for OpenRouter's credits API.
 /// Credits parsing adapted from CodexBar (MIT, steipete).
 enum OpenRouterUsageParsing {
-    private static let fallbackQuotaBaseCredits = 10.0
-
     struct ParsedCredits: Sendable {
         let snapshot: UsageQuotaSnapshot
         let state: OpenRouterUsageState
@@ -86,11 +84,12 @@ enum OpenRouterUsageParsing {
 
         let totalCredits = response.data.totalCredits
         let totalUsage = response.data.totalUsage
+        let currentBalance = max(0, totalCredits - totalUsage)
         let state = previousState?.updating(totalCredits: totalCredits, totalUsage: totalUsage)
             ?? OpenRouterUsageState(
                 totalCredits: totalCredits,
                 totalUsage: totalUsage,
-                quotaBaseCredits: fallbackQuotaBaseCredits,
+                quotaBaseCredits: currentBalance,
                 usageAtQuotaBase: totalUsage
             )
         let usedSinceQuotaBase = max(0, totalUsage - state.usageAtQuotaBase)
