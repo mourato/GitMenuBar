@@ -47,7 +47,7 @@ struct CleanupConfirmationView: View {
                 .font(WorkbenchTypography.detail)
                 .foregroundStyle(.secondary)
 
-            if requiresRiskReview && !didReviewRisk {
+            if requiresRiskReview, !didReviewRisk {
                 Label(
                     "Worktree directories will be removed from disk. Review the list before continuing.",
                     systemImage: "exclamationmark.triangle.fill"
@@ -111,11 +111,11 @@ struct CleanupConfirmationView: View {
     private func icon(for target: GitCleanupTarget) -> String {
         switch target {
         case .localBranch:
-            return "arrow.triangle.branch"
+            "arrow.triangle.branch"
         case .worktree:
-            return "folder"
+            "folder"
         case .remoteBranch:
-            return "icloud"
+            "icloud"
         }
     }
 

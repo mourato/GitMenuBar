@@ -137,9 +137,9 @@ final class DiffTreeBuilderTests: XCTestCase {
     private func nodeName(_ node: DiffTreeNode) -> String {
         switch node {
         case let .directory(name, _, _, _):
-            return name
+            name
         case let .file(name, _, _):
-            return name
+            name
         }
     }
 }

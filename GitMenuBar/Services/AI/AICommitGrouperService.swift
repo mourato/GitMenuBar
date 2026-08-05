@@ -77,10 +77,12 @@ final class AICommitGrouperService: ObservableObject {
 
         let rawGroups: [RawAtomicGroup]
         if let data = cleaned.data(using: .utf8),
-           let decoded = try? decoder.decode([RawAtomicGroup].self, from: data) {
+           let decoded = try? decoder.decode([RawAtomicGroup].self, from: data)
+        {
             rawGroups = decoded
         } else if let extracted = extractJSONArray(from: cleaned),
-                  let decoded = try? decoder.decode([RawAtomicGroup].self, from: extracted) {
+                  let decoded = try? decoder.decode([RawAtomicGroup].self, from: extracted)
+        {
             rawGroups = decoded
         } else {
             throw AIError.invalidResponse

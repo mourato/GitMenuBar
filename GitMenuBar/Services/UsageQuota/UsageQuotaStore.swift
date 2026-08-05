@@ -130,11 +130,11 @@ final class UsageQuotaStore: ObservableObject {
     private func isProviderEnabled(_ providerID: UsageProviderID) -> Bool {
         switch providerID {
         case .codex:
-            return showCodexUsageQuota
+            showCodexUsageQuota
         case .cursor:
-            return showCursorUsageQuota
+            showCursorUsageQuota
         case .openrouter:
-            return showOpenRouterUsageQuota
+            showOpenRouterUsageQuota
         }
     }
 
@@ -157,7 +157,7 @@ final class UsageQuotaStore: ObservableObject {
             }
 
             for await snapshot in group {
-                merged.append(await self.mergeSnapshot(snapshot))
+                merged.append(self.mergeSnapshot(snapshot))
             }
         }
 
@@ -166,7 +166,7 @@ final class UsageQuotaStore: ObservableObject {
         _ = reason
     }
 
-    private func mergeSnapshot(_ fetched: UsageQuotaSnapshot) async -> UsageQuotaSnapshot {
+    private func mergeSnapshot(_ fetched: UsageQuotaSnapshot) -> UsageQuotaSnapshot {
         if fetched.isAvailable {
             snapshotStore.save(fetched)
             return fetched

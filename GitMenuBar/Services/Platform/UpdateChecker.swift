@@ -49,7 +49,9 @@ final class UpdateChecker {
             return nil
         }
 
-        let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases/latest")!
+        guard let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases/latest") else {
+            return nil
+        }
         var request = URLRequest(url: url)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 

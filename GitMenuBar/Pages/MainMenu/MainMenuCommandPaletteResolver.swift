@@ -169,9 +169,9 @@ enum MainMenuCommandPaletteResolver {
     static func executionDecision(for kind: MainMenuCommandPaletteKind) -> MainMenuCommandPaletteExecutionDecision {
         switch kind {
         case .restartApp:
-            return .requiresConfirmation
+            .requiresConfirmation
         default:
-            return .executeNow
+            .executeNow
         }
     }
 

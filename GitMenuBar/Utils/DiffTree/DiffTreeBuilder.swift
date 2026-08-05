@@ -112,9 +112,9 @@ enum DiffTreeBuilder {
         let compactedChildren = children.map { child in
             switch child {
             case .directory:
-                return compactDirectoryNode(child)
+                compactDirectoryNode(child)
             case .file:
-                return child
+                child
             }
         }
 
@@ -125,7 +125,8 @@ enum DiffTreeBuilder {
 
         while compactedChildNodes.count == 1 {
             guard case let .directory(onlyChildName, onlyChildPath, onlyChildStat, onlyChildChildren) =
-                compactedChildNodes[0] else {
+                compactedChildNodes[0]
+            else {
                 break
             }
             compactedName = "\(compactedName)/\(onlyChildName)"
@@ -145,9 +146,9 @@ enum DiffTreeBuilder {
     private static func nodeName(_ node: DiffTreeNode) -> String {
         switch node {
         case let .directory(name, _, _, _):
-            return name
+            name
         case let .file(name, _, _):
-            return name
+            name
         }
     }
 }

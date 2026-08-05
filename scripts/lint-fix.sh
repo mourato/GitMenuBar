@@ -21,6 +21,6 @@ echo "Applying SwiftFormat..."
 swiftformat --config .swiftformat "${SOURCES[@]}"
 
 echo "Applying SwiftLint fixes..."
-swiftlint lint --config .swiftlint.yml --fix "${SOURCES[@]}" || true
+swiftlint lint --fix "${SOURCES[@]}" || true
 
 echo "Lint fix pass completed"

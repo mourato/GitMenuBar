@@ -33,18 +33,18 @@ extension MainMenuView {
             await submitComment()
             return
         }
-        handleSyncResult(await actionCoordinator.performSync())
+        await handleSyncResult(actionCoordinator.performSync())
     }
 
     func syncRepository() {
         Task {
-            handleSyncResult(await actionCoordinator.performSync())
+            await handleSyncResult(actionCoordinator.performSync())
         }
     }
 
     func syncWithRemote() {
         Task {
-            handleSyncResult(await actionCoordinator.syncWithRemote(rebase: useRebase))
+            await handleSyncResult(actionCoordinator.syncWithRemote(rebase: useRebase))
         }
     }
 
@@ -57,12 +57,13 @@ extension MainMenuView {
     }
 
     var hasTransientPresentation: Bool {
-        showRepositoryOptionsPopover || showBranchSelector
+        showRepositoryOptionsPopover || showBranchSelector || presentationModel.quotaInfoSnapshot != nil
     }
 
     func dismissTransientPresentations() {
         showRepositoryOptionsPopover = false
         showBranchSelector = false
+        presentationModel.clearQuotaInfo()
         pendingRepositoryOptionsPresentation = false
         isCommentFieldFocused = false
         NSApp.keyWindow?.makeFirstResponder(nil)

@@ -11,15 +11,15 @@ public enum CompanionCLIExitCode: Int32, Sendable {
     public var description: String {
         switch self {
         case .success:
-            return "Success"
+            "Success"
         case .operationalFailure:
-            return "Operational failure"
+            "Operational failure"
         case .notReady:
-            return "CLI not ready (missing AI provider, API key, or model)"
+            "CLI not ready (missing AI provider, API key, or model)"
         case .invalidRepository:
-            return "Invalid repository path scope"
+            "Invalid repository path scope"
         case .policyRejected:
-            return "Commit message rejected by Message policy"
+            "Commit message rejected by Message policy"
         }
     }
 }

@@ -39,7 +39,8 @@ struct CodexUsageProvider: UsageQuotaProviding {
 
     private func fetchFromUsageAPI() async -> UsageQuotaSnapshot? {
         guard let authState = readCodexAuthState(),
-              let accessToken = await resolveAccessToken(authState: authState) else {
+              let accessToken = await resolveAccessToken(authState: authState)
+        else {
             return nil
         }
 
@@ -57,7 +58,8 @@ struct CodexUsageProvider: UsageQuotaProviding {
     private func fetchFromLocalSessions() -> UsageQuotaSnapshot? {
         let sessionsDirectory = homeDirectory.appendingPathComponent(".codex/sessions")
         guard let file = CodexUsageParsing.latestJSONLFile(in: sessionsDirectory, fileManager: fileManager),
-              let text = try? String(contentsOf: file, encoding: .utf8) else {
+              let text = try? String(contentsOf: file, encoding: .utf8)
+        else {
             return nil
         }
         return CodexUsageParsing.snapshot(fromSessionsJSONL: text)
@@ -67,7 +69,8 @@ struct CodexUsageProvider: UsageQuotaProviding {
         var paths: [URL] = []
         if let codexHome = ProcessInfo.processInfo.environment["CODEX_HOME"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
-            !codexHome.isEmpty {
+            !codexHome.isEmpty
+        {
             paths.append(URL(fileURLWithPath: codexHome).appendingPathComponent("auth.json"))
         }
         paths.append(homeDirectory.appendingPathComponent(".codex/auth.json"))
@@ -77,7 +80,8 @@ struct CodexUsageProvider: UsageQuotaProviding {
             guard let data = try? Data(contentsOf: path),
                   let auth = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   CodexUsageParsing.codexAccessToken(in: auth) != nil
-                  || CodexUsageParsing.codexRefreshToken(in: auth) != nil else {
+                  || CodexUsageParsing.codexRefreshToken(in: auth) != nil
+            else {
                 continue
             }
             return CodexAuthState(auth: auth)
@@ -91,7 +95,8 @@ struct CodexUsageProvider: UsageQuotaProviding {
         }
 
         if let expiresAt = CodexUsageParsing.jwtExpiry(accessToken),
-           expiresAt.timeIntervalSinceNow <= 300 {
+           expiresAt.timeIntervalSinceNow <= 300
+        {
             return await refreshAccessTokenInMemory(authState: authState) ?? accessToken
         }
         return accessToken
@@ -122,7 +127,8 @@ struct CodexUsageProvider: UsageQuotaProviding {
             guard (response as? HTTPURLResponse).map({ 200 ... 299 ~= $0.statusCode }) == true,
                   let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let accessToken = root["access_token"] as? String,
-                  !accessToken.isEmpty else {
+                  !accessToken.isEmpty
+            else {
                 return CodexUsageParsing.codexAccessToken(in: authState.auth)
             }
             return accessToken
@@ -147,7 +153,8 @@ struct CodexUsageProvider: UsageQuotaProviding {
             let (data, response) = try await urlSession.data(for: request)
             guard (response as? HTTPURLResponse).map({ 200 ... 299 ~= $0.statusCode }) == true,
                   let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  var snapshot = CodexUsageParsing.snapshot(fromUsageAPI: root) else {
+                  var snapshot = CodexUsageParsing.snapshot(fromUsageAPI: root)
+            else {
                 return nil
             }
 

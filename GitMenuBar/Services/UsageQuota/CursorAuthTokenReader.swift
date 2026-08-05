@@ -82,7 +82,8 @@ enum CursorAuthTokenReader {
         }
 
         guard sqlite3_step(statement) == SQLITE_ROW,
-              let cString = sqlite3_column_text(statement, 0) else {
+              let cString = sqlite3_column_text(statement, 0)
+        else {
             return nil
         }
 

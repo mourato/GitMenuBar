@@ -38,7 +38,8 @@ struct CursorUsageProvider: UsageQuotaProviding {
         do {
             let (data, response) = try await urlSession.data(for: request)
             guard (response as? HTTPURLResponse).map({ 200 ... 299 ~= $0.statusCode }) == true,
-                  let snapshot = CursorUsageParsing.snapshot(fromUsageSummary: data) else {
+                  let snapshot = CursorUsageParsing.snapshot(fromUsageSummary: data)
+            else {
                 return .unavailable(providerID: .cursor, statusNote: "usage unavailable")
             }
             return snapshot

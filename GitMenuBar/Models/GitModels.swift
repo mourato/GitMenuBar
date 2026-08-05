@@ -80,22 +80,22 @@ enum WorkingTreeFileStatus: String, Hashable {
     var symbol: String {
         switch self {
         case .modified:
-            return "M"
+            "M"
         case .deleted:
-            return "D"
+            "D"
         case .untracked:
-            return "U"
+            "U"
         }
     }
 
     var foregroundColor: NSColor {
         switch self {
         case .modified:
-            return .systemBlue
+            .systemBlue
         case .deleted:
-            return .systemRed
+            .systemRed
         case .untracked:
-            return .systemGreen
+            .systemGreen
         }
     }
 
@@ -136,7 +136,7 @@ struct WorkingTreeSectionSummary: Equatable {
     }
 }
 
-extension Collection where Element == WorkingTreeFile {
+extension Collection<WorkingTreeFile> {
     var sectionSummary: WorkingTreeSectionSummary {
         let addedLineCount = reduce(0) { partialResult, file in
             partialResult + file.lineDiff.added
@@ -166,17 +166,17 @@ extension BranchTrackingStatus {
     var description: String {
         switch self {
         case .upToDate:
-            return "Up to date"
+            "Up to date"
         case let .ahead(count):
-            return "Ahead by \(count)"
+            "Ahead by \(count)"
         case let .behind(count):
-            return "Behind by \(count)"
+            "Behind by \(count)"
         case let .diverged(ahead, behind):
-            return "Diverged: ahead \(ahead), behind \(behind)"
+            "Diverged: ahead \(ahead), behind \(behind)"
         case .noRemote:
-            return "No upstream"
+            "No upstream"
         case .unknown:
-            return "Unknown"
+            "Unknown"
         }
     }
 }
@@ -247,9 +247,9 @@ enum GitWorktreeParserError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case let .missingPath(recordIndex):
-            return "Worktree record \(recordIndex + 1) is missing its path."
+            "Worktree record \(recordIndex + 1) is missing its path."
         case let .missingHead(recordIndex):
-            return "Worktree record \(recordIndex + 1) is missing its HEAD."
+            "Worktree record \(recordIndex + 1) is missing its HEAD."
         }
     }
 }
@@ -301,15 +301,15 @@ enum AtomicCommitPlanValidationError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .emptyPlan:
-            return "No atomic commit groups to commit."
+            "No atomic commit groups to commit."
         case let .emptyGroup(index):
-            return "Atomic commit group \(index + 1) has no files."
+            "Atomic commit group \(index + 1) has no files."
         case let .emptyMessage(index):
-            return "Atomic commit group \(index + 1) has an empty commit message."
+            "Atomic commit group \(index + 1) has an empty commit message."
         case let .duplicateFile(file):
-            return "File '\(file)' appears in more than one atomic commit group."
+            "File '\(file)' appears in more than one atomic commit group."
         case let .unknownFile(file):
-            return "File '\(file)' is not part of the current working tree changes."
+            "File '\(file)' is not part of the current working tree changes."
         }
     }
 }

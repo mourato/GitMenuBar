@@ -7,7 +7,7 @@ import AppKit
 import Combine
 import Foundation
 
-// swiftlint:disable type_body_length file_length
+// swiftlint:disable file_length
 class GitManager: ObservableObject {
     @Published var commitCount: Int = 0
     @Published var isCommitting: Bool = false
@@ -209,7 +209,7 @@ class GitManager: ObservableObject {
             if let operation {
                 await operation(session)
             } else {
-                await self.refreshAsync(includeReflogHistory: includeReflogHistory, session: session)
+                await refreshAsync(includeReflogHistory: includeReflogHistory, session: session)
             }
             guard !Task.isCancelled else { return }
             await GitExecution.publishOnMainActor(ifCurrent: session) {
@@ -245,9 +245,9 @@ class GitManager: ObservableObject {
     private func makeSelectedRefreshSession(path: String, generation: Int) -> GitRefreshSession {
         GitRefreshSession(repositoryPath: path, generation: generation) { [weak self] in
             guard let self else { return false }
-            return self.selectedRefreshGeneration == generation
-                && self.selectedRefreshPath == path
-                && GitRepositoryContext.normalizedPath(self.storedRepoPath) == path
+            return selectedRefreshGeneration == generation
+                && selectedRefreshPath == path
+                && GitRepositoryContext.normalizedPath(storedRepoPath) == path
         }
     }
 
@@ -534,12 +534,10 @@ class GitManager: ObservableObject {
         }
 
         return await runOnBackground {
-            var pushArgs: [String]
-
-            if branchName == currentBranchName {
-                pushArgs = force ? ["push", "--force", "-u", "origin", branchName] : ["push", "-u", "origin", branchName]
+            var pushArgs: [String] = if branchName == currentBranchName {
+                force ? ["push", "--force", "-u", "origin", branchName] : ["push", "-u", "origin", branchName]
             } else {
-                pushArgs = force ? ["push", "--force", "origin", "HEAD:\(branchName)"] : ["push", "origin", "HEAD:\(branchName)"]
+                force ? ["push", "--force", "origin", "HEAD:\(branchName)"] : ["push", "origin", "HEAD:\(branchName)"]
             }
 
             let pushResult = self.executeGitCommand(in: repositoryPath, args: pushArgs, useAuth: true)
@@ -1640,4 +1638,4 @@ class GitManager: ObservableObject {
     }
 }
 
-// swiftlint:enable type_body_length file_length
+// swiftlint:enable file_length

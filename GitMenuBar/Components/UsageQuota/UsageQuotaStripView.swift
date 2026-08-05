@@ -91,6 +91,10 @@ private struct UsageQuotaProviderCard: View {
                     .accessibilityHidden(true)
             }
 
+            if snapshot.isStale {
+                StaleQuotaInfoButton(snapshot: snapshot)
+            }
+
             Spacer(minLength: 0)
 
             if let window = snapshot.primaryDisplayWindow {
@@ -142,7 +146,8 @@ private struct UsageQuotaProviderCard: View {
 
     private var secondaryWeeklyWindow: UsageWindow? {
         guard let weekly = snapshot.weeklyWindow,
-              let primary = snapshot.primaryDisplayWindow else {
+              let primary = snapshot.primaryDisplayWindow
+        else {
             return nil
         }
         if primary.label != weekly.label || primary.remainingPercent != weekly.remainingPercent {
@@ -240,11 +245,11 @@ private enum UsageQuotaTrafficLightColor {
     static func swiftUI(for remainingPercent: Int) -> Color {
         switch UsageQuotaFormatting.trafficLightColor(for: remainingPercent) {
         case .green:
-            return .green
+            .green
         case .amber:
-            return .orange
+            .orange
         case .red:
-            return .red
+            .red
         }
     }
 }
@@ -324,17 +329,22 @@ private struct UsageQuotaStripPreviewHarness: View {
     let snapshots: [UsageQuotaSnapshot]
 
     var body: some View {
-        let defaults = UserDefaults(suiteName: previewDefaultsName)!
+        if let defaults = UserDefaults(suiteName: previewDefaultsName) {
+            UsageQuotaStripView()
+                .environmentObject(previewStore(defaults: defaults))
+                .environmentObject(MainMenuPresentationModel())
+                .frame(width: 380)
+        }
+    }
+
+    private func previewStore(defaults: UserDefaults) -> UsageQuotaStore {
         defaults.removePersistentDomain(forName: previewDefaultsName)
         let store = UsageQuotaStore(
             defaults: defaults,
             providers: snapshots.map { PreviewUsageQuotaProvider(snapshot: $0) }
         )
         store.showAIUsageQuotas = true
-
-        return UsageQuotaStripView()
-            .environmentObject(store)
-            .frame(width: 380)
+        return store
     }
 
     private var previewDefaultsName: String {
@@ -417,6 +427,7 @@ private struct PreviewUsageQuotaProvider: UsageQuotaProviding {
         self.snapshot = snapshot
     }
 
+    // swiftlint:disable:next async_without_await
     func fetchSnapshot() async -> UsageQuotaSnapshot {
         snapshot
     }

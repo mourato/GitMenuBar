@@ -26,14 +26,13 @@ extension BranchManagementSheet {
 
     private func batchResultMessage(_ batch: GitCleanupBatchResult) -> String {
         batch.items.map { item in
-            let status: String
-            switch item.status {
+            let status = switch item.status {
             case .succeeded:
-                status = "completed"
+                "completed"
             case let .skipped(reason):
-                status = "skipped — \(reason)"
+                "skipped — \(reason)"
             case let .failed(reason):
-                status = "failed — \(reason)"
+                "failed — \(reason)"
             }
             return "\(item.target.title): \(status)"
         }.joined(separator: "\n")

@@ -36,11 +36,11 @@ enum AppPreferences {
         var title: String {
             switch self {
             case .systemDefault:
-                return "System Default"
+                "System Default"
             case .light:
-                return "Light Mode"
+                "Light Mode"
             case .dark:
-                return "Dark Mode"
+                "Dark Mode"
             }
         }
 

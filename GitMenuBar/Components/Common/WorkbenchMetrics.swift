@@ -109,15 +109,15 @@ enum WorkbenchTypography {
 
     static func tracking(for font: Font) -> CGFloat {
         switch font {
-        case .largeTitle: return -1.0
-        case .title, .title2: return -0.5
-        case .headline: return 0.0
-        case .body: return 0.1
-        case .callout: return 0.1
-        case .subheadline: return 0.15
-        case .footnote: return 0.2
-        case .caption, .caption2: return 0.3
-        default: return 0.0
+        case .largeTitle: -1.0
+        case .title, .title2: -0.5
+        case .headline: 0.0
+        case .body: 0.1
+        case .callout: 0.1
+        case .subheadline: 0.15
+        case .footnote: 0.2
+        case .caption, .caption2: 0.3
+        default: 0.0
         }
     }
 }

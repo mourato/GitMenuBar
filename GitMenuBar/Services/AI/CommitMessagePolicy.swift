@@ -11,7 +11,7 @@ enum CommitMessagePolicyError: Error, Equatable, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .emptyAfterSanitization:
-            return "Commit message is empty after applying Message policy."
+            "Commit message is empty after applying Message policy."
         }
     }
 }
@@ -110,7 +110,8 @@ struct CommitMessagePolicy: Sendable {
     private func trimTrailingBlankLines(from lines: [String]) -> [String] {
         var result = lines
         while let last = result.last,
-              last.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+              last.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
             result.removeLast()
         }
         return result
@@ -121,7 +122,7 @@ extension CommitMessagePolicyError {
     var aiError: AIError {
         switch self {
         case .emptyAfterSanitization:
-            return .messagePolicyRejected(
+            .messagePolicyRejected(
                 "Commit message is empty after applying Message policy."
             )
         }

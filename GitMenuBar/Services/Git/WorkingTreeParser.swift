@@ -82,11 +82,11 @@ final class WorkingTreeParser {
     private func visualStatus(for statusCode: Character) -> WorkingTreeFileStatus {
         switch statusCode {
         case "?", "A":
-            return .untracked
+            .untracked
         case "D":
-            return .deleted
+            .deleted
         default:
-            return .modified
+            .modified
         }
     }
 

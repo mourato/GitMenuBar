@@ -12,11 +12,11 @@ enum UsageProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
     var displayName: String {
         switch self {
         case .codex:
-            return "Codex"
+            "Codex"
         case .cursor:
-            return "Cursor"
+            "Cursor"
         case .openrouter:
-            return "OpenRouter"
+            "OpenRouter"
         }
     }
 }
@@ -65,13 +65,13 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
     var primaryDisplayWindow: UsageWindow? {
         switch (sessionWindow, weeklyWindow) {
         case let (session?, weekly?):
-            return session.remainingPercent <= weekly.remainingPercent ? session : weekly
+            session.remainingPercent <= weekly.remainingPercent ? session : weekly
         case let (session?, nil):
-            return session
+            session
         case let (nil, weekly?):
-            return weekly
+            weekly
         case (nil, nil):
-            return nil
+            nil
         }
     }
 
@@ -203,6 +203,16 @@ enum UsageQuotaFormatting {
             return "\(minutes)m"
         }
         return "<1m"
+    }
+
+    /// Locale-aware short label for when a snapshot was last successfully read
+    /// (e.g. `14:32` / `2:32 PM`). Used by stale-state explanations.
+    static func fetchedAtLabel(_ date: Date, locale: Locale = .current) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter.string(from: date)
     }
 
     static func trafficLightColor(for remainingPercent: Int) -> UsageQuotaTrafficLight {

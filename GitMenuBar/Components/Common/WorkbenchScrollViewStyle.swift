@@ -60,8 +60,8 @@ private final class WorkbenchScrollViewStyleProbeView: NSView {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
 
-            self.isConfigurationScheduled = false
-            if let contentView = self.window?.contentView {
+            isConfigurationScheduled = false
+            if let contentView = window?.contentView {
                 WorkbenchScrollViewStyle.configureScrollViews(in: contentView)
             } else {
                 WorkbenchScrollViewStyle.configureScrollViews(in: self)

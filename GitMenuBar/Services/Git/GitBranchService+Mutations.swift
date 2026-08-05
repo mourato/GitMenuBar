@@ -177,7 +177,7 @@ extension GitBranchService {
         DispatchQueue.global(qos: .userInitiated).async {
             // Create branch from specified branch or current HEAD
             var args = ["checkout", "-b", trimmedName]
-            if let fromBranch = fromBranch, !fromBranch.isEmpty {
+            if let fromBranch, !fromBranch.isEmpty {
                 args.append(fromBranch)
             }
 

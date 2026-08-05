@@ -1,7 +1,7 @@
 import SwiftUI
 
 extension MainMenuView {
-    func applyMainViewOverlays<Content: View>(to view: Content) -> some View {
+    func applyMainViewOverlays(to view: some View) -> some View {
         applySheets(to: view)
     }
 
@@ -14,7 +14,7 @@ extension MainMenuView {
 
     @ViewBuilder
     private var transientPresentationOverlayContent: some View {
-        if presentationModel.route == .main && hasTransientPresentation {
+        if presentationModel.route == .main, hasTransientPresentation {
             ZStack {
                 transientPresentationScrim
                     .contentShape(Rectangle())
@@ -37,10 +37,12 @@ extension MainMenuView {
             topCenteredOverlay(repositoryOptionsOverlay)
         } else if showBranchSelector {
             branchSelectorOverlayLayout
+        } else if let snapshot = presentationModel.quotaInfoSnapshot {
+            quotaInfoOverlay(snapshot)
         }
     }
 
-    private func topCenteredOverlay<Overlay: View>(_ overlay: Overlay) -> some View {
+    private func topCenteredOverlay(_ overlay: some View) -> some View {
         HStack {
             Spacer(minLength: 0)
             overlay
@@ -68,6 +70,24 @@ extension MainMenuView {
                 ? ProjectsSidebarMetrics.collapsedWidth
                 : clampedProjectsSidebarWidth
         ) + WorkbenchMetrics.windowPadding
+    }
+
+    private func quotaInfoOverlay(_ snapshot: UsageQuotaSnapshot) -> some View {
+        HStack {
+            QuotaStaleInfoPanel(
+                snapshot: snapshot,
+                onRetry: {
+                    dismissTransientPresentations()
+                    usageQuotaStore.refresh(reason: .manual)
+                }
+            )
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+        .padding(.leading, WorkbenchMetrics.windowPadding)
+        .padding(.trailing, WorkbenchMetrics.windowPadding)
+        .padding(.bottom, WorkbenchMetrics.windowPadding * 2)
+        .modifier(TransientPanelChrome(origin: .bottomLeading, reduceMotion: reduceMotion))
     }
 
     private var clampedProjectsSidebarWidth: Double {
@@ -183,7 +203,7 @@ extension MainMenuView {
 
     @ViewBuilder
     var commandPaletteOverlayContent: some View {
-        if isCommandPalettePresented && presentationModel.route == .main {
+        if isCommandPalettePresented, presentationModel.route == .main {
             ZStack {
                 commandPaletteScrim
                     .ignoresSafeArea()
@@ -207,7 +227,7 @@ extension MainMenuView {
         }
     }
 
-    private func applySheets<Content: View>(to view: Content) -> some View {
+    private func applySheets(to view: some View) -> some View {
         view
             .sheet(isPresented: $showRenameBranch, content: renameBranchSheet)
             .sheet(
@@ -375,7 +395,8 @@ extension MainMenuView {
             gitManager: gitManager,
             generateGroups: { [weak gitManager, weak aiCommitCoordinator] in
                 guard let gitManager,
-                      let coordinator = aiCommitCoordinator else {
+                      let coordinator = aiCommitCoordinator
+                else {
                     return []
                 }
                 let changed = gitManager.changedFiles

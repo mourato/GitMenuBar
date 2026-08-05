@@ -8,7 +8,7 @@ import Combine
 import KeyboardShortcuts
 import SwiftUI
 
-// swiftlint:disable file_length type_body_length
+// swiftlint:disable file_length
 @MainActor
 final class StatusBarController: ObservableObject {
     private enum Constants {
@@ -371,12 +371,12 @@ final class StatusBarController: ObservableObject {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + Constants.autoHideBlurEvaluationDelay) { [weak self] in
             guard let self,
-                  self.shouldAutoHideOnBlur,
+                  shouldAutoHideOnBlur,
                   !self.isMainWindowPresentingSheet,
                   !self.isSystemScreenCaptureUIFrontmost
             else { return }
 
-            self.hideMainWindow()
+            hideMainWindow()
         }
     }
 
@@ -935,10 +935,10 @@ final class StatusBarController: ObservableObject {
         setAutoHideSuspended(true)
         DirectoryPickerService().selectDirectory(activateApp: true) { [weak self] selectedPath in
             guard let self else { return }
-            self.setAutoHideSuspended(false)
+            setAutoHideSuspended(false)
 
             guard let selectedPath else { return }
-            self.selectRepository(selectedPath)
+            selectRepository(selectedPath)
         }
     }
 
@@ -1036,9 +1036,9 @@ final class StatusBarController: ObservableObject {
         gitManager.refreshSelectedRepository { [weak self] in
             guard let self else { return }
 
-            self.presentationModel.finishRefresh()
-            self.flushPendingShortcutActionsIfReady()
-            self.logWindowOpen(trace, message: "refresh completed")
+            presentationModel.finishRefresh()
+            flushPendingShortcutActionsIfReady()
+            logWindowOpen(trace, message: "refresh completed")
         }
     }
 
@@ -1064,18 +1064,18 @@ final class StatusBarController: ObservableObject {
         gitManager.remoteRepositoryExists(at: path) { [weak self] exists in
             guard let self else { return }
 
-            self.remoteExistenceByPath[path] = exists ? .exists : .missing
-            self.logWindowOpen(trace, message: "remote validation completed (\(exists ? "exists" : "missing"))")
+            remoteExistenceByPath[path] = exists ? .exists : .missing
+            logWindowOpen(trace, message: "remote validation completed (\(exists ? "exists" : "missing"))")
 
-            guard self.currentRepositoryPath() == path else { return }
+            guard currentRepositoryPath() == path else { return }
 
             if exists {
-                self.presentationModel.clearCreateRepoSuggestion()
+                presentationModel.clearCreateRepoSuggestion()
                 return
             }
 
-            if self.presentationModel.route == .main {
-                self.presentationModel.suggestCreateRepo(path: path)
+            if presentationModel.route == .main {
+                presentationModel.suggestCreateRepo(path: path)
             }
         }
     }
@@ -1100,22 +1100,22 @@ final class StatusBarController: ObservableObject {
     private func describe(route: MainMenuRoute) -> String {
         switch route {
         case .main:
-            return "main"
+            "main"
         case let .createRepo(path):
-            return "createRepo(\(path))"
+            "createRepo(\(path))"
         case let .historyDetail(commitID):
-            return "historyDetail(\(commitID))"
+            "historyDetail(\(commitID))"
         }
     }
 
     private func describe(shortcutAction: MainMenuShortcutAction) -> String {
         switch shortcutAction {
         case .commit:
-            return "commit"
+            "commit"
         case .sync:
-            return "sync"
+            "sync"
         case .atomicCommits:
-            return "atomicCommits"
+            "atomicCommits"
         }
     }
 }
@@ -1142,4 +1142,4 @@ private final class MainWindowLifecycleDelegate: NSObject, NSWindowDelegate {
     }
 }
 
-// swiftlint:enable file_length type_body_length
+// swiftlint:enable file_length

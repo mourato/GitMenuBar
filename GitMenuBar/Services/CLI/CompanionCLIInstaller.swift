@@ -12,23 +12,23 @@ enum CompanionCLIInstaller {
         var errorDescription: String? {
             switch self {
             case .binaryNotFound:
-                return """
+                """
                 Could not find gitmenubar in GitMenuBar.app. Build or install the app first, \
                 then try again or run make install-cli from the project.
                 """
             case .unstableAppBundle:
-                return """
+                """
                 GitMenuBar is running from a temporary or quarantined location. Copy GitMenuBar.app \
                 to /Applications, reopen the app, then use Install CLI or run make install-cli from \
                 the project.
                 """
             case let .destinationNotSymlink(path):
-                return """
+                """
                 \(path.path) exists and is not a symlink. Remove it manually, then try Install CLI \
                 again or run make install-cli from the project.
                 """
             case let .filesystemError(message):
-                return message
+                message
             }
         }
     }
@@ -68,7 +68,8 @@ enum CompanionCLIInstaller {
                 options: [.skipsHiddenFiles]
             ) {
                 for app in distApps where app.pathExtension == "app"
-                    && app.standardizedFileURL.path != preferredDistApp.standardizedFileURL.path {
+                    && app.standardizedFileURL.path != preferredDistApp.standardizedFileURL.path
+                {
                     candidates.append(app)
                 }
             }
@@ -134,7 +135,8 @@ enum CompanionCLIInstaller {
             }
 
             if let existingTarget = try? fileManager.destinationOfSymbolicLink(atPath: destination.path),
-               URL(fileURLWithPath: existingTarget).standardizedFileURL == source.standardizedFileURL {
+               URL(fileURLWithPath: existingTarget).standardizedFileURL == source.standardizedFileURL
+            {
                 return .alreadyInstalled(destination: destination, source: source)
             }
 

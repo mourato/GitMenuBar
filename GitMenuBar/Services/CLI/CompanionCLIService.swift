@@ -12,13 +12,13 @@ public struct CompanionCLIService: Sendable {
         public var exitCode: CompanionCLIExitCode {
             switch self {
             case .notReady:
-                return .notReady
+                .notReady
             case .invalidRepository:
-                return .invalidRepository
+                .invalidRepository
             case .policyRejected:
-                return .policyRejected
+                .policyRejected
             case .indexLocked, .operational:
-                return .operationalFailure
+                .operationalFailure
             }
         }
 
@@ -28,9 +28,9 @@ public struct CompanionCLIService: Sendable {
                  let .invalidRepository(message),
                  let .policyRejected(message),
                  let .operational(message):
-                return message
+                message
             case .indexLocked:
-                return "Refusing --apply because .git/index.lock exists."
+                "Refusing --apply because .git/index.lock exists."
             }
         }
 
@@ -216,11 +216,11 @@ public struct CompanionCLIService: Sendable {
     private func mapAIError(_ error: AIError) -> Error {
         switch error {
         case let .messagePolicyRejected(message):
-            return .policyRejected(message)
+            .policyRejected(message)
         case .providerNotConfigured, .apiKeyMissing, .modelNotConfigured:
-            return .notReady(error.localizedDescription ?? "CLI not ready.")
+            .notReady(error.localizedDescription ?? "CLI not ready.")
         default:
-            return .operational(error.localizedDescription ?? "AI request failed.")
+            .operational(error.localizedDescription ?? "AI request failed.")
         }
     }
 }

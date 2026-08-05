@@ -78,7 +78,8 @@ enum KeychainMigrator {
             if item.account == "openrouter-api-key" {
                 identity = .openrouter
             } else if item.account.hasPrefix("provider-"),
-                      let provider = providersByID[String(item.account.dropFirst("provider-".count)).lowercased()] {
+                      let provider = providersByID[String(item.account.dropFirst("provider-".count)).lowercased()]
+            {
                 identity = AIProviderCredentialID(provider: provider)
             } else {
                 return
@@ -170,7 +171,8 @@ enum KeychainMigrator {
     private static func migrateUserDefaults() {
         guard let oldDefaults = UserDefaults(suiteName: "com.pizzaman.GitMenuBar") else { return }
         for (key, value) in oldDefaults.dictionaryRepresentation()
-            where !key.hasPrefix("Apple") && !key.hasPrefix("NS") && !key.hasPrefix("com.apple") {
+            where !key.hasPrefix("Apple") && !key.hasPrefix("NS") && !key.hasPrefix("com.apple")
+        {
             UserDefaults.standard.set(value, forKey: key)
         }
     }

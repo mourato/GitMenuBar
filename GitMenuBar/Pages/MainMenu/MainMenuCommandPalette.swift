@@ -10,13 +10,13 @@ enum MainMenuCommandPaletteSection: String, CaseIterable {
     var title: String {
         switch self {
         case .actions:
-            return "Actions"
+            "Actions"
         case .branches:
-            return "Branches"
+            "Branches"
         case .recentProjects:
-            return "Recent Projects"
+            "Recent Projects"
         case .app:
-            return "App"
+            "App"
         }
     }
 }
@@ -43,36 +43,36 @@ enum MainMenuCommandPaletteKind: Hashable {
     var stableID: String {
         switch self {
         case .commit:
-            return "action.commit"
+            "action.commit"
         case .commitAndPush:
-            return "action.commitAndPush"
+            "action.commitAndPush"
         case .sync:
-            return "action.sync"
+            "action.sync"
         case .atomicCommits:
-            return "action.atomicCommits"
+            "action.atomicCommits"
         case .push:
-            return "action.push"
+            "action.push"
         case .pull:
-            return "action.pull"
+            "action.pull"
         case .branchManagement:
-            return "branch.management"
+            "branch.management"
         case .createBranch:
-            return "branch.create"
+            "branch.create"
         case .mergeToDefault:
-            return "branch.mergeToDefault"
+            "branch.mergeToDefault"
         case .switchToBranchList:
-            return "branch.switchToBranchList"
+            "branch.switchToBranchList"
         case let .switchBranch(branchName):
-            return "branch.switch.\(branchName)"
+            "branch.switch.\(branchName)"
         case let .recentProject(path):
-            return "recent.\(path)"
-        case .addProject: return "project.add"
-        case .refreshAllProjects: return "project.refreshAll"
-        case .fetchAllProjects: return "project.fetchAll"
+            "recent.\(path)"
+        case .addProject: "project.add"
+        case .refreshAllProjects: "project.refreshAll"
+        case .fetchAllProjects: "project.fetchAll"
         case .restartApp:
-            return "app.restart"
+            "app.restart"
         case .quitApp:
-            return "app.quit"
+            "app.quit"
         }
     }
 }

@@ -78,7 +78,8 @@ final class KeychainMigratorTests: XCTestCase {
 
         XCTAssertThrowsError(try KeychainMigrator.validateLegacyAIItems(using: client)) { error in
             guard let migrationError = error as? AIKeychainStoreError,
-                  case .malformedLegacyItem = migrationError else {
+                  case .malformedLegacyItem = migrationError
+            else {
                 return XCTFail("Expected malformed legacy item")
             }
         }
@@ -105,7 +106,8 @@ final class KeychainMigratorTests: XCTestCase {
             let client = FakeMigrationClient(items: [(AIKeychainStore.serviceName, item)])
             XCTAssertThrowsError(try KeychainMigrator.validateLegacyAIItems(using: client)) { error in
                 guard let migrationError = error as? AIKeychainStoreError,
-                      case .malformedLegacyItem = migrationError else {
+                      case .malformedLegacyItem = migrationError
+                else {
                     return XCTFail("Expected malformed legacy item")
                 }
             }

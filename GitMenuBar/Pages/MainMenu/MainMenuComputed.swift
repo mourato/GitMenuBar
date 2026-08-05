@@ -3,7 +3,6 @@
 //  GitMenuBar
 //
 
-// swiftlint:disable file_length
 import Foundation
 
 struct MainMenuRenderSnapshot: Equatable {
@@ -119,11 +118,11 @@ enum MainMenuSyncLabelState: Equatable {
     var title: String {
         switch self {
         case .none:
-            return ""
+            ""
         case .pushOnly:
-            return "Push Changes"
+            "Push Changes"
         case .syncChanges:
-            return "Sync Changes"
+            "Sync Changes"
         }
     }
 

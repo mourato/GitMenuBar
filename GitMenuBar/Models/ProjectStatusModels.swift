@@ -56,7 +56,7 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         if hasWorkingTreeChanges {
             result.insert(.dirty)
         }
-        if aheadCount > 0 && behindCount > 0 {
+        if aheadCount > 0, behindCount > 0 {
             result.insert(.diverged)
         } else if aheadCount > 0 {
             result.insert(.ahead)
@@ -175,13 +175,12 @@ struct ProjectStatusReader {
         )
         guard !status.failure else {
             let exists = FileManager.default.fileExists(atPath: project.path)
-            let errorDescription: String
-            if !exists {
-                errorDescription = "Folder unavailable"
+            let errorDescription: String = if !exists {
+                "Folder unavailable"
             } else if status.output.localizedCaseInsensitiveContains("not a git repository") {
-                errorDescription = "Not a Git repository"
+                "Not a Git repository"
             } else {
-                errorDescription = status.output
+                status.output
             }
             return ProjectStatusSnapshot(
                 project: project, branchName: "", isDetachedHead: false, stagedCount: 0,

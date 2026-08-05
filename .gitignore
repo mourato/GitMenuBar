@@ -32,3 +32,6 @@ config.js
 # Legacy/local tooling folders
 .agent/
 .git-backup-*
+
+# Git worktrees
+.worktrees/

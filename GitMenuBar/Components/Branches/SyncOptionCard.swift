@@ -40,22 +40,22 @@ struct SyncOptionCard: View {
     private var backgroundColor: Color {
         switch tone {
         case .accent:
-            return WorkbenchPalette.accentFill(contrast: colorSchemeContrast)
+            WorkbenchPalette.accentFill(contrast: colorSchemeContrast)
         case .warning:
-            return WorkbenchPalette.warningFill(contrast: colorSchemeContrast)
+            WorkbenchPalette.warningFill(contrast: colorSchemeContrast)
         case .success:
-            return WorkbenchPalette.successFill(contrast: colorSchemeContrast)
+            WorkbenchPalette.successFill(contrast: colorSchemeContrast)
         }
     }
 
     private var borderColor: Color {
         switch tone {
         case .accent:
-            return Color.accentColor.opacity(colorSchemeContrast == .increased ? 0.65 : 0.25)
+            Color.accentColor.opacity(colorSchemeContrast == .increased ? 0.65 : 0.25)
         case .warning:
-            return WorkbenchPalette.warningBorder(contrast: colorSchemeContrast)
+            WorkbenchPalette.warningBorder(contrast: colorSchemeContrast)
         case .success:
-            return Color.green.opacity(colorSchemeContrast == .increased ? 0.65 : 0.3)
+            Color.green.opacity(colorSchemeContrast == .increased ? 0.65 : 0.3)
         }
     }
 }

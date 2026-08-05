@@ -26,6 +26,7 @@ struct MainMenuView: View {
     @EnvironmentObject var shortcutActionBridge: MainMenuShortcutActionBridge
     @EnvironmentObject var presentationModel: MainMenuPresentationModel
     @EnvironmentObject var projectMonitor: ProjectMonitorStore
+    @EnvironmentObject var usageQuotaStore: UsageQuotaStore
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Environment(\.accessibilityReduceTransparency) var reduceTransparency
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
@@ -366,11 +367,11 @@ private extension AppPreferences.AppearanceMode {
     var preferredColorScheme: ColorScheme? {
         switch self {
         case .systemDefault:
-            return nil
+            nil
         case .light:
-            return .light
+            .light
         case .dark:
-            return .dark
+            .dark
         }
     }
 }

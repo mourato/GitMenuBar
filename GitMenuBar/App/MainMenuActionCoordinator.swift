@@ -21,18 +21,18 @@ enum MainMenuCommitExecutionResult: Equatable {
     var didCommit: Bool {
         switch self {
         case .committed, .committedAndNeedsSyncOptions:
-            return true
+            true
         case .skipped, .failed:
-            return false
+            false
         }
     }
 
     var shouldOpenPopover: Bool {
         switch self {
         case .committedAndNeedsSyncOptions, .failed:
-            return true
+            true
         case .skipped, .committed:
-            return false
+            false
         }
     }
 }
@@ -46,9 +46,9 @@ enum MainMenuSyncExecutionResult: Equatable {
     var shouldOpenPopover: Bool {
         switch self {
         case .requiresOptions, .failed:
-            return true
+            true
         case .skipped, .synced:
-            return false
+            false
         }
     }
 }

@@ -39,7 +39,7 @@ extension MainMenuView {
                 createRepoSuggestionBanner(path: suggestionPath)
             }
 
-            if presentationModel.refreshState.isRefreshing && !hasWorkingTreeChanges {
+            if presentationModel.refreshState.isRefreshing, !hasWorkingTreeChanges {
                 loadingStateView
             }
 

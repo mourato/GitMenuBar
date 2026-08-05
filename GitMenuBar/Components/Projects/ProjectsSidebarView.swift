@@ -297,4 +297,5 @@ enum ProjectsSidebarMetrics {
     )
     .environmentObject(ProjectMonitorStore())
     .environmentObject(UsageQuotaStore())
+    .environmentObject(MainMenuPresentationModel())
 }

@@ -12,22 +12,22 @@ enum AIProviderType: String, CaseIterable, Codable, Identifiable {
     var displayName: String {
         switch self {
         case .openAI:
-            return "OpenAI"
+            "OpenAI"
         case .anthropic:
-            return "Anthropic"
+            "Anthropic"
         case .gemini:
-            return "Gemini"
+            "Gemini"
         }
     }
 
     var defaultEndpoint: String {
         switch self {
         case .openAI:
-            return "https://api.openai.com"
+            "https://api.openai.com"
         case .anthropic:
-            return "https://api.anthropic.com"
+            "https://api.anthropic.com"
         case .gemini:
-            return "https://generativelanguage.googleapis.com"
+            "https://generativelanguage.googleapis.com"
         }
     }
 }
@@ -90,11 +90,11 @@ enum DiffScope: String, CaseIterable, Codable, Identifiable {
     var title: String {
         switch self {
         case .staged:
-            return "Staged"
+            "Staged"
         case .unstaged:
-            return "Unstaged"
+            "Unstaged"
         case .all:
-            return "All"
+            "All"
         }
     }
 }
@@ -201,23 +201,23 @@ enum AIError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .providerNotConfigured:
-            return "Configure at least one AI provider and choose a default provider in Settings."
+            "Configure at least one AI provider and choose a default provider in Settings."
         case .apiKeyMissing:
-            return "Missing API key for the selected AI provider."
+            "Missing API key for the selected AI provider."
         case .modelNotConfigured:
-            return "Select a model for the selected AI provider in Settings."
+            "Select a model for the selected AI provider in Settings."
         case .noDiffAvailable:
-            return "No diff found for the selected scope."
+            "No diff found for the selected scope."
         case .invalidEndpoint:
-            return "The provider endpoint URL is invalid."
+            "The provider endpoint URL is invalid."
         case .invalidResponse:
-            return "The AI provider returned an unexpected response format."
+            "The AI provider returned an unexpected response format."
         case .emptyResponse:
-            return "The AI provider returned an empty message."
+            "The AI provider returned an empty message."
         case let .messagePolicyRejected(message):
-            return message
+            message
         case let .requestFailed(message):
-            return message
+            message
         }
     }
 }

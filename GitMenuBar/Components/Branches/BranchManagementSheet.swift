@@ -281,16 +281,16 @@ struct BranchManagementSheet: View {
             _ = await branchResult
             let resolvedSnapshot = await snapshotResult
             await MainActor.run {
-                self.branchInfos = gitManager.branchInfos
+                branchInfos = gitManager.branchInfos
                 switch resolvedSnapshot {
                 case let .success(snapshot):
-                    self.worktreeSnapshot = snapshot
-                    self.selectedCleanupIDs = []
+                    worktreeSnapshot = snapshot
+                    selectedCleanupIDs = []
                 case let .failure(error):
-                    self.worktreeSnapshot = nil
-                    self.worktreeErrorMessage = error.localizedDescription
+                    worktreeSnapshot = nil
+                    worktreeErrorMessage = error.localizedDescription
                 }
-                self.isLoading = false
+                isLoading = false
             }
         }
     }

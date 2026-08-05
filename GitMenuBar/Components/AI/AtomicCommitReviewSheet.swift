@@ -109,7 +109,7 @@ struct AtomicCommitReviewSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .disabled(groups.isEmpty || groups.allSatisfy { $0.files.isEmpty })
+                .disabled(groups.isEmpty || groups.allSatisfy(\.files.isEmpty))
             }
         }
     }
@@ -203,13 +203,13 @@ struct AtomicCommitReviewSheet: View {
         do {
             let generated = try await generateGroups()
             await MainActor.run {
-                self.groups = generated
-                self.isGenerating = false
+                groups = generated
+                isGenerating = false
             }
         } catch {
             await MainActor.run {
-                self.errorMessage = error.localizedDescription
-                self.isGenerating = false
+                errorMessage = error.localizedDescription
+                isGenerating = false
             }
         }
     }

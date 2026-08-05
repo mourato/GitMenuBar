@@ -35,6 +35,7 @@ final class MainMenuPresentationModel: ObservableObject {
     @Published private(set) var showCommandPaletteToken = 0
     @Published private(set) var showRepositoryOptionsToken = 0
     @Published private(set) var createRepoSuggestionPath: String?
+    @Published private(set) var quotaInfoSnapshot: UsageQuotaSnapshot?
 
     func prepareForPresentation(route: MainMenuRoute, requestCommitFocus: Bool) {
         self.route = route
@@ -101,5 +102,13 @@ final class MainMenuPresentationModel: ObservableObject {
 
     func requestRepositoryOptionsPresentation() {
         showRepositoryOptionsToken += 1
+    }
+
+    func requestQuotaInfo(snapshot: UsageQuotaSnapshot) {
+        quotaInfoSnapshot = snapshot
+    }
+
+    func clearQuotaInfo() {
+        quotaInfoSnapshot = nil
     }
 }

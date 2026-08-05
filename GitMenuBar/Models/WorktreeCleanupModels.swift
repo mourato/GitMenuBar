@@ -84,22 +84,22 @@ enum GitCleanupTarget: Hashable, Identifiable {
     var id: String {
         switch self {
         case let .localBranch(info):
-            return "local-branch/\(info.id)"
+            "local-branch/\(info.id)"
         case let .worktree(info):
-            return "worktree/\(info.id)"
+            "worktree/\(info.id)"
         case let .remoteBranch(info):
-            return "remote-branch/\(info.id)"
+            "remote-branch/\(info.id)"
         }
     }
 
     var title: String {
         switch self {
         case let .localBranch(info):
-            return "Local branch \(info.reference.name)"
+            "Local branch \(info.reference.name)"
         case let .worktree(info):
-            return "Worktree \(info.worktree.path)"
+            "Worktree \(info.worktree.path)"
         case let .remoteBranch(info):
-            return "Remote branch origin/\(info.reference.name)"
+            "Remote branch origin/\(info.reference.name)"
         }
     }
 }
@@ -127,15 +127,15 @@ struct GitCleanupBatchResult: Hashable {
     let items: [GitCleanupItemResult]
 
     var succeededCount: Int {
-        items.filter { $0.status.isSuccess }.count
+        items.filter(\.status.isSuccess).count
     }
 
     var skippedCount: Int {
         items.filter {
             if case .skipped = $0.status {
-                return true
+                true
             } else {
-                return false
+                false
             }
         }.count
     }
@@ -143,9 +143,9 @@ struct GitCleanupBatchResult: Hashable {
     var failedCount: Int {
         items.filter {
             if case .failed = $0.status {
-                return true
+                true
             } else {
-                return false
+                false
             }
         }.count
     }

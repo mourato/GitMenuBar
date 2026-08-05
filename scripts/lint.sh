@@ -27,6 +27,6 @@ echo "Running SwiftFormat (lint mode)..."
 swiftformat --lint --config .swiftformat "${TARGETS[@]}"
 
 echo "Running SwiftLint..."
-swiftlint lint --config .swiftlint.yml "${TARGETS[@]}"
+swiftlint lint "${TARGETS[@]}"
 
 echo "Lint checks passed"

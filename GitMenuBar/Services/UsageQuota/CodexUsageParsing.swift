@@ -65,11 +65,13 @@ enum CodexUsageParsing {
             if let expiresRaw = credit["expires_at"] ?? credit["expiresAt"] {
                 if let text = expiresRaw as? String,
                    let expiresAt = parseISO8601Date(text),
-                   expiresAt <= now {
+                   expiresAt <= now
+                {
                     return false
                 }
                 if let epoch = doubleValue(expiresRaw),
-                   Date(timeIntervalSince1970: epoch) <= now {
+                   Date(timeIntervalSince1970: epoch) <= now
+                {
                     return false
                 }
             }
@@ -99,7 +101,8 @@ enum CodexUsageParsing {
             base64 += String(repeating: "=", count: padding)
         }
         guard let data = Data(base64Encoded: base64),
-              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
             return nil
         }
         return payload
@@ -107,7 +110,8 @@ enum CodexUsageParsing {
 
     static func jwtExpiry(_ token: String) -> Date? {
         guard let payload = decodeJWTPayload(token),
-              let expiry = doubleValue(payload["exp"]) else {
+              let expiry = doubleValue(payload["exp"])
+        else {
             return nil
         }
         return Date(timeIntervalSince1970: expiry)
@@ -122,12 +126,14 @@ enum CodexUsageParsing {
                 return accountID
             }
             if let idToken = tokens["id_token"] as? String,
-               let accountID = codexAccountID(fromJWT: idToken) {
+               let accountID = codexAccountID(fromJWT: idToken)
+            {
                 return accountID
             }
         }
         if let idToken = auth["id_token"] as? String,
-           let accountID = codexAccountID(fromJWT: idToken) {
+           let accountID = codexAccountID(fromJWT: idToken)
+        {
             return accountID
         }
         return nil
@@ -137,7 +143,8 @@ enum CodexUsageParsing {
         guard let payload = decodeJWTPayload(token),
               let auth = payload["https://api.openai.com/auth"] as? [String: Any],
               let accountID = auth["chatgpt_account_id"] as? String,
-              !accountID.isEmpty else {
+              !accountID.isEmpty
+        else {
             return nil
         }
         return accountID
@@ -149,7 +156,8 @@ enum CodexUsageParsing {
         }
         if let tokens = auth["tokens"] as? [String: Any],
            let token = tokens["access_token"] as? String,
-           !token.isEmpty {
+           !token.isEmpty
+        {
             return token
         }
         return nil
@@ -161,7 +169,8 @@ enum CodexUsageParsing {
         }
         if let tokens = auth["tokens"] as? [String: Any],
            let token = tokens["refresh_token"] as? String,
-           !token.isEmpty {
+           !token.isEmpty
+        {
             return token
         }
         return nil
@@ -328,9 +337,10 @@ enum CodexUsageParsing {
             guard let url = raw as? URL, url.pathExtension == "jsonl",
                   let values = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
                   let date = values.contentModificationDate else { continue }
-            if latest == nil || date > latest!.1 {
-                latest = (url, date)
+            if let currentLatest = latest, currentLatest.1 > date {
+                continue
             }
+            latest = (url, date)
         }
         return latest?.0
     }

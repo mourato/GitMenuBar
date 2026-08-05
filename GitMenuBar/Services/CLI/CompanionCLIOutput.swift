@@ -171,7 +171,7 @@ public extension CompanionCLIService {
 }
 
 public enum CompanionCLIEncoder {
-    public static func encodeJSON<T: Encodable>(_ value: T) throws -> String {
+    public static func encodeJSON(_ value: some Encodable) throws -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         let data = try encoder.encode(value)

@@ -29,7 +29,7 @@ enum WorkbenchWindowChrome {
         WorkbenchScrollViewStyle.configureScrollViews(in: contentView)
     }
 
-    static func makeHostedContentController<Content: View>(rootView: Content) -> NSViewController {
+    static func makeHostedContentController(rootView: some View) -> NSViewController {
         WorkbenchHostedContentViewController(rootView: AnyView(rootView))
     }
 }

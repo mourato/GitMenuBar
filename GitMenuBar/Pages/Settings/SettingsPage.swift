@@ -158,11 +158,11 @@ private enum SettingsAppearance {
     static func preferredColorScheme(for appearanceMode: String) -> ColorScheme? {
         switch AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode) {
         case .systemDefault:
-            return nil
+            nil
         case .light:
-            return .light
+            .light
         case .dark:
-            return .dark
+            .dark
         }
     }
 }

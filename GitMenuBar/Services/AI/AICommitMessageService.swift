@@ -221,11 +221,11 @@ final class AICommitMessageService {
     private func diff(for scope: DiffScope, gitManager: GitManager) -> String {
         switch scope {
         case .staged:
-            return gitManager.diffStaged()
+            gitManager.diffStaged()
         case .unstaged:
-            return gitManager.diffUnstaged()
+            gitManager.diffUnstaged()
         case .all:
-            return gitManager.diffAll()
+            gitManager.diffAll()
         }
     }
 

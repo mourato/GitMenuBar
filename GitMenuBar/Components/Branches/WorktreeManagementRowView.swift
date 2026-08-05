@@ -90,44 +90,44 @@ struct WorktreeManagementRowView: View {
     private var statusDescription: String {
         switch info.status {
         case .eligible:
-            return "eligible for cleanup"
+            "eligible for cleanup"
         case .main:
-            return "main worktree"
+            "main worktree"
         case .current:
-            return "current worktree"
+            "current worktree"
         case .dirty:
-            return "has uncommitted changes"
+            "has uncommitted changes"
         case let .locked(reason):
-            return "locked: \(reason)"
+            "locked: \(reason)"
         case let .prunable(reason):
-            return "prunable: \(reason)"
+            "prunable: \(reason)"
         case .branchNotMerged:
-            return "branch is not merged"
+            "branch is not merged"
         case .detached:
-            return "detached"
+            "detached"
         case let .unknown(reason):
-            return "unknown: \(reason)"
+            "unknown: \(reason)"
         }
     }
 
     private var statusDetail: String? {
         switch info.status {
         case .eligible:
-            return "Ready for cleanup."
+            "Ready for cleanup."
         case .main, .current:
-            return nil
+            nil
         case .dirty:
-            return "Uncommitted changes prevent cleanup."
+            "Uncommitted changes prevent cleanup."
         case let .locked(reason):
-            return "Locked: \(reason)"
+            "Locked: \(reason)"
         case let .prunable(reason):
-            return "Prunable: \(reason)"
+            "Prunable: \(reason)"
         case .branchNotMerged:
-            return "Branch is not merged into the default branch."
+            "Branch is not merged into the default branch."
         case .detached:
-            return "No branch is attached."
+            "No branch is attached."
         case let .unknown(reason):
-            return "Status unavailable: \(reason)"
+            "Status unavailable: \(reason)"
         }
     }
 }

@@ -7,9 +7,9 @@ enum GitMenuBarCommitSessionError: Error, Equatable, LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .notADirectory(path):
-            return "Repository path scope is not a directory: \(path)"
+            "Repository path scope is not a directory: \(path)"
         case let .notAGitRepository(path):
-            return "Repository path scope is not inside a git work tree: \(path)"
+            "Repository path scope is not inside a git work tree: \(path)"
         }
     }
 }
@@ -170,11 +170,10 @@ final class GitMenuBarCommitSession {
             throw GitMenuBarCommitSessionError.notADirectory(expanded)
         }
 
-        let workingDirectory: String
-        if isDirectory.boolValue {
-            workingDirectory = expanded
+        let workingDirectory: String = if isDirectory.boolValue {
+            expanded
         } else {
-            workingDirectory = (expanded as NSString).deletingLastPathComponent
+            (expanded as NSString).deletingLastPathComponent
         }
 
         let result = GitExecution.executeGitCommand(

@@ -5,6 +5,7 @@ private struct StubGroupingAI: AtomicGroupingAIProviding {
     var response: String
     var shouldThrow = false
 
+    // swiftlint:disable async_without_await
     func generateRawResponse(
         prompt _: String,
         provider _: AIProviderConfig,
@@ -16,6 +17,7 @@ private struct StubGroupingAI: AtomicGroupingAIProviding {
         }
         return response
     }
+    // swiftlint:enable async_without_await
 }
 
 final class AICommitGrouperServiceTests: XCTestCase {

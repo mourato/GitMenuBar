@@ -69,44 +69,44 @@ struct InlineStatusBannerView: View {
     private var iconName: String {
         switch banner.style {
         case .info:
-            return "info.circle.fill"
+            "info.circle.fill"
         case .warning:
-            return "exclamationmark.triangle.fill"
+            "exclamationmark.triangle.fill"
         case .error:
-            return "xmark.octagon.fill"
+            "xmark.octagon.fill"
         }
     }
 
     private var iconColor: Color {
         switch banner.style {
         case .info:
-            return .accentColor
+            .accentColor
         case .warning:
-            return .orange
+            .orange
         case .error:
-            return .red
+            .red
         }
     }
 
     private var backgroundColor: Color {
         switch banner.style {
         case .info:
-            return Color(nsColor: .controlBackgroundColor)
+            Color(nsColor: .controlBackgroundColor)
         case .warning:
-            return WorkbenchPalette.warningFill(contrast: colorSchemeContrast)
+            WorkbenchPalette.warningFill(contrast: colorSchemeContrast)
         case .error:
-            return WorkbenchPalette.errorFill(contrast: colorSchemeContrast)
+            WorkbenchPalette.errorFill(contrast: colorSchemeContrast)
         }
     }
 
     private var borderColor: Color {
         switch banner.style {
         case .info:
-            return Color.secondary.opacity(colorSchemeContrast == .increased ? 0.6 : 0.2)
+            Color.secondary.opacity(colorSchemeContrast == .increased ? 0.6 : 0.2)
         case .warning:
-            return WorkbenchPalette.warningBorder(contrast: colorSchemeContrast)
+            WorkbenchPalette.warningBorder(contrast: colorSchemeContrast)
         case .error:
-            return WorkbenchPalette.errorBorder(contrast: colorSchemeContrast)
+            WorkbenchPalette.errorBorder(contrast: colorSchemeContrast)
         }
     }
 }

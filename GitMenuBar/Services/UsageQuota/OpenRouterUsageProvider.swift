@@ -47,7 +47,8 @@ struct OpenRouterUsageProvider: UsageQuotaProviding {
                   let parsed = OpenRouterUsageParsing.parse(
                       fromCreditsData: data,
                       previousState: stateStore.load()
-                  ) else {
+                  )
+            else {
                 return .unavailable(providerID: .openrouter, statusNote: "openrouter credits unavailable")
             }
             stateStore.save(parsed.state)

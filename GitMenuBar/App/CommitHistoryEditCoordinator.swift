@@ -7,9 +7,9 @@ enum CommitHistoryEditMode: Equatable {
     var title: String {
         switch self {
         case .manual:
-            return "Edit Commit Message"
+            "Edit Commit Message"
         case .aiSuggestion:
-            return "Review Suggested Message"
+            "Review Suggested Message"
         }
     }
 }

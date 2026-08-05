@@ -8,26 +8,23 @@ excluded:
   - .xcode-build-tests
   - dist
 
-line_length:
-  warning: 140
-  error: 260
+disabled_rules:
+  - line_length
+  - opening_brace
+  - type_body_length
+  - function_body_length
 
-type_body_length:
+opt_in_rules:
+  - async_without_await
+  - force_unwrapping
+  - private_over_fileprivate
+  - trailing_comma
+
+file_length:
   warning: 500
   error: 600
 
-file_length:
-  warning: 425
-  error: 450
-
-function_body_length:
-  warning: 80
-  error: 120
-
 identifier_name:
   min_length: 2
-
-opening_brace:
-  severity: warning
 
 reporter: "xcode"

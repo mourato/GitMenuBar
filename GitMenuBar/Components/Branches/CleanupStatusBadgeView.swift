@@ -97,26 +97,26 @@ struct CleanupStatusBadgeView: View {
     private var foregroundColor: Color {
         switch tone {
         case .success:
-            return .green
+            .green
         case .warning:
-            return .orange
+            .orange
         case .neutral:
-            return .secondary
+            .secondary
         case .error:
-            return .red
+            .red
         }
     }
 
     private var backgroundColor: Color {
         switch tone {
         case .success:
-            return WorkbenchPalette.successFill(contrast: colorSchemeContrast)
+            WorkbenchPalette.successFill(contrast: colorSchemeContrast)
         case .warning:
-            return WorkbenchPalette.warningFill(contrast: colorSchemeContrast)
+            WorkbenchPalette.warningFill(contrast: colorSchemeContrast)
         case .neutral:
-            return WorkbenchPalette.hoverFill()
+            WorkbenchPalette.hoverFill()
         case .error:
-            return WorkbenchPalette.errorFill(contrast: colorSchemeContrast)
+            WorkbenchPalette.errorFill(contrast: colorSchemeContrast)
         }
     }
 }

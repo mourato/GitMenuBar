@@ -11,7 +11,7 @@ private enum CreateRepositoryFlowError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .message(message):
-            return message
+            message
         }
     }
 }

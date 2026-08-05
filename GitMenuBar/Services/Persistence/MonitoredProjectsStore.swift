@@ -74,7 +74,7 @@ final class MonitoredProjectsStore {
         return projects.compactMap { project in
             let normalized = ProjectReference(path: project.path, name: project.name)
             return seen.insert(normalized.path).inserted ? normalized : nil
-        }.prefix(maxCount).map { $0 }
+        }.prefix(maxCount).map(\.self)
     }
 
     private func write(_ projects: [ProjectReference]) {

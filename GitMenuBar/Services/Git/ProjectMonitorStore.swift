@@ -102,8 +102,8 @@ final class ProjectMonitorStore: ObservableObject {
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self else { return }
             for project in projects {
-                _ = self.runner.runGitCommand(in: project.path, args: ["fetch"])
-                let snapshot = ProjectStatusReader(runner: self.runner).read(project: project)
+                _ = runner.runGitCommand(in: project.path, args: ["fetch"])
+                let snapshot = ProjectStatusReader(runner: runner).read(project: project)
                 Task { @MainActor [weak self] in self?.snapshots[project.path] = snapshot }
             }
         }
@@ -112,7 +112,7 @@ final class ProjectMonitorStore: ObservableObject {
     private func refresh(projects: [ProjectReference]) {
         guard !isRefreshing, !projects.isEmpty else { return }
         isRefreshing = true
-        let runner = self.runner
+        let runner = runner
         DispatchQueue.global(qos: .utility).async { [weak self] in
             let queue = OperationQueue()
             queue.maxConcurrentOperationCount = 2
@@ -128,9 +128,9 @@ final class ProjectMonitorStore: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 for snapshot in results {
-                    self.snapshots[snapshot.project.path] = snapshot
+                    snapshots[snapshot.project.path] = snapshot
                 }
-                self.isRefreshing = false
+                isRefreshing = false
             }
         }
     }

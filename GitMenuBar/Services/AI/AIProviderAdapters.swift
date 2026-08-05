@@ -26,11 +26,11 @@ enum AIProviderAdapterFactory {
     static func makeAdapter(for providerType: AIProviderType) -> AIProviderAdapter {
         switch providerType {
         case .openAI:
-            return OpenAIProviderAdapter()
+            OpenAIProviderAdapter()
         case .anthropic:
-            return AnthropicProviderAdapter()
+            AnthropicProviderAdapter()
         case .gemini:
-            return GeminiProviderAdapter()
+            GeminiProviderAdapter()
         }
     }
 }

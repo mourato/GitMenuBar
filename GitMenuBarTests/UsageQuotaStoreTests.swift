@@ -142,7 +142,8 @@ final class UsageQuotaStoreTests: XCTestCase {
         snapshotStore.save(Self.sampleSnapshot())
 
         guard let data = defaults.data(forKey: "usageQuotaSnapshot.v1.codex"),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
             return XCTFail("Expected encoded snapshot data")
         }
 
@@ -263,6 +264,7 @@ private final class FakeUsageQuotaProvider: UsageQuotaProviding, @unchecked Send
         self.snapshot = snapshot
     }
 
+    // swiftlint:disable:next async_without_await
     func fetchSnapshot() async -> UsageQuotaSnapshot {
         fetchCount += 1
         return snapshot

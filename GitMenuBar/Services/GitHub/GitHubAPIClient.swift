@@ -81,7 +81,9 @@ class GitHubAPIClient {
             throw GitHubAPIError.unauthorized
         }
 
-        let url = URL(string: "\(baseURL)/user/repos")!
+        guard let url = URL(string: "\(baseURL)/user/repos") else {
+            throw GitHubAPIError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -94,7 +96,7 @@ class GitHubAPIClient {
             "auto_init": false // Don't create README, we'll push our own initial commit
         ]
 
-        if let description = description {
+        if let description {
             body["description"] = description
         }
 
@@ -128,7 +130,9 @@ class GitHubAPIClient {
             return false
         }
 
-        let url = URL(string: "\(baseURL)/repos/\(session.username)/\(name)")!
+        guard let url = URL(string: "\(baseURL)/repos/\(session.username)/\(name)") else {
+            throw GitHubAPIError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -167,7 +171,9 @@ class GitHubAPIClient {
             throw GitHubAPIError.unauthorized
         }
 
-        let url = URL(string: "\(baseURL)/repos/\(owner)/\(name)")!
+        guard let url = URL(string: "\(baseURL)/repos/\(owner)/\(name)") else {
+            throw GitHubAPIError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -205,7 +211,9 @@ class GitHubAPIClient {
 
     func checkRepositoryURLExists(owner: String, repo: String) async -> Bool {
         let session = await authManager.sessionSnapshot()
-        let url = URL(string: "\(baseURL)/repos/\(owner)/\(repo)")!
+        guard let url = URL(string: "\(baseURL)/repos/\(owner)/\(repo)") else {
+            return false
+        }
         var request = URLRequest(url: url)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
@@ -250,7 +258,9 @@ class GitHubAPIClient {
             break
         }
 
-        let url = URL(string: "\(baseURL)/repos/\(owner)/\(repo)/commits/\(commitHash)")!
+        guard let url = URL(string: "\(baseURL)/repos/\(owner)/\(repo)/commits/\(commitHash)") else {
+            return nil
+        }
         var request = URLRequest(url: url)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
@@ -330,7 +340,9 @@ class GitHubAPIClient {
             throw GitHubAPIError.unauthorized
         }
 
-        let url = URL(string: "\(baseURL)/user")!
+        guard let url = URL(string: "\(baseURL)/user") else {
+            throw GitHubAPIError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -363,7 +375,9 @@ class GitHubAPIClient {
             throw GitHubAPIError.unauthorized
         }
 
-        let url = URL(string: "\(baseURL)/repos/\(owner)/\(name)")!
+        guard let url = URL(string: "\(baseURL)/repos/\(owner)/\(name)") else {
+            throw GitHubAPIError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -392,7 +406,9 @@ class GitHubAPIClient {
             throw GitHubAPIError.unauthorized
         }
 
-        let url = URL(string: "\(baseURL)/repos/\(owner)/\(name)")!
+        guard let url = URL(string: "\(baseURL)/repos/\(owner)/\(name)") else {
+            throw GitHubAPIError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "PATCH"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

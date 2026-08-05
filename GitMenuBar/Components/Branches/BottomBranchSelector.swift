@@ -134,18 +134,18 @@ private enum BadgeStyle {
     var foregroundColor: Color {
         switch self {
         case .accent:
-            return .accentColor
+            .accentColor
         case .warning:
-            return .orange
+            .orange
         }
     }
 
     func backgroundColor(colorSchemeContrast: ColorSchemeContrast) -> Color {
         switch self {
         case .accent:
-            return WorkbenchPalette.accentFill(contrast: colorSchemeContrast)
+            WorkbenchPalette.accentFill(contrast: colorSchemeContrast)
         case .warning:
-            return WorkbenchPalette.warningFill(contrast: colorSchemeContrast)
+            WorkbenchPalette.warningFill(contrast: colorSchemeContrast)
         }
     }
 }

@@ -128,11 +128,11 @@ private extension AppPreferences.AppearanceMode {
     var nsAppearance: NSAppearance? {
         switch self {
         case .systemDefault:
-            return nil
+            nil
         case .light:
-            return NSAppearance(named: .aqua)
+            NSAppearance(named: .aqua)
         case .dark:
-            return NSAppearance(named: .darkAqua)
+            NSAppearance(named: .darkAqua)
         }
     }
 }

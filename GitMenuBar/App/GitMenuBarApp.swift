@@ -45,11 +45,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         // Create GitHub auth manager
-        githubAuthManager = GitHubAuthManager()
+        let authManager = GitHubAuthManager()
+        githubAuthManager = authManager
 
         // Create and show status bar controller - keep strong reference
         statusBarController = StatusBarController(
-            githubAuthManager: githubAuthManager!,
+            githubAuthManager: authManager,
             appCommandCenter: appCommandCenter
         )
 
@@ -93,11 +94,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if isGitRepo, githubAuthManager?.isAuthenticated == true {
             // Check if remote repo actually exists on GitHub
             statusBarController?.gitManager.remoteRepositoryExists(at: path) { [weak self] exists in
-                guard let self = self else { return }
+                guard let self else { return }
 
                 UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
-                self.recentProjectsStore.add(path)
-                self.statusBarController?.projectMonitor.add(path: path)
+                recentProjectsStore.add(path)
+                statusBarController?.projectMonitor.add(path: path)
 
                 if exists {
                     DispatchQueue.main.async {

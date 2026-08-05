@@ -12,11 +12,11 @@ enum BranchManagementMode: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .branches:
-            return "Branches"
+            "Branches"
         case .worktrees:
-            return "Worktrees"
+            "Worktrees"
         case .cleanup:
-            return "Cleanup"
+            "Cleanup"
         }
     }
 }
@@ -92,11 +92,11 @@ struct BranchManagementListView: View {
     private var filterPlaceholder: String {
         switch mode {
         case .branches:
-            return "Filter branches"
+            "Filter branches"
         case .worktrees:
-            return "Filter worktrees or paths"
+            "Filter worktrees or paths"
         case .cleanup:
-            return "Filter local branches"
+            "Filter local branches"
         }
     }
 
@@ -253,9 +253,9 @@ struct CleanupManagementContentView: View {
     private var unknownCount: Int {
         allLocalInfos.filter {
             if case .unknown = $0.status {
-                return true
+                true
             } else {
-                return false
+                false
             }
         }.count
     }

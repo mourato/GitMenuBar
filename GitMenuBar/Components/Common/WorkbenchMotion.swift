@@ -8,9 +8,9 @@ enum WorkbenchMotion {
         var scaleAnchor: UnitPoint {
             switch self {
             case .topCenter:
-                return .top
+                .top
             case .bottomLeading:
-                return .bottomLeading
+                .bottomLeading
             }
         }
     }

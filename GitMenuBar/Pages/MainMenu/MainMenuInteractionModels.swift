@@ -139,11 +139,11 @@ enum MainMenuSelectionNavigator {
     private static func selectionStep(for direction: MoveCommandDirection) -> Int {
         switch direction {
         case .down:
-            return 1
+            1
         case .up:
-            return -1
+            -1
         default:
-            return 0
+            0
         }
     }
 }

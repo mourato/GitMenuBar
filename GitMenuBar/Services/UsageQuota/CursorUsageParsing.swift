@@ -12,7 +12,8 @@ enum CursorUsageParsing {
     static func userID(fromJWT token: String) -> String? {
         guard let payload = decodeJWTPayload(token),
               let subject = payload["sub"] as? String,
-              !subject.isEmpty else {
+              !subject.isEmpty
+        else {
             return nil
         }
 
@@ -34,7 +35,8 @@ enum CursorUsageParsing {
         let isUnlimited = root["isUnlimited"] as? Bool ?? false
 
         guard let individualUsage = root["individualUsage"] as? [String: Any],
-              let plan = individualUsage["plan"] as? [String: Any] else {
+              let plan = individualUsage["plan"] as? [String: Any]
+        else {
             return nil
         }
 
@@ -78,7 +80,8 @@ enum CursorUsageParsing {
 
         guard let used = doubleValue(plan["used"]),
               let limit = doubleValue(plan["limit"]),
-              limit > 0 else {
+              limit > 0
+        else {
             return nil
         }
 
@@ -126,7 +129,8 @@ enum CursorUsageParsing {
         }
 
         guard let data = Data(base64Encoded: base64),
-              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
             return nil
         }
         return payload
