@@ -35,6 +35,8 @@ struct MainMenuView: View {
     @AppStorage(AppPreferences.Keys.isProjectsSidebarCollapsed) var isProjectsSidebarCollapsed = false
     @AppStorage(AppPreferences.Keys.projectsSidebarWidth) var projectsSidebarWidth = ProjectsSidebarMetrics.defaultWidth
     @AppStorage(AppPreferences.Keys.hideCommitMessageField) var hideCommitMessageField = false
+    @AppStorage(AppPreferences.Keys.commitButtonAction)
+    var commitButtonAction = AppPreferences.CommitButtonAction.defaultAction.rawValue
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
     @State var showBranchSelector = false
     @State var showBranchManagement = false

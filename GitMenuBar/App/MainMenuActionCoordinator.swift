@@ -226,6 +226,43 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
+    func performAtomicCommitsAndPush(groups: [AtomicCommitGroup]) async -> MainMenuCommitExecutionResult {
+        guard !groups.isEmpty, !isBusy else {
+            return .skipped
+        }
+
+        return await executePrimaryAction {
+            clearAlert()
+            showSyncOptions = false
+
+            let commitResult = await gitManager.performAtomicCommitsAsync(groups: groups)
+            guard case .success = commitResult else {
+                if case let .failure(error) = commitResult {
+                    publishAlert(title: "Split Commits Failed", message: error.localizedDescription)
+                }
+                return .failed
+            }
+
+            await refreshRemoteStatus()
+            if gitManager.isRemoteAhead {
+                showSyncOptions = true
+                return .committedAndNeedsSyncOptions
+            }
+
+            let pushResult = await pushToRemote()
+            guard case .success = pushResult else {
+                if case let .failure(error) = pushResult {
+                    publishAlert(title: "Split Commits Failed", message: error.localizedDescription)
+                }
+                return .failed
+            }
+
+            await refreshRepository()
+            await refreshRemoteStatus()
+            return .committed
+        }
+    }
+
     func syncWithRemote(rebase: Bool) async -> MainMenuSyncExecutionResult {
         guard !isBusy else {
             return .skipped

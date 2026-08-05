@@ -18,7 +18,10 @@ extension MainMenuView {
             return
         }
 
-        let result = await actionCoordinator.performCommit(commentText: commentText)
+        let result = await actionCoordinator.performCommit(
+            commentText: commentText,
+            shouldPushAfterCommit: resolvedCommitButtonAction == .commitAndPush
+        )
         if result.didCommit {
             HapticFeedback.actionSucceeded()
             commentText = ""
@@ -314,7 +317,33 @@ extension MainMenuView {
 
     func startAtomicCommitFlow() {
         guard !gitManager.changedFiles.isEmpty else { return }
+
+        if resolvedCommitButtonAction == .commitAndPush {
+            Task {
+                let groups = await generateAutomaticAtomicCommitGroups()
+                let result = await actionCoordinator.performAtomicCommitsAndPush(groups: groups)
+                if result.didCommit {
+                    HapticFeedback.actionSucceeded()
+                }
+            }
+            return
+        }
+
         showAtomicCommitSheet = true
+    }
+
+    private func generateAutomaticAtomicCommitGroups() async -> [AtomicCommitGroup] {
+        do {
+            let changedFiles = gitManager.changedFiles
+            let diffs = await gitManager.diffForChangedFilesAsync()
+            let groups = try await aiCommitCoordinator.generateAtomicGroups(
+                changedFiles: changedFiles,
+                diffPerFile: diffs
+            )
+            return groups.isEmpty ? AtomicCommitGroup.fallbackGroups(for: changedFiles) : groups
+        } catch {
+            return AtomicCommitGroup.fallbackGroups(for: gitManager.changedFiles)
+        }
     }
 
     func dismissInlineStatusBanner() {

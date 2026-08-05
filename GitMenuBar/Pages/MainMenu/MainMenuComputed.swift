@@ -145,6 +145,7 @@ struct MainMenuPrimaryActionState: Equatable {
     let canSync: Bool
     let showsIdleCommitState: Bool
     let syncLabelState: MainMenuSyncLabelState
+    let commitButtonAction: AppPreferences.CommitButtonAction
 
     var isPrimaryButtonDisabled: Bool {
         showsCommitAction ? !canCommit : !canSync
@@ -156,7 +157,7 @@ struct MainMenuPrimaryActionState: Equatable {
         }
 
         if showsCommitAction {
-            return "Commit"
+            return commitButtonAction.buttonTitle
         }
 
         return syncLabelState.title
@@ -185,7 +186,8 @@ struct MainMenuPrimaryActionState: Equatable {
         hasWorkingTreeChanges: Bool,
         canCommitWithCurrentInput: Bool,
         syncLabelState: MainMenuSyncLabelState,
-        isBusy: Bool
+        isBusy: Bool,
+        commitButtonAction: AppPreferences.CommitButtonAction = .defaultAction
     ) -> MainMenuPrimaryActionState {
         let hasSyncWork = syncLabelState.hasSyncWork
         let showsIdleCommitState = !hasWorkingTreeChanges && !hasSyncWork
@@ -198,7 +200,8 @@ struct MainMenuPrimaryActionState: Equatable {
             canCommit: canCommit,
             canSync: canSync,
             showsIdleCommitState: showsIdleCommitState,
-            syncLabelState: syncLabelState
+            syncLabelState: syncLabelState,
+            commitButtonAction: commitButtonAction
         )
     }
 }
@@ -313,7 +316,7 @@ extension MainMenuView {
             return "Commit messages will be generated automatically."
         }
 
-        return "Automatic commit generation is unavailable. Click Commit to enter a message manually."
+        return "Automatic commit generation is unavailable. Click \(primaryButtonTitle) to enter a message manually."
     }
 
     var canCommitWithCurrentInput: Bool {
@@ -325,8 +328,13 @@ extension MainMenuView {
             hasWorkingTreeChanges: hasWorkingTreeChanges,
             canCommitWithCurrentInput: canCommitWithCurrentInput,
             syncLabelState: syncLabelState,
-            isBusy: isPrimaryActionBusy
+            isBusy: isPrimaryActionBusy,
+            commitButtonAction: resolvedCommitButtonAction
         )
+    }
+
+    var resolvedCommitButtonAction: AppPreferences.CommitButtonAction {
+        AppPreferences.CommitButtonAction.resolve(rawValue: commitButtonAction)
     }
 
     var syncLabelState: MainMenuSyncLabelState {
@@ -370,7 +378,9 @@ extension MainMenuView {
     }
 
     var canShowAtomicCommits: Bool {
-        !gitManager.changedFiles.isEmpty && aiCommitCoordinator.isReadyForGeneration && !actionCoordinator.isBusy
+        !gitManager.changedFiles.isEmpty
+            && !actionCoordinator.isBusy
+            && (aiCommitCoordinator.isReadyForGeneration || resolvedCommitButtonAction == .commitAndPush)
     }
 
     var commandPaletteActionState: StatusBarContextMenuActionState {

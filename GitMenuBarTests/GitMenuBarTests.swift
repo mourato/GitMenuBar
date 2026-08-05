@@ -54,6 +54,19 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.isPrimaryButtonDisabled)
     }
 
+    func testPrimaryActionShowsCommitAndPushWhenConfigured() {
+        let state = MainMenuPrimaryActionState.resolve(
+            hasWorkingTreeChanges: true,
+            canCommitWithCurrentInput: true,
+            syncLabelState: .none,
+            isBusy: false,
+            commitButtonAction: .commitAndPush
+        )
+
+        XCTAssertEqual(state.primaryButtonTitle, "Commit & Push")
+        XCTAssertEqual(state.primaryButtonSystemImage, "checkmark")
+    }
+
     func testPrimaryActionShowsPushChangesWhenOnlyLocalCommitsNeedSync() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: false,

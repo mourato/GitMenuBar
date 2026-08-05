@@ -75,6 +75,8 @@ struct GeneralSettingsPaneView: View {
 
 struct GitSettingsPaneView: View {
     @AppStorage(AppPreferences.Keys.hideCommitMessageField) private var hideCommitMessageField = false
+    @AppStorage(AppPreferences.Keys.commitButtonAction)
+    private var commitButtonAction = AppPreferences.CommitButtonAction.defaultAction.rawValue
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
 
     let gitManager: GitManager
@@ -86,12 +88,29 @@ struct GitSettingsPaneView: View {
             Section {
                 Toggle("Hide commit message field", isOn: $hideCommitMessageField)
                     .toggleStyle(.switch)
+
+                Picker(
+                    "Commit button action",
+                    selection: Binding(
+                        get: {
+                            AppPreferences.CommitButtonAction.resolve(rawValue: commitButtonAction)
+                        },
+                        set: { newValue in
+                            commitButtonAction = newValue.rawValue
+                        }
+                    )
+                ) {
+                    ForEach(AppPreferences.CommitButtonAction.allCases) { action in
+                        Text(action.title).tag(action)
+                    }
+                }
+                .pickerStyle(.menu)
             } header: {
                 SettingsFormSectionHeader(title: "Commit", icon: "text.badge.checkmark")
             } footer: {
                 Text(
-                    "When enabled, GitMenuBar hides the text field and prefers automatic commit messages. "
-                        + "If automatic generation is unavailable, the field is shown when needed."
+                    "Choose whether the main button commits changes locally or also pushes them to the remote. "
+                        + "When the message field is hidden, GitMenuBar uses automatic commit messages when available."
                 )
             }
 

@@ -15,6 +15,7 @@ enum AppPreferences {
         static let autoHideMainWindowOnBlur = "autoHideMainWindowOnBlur"
         static let toggleShortcutUsesMouseMonitor = "toggleShortcutUsesMouseMonitor"
         static let hideCommitMessageField = "hideCommitMessageField"
+        static let commitButtonAction = "commitButtonAction"
         static let appearanceMode = "appearanceMode"
         static let hasMigratedKeychainDomain = "hasMigratedKeychainDomain"
         static let aiCredentialMigrationVersion = "aiCredentialMigrationVersion"
@@ -50,6 +51,41 @@ enum AppPreferences {
 
         static func resolve(rawValue: String) -> AppearanceMode {
             AppearanceMode(rawValue: rawValue) ?? defaultMode
+        }
+    }
+
+    enum CommitButtonAction: String, CaseIterable, Identifiable {
+        case commit
+        case commitAndPush
+
+        var id: String {
+            rawValue
+        }
+
+        var title: String {
+            switch self {
+            case .commit:
+                "Commit only"
+            case .commitAndPush:
+                "Commit & Push"
+            }
+        }
+
+        var buttonTitle: String {
+            switch self {
+            case .commit:
+                "Commit"
+            case .commitAndPush:
+                "Commit & Push"
+            }
+        }
+
+        static var defaultAction: CommitButtonAction {
+            .commit
+        }
+
+        static func resolve(rawValue: String) -> CommitButtonAction {
+            CommitButtonAction(rawValue: rawValue) ?? defaultAction
         }
     }
 }
