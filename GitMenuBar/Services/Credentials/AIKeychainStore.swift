@@ -4,6 +4,7 @@ import Security
 enum AIKeychainStoreError: Error, Equatable {
     case keychain(OSStatus)
     case invalidPayload
+    case malformedLegacyItem(service: String)
 }
 
 protocol AIKeychainItemClient {
@@ -138,10 +139,14 @@ final class AIKeychainStore: AIAPIKeyStore {
         guard let payload = try? JSONDecoder().decode(AIKeychainPayload.self, from: data), payload.version == 1 else {
             throw AIKeychainStoreError.invalidPayload
         }
-        return Dictionary(uniqueKeysWithValues: payload.values.compactMap { key, value in
-            guard key.hasPrefix("custom:") || ["openrouter", "google", "openai", "anthropic"].contains(key) else { return nil }
-            return (AIProviderCredentialID(rawValue: key), value)
-        })
+        var values: [AIProviderCredentialID: String] = [:]
+        for (key, value) in payload.values {
+            guard key.hasPrefix("custom:") || ["openrouter", "google", "openai", "anthropic"].contains(key) else {
+                throw AIKeychainStoreError.invalidPayload
+            }
+            values[AIProviderCredentialID(rawValue: key)] = value
+        }
+        return values
     }
 
     private func writeValues(_ values: [AIProviderCredentialID: String]) throws {

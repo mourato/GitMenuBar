@@ -99,6 +99,26 @@ final class AIProviderStoreTests: XCTestCase {
         XCTAssertEqual(AIProviderCredentialID(provider: custom).rawValue, "custom:\(custom.id.uuidString.lowercased())")
     }
 
+    func testCredentialIdentityNormalizesOpenRouterSubdomainsAndKeepsCustomEndpointsSeparate() {
+        let openRouter = AIProviderConfig(
+            name: "Provider", type: .openAI, endpointURL: "https://gateway.OPENROUTER.ai:443/", selectedModel: "model"
+        )
+        let openRouterPath = AIProviderConfig(
+            name: "Provider", type: .openAI, endpointURL: "https://openrouter.ai/api/v1", selectedModel: "model"
+        )
+        let custom = AIProviderConfig(
+            name: "Provider", type: .openAI, endpointURL: "https://api.openai.com/v1", selectedModel: "model"
+        )
+        let malformed = AIProviderConfig(
+            name: "Provider", type: .gemini, endpointURL: "not a URL", selectedModel: "model"
+        )
+
+        XCTAssertEqual(AIProviderCredentialID(provider: openRouter), .openrouter)
+        XCTAssertEqual(AIProviderCredentialID(provider: openRouterPath), .openrouter)
+        XCTAssertEqual(AIProviderCredentialID(provider: custom).rawValue, "custom:\(custom.id.uuidString.lowercased())")
+        XCTAssertEqual(AIProviderCredentialID(provider: malformed).rawValue, "custom:\(malformed.id.uuidString.lowercased())")
+    }
+
     private func makeProvider(
         name: String,
         type: AIProviderType = .openAI,
