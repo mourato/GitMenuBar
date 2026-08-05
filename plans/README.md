@@ -714,3 +714,9 @@ per-project GitManager, cache, dependency, or speculative UI debounce.
 - Unbounded parallel Git commands: rejected; read-only local phases may be
   bounded after Plan 051, but fetch/push/pull/mutations must not overlap
   unsafely with reads.
+
+## AI settings credential surface — 2026-08-05
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 055 | Simplificar a superfície de AI Settings e reutilizar a credencial compartilhada | P1 | M | 054 | DONE |

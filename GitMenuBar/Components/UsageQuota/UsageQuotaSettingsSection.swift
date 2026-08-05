@@ -2,13 +2,6 @@ import SwiftUI
 
 struct UsageQuotaSettingsSection: View {
     @EnvironmentObject private var usageQuotaStore: UsageQuotaStore
-    @State private var openRouterAPIKey = ""
-
-    private let apiKeyStore: any OpenRouterAPIKeyStoring
-
-    init(apiKeyStore: any OpenRouterAPIKeyStoring = OpenRouterAPIKeyStore()) {
-        self.apiKeyStore = apiKeyStore
-    }
 
     var body: some View {
         Toggle("Show AI usage in menu", isOn: $usageQuotaStore.showAIUsageQuotas)
@@ -26,27 +19,10 @@ struct UsageQuotaSettingsSection: View {
             .toggleStyle(.switch)
             .disabled(!usageQuotaStore.showAIUsageQuotas)
 
-        if usageQuotaStore.showOpenRouterUsageQuota {
-            SecureField("OpenRouter API key", text: $openRouterAPIKey)
-                .onAppear {
-                    if openRouterAPIKey.isEmpty {
-                        openRouterAPIKey = apiKeyStore.loadKey() ?? ""
-                    }
-                }
-                .onChange(of: openRouterAPIKey) { _, newValue in
-                    let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if trimmed.isEmpty {
-                        apiKeyStore.deleteKey()
-                    } else {
-                        apiKeyStore.saveKey(trimmed)
-                    }
-                }
-        }
-
         Text(
             "Quota data stays on this Mac. GitMenuBar reads your local Codex and Cursor sessions "
                 + "and calls provider usage endpoints only when refreshing — it never stores OAuth tokens. "
-                + "Your OpenRouter API key is stored in your Keychain, never in GitMenuBar's preferences."
+                + "OpenRouter quota uses the OpenRouter provider credential configured in AI settings."
         )
         .font(WorkbenchTypography.caption)
         .foregroundStyle(.secondary)
@@ -62,9 +38,16 @@ struct UsageQuotaSettingsSection: View {
 }
 
 #Preview("Usage Quota Settings") {
+    let credentialStore = InMemoryAIAPIKeyStore()
+    let providers: [any UsageQuotaProviding] = [
+        CodexUsageProvider(),
+        CursorUsageProvider(),
+        OpenRouterUsageProvider(keyStore: credentialStore)
+    ]
+
     Form {
         Section {
-            UsageQuotaSettingsSection(apiKeyStore: InMemoryOpenRouterAPIKeyStore())
+            UsageQuotaSettingsSection()
         } header: {
             SettingsFormSectionHeader(
                 title: "Usage Quotas",
@@ -73,6 +56,6 @@ struct UsageQuotaSettingsSection: View {
         }
     }
     .formStyle(.grouped)
-    .environmentObject(UsageQuotaStore())
+    .environmentObject(UsageQuotaStore(providers: providers))
     .frame(width: 560, height: 280)
 }

@@ -98,12 +98,6 @@ final class AIProviderStore: ObservableObject {
 
     func updateDefaultProvider(_ providerId: UUID?) {
         preferences.defaultProviderId = providerId
-
-        let defaultModelIsEmpty = preferences.defaultModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        if let provider = defaultProvider, defaultModelIsEmpty {
-            preferences.defaultModel = provider.selectedModel
-        }
-
         normalizeDefaults()
         persistPreferences()
     }
@@ -163,9 +157,18 @@ final class AIProviderStore: ObservableObject {
             preferences.defaultProviderId = providers.first?.id
         }
 
-        let defaultModelIsEmpty = preferences.defaultModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        if let provider = defaultProvider, defaultModelIsEmpty {
-            preferences.defaultModel = provider.selectedModel
+        guard let provider = defaultProvider else {
+            preferences.defaultModel = ""
+            return
+        }
+
+        let currentModel = preferences.defaultModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let availableModels = provider.availableModels.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        if currentModel.isEmpty || (!availableModels.isEmpty && !availableModels.contains(currentModel)) {
+            preferences.defaultModel = provider.selectedModel.trimmingCharacters(in: .whitespacesAndNewlines)
+            if preferences.defaultModel.isEmpty || (!availableModels.isEmpty && !availableModels.contains(preferences.defaultModel)) {
+                preferences.defaultModel = availableModels.first ?? ""
+            }
         }
     }
 
