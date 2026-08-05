@@ -35,7 +35,8 @@ struct CommitWorkflowView: View {
             isPrimaryButtonDisabled: isPrimaryButtonDisabled,
             canShowSplitCommits: canShowSplitCommits,
             onPrimaryAction: onPrimaryAction,
-            onSplitCommits: onSplitCommits
+            onSplitCommits: onSplitCommits,
+            operationStatus: actionCoordinator.operationStatus
         )
         .onAppear {
             onRequestFocus()

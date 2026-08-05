@@ -14,6 +14,7 @@ struct CommitComposerSectionView: View {
     let canShowSplitCommits: Bool
     let onPrimaryAction: () -> Void
     let onSplitCommits: () -> Void
+    let operationStatus: MainMenuOperationStatus?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -47,6 +48,24 @@ struct CommitComposerSectionView: View {
                 onSplitCommits: onSplitCommits,
                 isPrimaryButtonDisabled: isPrimaryButtonDisabled
             )
+
+            if let operationStatus {
+                HStack(spacing: 8) {
+                    if let progress = operationStatus.progress {
+                        ProgressView(value: progress, total: 1)
+                            .frame(width: 80)
+                    } else {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+
+                    Text(operationStatus.title)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(operationStatus.accessibilityLabel)
+            }
 
             if let automaticMessageHint {
                 Text(automaticMessageHint)
@@ -122,7 +141,8 @@ private struct CommitComposerSectionPreviewContainer: View {
             isPrimaryButtonDisabled: false,
             canShowSplitCommits: canShowSplitCommits,
             onPrimaryAction: {},
-            onSplitCommits: {}
+            onSplitCommits: {},
+            operationStatus: nil
         )
         .padding()
         .frame(width: 360)

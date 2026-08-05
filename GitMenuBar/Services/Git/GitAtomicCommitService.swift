@@ -122,7 +122,8 @@ final class GitAtomicCommitService: ObservableObject {
         groups: [AtomicCommitGroup],
         changedFiles: [WorkingTreeFile],
         stagedFiles: [WorkingTreeFile],
-        uncommittedFiles: [String]
+        uncommittedFiles: [String],
+        progress: ((Int, Int) -> Void)? = nil
     ) async -> Result<Void, Error> {
         let repositoryPath = storedRepoPath
         guard !repositoryPath.isEmpty else {
@@ -149,7 +150,8 @@ final class GitAtomicCommitService: ObservableObject {
             return .failure(error)
         }
 
-        for group in plan.groups {
+        for (index, group) in plan.groups.enumerated() {
+            progress?(index + 1, plan.groups.count)
             let result = await commitAtomicGroupAsync(files: group.files, message: group.message)
             if case let .failure(error) = result {
                 await rollbackAtomicCommits(to: originalHead, repositoryPath: repositoryPath)

@@ -62,9 +62,11 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     @Published var alert: MainMenuActionAlert?
+    @Published var success: MainMenuActionAlert?
     @Published var showSyncOptions = false
     @Published var whitespaceCommitPrompt: MainMenuWhitespaceCommitPrompt?
     @Published private(set) var isExecutingPrimaryAction = false
+    @Published private(set) var operationStatus: MainMenuOperationStatus?
 
     private let gitManager: GitManager
     private let aiCommitCoordinator: AICommitCoordinator
@@ -100,6 +102,7 @@ final class MainMenuActionCoordinator: ObservableObject {
 
     func clearAlert() {
         alert = nil
+        success = nil
     }
 
     func dismissWhitespaceCommitPrompt() {
@@ -234,32 +237,32 @@ final class MainMenuActionCoordinator: ObservableObject {
         return await executePrimaryAction {
             clearAlert()
             showSyncOptions = false
+            return await executeAtomicCommitsAndPush(groups: groups)
+        }
+    }
 
-            let commitResult = await gitManager.performAtomicCommitsAsync(groups: groups)
-            guard case .success = commitResult else {
-                if case let .failure(error) = commitResult {
-                    publishAlert(title: "Split Commits Failed", message: error.localizedDescription)
-                }
+    func performAutomaticAtomicCommitsAndPush(
+        generateGroups: @escaping () async -> [AtomicCommitGroup]
+    ) async -> MainMenuCommitExecutionResult {
+        guard !isBusy else {
+            return .skipped
+        }
+
+        return await executePrimaryAction {
+            clearAlert()
+            showSyncOptions = false
+            operationStatus = .groupingChanges
+
+            let groups = await generateGroups()
+            guard !groups.isEmpty else {
+                publishAlert(
+                    title: "Split Commits Failed",
+                    message: "No changes could be grouped into commits."
+                )
                 return .failed
             }
 
-            await refreshRemoteStatus()
-            if gitManager.isRemoteAhead {
-                showSyncOptions = true
-                return .committedAndNeedsSyncOptions
-            }
-
-            let pushResult = await pushToRemote()
-            guard case .success = pushResult else {
-                if case let .failure(error) = pushResult {
-                    publishAlert(title: "Split Commits Failed", message: error.localizedDescription)
-                }
-                return .failed
-            }
-
-            await refreshRepository()
-            await refreshRemoteStatus()
-            return .committed
+            return await executeAtomicCommitsAndPush(groups: groups)
         }
     }
 
@@ -314,10 +317,16 @@ final class MainMenuActionCoordinator: ObservableObject {
         alert = MainMenuActionAlert(title: title, message: message)
     }
 
+    private func publishSuccess(title: String, message: String) {
+        success = MainMenuActionAlert(title: title, message: message)
+    }
+
     private func commitUsingGeneratedMessage(
         failureTitle: String,
         shouldPushAfterCommit: Bool
     ) async -> MainMenuCommitExecutionResult {
+        operationStatus = .generatingCommitMessage
+
         do {
             guard aiCommitCoordinator.isReadyForGeneration else {
                 throw NSError(
@@ -345,6 +354,7 @@ final class MainMenuActionCoordinator: ObservableObject {
         shouldPushAfterCommit: Bool
     ) async -> MainMenuCommitExecutionResult {
         aiCommitCoordinator.generationError = nil
+        operationStatus = .committing
 
         let commitResult = await commitLocally(message)
         guard case .success = commitResult else {
@@ -358,6 +368,7 @@ final class MainMenuActionCoordinator: ObservableObject {
         await refreshRemoteStatus()
 
         guard shouldPushAfterCommit else {
+            publishSuccess(title: "Commit complete", message: "Your changes were committed locally.")
             return .committed
         }
 
@@ -366,16 +377,62 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .committedAndNeedsSyncOptions
         }
 
+        operationStatus = .pushing
         let pushResult = await pushToRemote()
         guard case .success = pushResult else {
             if case let .failure(error) = pushResult {
-                publishAlert(title: failureTitle, message: error.localizedDescription)
+                publishAlert(
+                    title: "Push Failed",
+                    message: "The commit was created locally, but the push failed. "
+                        + "\(error.localizedDescription) Try pushing again."
+                )
             }
             return .failed
         }
 
         await refreshRepository()
         await refreshRemoteStatus()
+        publishSuccess(title: "Commit & Push complete", message: "Your changes are now on the remote.")
+        return .committed
+    }
+
+    private func executeAtomicCommitsAndPush(groups: [AtomicCommitGroup]) async -> MainMenuCommitExecutionResult {
+        operationStatus = .committingGroup(current: 0, total: groups.count)
+        let commitResult = await gitManager.performAtomicCommitsAsync(groups: groups) { current, total in
+            self.operationStatus = .committingGroup(current: current, total: total)
+        }
+        guard case .success = commitResult else {
+            if case let .failure(error) = commitResult {
+                publishAlert(title: "Split Commits Failed", message: error.localizedDescription)
+            }
+            return .failed
+        }
+
+        await refreshRemoteStatus()
+        if gitManager.isRemoteAhead {
+            showSyncOptions = true
+            return .committedAndNeedsSyncOptions
+        }
+
+        operationStatus = .pushingCommits(count: groups.count)
+        let pushResult = await pushToRemote()
+        guard case .success = pushResult else {
+            if case let .failure(error) = pushResult {
+                publishAlert(
+                    title: "Push Failed",
+                    message: "\(groups.count) commit\(groups.count == 1 ? " was" : "s were") created locally, "
+                        + "but the push failed. \(error.localizedDescription) Try pushing again."
+                )
+            }
+            return .failed
+        }
+
+        await refreshRepository()
+        await refreshRemoteStatus()
+        publishSuccess(
+            title: "Split commits & push complete",
+            message: "\(groups.count) commit\(groups.count == 1 ? " is" : "s are") now on the remote."
+        )
         return .committed
     }
 
@@ -383,6 +440,7 @@ final class MainMenuActionCoordinator: ObservableObject {
         isExecutingPrimaryAction = true
         defer {
             isExecutingPrimaryAction = false
+            operationStatus = nil
         }
         return await operation()
     }

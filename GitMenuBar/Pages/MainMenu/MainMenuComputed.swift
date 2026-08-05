@@ -94,6 +94,7 @@ struct MainMenuRenderSnapshot: Equatable {
 
 enum MainMenuInlineBannerSource: Equatable {
     case coordinatorAlert
+    case coordinatorSuccess
     case deleteRepository
     case toggleVisibility
     case discard
@@ -231,6 +232,9 @@ extension MainMenuView {
         if actionCoordinator.alert != nil {
             return .coordinatorAlert
         }
+        if actionCoordinator.success != nil {
+            return .coordinatorSuccess
+        }
         if deleteError != nil {
             return .deleteRepository
         }
@@ -270,6 +274,9 @@ extension MainMenuView {
         case .coordinatorAlert:
             guard let alert = actionCoordinator.alert else { return nil }
             return InlineStatusBanner(title: alert.title, message: alert.message, style: .error)
+        case .coordinatorSuccess:
+            guard let success = actionCoordinator.success else { return nil }
+            return InlineStatusBanner(title: success.title, message: success.message, style: .info)
         case .deleteRepository:
             return banner(title: "Delete Failed", message: deleteError)
         case .toggleVisibility:

@@ -1,6 +1,56 @@
 import Foundation
 import SwiftUI
 
+enum MainMenuOperationStatus: Equatable {
+    case generatingCommitMessage
+    case groupingChanges
+    case committing
+    case committingGroup(current: Int, total: Int)
+    case pushing
+    case pushingCommits(count: Int)
+
+    var title: String {
+        switch self {
+        case .generatingCommitMessage:
+            "Generating commit message…"
+        case .groupingChanges:
+            "Grouping changes…"
+        case .committing:
+            "Creating commit…"
+        case let .committingGroup(current, total):
+            "Creating commit \(current) of \(total)…"
+        case .pushing:
+            "Pushing to remote…"
+        case let .pushingCommits(count):
+            "Pushing \(count) commit\(count == 1 ? "" : "s")…"
+        }
+    }
+
+    var progress: Double? {
+        guard case let .committingGroup(current, total) = self, total > 0 else {
+            return nil
+        }
+        return Double(current) / Double(total)
+    }
+
+    var accessibilityLabel: String {
+        switch self {
+        case .generatingCommitMessage:
+            "Generating commit message"
+        case .groupingChanges:
+            "Grouping changes"
+        case .committing:
+            "Creating commit"
+        case let .committingGroup(current, total):
+            "Creating commit \(current) of \(total)"
+        case .pushing:
+            "Pushing to remote"
+        case let .pushingCommits(count):
+            "Pushing \(count) commit\(count == 1 ? "" : "s")"
+        }
+    }
+}
+
 enum MainMenuSelectableItem: Hashable {
     case stagedFile(path: String)
     case unstagedFile(path: String)

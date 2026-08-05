@@ -314,14 +314,16 @@ class GitManager: ObservableObject {
 
     /// Execute the full atomic commit sequence for a list of groups.
     func performAtomicCommitsAsync(
-        groups: [AtomicCommitGroup]
+        groups: [AtomicCommitGroup],
+        progress: ((Int, Int) -> Void)? = nil
     ) async -> Result<Void, Error> {
         await updateUncommittedFilesAsync()
         let result = await atomicCommitService.performAtomicCommitsAsync(
             groups: groups,
             changedFiles: changedFiles,
             stagedFiles: stagedFiles,
-            uncommittedFiles: uncommittedFiles
+            uncommittedFiles: uncommittedFiles,
+            progress: progress
         )
         await refreshAsync()
         return result

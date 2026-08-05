@@ -320,8 +320,9 @@ extension MainMenuView {
 
         if resolvedCommitButtonAction == .commitAndPush {
             Task {
-                let groups = await generateAutomaticAtomicCommitGroups()
-                let result = await actionCoordinator.performAtomicCommitsAndPush(groups: groups)
+                let result = await actionCoordinator.performAutomaticAtomicCommitsAndPush {
+                    await generateAutomaticAtomicCommitGroups()
+                }
                 if result.didCommit {
                     HapticFeedback.actionSucceeded()
                 }
@@ -352,7 +353,7 @@ extension MainMenuView {
         }
 
         switch source {
-        case .coordinatorAlert, .deleteRepository, .toggleVisibility, .discard:
+        case .coordinatorAlert, .coordinatorSuccess, .deleteRepository, .toggleVisibility, .discard:
             dismissInlineBannerState(source)
         case .sync, .branchSwitch, .merge, .deleteBranch, .renameBranch, .restart, .push:
             dismissInlineBannerOperationError(source)
@@ -363,6 +364,8 @@ extension MainMenuView {
         switch source {
         case .coordinatorAlert:
             actionCoordinator.clearAlert()
+        case .coordinatorSuccess:
+            actionCoordinator.success = nil
         case .deleteRepository:
             deleteError = nil
         case .toggleVisibility:

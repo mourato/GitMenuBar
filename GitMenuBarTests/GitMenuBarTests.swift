@@ -67,6 +67,14 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertEqual(state.primaryButtonSystemImage, "checkmark")
     }
 
+    func testOperationStatusReportsSplitCommitProgress() {
+        let status = MainMenuOperationStatus.committingGroup(current: 2, total: 4)
+
+        XCTAssertEqual(status.title, "Creating commit 2 of 4…")
+        XCTAssertEqual(status.progress, 0.5)
+        XCTAssertEqual(status.accessibilityLabel, "Creating commit 2 of 4")
+    }
+
     func testPrimaryActionShowsPushChangesWhenOnlyLocalCommitsNeedSync() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: false,
