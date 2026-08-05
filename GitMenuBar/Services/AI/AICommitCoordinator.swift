@@ -117,27 +117,51 @@ final class AICommitCoordinator: ObservableObject {
     }
 
     func apiKey(for providerId: UUID) -> String {
-        let apiKey = keychainStore.apiKey(for: providerId) ?? ""
+        guard let provider = providerStore.providers.first(where: { $0.id == providerId }) else { return "" }
+        let apiKey: String
+        do {
+            apiKey = try keychainStore.apiKey(for: AIProviderCredentialID(provider: provider)) ?? ""
+        } catch {
+            return ""
+        }
         if apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             providerStore.updateStoredAPIKeyPresence(false, for: providerId)
         }
         return apiKey
     }
 
-    func saveAPIKey(_ apiKey: String, for providerId: UUID) {
+    @discardableResult
+    func saveAPIKey(_ apiKey: String, for providerId: UUID) -> Result<Void, Error> {
+        guard let provider = providerStore.providers.first(where: { $0.id == providerId }) else {
+            return .failure(AIError.providerNotConfigured)
+        }
         let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            keychainStore.deleteAPIKey(for: providerId)
-            providerStore.updateStoredAPIKeyPresence(false, for: providerId)
-        } else {
-            keychainStore.saveAPIKey(trimmed, for: providerId)
-            providerStore.updateStoredAPIKeyPresence(true, for: providerId)
+        do {
+            if trimmed.isEmpty {
+                try keychainStore.deleteAPIKey(for: AIProviderCredentialID(provider: provider))
+                providerStore.updateStoredAPIKeyPresence(false, for: providerId)
+            } else {
+                try keychainStore.saveAPIKey(trimmed, for: AIProviderCredentialID(provider: provider))
+                providerStore.updateStoredAPIKeyPresence(true, for: providerId)
+            }
+            return .success(())
+        } catch {
+            return .failure(error)
         }
     }
 
-    func deleteAPIKey(for providerId: UUID) {
-        keychainStore.deleteAPIKey(for: providerId)
-        providerStore.updateStoredAPIKeyPresence(false, for: providerId)
+    @discardableResult
+    func deleteAPIKey(for providerId: UUID) -> Result<Void, Error> {
+        guard let provider = providerStore.providers.first(where: { $0.id == providerId }) else {
+            return .failure(AIError.providerNotConfigured)
+        }
+        do {
+            try keychainStore.deleteAPIKey(for: AIProviderCredentialID(provider: provider))
+            providerStore.updateStoredAPIKeyPresence(false, for: providerId)
+            return .success(())
+        } catch {
+            return .failure(error)
+        }
     }
 
     var isReadyForGeneration: Bool {
@@ -169,7 +193,13 @@ final class AICommitCoordinator: ObservableObject {
     }
 
     private func resolvedAPIKey(for provider: AIProviderConfig) -> String {
-        let apiKey = keychainStore.apiKey(for: provider.id)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let apiKey: String
+        do {
+            apiKey = try (keychainStore.apiKey(for: AIProviderCredentialID(provider: provider)) ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        } catch {
+            return ""
+        }
         let hasStoredAPIKey = !apiKey.isEmpty
 
         if provider.hasStoredAPIKey != hasStoredAPIKey {

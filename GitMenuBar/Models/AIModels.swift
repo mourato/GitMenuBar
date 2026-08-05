@@ -32,6 +32,52 @@ enum AIProviderType: String, CaseIterable, Codable, Identifiable {
     }
 }
 
+struct AIProviderCredentialID: Codable, Equatable, Hashable, Sendable, CustomStringConvertible {
+    let rawValue: String
+
+    var description: String {
+        rawValue
+    }
+
+    static let openrouter = Self(rawValue: "openrouter")
+    static let google = Self(rawValue: "google")
+    static let openai = Self(rawValue: "openai")
+    static let anthropic = Self(rawValue: "anthropic")
+
+    init(rawValue: String) {
+        self.rawValue = rawValue
+    }
+
+    init(provider: AIProviderConfig) {
+        let endpoint = URL(string: provider.endpointURL)
+        let host = endpoint?.host?.lowercased()
+        let isOpenRouter = host == "openrouter.ai" || host?.hasSuffix(".openrouter.ai") == true
+        let normalizedEndpoint = endpoint.map { url in
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            return (components?.scheme?.lowercased(), components?.host?.lowercased(), components?.port ?? 443, components?.path == "" || components?.path == "/")
+        }
+        let builtInEndpoint = { (type: AIProviderType) in
+            let expected = URLComponents(string: type.defaultEndpoint)
+            return normalizedEndpoint?.0 == expected?.scheme?.lowercased()
+                && normalizedEndpoint?.1 == expected?.host?.lowercased()
+                && normalizedEndpoint?.2 == (expected?.port ?? 443)
+                && normalizedEndpoint?.3 == true
+        }
+
+        if isOpenRouter {
+            self = .openrouter
+        } else if provider.type == .gemini, builtInEndpoint(.gemini) {
+            self = .google
+        } else if provider.type == .openAI, builtInEndpoint(.openAI) {
+            self = .openai
+        } else if provider.type == .anthropic, builtInEndpoint(.anthropic) {
+            self = .anthropic
+        } else {
+            self = Self(rawValue: "custom:\(provider.id.uuidString.lowercased())")
+        }
+    }
+}
+
 enum DiffScope: String, CaseIterable, Codable, Identifiable {
     case staged
     case unstaged

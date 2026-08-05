@@ -206,7 +206,7 @@ final class GitMenuBarCommitSessionTests: XCTestCase {
         let session = GitMenuBarCommitSession(
             repositoryPath: "/tmp",
             providerStore: providerStore,
-            keychainStore: InMemoryAIAPIKeyStore(storage: [provider.id: "secret-key"]),
+            keychainStore: InMemoryAIAPIKeyStore(storage: [.openai: "secret-key"]),
             messageService: AICommitMessageService()
         )
 

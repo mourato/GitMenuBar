@@ -81,6 +81,24 @@ final class AIProviderStoreTests: XCTestCase {
         XCTAssertEqual(store.providers.first?.hasStoredAPIKey, false)
     }
 
+    func testCredentialIdentityUsesStableBackendNotDisplayName() {
+        let openRouter = AIProviderConfig(
+            name: "Anything", type: .openAI, endpointURL: "HTTPS://API.OPENROUTER.AI:443/", selectedModel: "model"
+        )
+        let openAI = AIProviderConfig(
+            name: "Renamed", type: .openAI, endpointURL: "https://api.openai.com:443/", selectedModel: "model"
+        )
+        let gemini = AIProviderConfig(
+            name: "Google", type: .gemini, endpointURL: "https://generativelanguage.googleapis.com/", selectedModel: "model"
+        )
+        let custom = AIProviderConfig(name: "Custom", type: .openAI, endpointURL: "not a URL", selectedModel: "model")
+
+        XCTAssertEqual(AIProviderCredentialID(provider: openRouter), .openrouter)
+        XCTAssertEqual(AIProviderCredentialID(provider: openAI), .openai)
+        XCTAssertEqual(AIProviderCredentialID(provider: gemini), .google)
+        XCTAssertEqual(AIProviderCredentialID(provider: custom).rawValue, "custom:\(custom.id.uuidString.lowercased())")
+    }
+
     private func makeProvider(
         name: String,
         type: AIProviderType = .openAI,

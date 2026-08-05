@@ -4,11 +4,12 @@ import XCTest
 final class CredentialStoreCacheTests: XCTestCase {
     func testCachedAIAPIKeyStoreReadsBackingStoreOnlyOncePerProvider() {
         let providerId = UUID()
-        let backingStore = SpyAIAPIKeyBackingStore(storage: [providerId: "secret-key"])
+        let credentialID = AIProviderCredentialID(rawValue: "custom:\(providerId.uuidString.lowercased())")
+        let backingStore = SpyAIAPIKeyBackingStore(storage: [credentialID: "secret-key"])
         let store = CachedAIAPIKeyStore(backingStore: backingStore)
 
-        XCTAssertEqual(store.apiKey(for: providerId), "secret-key")
-        XCTAssertEqual(store.apiKey(for: providerId), "secret-key")
+        XCTAssertEqual(try store.apiKey(for: credentialID), "secret-key")
+        XCTAssertEqual(try store.apiKey(for: credentialID), "secret-key")
         XCTAssertEqual(backingStore.readCount, 1)
     }
 
@@ -35,28 +36,32 @@ final class CredentialStoreCacheTests: XCTestCase {
 }
 
 private final class SpyAIAPIKeyBackingStore: AIAPIKeyStore {
-    private var storage: [UUID: String]
+    private var storage: [AIProviderCredentialID: String]
 
     private(set) var readCount = 0
 
-    init(storage: [UUID: String] = [:]) {
+    init(storage: [AIProviderCredentialID: String] = [:]) {
         self.storage = storage
     }
 
-    func saveAPIKey(_ apiKey: String, for providerId: UUID) {
+    func saveAPIKey(_ apiKey: String, for providerId: AIProviderCredentialID) throws {
         storage[providerId] = apiKey
     }
 
-    func apiKey(for providerId: UUID) -> String? {
+    func apiKey(for providerId: AIProviderCredentialID) throws -> String? {
         readCount += 1
         return storage[providerId]
     }
 
-    func fetchAllAPIKeys() -> [UUID: String] {
+    func fetchAllAPIKeys() throws -> [AIProviderCredentialID: String] {
         storage
     }
 
-    func deleteAPIKey(for providerId: UUID) {
+    func replaceAPIKeys(_ values: [AIProviderCredentialID: String]) throws {
+        storage = values
+    }
+
+    func deleteAPIKey(for providerId: AIProviderCredentialID) throws {
         storage.removeValue(forKey: providerId)
     }
 }
