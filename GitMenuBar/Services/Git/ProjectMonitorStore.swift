@@ -79,6 +79,7 @@ final class ProjectMonitorStore: ObservableObject {
             stagedCount: snapshot.stagedCount,
             unstagedCount: snapshot.unstagedCount,
             untrackedCount: snapshot.untrackedCount,
+            lineDiff: snapshot.lineDiff,
             aheadCount: snapshot.aheadCount,
             behindCount: snapshot.behindCount,
             hasUpstream: snapshot.hasUpstream,

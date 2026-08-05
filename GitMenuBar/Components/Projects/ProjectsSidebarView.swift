@@ -174,15 +174,17 @@ struct ProjectsSidebarView: View {
                     .fill(snapshot.classification == .clean ? .green : .orange)
                     .frame(width: 7, height: 7)
                 if !isCollapsed {
-                    VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 7) {
                         Text(snapshot.project.name)
                             .lineLimit(1)
-                        Text(snapshot.branchName.isEmpty ? "Unavailable" : snapshot.branchName)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        if snapshot.hasWorkingTreeChanges {
+                            WorkingTreeLineDiffView(
+                                addedCount: snapshot.lineDiff.added,
+                                removedCount: snapshot.lineDiff.removed
+                            )
+                        }
                     }
-                    Spacer()
                 }
             }
             .padding(.horizontal, 10)
@@ -205,7 +207,12 @@ struct ProjectsSidebarView: View {
             Button("Stop Monitoring") { onStopMonitoring(snapshot.project.path) }
             Button("Remove Project", role: .destructive) { onRemove(snapshot.project.path) }
         }
-        .accessibilityLabel(snapshot.project.name)
+        .accessibilityLabel(accessibilityLabel(for: snapshot))
+    }
+
+    private func accessibilityLabel(for snapshot: ProjectStatusSnapshot) -> String {
+        guard snapshot.hasWorkingTreeChanges else { return snapshot.project.name }
+        return "\(snapshot.project.name), \(snapshot.lineDiff.added) lines added, \(snapshot.lineDiff.removed) lines deleted"
     }
 
     private func clampedWidth(_ width: Double) -> Double {

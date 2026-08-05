@@ -18,7 +18,15 @@ final class ProjectStatusReaderTests: XCTestCase {
 
         XCTAssertEqual(
             result,
-            .init(branchName: "main", stagedCount: 1, unstagedCount: 1, untrackedCount: 2, aheadCount: 3, behindCount: 2)
+            .init(
+                branchName: "main",
+                stagedCount: 1,
+                unstagedCount: 1,
+                untrackedCount: 2,
+                untrackedPaths: ["untracked", "another"],
+                aheadCount: 3,
+                behindCount: 2
+            )
         )
     }
 
@@ -71,5 +79,43 @@ final class ProjectStatusReaderTests: XCTestCase {
 
         XCTAssertNotNil(snapshot.lastErrorDescription)
         XCTAssertNotEqual(snapshot.lastErrorDescription, "Not a Git repository")
+    }
+
+    func testReaderAggregatesStagedUnstagedAndUntrackedLineDiffs() throws {
+        let root = try createTemporaryGitRepository(testName: #function)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let trackedFile = root.appendingPathComponent("README.md")
+        try "base\nstaged\n".write(to: trackedFile, atomically: true, encoding: .utf8)
+        try runGit(["add", "README.md"], in: root)
+        try "changed\nstaged\nunstaged\n".write(to: trackedFile, atomically: true, encoding: .utf8)
+
+        let untrackedFile = root.appendingPathComponent("New.swift")
+        try "new\nfile\n".write(to: untrackedFile, atomically: true, encoding: .utf8)
+
+        let snapshot = ProjectStatusReader(runner: GitCommandRunner())
+            .read(project: ProjectReference(path: root.path))
+
+        XCTAssertEqual(snapshot.lineDiff, LineDiffStats(added: 5, removed: 1))
+    }
+
+    func testReaderCountsStagedLinesBeforeFirstCommit() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("GitMenuBarStatusReaderNoHead-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try runGit(["init", "-q"], in: root)
+
+        try "new\nfile\n".write(
+            to: root.appendingPathComponent("New.swift"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try runGit(["add", "New.swift"], in: root)
+
+        let snapshot = ProjectStatusReader(runner: GitCommandRunner())
+            .read(project: ProjectReference(path: root.path))
+
+        XCTAssertEqual(snapshot.lineDiff, LineDiffStats(added: 2, removed: 0))
     }
 }

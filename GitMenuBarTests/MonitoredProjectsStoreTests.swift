@@ -55,7 +55,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
     func testCleanSnapshotClassification() {
         let snapshot = ProjectStatusSnapshot(
             project: ProjectReference(path: "/tmp/project"), branchName: "main", isDetachedHead: false,
-            stagedCount: 0, unstagedCount: 0, untrackedCount: 0, aheadCount: 0, behindCount: 0,
+            stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
             hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil
         )
 
@@ -65,7 +65,8 @@ final class MonitoredProjectsStoreTests: XCTestCase {
     func testDirtyAndDivergedSnapshotNeedsAttention() {
         let snapshot = ProjectStatusSnapshot(
             project: ProjectReference(path: "/tmp/project"), branchName: "main", isDetachedHead: false,
-            stagedCount: 1, unstagedCount: 0, untrackedCount: 0, aheadCount: 2, behindCount: 1,
+            stagedCount: 1, unstagedCount: 0, untrackedCount: 0,
+            lineDiff: LineDiffStats(added: 3, removed: 1), aheadCount: 2, behindCount: 1,
             hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil
         )
 

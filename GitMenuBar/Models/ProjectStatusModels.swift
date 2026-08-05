@@ -26,6 +26,7 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
     let stagedCount: Int
     let unstagedCount: Int
     let untrackedCount: Int
+    let lineDiff: LineDiffStats
     let aheadCount: Int
     let behindCount: Int
     let hasUpstream: Bool
@@ -82,9 +83,14 @@ enum ProjectStatusPorcelainParser {
         var stagedCount = 0
         var unstagedCount = 0
         var untrackedCount = 0
+        var untrackedPaths = Set<String>()
         var aheadCount = 0
         var behindCount = 0
         var hasUpstream = false
+
+        var hasWorkingTreeChanges: Bool {
+            stagedCount + unstagedCount + untrackedCount > 0
+        }
     }
 
     static func parse(_ output: String) -> Result {
@@ -135,7 +141,12 @@ enum ProjectStatusPorcelainParser {
     }
 
     private static func parseStatus(_ record: Substring, result: inout Result) {
-        if record.hasPrefix("?") {
+        if record.hasPrefix("? ") {
+            result.untrackedCount += 1
+            result.untrackedPaths.insert(String(record.dropFirst(2)))
+            return
+        }
+        if record == "?" {
             result.untrackedCount += 1
             return
         }
@@ -154,6 +165,7 @@ enum ProjectStatusPorcelainParser {
 }
 
 struct ProjectStatusReader {
+    private static let emptyTreeHash = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
     let runner: GitCommandRunner
 
     func read(project: ProjectReference, now: Date = Date()) -> ProjectStatusSnapshot {
@@ -173,19 +185,68 @@ struct ProjectStatusReader {
             }
             return ProjectStatusSnapshot(
                 project: project, branchName: "", isDetachedHead: false, stagedCount: 0,
-                unstagedCount: 0, untrackedCount: 0, aheadCount: 0, behindCount: 0,
+                unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
                 hasUpstream: false, lastRefreshedAt: nil,
                 lastErrorDescription: errorDescription
             )
         }
 
         let parsed = ProjectStatusPorcelainParser.parse(status.output)
+        let lineDiff = parsed.hasWorkingTreeChanges
+            ? readLineDiff(project: project, untrackedPaths: parsed.untrackedPaths)
+            : .zero
         return ProjectStatusSnapshot(
             project: project, branchName: parsed.branchName, isDetachedHead: parsed.isDetachedHead,
             stagedCount: parsed.stagedCount, unstagedCount: parsed.unstagedCount, untrackedCount: parsed.untrackedCount,
+            lineDiff: lineDiff,
             aheadCount: parsed.aheadCount, behindCount: parsed.behindCount, hasUpstream: parsed.hasUpstream,
             lastRefreshedAt: now,
             lastErrorDescription: nil
+        )
+    }
+
+    private func readLineDiff(project: ProjectReference, untrackedPaths: Set<String>) -> LineDiffStats {
+        let parser = WorkingTreeParser(runner: runner)
+        let tracked = runner.runGitCommand(
+            in: project.path,
+            args: ["diff", "--numstat", "--no-renames", "HEAD", "--"]
+        )
+        let trackedStats: LineDiffStats
+        if tracked.failure {
+            let emptyTree = runner.runGitCommand(
+                in: project.path,
+                args: ["diff", "--numstat", "--no-renames", Self.emptyTreeHash, "--"]
+            )
+            trackedStats = emptyTree.failure
+                ? .zero
+                : parser.parseNumstat(emptyTree.output).values.reduce(into: .zero) { total, stats in
+                    total = LineDiffStats(
+                        added: total.added + stats.added,
+                        removed: total.removed + stats.removed
+                    )
+                }
+        } else {
+            trackedStats = parser.parseNumstat(tracked.output).values.reduce(into: .zero) { total, stats in
+                total = LineDiffStats(
+                    added: total.added + stats.added,
+                    removed: total.removed + stats.removed
+                )
+            }
+        }
+
+        let untrackedStats = parser.lineDiffForUntrackedFiles(
+            paths: untrackedPaths,
+            repositoryPath: project.path
+        ).values.reduce(into: .zero) { total, stats in
+            total = LineDiffStats(
+                added: total.added + stats.added,
+                removed: total.removed + stats.removed
+            )
+        }
+
+        return LineDiffStats(
+            added: trackedStats.added + untrackedStats.added,
+            removed: trackedStats.removed + untrackedStats.removed
         )
     }
 }
