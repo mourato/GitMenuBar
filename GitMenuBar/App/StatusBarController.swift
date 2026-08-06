@@ -120,10 +120,10 @@ final class StatusBarController: ObservableObject {
         }
 
         setupStatusItem()
+        setupShortcutHandlers()
         setupContextMenu()
         setupMainWindow()
         setupBadgeObservation()
-        setupShortcutHandlers()
         setupAuthenticationObservation()
         setupAppCommandObservation()
 
@@ -498,6 +498,12 @@ final class StatusBarController: ObservableObject {
     }
 
     private func toggleMainWindow(placementStrategy: WindowPlacementStrategy) {
+        if mainWindowPresentationState == .presenting {
+            NSApp.activate(ignoringOtherApps: true)
+            mainWindow?.makeKeyAndOrderFront(nil)
+            return
+        }
+
         if isMainWindowVisible {
             hideMainWindow()
             return
