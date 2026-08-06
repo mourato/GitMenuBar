@@ -176,6 +176,8 @@ private enum ProviderIconRenderer {
             return nil
         }
 
+        image.size = NSSize(width: 18, height: 18)
+        image.isTemplate = true
         cache.setObject(image, forKey: cacheKey)
         return image
     }
