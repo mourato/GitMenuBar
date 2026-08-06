@@ -18,6 +18,10 @@ distinct from AI Commit Generation. Each **Usage Provider** (Codex, Cursor,
 OpenRouter) publishes one **Snapshot**: last successful non-secret quota reading.
 _Avoid_: quota as part of AI commit generation, usage meter, AI status
 
+**Quota Summary**:
+The compact view of AI usage quotas that identifies each available Usage Provider
+by its logo and remaining percentage.
+
 **Credit Balance**:
 The OpenRouter quota measurement: monetary credits on the account
 (`total credits purchased − total usage`), shown as a remaining percent of

@@ -4,29 +4,45 @@ import SwiftUI
 struct UsageQuotaStripView: View {
     @EnvironmentObject private var usageQuotaStore: UsageQuotaStore
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @AppStorage(AppPreferences.Keys.isUsageQuotaSectionCollapsed)
+    private var isCollapsed = true
+
+    init(defaults: UserDefaults = .standard) {
+        _isCollapsed = AppStorage(
+            wrappedValue: true,
+            AppPreferences.Keys.isUsageQuotaSectionCollapsed,
+            store: defaults
+        )
+    }
 
     var body: some View {
         let snapshots = usageQuotaStore.visibleSnapshots
-        if usageQuotaStore.showAIUsageQuotas, !snapshots.isEmpty {
+        if usageQuotaStore.showAIUsageQuotas, !eligibleSnapshots(snapshots).isEmpty {
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(snapshots.enumerated()), id: \.element.id) { index, snapshot in
-                    if index > 0 {
-                        Rectangle()
-                            .fill(Color.primary.opacity(0.06))
-                            .frame(height: 1)
-                            .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+                WorkbenchSectionHeaderChrome(
+                    title: "AI Usage Quotas",
+                    isCollapsed: $isCollapsed,
+                    accessibilityLabel: "AI Usage Quotas section",
+                    accessibilityHintExpanded: "Expands AI usage quota details.",
+                    accessibilityHintCollapsed: "Collapses AI usage quota details."
+                ) { _ in
+                    if isCollapsed {
+                        UsageQuotaSummaryView(snapshots: eligibleSnapshots(snapshots))
                     }
+                }
 
-                    UsageQuotaProviderCard(snapshot: snapshot)
-                        .padding(.vertical, WorkbenchMetrics.compactSpacing)
+                if !isCollapsed {
+                    expandedCards(snapshots: snapshots)
+                        .transition(.opacity)
                 }
             }
-            .padding(.horizontal, WorkbenchMetrics.compactSpacing)
-            .overlay {
-                RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
-                    .strokeBorder(groupBorderColor, lineWidth: 1)
-            }
             .padding(.vertical, WorkbenchMetrics.compactSpacing)
+            .animation(
+                WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
+                value: isCollapsed
+            )
             // Quota cards are informational only — never imply clickability via the pointer.
             .onHover { hovering in
                 if hovering {
@@ -41,8 +57,127 @@ struct UsageQuotaStripView: View {
         }
     }
 
+    private func expandedCards(snapshots: [UsageQuotaSnapshot]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(snapshots.enumerated()), id: \.element.id) { index, snapshot in
+                if index > 0 {
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.06))
+                        .frame(height: 1)
+                        .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+                }
+
+                UsageQuotaProviderCard(snapshot: snapshot)
+                    .padding(.vertical, WorkbenchMetrics.compactSpacing)
+            }
+        }
+        .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+        .overlay {
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
+                .strokeBorder(groupBorderColor, lineWidth: 1)
+        }
+    }
+
+    private func eligibleSnapshots(_ snapshots: [UsageQuotaSnapshot]) -> [UsageQuotaSnapshot] {
+        snapshots.filter { $0.primaryDisplayWindow != nil }
+    }
+
     private var groupBorderColor: Color {
         Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.12)
+    }
+}
+
+private struct UsageQuotaSummaryView: View {
+    let snapshots: [UsageQuotaSnapshot]
+
+    var body: some View {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+            ForEach(eligibleSnapshots) { snapshot in
+                UsageQuotaSummaryItem(snapshot: snapshot)
+            }
+        }
+    }
+
+    private var eligibleSnapshots: [UsageQuotaSnapshot] {
+        snapshots.compactMap { snapshot in
+            guard snapshot.primaryDisplayWindow != nil else { return nil }
+            return snapshot
+        }.prefix(3).map(\.self)
+    }
+}
+
+private struct UsageQuotaSummaryItem: View {
+    let snapshot: UsageQuotaSnapshot
+
+    var body: some View {
+        if let window = snapshot.primaryDisplayWindow {
+            HStack(spacing: WorkbenchMetrics.microSpacing) {
+                ProviderIconView(providerID: snapshot.providerID)
+
+                Text("\(window.remainingPercent)%")
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(UsageQuotaTrafficLightColor.swiftUI(for: window.remainingPercent))
+            }
+            .opacity(snapshot.isStale ? 0.72 : 1)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityLabel(window: window))
+        }
+    }
+
+    private func accessibilityLabel(window: UsageWindow) -> String {
+        let staleText = snapshot.isStale ? ", stale" : ""
+        return "\(snapshot.displayName), \(window.remainingPercent) percent remaining\(staleText)"
+    }
+}
+
+private struct ProviderIconView: View {
+    let providerID: UsageProviderID
+
+    var body: some View {
+        if let image = ProviderIconRenderer.image(for: providerID) {
+            Image(nsImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 18, height: 18)
+        } else {
+            Image(systemName: "sparkles")
+                .font(WorkbenchTypography.captionStrong)
+                .foregroundStyle(.secondary)
+                .frame(width: 18, height: 18)
+        }
+    }
+}
+
+private enum ProviderIconRenderer {
+    private nonisolated(unsafe) static let cache = NSCache<NSString, NSImage>()
+
+    static func image(for providerID: UsageProviderID) -> NSImage? {
+        let resourceName = switch providerID {
+        case .codex:
+            "ProviderIcon-codex"
+        case .cursor:
+            "ProviderIcon-cursor"
+        case .openrouter:
+            "ProviderIcon-openrouter"
+        }
+
+        let cacheKey = resourceName as NSString
+        if let cachedImage = cache.object(forKey: cacheKey) {
+            return cachedImage
+        }
+
+        guard let resourceURL = Bundle.main.url(
+            forResource: resourceName,
+            withExtension: "svg"
+        ),
+            let data = try? Data(contentsOf: resourceURL),
+            let image = NSImage(data: data)
+        else {
+            return nil
+        }
+
+        cache.setObject(image, forKey: cacheKey)
+        return image
     }
 }
 
@@ -258,6 +393,7 @@ private enum UsageQuotaTrafficLightColor {
 
 #Preview("Usage Quota Strip") {
     UsageQuotaStripPreviewHarness(
+        collapsed: true,
         snapshots: [
             PreviewUsageQuotaSnapshotFactory.codex(
                 remainingPercent: 62,
@@ -271,6 +407,7 @@ private enum UsageQuotaTrafficLightColor {
 
 #Preview("Usage Quota Strip – High") {
     UsageQuotaStripPreviewHarness(
+        collapsed: true,
         snapshots: [
             PreviewUsageQuotaSnapshotFactory.codex(
                 remainingPercent: 95,
@@ -283,6 +420,7 @@ private enum UsageQuotaTrafficLightColor {
 
 #Preview("Usage Quota Strip – Low") {
     UsageQuotaStripPreviewHarness(
+        collapsed: true,
         snapshots: [
             PreviewUsageQuotaSnapshotFactory.cursor(
                 remainingPercent: 8,
@@ -294,6 +432,7 @@ private enum UsageQuotaTrafficLightColor {
 
 #Preview("Usage Quota Strip – Stale") {
     UsageQuotaStripPreviewHarness(
+        collapsed: true,
         snapshots: [
             PreviewUsageQuotaSnapshotFactory.cursor(
                 remainingPercent: 33,
@@ -304,33 +443,25 @@ private enum UsageQuotaTrafficLightColor {
     )
 }
 
-#Preview("Usage Quota Strip – Multi Provider") {
-    UsageQuotaStripPreviewHarness(
-        snapshots: [
-            PreviewUsageQuotaSnapshotFactory.codex(
-                remainingPercent: 62,
-                resetInterval: 8100,
-                weeklyPercent: 88,
-                resetCreditsAvailable: 2
-            ),
-            PreviewUsageQuotaSnapshotFactory.cursor(
-                remainingPercent: 41,
-                resetInterval: 86400 * 12
-            ),
-            PreviewUsageQuotaSnapshotFactory.openrouter(
-                remainingPercent: 42,
-                balanceText: "$12.50 left"
-            )
-        ]
-    )
+#Preview("Usage Quota Strip – Collapsed Multi Provider") {
+    UsageQuotaStripPreviewHarness(collapsed: true, snapshots: PreviewUsageQuotaSnapshotFactory.multiProvider)
+}
+
+#Preview("Usage Quota Strip – Expanded Multi Provider") {
+    UsageQuotaStripPreviewHarness(collapsed: false, snapshots: PreviewUsageQuotaSnapshotFactory.multiProvider)
+}
+
+#Preview("Usage Quota Strip – No Eligible Snapshot") {
+    UsageQuotaStripPreviewHarness(collapsed: true, snapshots: [])
 }
 
 private struct UsageQuotaStripPreviewHarness: View {
+    let collapsed: Bool
     let snapshots: [UsageQuotaSnapshot]
 
     var body: some View {
         if let defaults = UserDefaults(suiteName: previewDefaultsName) {
-            UsageQuotaStripView()
+            UsageQuotaStripView(defaults: defaults)
                 .environmentObject(previewStore(defaults: defaults))
                 .environmentObject(MainMenuPresentationModel())
                 .frame(width: 380)
@@ -339,6 +470,7 @@ private struct UsageQuotaStripPreviewHarness: View {
 
     private func previewStore(defaults: UserDefaults) -> UsageQuotaStore {
         defaults.removePersistentDomain(forName: previewDefaultsName)
+        defaults.set(collapsed, forKey: AppPreferences.Keys.isUsageQuotaSectionCollapsed)
         let store = UsageQuotaStore(
             defaults: defaults,
             providers: snapshots.map { PreviewUsageQuotaProvider(snapshot: $0) }
@@ -353,6 +485,12 @@ private struct UsageQuotaStripPreviewHarness: View {
 }
 
 private enum PreviewUsageQuotaSnapshotFactory {
+    static let multiProvider: [UsageQuotaSnapshot] = [
+        codex(remainingPercent: 62, resetInterval: 8100, weeklyPercent: 88, resetCreditsAvailable: 2),
+        cursor(remainingPercent: 41, resetInterval: 86400 * 12),
+        openrouter(remainingPercent: 42, balanceText: "$12.50 left")
+    ]
+
     static func codex(
         remainingPercent: Int,
         resetInterval: TimeInterval,
