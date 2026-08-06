@@ -803,3 +803,17 @@ Plan 057 extends the completed delivery-gate work in plan 015. It is the
 canonical migration for all app, test, and CLI targets: Swift 6.2, complete
 strict concurrency, formatter/lint alignment, targeted agent checks, and the
 required behavior-preserving source rewrites.
+
+## Collapsible AI usage quota summary
+
+This plan reduces sidebar density without changing quota providers or
+credentials. The collapsed state is persisted and defaults to collapsed; the
+summary shows at most three eligible provider logos and percentages, while the
+existing cards remain available when expanded. The glossary update is part of
+execution; no ADR or license verification is required.
+
+### Execution order & status
+
+| Plan | Scope | Priority | Effort | Depends on | Status |
+|---|---|---:|---:|---|---|
+| [058](058-collapsible-usage-quota-summary.md) | Collapsible AI usage quota summary | P2 | M | 033, 047, 055 (DONE) | DONE (d68ca46; review fixes 9c84c22, 401581a) |
