@@ -137,7 +137,20 @@ final class WorktreeCleanupAnalyzerTests: XCTestCase {
             worktreeStatus(for: "/repo-monitored", in: snapshot),
             .unknown(reason: "Worktree is monitored as a project and protected from cleanup.")
         )
+        XCTAssertEqual(snapshot.protectedWorktreePaths, Set(["/repo-monitored"]))
         XCTAssertTrue(snapshot.cleanupUnits.isEmpty)
+    }
+
+    func testCleanupUnitIDsAreRepositoryScoped() {
+        let branch = GitBranchCleanupInfo(
+            reference: reference("feature/shared"),
+            status: .mergedIntoDefault,
+            worktreePath: nil
+        )
+        let first = GitCleanupUnit(repositoryIdentity: "/repo-a", branch: branch, worktree: nil)
+        let second = GitCleanupUnit(repositoryIdentity: "/repo-b", branch: branch, worktree: nil)
+
+        XCTAssertNotEqual(first.id, second.id)
     }
 
     private func makeInput(

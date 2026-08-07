@@ -141,6 +141,7 @@ struct GitWorktreeSnapshot: Hashable {
     let worktrees: [GitWorktreeCleanupInfo]
     let branches: [GitBranchCleanupInfo]
     let repositoryIdentity: String
+    let protectedWorktreePaths: Set<String>
     let cleanupUnits: [GitCleanupUnit]
 
     init(
@@ -151,6 +152,7 @@ struct GitWorktreeSnapshot: Hashable {
         worktrees: [GitWorktreeCleanupInfo],
         branches: [GitBranchCleanupInfo],
         repositoryIdentity: String? = nil,
+        protectedWorktreePaths: Set<String> = [],
         cleanupUnits: [GitCleanupUnit]? = nil
     ) {
         self.repositoryPath = repositoryPath
@@ -160,6 +162,9 @@ struct GitWorktreeSnapshot: Hashable {
         self.worktrees = worktrees
         self.branches = branches
         self.repositoryIdentity = repositoryIdentity ?? GitRepositoryContext.normalizedPath(repositoryPath)
+        self.protectedWorktreePaths = Set(protectedWorktreePaths.map {
+            URL(fileURLWithPath: $0).standardizedFileURL.path
+        })
         self.cleanupUnits = cleanupUnits ?? GitCleanupUnit.build(
             repositoryIdentity: self.repositoryIdentity,
             branches: branches,

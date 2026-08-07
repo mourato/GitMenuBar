@@ -91,6 +91,63 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: linkedURL.path))
     }
 
+    func testBatchCleanupSkipsWorktreeWhenItsBranchChangedWithSameHead() async throws {
+        let repositoryURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["branch", "feature/worktree"], in: repositoryURL)
+        try runGit(["branch", "feature/other"], in: repositoryURL)
+        let linkedURL = repositoryURL.deletingLastPathComponent()
+            .appendingPathComponent("\(repositoryURL.lastPathComponent)-same-head")
+        try runGit(["worktree", "add", linkedURL.path, "feature/worktree"], in: repositoryURL)
+
+        let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
+        let snapshot = try await resolvedSnapshot(from: gitManager)
+        let unit = try XCTUnwrap(snapshot.cleanupUnits.first { $0.branch.reference.name == "feature/worktree" })
+
+        try runGit(["checkout", "feature/other"], in: linkedURL)
+        let result = try await successfulCleanup(gitManager, units: [unit], snapshot: snapshot)
+
+        XCTAssertEqual(result.items.first?.status, .skipped(reason: "The worktree changed or is no longer eligible for cleanup."))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: linkedURL.path))
+        XCTAssertTrue(try runGit(["show-ref", "--verify", "refs/heads/feature/worktree"], in: repositoryURL).contains("feature/worktree"))
+    }
+
+    func testBatchCleanupDoesNotRemoveMainWorktree() async throws {
+        let repositoryURL = try createTemporaryGitRepository(testName: #function)
+        let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
+        let snapshot = try await resolvedSnapshot(from: gitManager)
+        let main = try XCTUnwrap(snapshot.worktrees.first { $0.worktree.isMainWorktree })
+        let unsafeMain = GitWorktreeCleanupInfo(worktree: main.worktree, status: .eligible)
+
+        let result = try await successfulCleanup(gitManager, targets: [.worktree(unsafeMain)], snapshot: snapshot)
+
+        XCTAssertEqual(result.items.first?.status, .skipped(reason: "The current worktree cannot be removed."))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: repositoryURL.path))
+    }
+
+    func testBatchCleanupSkipsAllTargetsWhenRepositoryIdentityChanges() async throws {
+        let repositoryURL = try createTemporaryGitRepository(testName: #function)
+        try makeMergedBranch(named: "feature/identity", in: repositoryURL)
+        let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
+        let snapshot = try await resolvedSnapshot(from: gitManager)
+        let branch = try XCTUnwrap(snapshot.branches.first { $0.reference.name == "feature/identity" && !$0.reference.isRemote })
+        let changedSnapshot = GitWorktreeSnapshot(
+            repositoryPath: snapshot.repositoryPath,
+            defaultBranchName: snapshot.defaultBranchName,
+            defaultBranchRef: snapshot.defaultBranchRef,
+            analysisDescription: snapshot.analysisDescription,
+            worktrees: snapshot.worktrees,
+            branches: snapshot.branches,
+            repositoryIdentity: "/different-shared-repository",
+            protectedWorktreePaths: snapshot.protectedWorktreePaths,
+            cleanupUnits: snapshot.cleanupUnits
+        )
+
+        let result = try await successfulCleanup(gitManager, targets: [.localBranch(branch)], snapshot: changedSnapshot)
+
+        XCTAssertEqual(result.items.first?.status, .skipped(reason: "The shared repository identity changed; cleanup was skipped."))
+        XCTAssertTrue(try runGit(["show-ref", "--verify", "refs/heads/feature/identity"], in: repositoryURL).contains("feature/identity"))
+    }
+
     func testBatchCleanupSkipsCurrentAndProtectedBranches() async throws {
         let repositoryURL = try createTemporaryGitRepository(testName: #function)
         try runGit(["branch", "feature/current"], in: repositoryURL)

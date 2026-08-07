@@ -242,6 +242,28 @@ struct CleanupManagementContentView: View {
         }.sorted { $0.branch.reference.name.localizedStandardCompare($1.branch.reference.name) == .orderedAscending }
     }
 
+    private var diagnosticBranches: [GitBranchCleanupInfo] {
+        guard let snapshot else { return [] }
+        let candidateNames = Set(snapshot.cleanupUnits.map(\.branch.reference.name))
+        return snapshot.branches
+            .filter { !$0.reference.isRemote && !$0.isEligible && !candidateNames.contains($0.reference.name) }
+            .filter { query.isEmpty || $0.reference.name.localizedCaseInsensitiveContains(query) }
+            .sorted { $0.reference.name.localizedStandardCompare($1.reference.name) == .orderedAscending }
+    }
+
+    private var diagnosticWorktrees: [GitWorktreeCleanupInfo] {
+        guard let snapshot else { return [] }
+        let candidatePaths = Set(snapshot.cleanupUnits.compactMap { $0.worktree?.worktree.path }.map(GitRepositoryContext.normalizedPath))
+        return snapshot.worktrees
+            .filter { !$0.status.isEligible && !candidatePaths.contains(GitRepositoryContext.normalizedPath($0.worktree.path)) }
+            .filter {
+                query.isEmpty
+                    || $0.worktree.path.localizedCaseInsensitiveContains(query)
+                    || ($0.worktree.branchName?.localizedCaseInsensitiveContains(query) ?? false)
+            }
+            .sorted { $0.worktree.path.localizedStandardCompare($1.worktree.path) == .orderedAscending }
+    }
+
     private var eligibleCount: Int {
         snapshot?.branchCandidateCount ?? 0
     }
@@ -270,13 +292,23 @@ struct CleanupManagementContentView: View {
         } else if let snapshot {
             VStack(alignment: .leading, spacing: 12) {
                 summary(snapshot: snapshot)
-                if units.isEmpty {
+                if units.isEmpty, diagnosticBranches.isEmpty, diagnosticWorktrees.isEmpty {
                     Text("No cleanup units match your filter.")
                         .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(units) { unit in
                         cleanupRow(unit)
+                    }
+                    ForEach(diagnosticBranches) { info in
+                        legacyCleanupRow(info)
+                    }
+                    ForEach(diagnosticWorktrees) { info in
+                        WorktreeManagementRowView(
+                            info: info,
+                            onReveal: { onReveal(info.worktree.path) },
+                            onCopyPath: { onCopyPath(info.worktree.path) }
+                        )
                     }
                 }
             }
@@ -345,10 +377,10 @@ struct CleanupManagementContentView: View {
             .labelsHidden()
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(unit.branch.reference.name)
+                Text(unit.isPaired ? "Branch \(unit.branch.reference.name)" : unit.branch.reference.name)
                     .font(WorkbenchTypography.body)
                 if let worktree = unit.worktree {
-                    Text("Also remove worktree (worktree.worktree.path) first")
+                    Text("Also remove worktree \(worktree.worktree.path) first")
                         .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
