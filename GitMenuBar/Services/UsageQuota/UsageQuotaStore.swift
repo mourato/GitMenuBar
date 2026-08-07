@@ -52,6 +52,7 @@ final class UsageQuotaStore: ObservableObject {
     private let defaults: UserDefaults
     private let snapshotStore: UsageQuotaSnapshotStore
     private let providers: [any UsageQuotaProviding]
+    private let now: () -> Date
     private var refreshTimer: Timer?
     private var refreshTask: Task<Void, Never>?
     private var refreshGeneration = 0
@@ -61,11 +62,13 @@ final class UsageQuotaStore: ObservableObject {
     init(
         defaults: UserDefaults = .standard,
         snapshotStore: UsageQuotaSnapshotStore = UsageQuotaSnapshotStore(),
-        providers: [any UsageQuotaProviding] = [CodexUsageProvider(), CursorUsageProvider(), OpenRouterUsageProvider()]
+        providers: [any UsageQuotaProviding] = [CodexUsageProvider(), CursorUsageProvider(), OpenRouterUsageProvider()],
+        now: @escaping () -> Date = Date.init
     ) {
         self.defaults = defaults
         self.snapshotStore = snapshotStore
         self.providers = providers
+        self.now = now
         showAIUsageQuotas = defaults.object(forKey: AppPreferences.Keys.showAIUsageQuotas) as? Bool ?? false
         showCodexUsageQuota = defaults.object(forKey: AppPreferences.Keys.showCodexUsageQuota) as? Bool ?? true
         showCursorUsageQuota = defaults.object(forKey: AppPreferences.Keys.showCursorUsageQuota) as? Bool ?? true
@@ -85,7 +88,7 @@ final class UsageQuotaStore: ObservableObject {
         if reason == .windowPresented {
             guard !isRefreshInFlight else { return }
             if let lastPresentationRefreshAt,
-               Date().timeIntervalSince(lastPresentationRefreshAt) < Constants.refreshInterval
+               now().timeIntervalSince(lastPresentationRefreshAt) < Constants.refreshInterval
             {
                 return
             }
@@ -190,7 +193,7 @@ final class UsageQuotaStore: ObservableObject {
         isRefreshInFlight = false
         refreshTask = nil
         if reason == .windowPresented {
-            lastPresentationRefreshAt = Date()
+            lastPresentationRefreshAt = now()
         }
     }
 
