@@ -39,6 +39,16 @@ final class MainMenuPresentationModelTests: XCTestCase {
         XCTAssertEqual(model.route, .historyDetail(commitID: "abc123"))
     }
 
+    func testProjectCleanupRouteRoundTrip() {
+        let model = MainMenuPresentationModel()
+
+        model.showProjectCleanup()
+        XCTAssertEqual(model.route, .projectCleanup)
+
+        model.showMain()
+        XCTAssertEqual(model.route, .main)
+    }
+
     func testRequestCommandPalettePresentationIncrementsToken() {
         let model = MainMenuPresentationModel()
 
