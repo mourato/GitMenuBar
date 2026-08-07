@@ -71,6 +71,28 @@ _Avoid_: hard requirement, mandatory gitmenubar, CLI gate
 
 **Repository path scope**:
 The git work tree resolved from the process current working directory or an explicit `--path`, independent of which repository is selected in the menu bar UI.
+
+### Branch cleanup
+
+**Cleanup Candidate**:
+A local branch or linked worktree that currently satisfies GitMenuBar's safe cleanup rules. A candidate excludes protected, current, monitored, dirty, locked, prunable, detached, unmerged, or unknown state.
+_Avoid_: deletable item, stale branch
+
+**Cleanup Unit**:
+The smallest user-visible cleanup scope: either a local branch by itself or a linked worktree paired with its local branch.
+_Avoid_: cleanup target (implementation term), branch/worktree pair (when the unit is the product concept)
+
+**Cleanup Analysis**:
+A point-in-time explanation of which local branches and worktrees in a Monitored Project are safe to clean and why other items are blocked.
+_Avoid_: project status, branch list
+
+**Safe Cleanup**:
+A user-authorized operation that removes only Cleanup Units that remain safe at action time and leaves changed or blocked items untouched.
+_Avoid_: force cleanup, repository reset
+
+**Shared Repository**:
+Two or more monitored checkout paths that share one Git repository's refs and worktree metadata, so their Cleanup Units must be analyzed and executed only once.
+_Avoid_: duplicate project, shared project
 _Avoid_: active repo (for CLI defaults), selected project (for CLI defaults)
 
 ### Changed files

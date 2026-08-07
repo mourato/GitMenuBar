@@ -817,3 +817,65 @@ execution; no ADR or license verification is required.
 | Plan | Scope | Priority | Effort | Depends on | Status |
 |---|---|---:|---:|---|---|
 | [058](058-collapsible-usage-quota-summary.md) | Collapsible AI usage quota summary | P2 | M | 033, 047, 055 (DONE) | DONE (d68ca46; review fixes 9c84c22, 401581a) |
+
+## Global safe cleanup — 2026-08-07
+
+The current branch/worktree cleanup surface is safe but repository-local: it
+requires users to open each monitored project and select branch and worktree
+targets separately. The agreed direction adds a global Project Cleanup route
+while preserving the selected-project GitManager boundary from ADR 0004.
+
+The domain glossary now defines Cleanup Candidate, Cleanup Unit, Cleanup
+Analysis, Safe Cleanup, and Shared Repository in `CONTEXT.md`. ADR 0005 records
+the path-scoped, shared-repository boundary and the canonical-row rule.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|---|---|---|---|---|---|
+| [059](059-unify-cleanup-units-path-scoped-service.md) | Unify branch/worktree cleanup units behind a path-scoped repository service | P0 | L | 019, 020 (DONE) | TODO |
+| [060](060-global-monitored-project-cleanup.md) | Add global monitored-project cleanup | P0 | L | 059 | TODO |
+
+### Dependency notes
+
+- Plan 059 must land first because it defines the immutable Cleanup Unit,
+  monitored-worktree protection, path-scoped analysis, ordered paired cleanup,
+  and partial outcomes used by every caller.
+- Plan 060 depends on 059 and owns only the monitored-project coordinator,
+  route, rows, selection, confirmation, and aggregate results.
+- Both plans are intentionally serial: they share destructive cleanup models,
+  UI selection semantics, and validation gates.
+
+### Confirmed product constraints
+
+- Global cleanup is a dedicated main-window Project Cleanup route opened from
+  the Projects sidebar; it is not a new window.
+- A clean linked worktree and its merged local branch form one Cleanup Unit;
+  the worktree is removed before the branch.
+- Global cleanup is local-only. It never fetches or deletes remote branches.
+- All monitored projects are shown. Row Clean, Clean Selected, and Clean All
+  require review and never silently mutate.
+- Analysis reads are bounded to two concurrent projects; mutations are serial
+  by Shared Repository and Cleanup Unit, with immediate revalidation and
+  per-project/per-unit partial results.
+- Explicitly monitored worktree paths are protected. Shared Repository units
+  belong to one canonical row (monitored main worktree when present,
+  otherwise the first monitored path) so no candidate is displayed or run
+  twice.
+- The existing selected-project Branches/Worktrees/Cleanup sheet remains the
+  diagnostic surface but adopts the same Cleanup Unit semantics.
+
+### Findings considered and rejected/deferred
+
+- One `GitManager` per monitored project: rejected by ADR 0004; it would
+  multiply mutable full-repository state and race the selected facade.
+- Independent branch and worktree global targets: rejected because the branch
+  cannot be deleted while checked out; a paired Cleanup Unit removes the
+  refresh-and-repeat loop.
+- Automatic fetch or remote deletion in Clean All: rejected because it adds
+  network/authentication side effects and a separate authorization contract.
+- A new command-palette command: deferred; the Projects sidebar entry is the
+  smallest discoverable entry point and a second route is unnecessary until
+  usage shows a discovery gap.
+- Persistent selections, project grouping/search, caching, and a new window:
+  deferred as speculative scope.
