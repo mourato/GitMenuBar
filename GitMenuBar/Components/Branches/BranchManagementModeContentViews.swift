@@ -233,35 +233,31 @@ struct CleanupManagementContentView: View {
     let onReveal: (String) -> Void
     let onCopyPath: (String) -> Void
 
-    private var localInfos: [GitBranchCleanupInfo] {
+    private var units: [GitCleanupUnit] {
         guard let snapshot else { return [] }
-        return snapshot.branches
-            .filter { !$0.reference.isRemote }
-            .filter { query.isEmpty || $0.reference.name.localizedCaseInsensitiveContains(query) }
-            .sorted { $0.reference.name.localizedStandardCompare($1.reference.name) == .orderedAscending }
-    }
-
-    private var allLocalInfos: [GitBranchCleanupInfo] {
-        guard let snapshot else { return [] }
-        return snapshot.branches.filter { !$0.reference.isRemote }
+        return snapshot.cleanupUnits.filter { unit in
+            query.isEmpty
+                || unit.branch.reference.name.localizedCaseInsensitiveContains(query)
+                || (unit.worktree?.worktree.path.localizedCaseInsensitiveContains(query) ?? false)
+        }.sorted { $0.branch.reference.name.localizedStandardCompare($1.branch.reference.name) == .orderedAscending }
     }
 
     private var eligibleCount: Int {
-        allLocalInfos.filter(\.isEligible).count
+        snapshot?.branchCandidateCount ?? 0
     }
 
     private var unknownCount: Int {
-        allLocalInfos.filter {
+        snapshot?.branches.filter {
             if case .unknown = $0.status {
                 true
             } else {
                 false
             }
-        }.count
+        }.count ?? 0
     }
 
     private var blockedCount: Int {
-        max(0, allLocalInfos.count - eligibleCount - unknownCount)
+        max(0, (snapshot?.branches.filter { !$0.reference.isRemote }.count ?? 0) - eligibleCount - unknownCount)
     }
 
     var body: some View {
@@ -274,22 +270,15 @@ struct CleanupManagementContentView: View {
         } else if let snapshot {
             VStack(alignment: .leading, spacing: 12) {
                 summary(snapshot: snapshot)
-                if localInfos.isEmpty {
-                    Text("No local branches match your filter.")
+                if units.isEmpty {
+                    Text("No cleanup units match your filter.")
                         .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(localInfos) { info in
-                        cleanupRow(info)
+                    ForEach(units) { unit in
+                        cleanupRow(unit)
                     }
                 }
-                CleanupWorktreeListView(
-                    snapshot: snapshot,
-                    query: query,
-                    selectedIDs: $selectedIDs,
-                    onReveal: onReveal,
-                    onCopyPath: onCopyPath
-                )
             }
             .padding(16)
         } else {
@@ -337,7 +326,52 @@ struct CleanupManagementContentView: View {
             .foregroundStyle(color)
     }
 
-    private func cleanupRow(_ info: GitBranchCleanupInfo) -> some View {
+    private func cleanupRow(_ unit: GitCleanupUnit) -> some View {
+        HStack(spacing: 8) {
+            Toggle(
+                "Select cleanup unit \(unit.branch.reference.name)",
+                isOn: Binding(
+                    get: { selectedIDs.contains(unit.id) },
+                    set: { selected in
+                        if selected {
+                            selectedIDs.insert(unit.id)
+                        } else {
+                            selectedIDs.remove(unit.id)
+                        }
+                    }
+                )
+            )
+            .toggleStyle(.checkbox)
+            .labelsHidden()
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(unit.branch.reference.name)
+                    .font(WorkbenchTypography.body)
+                if let worktree = unit.worktree {
+                    Text("Also remove worktree (worktree.worktree.path) first")
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                } else {
+                    Text("Safe to clean: delete the merged local branch.")
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            Text(unit.isPaired ? "Paired" : "Branch")
+                .font(WorkbenchTypography.captionStrong)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(unit.title + (unit.isPaired ? ", worktree removed first" : ", safe to clean"))
+    }
+
+    private func legacyCleanupRow(_ info: GitBranchCleanupInfo) -> some View {
         HStack(spacing: 8) {
             if info.isEligible {
                 Toggle(

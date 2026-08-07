@@ -1,78 +1,48 @@
 import SwiftUI
 
 struct CleanupConfirmationView: View {
-    let targets: [GitCleanupTarget]
+    let units: [GitCleanupUnit]
     let onCancel: () -> Void
     let onConfirm: () -> Void
-
     @State private var didReviewRisk = false
 
-    private var localBranches: [GitCleanupTarget] {
-        targets.filter {
-            if case .localBranch = $0 {
-                return true
-            }
-            return false
-        }
+    private var branchOnly: [GitCleanupUnit] {
+        units.filter { !$0.isPaired }
     }
 
-    private var worktrees: [GitCleanupTarget] {
-        targets.filter {
-            if case .worktree = $0 {
-                return true
-            }
-            return false
-        }
-    }
-
-    private var remoteBranches: [GitCleanupTarget] {
-        targets.filter {
-            if case .remoteBranch = $0 {
-                return true
-            }
-            return false
-        }
-    }
-
-    private var requiresRiskReview: Bool {
-        !worktrees.isEmpty || !remoteBranches.isEmpty
+    private var paired: [GitCleanupUnit] {
+        units.filter(\.isPaired)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(requiresRiskReview && !didReviewRisk ? "Review Cleanup" : "Confirm Cleanup")
+            Text(didReviewRisk || paired.isEmpty ? "Confirm Cleanup" : "Review Cleanup")
                 .font(.headline.weight(.semibold))
-
-            Text(summaryText)
+            Text("\(branchOnly.count) branch-only unit\(branchOnly.count == 1 ? "" : "s"), \(paired.count) paired unit\(paired.count == 1 ? "" : "s") selected.")
                 .font(WorkbenchTypography.detail)
                 .foregroundStyle(.secondary)
-
-            if requiresRiskReview, !didReviewRisk {
-                Label(
-                    "Worktree directories will be removed from disk. Review the list before continuing.",
-                    systemImage: "exclamationmark.triangle.fill"
-                )
-                .font(WorkbenchTypography.caption)
-                .foregroundStyle(.orange)
+            if !paired.isEmpty, !didReviewRisk {
+                Label("Paired worktree directories will be removed before their branches.", systemImage: "exclamationmark.triangle.fill")
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.orange)
             }
-
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
-                    targetSection("Local branches", targets: localBranches)
-                    targetSection("Worktree directories", targets: worktrees)
-                    targetSection("Remote branches", targets: remoteBranches)
+                    section("Branch-only cleanup", branchOnly)
+                    section("Paired worktree and branch cleanup", paired)
                 }
             }
             .frame(maxHeight: 260)
-
             HStack {
-                Button("Cancel", action: onCancel)
-                    .keyboardShortcut(.cancelAction)
+                Button("Cancel", action: onCancel).keyboardShortcut(.cancelAction)
                 Spacer()
-                Button(
-                    requiresRiskReview && !didReviewRisk ? "Review Worktree Removal" : "Confirm Cleanup",
-                    action: confirmAction
-                )
+                Button(didReviewRisk || paired.isEmpty ? "Confirm Cleanup" : "Review Worktree Removal") {
+                    if paired.isEmpty || didReviewRisk {
+                        onConfirm()
+                    } else {
+                        didReviewRisk = true
+                    }
+                }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
             }
@@ -83,73 +53,34 @@ struct CleanupConfirmationView: View {
         .accessibilityElement(children: .contain)
     }
 
-    private var summaryText: String {
-        "\(localBranches.count) local branch\(localBranches.count == 1 ? "" : "es"), "
-            + "\(worktrees.count) worktree\(worktrees.count == 1 ? "" : "s"), "
-            + "\(remoteBranches.count) remote branch\(remoteBranches.count == 1 ? "" : "es") selected."
-    }
-
-    private func targetSection(_ title: String, targets: [GitCleanupTarget]) -> some View {
+    private func section(_ title: String, _ units: [GitCleanupUnit]) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text("\(title) (\(targets.count))")
+            Text("\(title) (\(units.count))")
                 .font(WorkbenchTypography.sectionLabel)
                 .foregroundStyle(.secondary)
-            if targets.isEmpty {
+            if units.isEmpty {
                 Text("None selected")
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(targets) { target in
-                    Label(target.title, systemImage: icon(for: target))
+                ForEach(units) { unit in
+                    Label(unit.title, systemImage: unit.isPaired ? "folder" : "arrow.triangle.branch")
                         .font(WorkbenchTypography.caption)
                         .lineLimit(2)
                 }
             }
         }
     }
-
-    private func icon(for target: GitCleanupTarget) -> String {
-        switch target {
-        case .localBranch:
-            "arrow.triangle.branch"
-        case .worktree:
-            "folder"
-        case .remoteBranch:
-            "icloud"
-        }
-    }
-
-    private func confirmAction() {
-        if requiresRiskReview, !didReviewRisk {
-            didReviewRisk = true
-        } else {
-            onConfirm()
-        }
-    }
 }
 
 #Preview("Cleanup Confirmation") {
+    let branch = GitBranchCleanupInfo(
+        reference: GitBranchReference(name: "feature/merged", headHash: "1234", isRemote: false),
+        status: .mergedIntoDefault,
+        worktreePath: nil
+    )
     CleanupConfirmationView(
-        targets: [
-            .localBranch(
-                GitBranchCleanupInfo(
-                    reference: GitBranchReference(name: "feature/merged", headHash: "1234", isRemote: false),
-                    status: .mergedIntoDefault,
-                    worktreePath: nil
-                )
-            ),
-            .worktree(
-                GitWorktreeCleanupInfo(
-                    worktree: GitWorktreeInfo(
-                        path: "/Users/example/feature-ui",
-                        headHash: "5678",
-                        branchName: "feature/ui",
-                        workingTreeState: .clean
-                    ),
-                    status: .eligible
-                )
-            )
-        ],
+        units: [GitCleanupUnit(repositoryIdentity: "/repo", branch: branch, worktree: nil)],
         onCancel: {},
         onConfirm: {}
     )

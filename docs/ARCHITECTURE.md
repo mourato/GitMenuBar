@@ -53,9 +53,14 @@ Use this rule order:
   remote-tracking refs and does not imply a network fetch.
 - Only local branches and clean, linked, attached worktrees can be eligible
   for safe cleanup. Unknown, dirty, locked, prunable, detached, current,
-  protected, stale, or checked-out-elsewhere state is never eligible.
-- Deleting a local branch, removing a worktree directory, and deleting a
-  remote branch are separate explicit targets. Remote deletion requires an
+  protected, stale, or blocked checked-out-elsewhere state is never eligible;
+  an eligible checked-out-elsewhere branch is represented only by a paired
+  Cleanup Unit.
+- A merged branch checked out in an eligible linked worktree is represented by
+  one paired Cleanup Unit; safe cleanup removes the worktree first and then
+  the branch. A branch without a linked worktree is a branch-only unit.
+- A worktree path explicitly monitored as a project is protected from safe
+  cleanup. Remote deletion remains outside Cleanup Units and requires an
   explicit selection and a fresh validation of the remote-tracking ref.
 - Cleanup revalidates each item immediately before mutation, runs serially,
   skips unsafe or stale items individually, and reports every outcome. It

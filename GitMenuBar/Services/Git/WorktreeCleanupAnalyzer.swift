@@ -16,6 +16,37 @@ struct GitWorktreeAnalysisInput {
     let mergedLocalBranchNames: Set<String>
     let mergedRemoteBranchNames: Set<String>?
     let analysisDescription: String
+    let protectedWorktreePaths: Set<String>
+
+    init(
+        defaultBranchName: String,
+        defaultBranchRef: String,
+        currentBranchName: String?,
+        currentWorktreePath: String,
+        worktrees: [GitWorktreeInfo],
+        localBranches: [GitBranchReference],
+        remoteBranches: [GitBranchReference],
+        mergedLocalBranchNames: Set<String>,
+        mergedRemoteBranchNames: Set<String>?,
+        analysisDescription: String,
+        protectedWorktreePaths: Set<String> = []
+    ) {
+        self.defaultBranchName = defaultBranchName
+        self.defaultBranchRef = defaultBranchRef
+        self.currentBranchName = currentBranchName
+        self.currentWorktreePath = currentWorktreePath
+        self.worktrees = worktrees
+        self.localBranches = localBranches
+        self.remoteBranches = remoteBranches
+        self.mergedLocalBranchNames = mergedLocalBranchNames
+        self.mergedRemoteBranchNames = mergedRemoteBranchNames
+        self.analysisDescription = analysisDescription
+        self.protectedWorktreePaths = Set(protectedWorktreePaths.map(Self.standardizedPath))
+    }
+
+    private static func standardizedPath(_ path: String) -> String {
+        URL(fileURLWithPath: path).standardizedFileURL.path
+    }
 }
 
 struct WorktreeCleanupAnalyzer {
@@ -68,18 +99,34 @@ struct WorktreeCleanupAnalyzer {
                     for: worktree,
                     currentWorktreePath: input.currentWorktreePath,
                     localBranchNames: Set(input.localBranches.map(\.name)),
-                    mergedLocalBranchNames: input.mergedLocalBranchNames
+                    mergedLocalBranchNames: input.mergedLocalBranchNames,
+                    protectedWorktreePaths: input.protectedWorktreePaths
                 )
             )
         }
 
-        return GitWorktreeSnapshot(
+        let snapshot = GitWorktreeSnapshot(
             repositoryPath: input.currentWorktreePath,
             defaultBranchName: input.defaultBranchName,
             defaultBranchRef: input.defaultBranchRef,
             analysisDescription: input.analysisDescription,
             worktrees: worktrees,
-            branches: branches
+            branches: branches,
+            repositoryIdentity: GitRepositoryContext.normalizedPath(input.currentWorktreePath)
+        )
+        return GitWorktreeSnapshot(
+            repositoryPath: snapshot.repositoryPath,
+            defaultBranchName: snapshot.defaultBranchName,
+            defaultBranchRef: snapshot.defaultBranchRef,
+            analysisDescription: snapshot.analysisDescription,
+            worktrees: snapshot.worktrees,
+            branches: snapshot.branches,
+            repositoryIdentity: snapshot.repositoryIdentity,
+            cleanupUnits: GitCleanupUnit.build(
+                repositoryIdentity: snapshot.repositoryIdentity,
+                branches: snapshot.branches,
+                worktrees: snapshot.worktrees
+            )
         )
     }
 
@@ -112,7 +159,8 @@ struct WorktreeCleanupAnalyzer {
         for worktree: GitWorktreeInfo,
         currentWorktreePath: String,
         localBranchNames: Set<String>,
-        mergedLocalBranchNames: Set<String>
+        mergedLocalBranchNames: Set<String>,
+        protectedWorktreePaths: Set<String>
     ) -> GitWorktreeCleanupStatus {
         if worktree.isMainWorktree {
             return .main
@@ -142,6 +190,9 @@ struct WorktreeCleanupAnalyzer {
         }
         guard mergedLocalBranchNames.contains(branchName) else {
             return .branchNotMerged
+        }
+        if protectedWorktreePaths.contains(standardizedPath(worktree.path)) {
+            return .unknown(reason: "Worktree is monitored as a project and protected from cleanup.")
         }
         return .eligible
     }

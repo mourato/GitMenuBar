@@ -5,7 +5,6 @@ import XCTest
 final class GitManagerWorktreeCleanupTests: XCTestCase {
     func testBatchCleanupRemovesMergedBranchAndCleanWorktree() async throws {
         let repositoryURL = try createTemporaryGitRepository(testName: #function)
-        try makeMergedBranch(named: "feature/merged", in: repositoryURL)
         try runGit(["branch", "feature/worktree"], in: repositoryURL)
         let linkedURL = repositoryURL.deletingLastPathComponent()
             .appendingPathComponent("\(repositoryURL.lastPathComponent)-linked")
@@ -13,21 +12,18 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
         let snapshot = try await resolvedSnapshot(from: gitManager)
-        let branch = try XCTUnwrap(snapshot.branches.first {
-            !$0.reference.isRemote && $0.reference.name == "feature/merged"
-        })
-        let worktree = try XCTUnwrap(snapshot.worktrees.first {
-            $0.worktree.branchName == "feature/worktree"
+        let unit = try XCTUnwrap(snapshot.cleanupUnits.first {
+            $0.branch.reference.name == "feature/worktree"
         })
 
         let result = try await successfulCleanup(
             gitManager,
-            targets: [.localBranch(branch), .worktree(worktree)],
+            units: [unit],
             snapshot: snapshot
         )
 
-        XCTAssertEqual(result.items.map(\.status), [.succeeded, .succeeded])
-        XCTAssertFalse(try runGit(["branch", "--format=%(refname:short)"], in: repositoryURL).contains("feature/merged"))
+        XCTAssertEqual(result.items.map(\.status), [.succeeded])
+        XCTAssertFalse(try runGit(["branch", "--format=%(refname:short)"], in: repositoryURL).contains("feature/worktree"))
         XCTAssertFalse(FileManager.default.fileExists(atPath: linkedURL.path))
     }
 
@@ -198,6 +194,19 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
             throw NSError(domain: "GitTest", code: 1)
         }
         return snapshot
+    }
+
+    private func successfulCleanup(
+        _ manager: GitManager,
+        units: [GitCleanupUnit],
+        snapshot: GitWorktreeSnapshot
+    ) async throws -> GitCleanupBatchResult {
+        let result = await manager.performCleanupAsync(units: units, snapshot: snapshot)
+        guard case let .success(batch) = result else {
+            XCTFail("Expected cleanup batch success, got \(result)")
+            throw NSError(domain: "GitTest", code: 2)
+        }
+        return batch
     }
 
     private func successfulCleanup(

@@ -108,6 +108,38 @@ final class WorktreeCleanupAnalyzerTests: XCTestCase {
         XCTAssertFalse(snapshot.branches.contains { $0.reference.isRemote && $0.isEligible })
     }
 
+    func testMergedLinkedWorktreeProducesOnePairedUnit() {
+        let input = makeInput(
+            localBranches: [reference("feature/paired")],
+            worktrees: [worktree(path: "/repo-paired", branchName: "feature/paired")],
+            mergedLocalNames: ["feature/paired"]
+        )
+
+        let snapshot = analyzer.analyze(input)
+
+        XCTAssertEqual(snapshot.cleanupUnits.count, 1)
+        XCTAssertTrue(snapshot.cleanupUnits[0].isPaired)
+        XCTAssertEqual(snapshot.branchCandidateCount, 1)
+        XCTAssertEqual(snapshot.worktreeCandidateCount, 1)
+    }
+
+    func testMonitoredLinkedWorktreeIsBlockedAndProducesNoUnit() {
+        let input = makeInput(
+            localBranches: [reference("feature/monitored")],
+            worktrees: [worktree(path: "/repo-monitored", branchName: "feature/monitored")],
+            mergedLocalNames: ["feature/monitored"],
+            protectedWorktreePaths: ["/repo-monitored"]
+        )
+
+        let snapshot = analyzer.analyze(input)
+
+        XCTAssertEqual(
+            worktreeStatus(for: "/repo-monitored", in: snapshot),
+            .unknown(reason: "Worktree is monitored as a project and protected from cleanup.")
+        )
+        XCTAssertTrue(snapshot.cleanupUnits.isEmpty)
+    }
+
     private func makeInput(
         defaultBranchName: String = "main",
         currentBranchName: String? = nil,
@@ -115,7 +147,9 @@ final class WorktreeCleanupAnalyzerTests: XCTestCase {
         worktrees: [GitWorktreeInfo]? = nil,
         remoteBranches: [GitBranchReference] = [],
         mergedLocalNames: Set<String> = ["main"],
-        mergedRemoteNames: Set<String>? = []
+        mergedRemoteNames: Set<String>? = [],
+
+        protectedWorktreePaths: Set<String> = []
     ) -> GitWorktreeAnalysisInput {
         GitWorktreeAnalysisInput(
             defaultBranchName: defaultBranchName,
@@ -137,7 +171,8 @@ final class WorktreeCleanupAnalyzerTests: XCTestCase {
             remoteBranches: remoteBranches,
             mergedLocalBranchNames: mergedLocalNames,
             mergedRemoteBranchNames: mergedRemoteNames,
-            analysisDescription: "test"
+            analysisDescription: "test",
+            protectedWorktreePaths: protectedWorktreePaths
         )
     }
 
