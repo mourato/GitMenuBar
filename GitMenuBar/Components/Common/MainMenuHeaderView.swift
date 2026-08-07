@@ -11,6 +11,11 @@ extension MainMenuView {
                 dismissTransientPresentations()
                 presentationModel.showMain()
             }
+        case .projectCleanup:
+            projectCleanupHeader {
+                dismissTransientPresentations()
+                presentationModel.showMain()
+            }
         }
     }
 
@@ -102,6 +107,23 @@ extension MainMenuView {
                         openSettingsWindow()
                     }
                 )
+            }
+        }
+    }
+
+    private func projectCleanupHeader(onBack: @escaping () -> Void) -> some View {
+        ZStack {
+            Text("Project Cleanup")
+                .font(WorkbenchTypography.windowTitle)
+                .accessibilityAddTraits(.isHeader)
+            HStack {
+                MainMenuHeaderIconButton(
+                    systemImage: "chevron.backward",
+                    accessibilityLabel: "Back",
+                    accessibilityHint: "Returns to the main repository view.",
+                    action: onBack
+                )
+                Spacer(minLength: 0)
             }
         }
     }

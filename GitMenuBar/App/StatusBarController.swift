@@ -69,6 +69,15 @@ final class StatusBarController: ObservableObject {
     let presentationModel = MainMenuPresentationModel()
     let usageQuotaStore: UsageQuotaStore
     let projectMonitor = ProjectMonitorStore()
+    lazy var projectCleanupStore = ProjectCleanupStore(
+        projectMonitor: projectMonitor,
+        onAffectedPaths: { [weak self] paths in
+            guard let self,
+                  let selectedPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath),
+                  paths.contains(GitRepositoryContext.normalizedPath(selectedPath)) else { return }
+            gitManager.refresh(includeReflogHistory: false)
+        }
+    )
 
     lazy var aiCommitCoordinator = AICommitCoordinator(
         providerStore: aiProviderStore,
@@ -359,6 +368,7 @@ final class StatusBarController: ObservableObject {
         .environmentObject(presentationModel)
         .environmentObject(usageQuotaStore)
         .environmentObject(projectMonitor)
+        .environmentObject(projectCleanupStore)
 
         return AnyView(rootView)
     }
@@ -1112,6 +1122,8 @@ final class StatusBarController: ObservableObject {
             "createRepo(\(path))"
         case let .historyDetail(commitID):
             "historyDetail(\(commitID))"
+        case .projectCleanup:
+            "projectCleanup"
         }
     }
 

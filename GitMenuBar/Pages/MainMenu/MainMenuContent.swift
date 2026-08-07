@@ -112,6 +112,8 @@ extension MainMenuView {
             mainRouteContent
         case let .historyDetail(commitID):
             commitDetailRouteView(commitID: commitID)
+        case .projectCleanup:
+            ProjectCleanupPage()
         }
     }
 
@@ -203,7 +205,8 @@ extension MainMenuView {
                         onReveal: revealProjectInFinder,
                         onStopMonitoring: { projectMonitor.remove(path: $0) },
                         onRemove: removeProject,
-                        onRename: renameProject
+                        onRename: renameProject,
+                        onProjectCleanup: presentationModel.showProjectCleanup
                     )
 
                     VStack(spacing: 0) {

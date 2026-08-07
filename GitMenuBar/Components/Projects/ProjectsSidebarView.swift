@@ -17,6 +17,7 @@ struct ProjectsSidebarView: View {
     let onStopMonitoring: (String) -> Void
     let onRemove: (String) -> Void
     let onRename: (String, String) -> Void
+    let onProjectCleanup: () -> Void
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -79,6 +80,12 @@ struct ProjectsSidebarView: View {
                 Text("Projects")
                     .font(.headline)
                 Spacer()
+                Button(action: onProjectCleanup) {
+                    Image(systemName: "wand.and.stars")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Project Cleanup")
+                .accessibilityHint("Review safe branch and worktree cleanup across monitored projects.")
             }
             .padding(.horizontal, 10)
         }
@@ -293,7 +300,8 @@ enum ProjectsSidebarMetrics {
         onReveal: { _ in },
         onStopMonitoring: { _ in },
         onRemove: { _ in },
-        onRename: { _, _ in }
+        onRename: { _, _ in },
+        onProjectCleanup: {}
     )
     .environmentObject(ProjectMonitorStore())
     .environmentObject(UsageQuotaStore())
