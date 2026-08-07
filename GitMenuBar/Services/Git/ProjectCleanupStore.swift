@@ -52,6 +52,12 @@ final class ProjectCleanupStore: ObservableObject {
                         let paths = Set(projects.map(\.path))
                         let value = analyzer(project, paths)
                         lock.lock(); values[project.path] = value; lock.unlock()
+                        DispatchQueue.main.sync { [weak self] in
+                            guard let self, generation == currentGeneration else { return }
+                            if case let .loading(completed, total) = loadState {
+                                loadState = .loading(completed: min(completed + 1, total), total: total)
+                            }
+                        }
                     }
                 }
                 queue.waitUntilAllOperationsAreFinished()
@@ -76,6 +82,11 @@ final class ProjectCleanupStore: ObservableObject {
         if !selectedPaths.insert(path).inserted {
             selectedPaths.remove(path)
         }
+    }
+
+    func selectOnly(path: String) {
+        guard let row = rows.first(where: { $0.id == path }), row.isCanonical, !row.units.isEmpty, !isRunning else { return }
+        selectedPaths = [path]
     }
 
     func reviewSelected() -> ProjectCleanupReview? {

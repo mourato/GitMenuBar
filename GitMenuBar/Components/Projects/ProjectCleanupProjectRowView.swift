@@ -19,7 +19,7 @@ struct ProjectCleanupProjectRowView: View {
             }
             Spacer(minLength: 0)
             if row.isCanonical, !row.units.isEmpty {
-                Button("Clean", action: onClean)
+                Button("Clean \(row.project.name)", action: onClean)
                     .disabled(isRunning)
                     .accessibilityHint("Reviews safe cleanup for this project.")
             }
@@ -46,4 +46,32 @@ struct ProjectCleanupProjectRowView: View {
 #Preview("Cleanup Row") {
     ProjectCleanupProjectRowView(row: ProjectCleanupRow(project: ProjectReference(path: "/tmp/example"), repositoryIdentity: nil, isCanonical: false, isShared: false, snapshot: nil, unavailableReason: "Repository unavailable."), isSelected: false, isRunning: false, onToggle: {}, onClean: {})
         .frame(width: 640)
+}
+
+#Preview("Shared Cleanup Row") {
+    ProjectCleanupProjectRowView(row: ProjectCleanupRow(project: ProjectReference(path: "/tmp/shared"), repositoryIdentity: "/tmp/repository", isCanonical: false, isShared: true, snapshot: nil, unavailableReason: nil), isSelected: false, isRunning: false, onToggle: {}, onClean: {})
+        .frame(width: 640)
+}
+
+#Preview("Selected Cleanup Row") {
+    ProjectCleanupProjectRowView(row: .previewEligible, isSelected: true, isRunning: false, onToggle: {}, onClean: {})
+        .frame(width: 640)
+}
+
+#Preview("Zero Candidate Row") {
+    ProjectCleanupProjectRowView(row: ProjectCleanupRow(project: ProjectReference(path: "/tmp/empty"), repositoryIdentity: "/tmp/empty", isCanonical: true, isShared: false, snapshot: nil, unavailableReason: nil), isSelected: false, isRunning: false, onToggle: {}, onClean: {})
+        .frame(width: 640)
+}
+
+private extension ProjectCleanupRow {
+    static var previewEligible: ProjectCleanupRow {
+        let project = ProjectReference(path: "/tmp/selected", name: "Selected")
+        let unit = GitCleanupUnit(
+            repositoryIdentity: project.path,
+            branch: GitBranchCleanupInfo(reference: GitBranchReference(name: "feature/cleanup", headHash: "hash", isRemote: false), status: .mergedIntoDefault, worktreePath: nil),
+            worktree: nil
+        )
+        let snapshot = GitWorktreeSnapshot(repositoryPath: project.path, defaultBranchName: "main", defaultBranchRef: "refs/heads/main", analysisDescription: "preview", worktrees: [], branches: [], repositoryIdentity: project.path, cleanupUnits: [unit])
+        return ProjectCleanupRow(project: project, repositoryIdentity: project.path, isCanonical: true, isShared: false, snapshot: snapshot, unavailableReason: nil)
+    }
 }
