@@ -57,6 +57,7 @@ struct GitCleanupRepository {
                 worktrees: snapshot.worktrees,
                 branches: snapshot.branches,
                 repositoryIdentity: identity,
+                protectedWorktreePaths: snapshot.protectedWorktreePaths,
                 cleanupUnits: GitCleanupUnit.build(
                     repositoryIdentity: identity,
                     branches: snapshot.branches,
@@ -71,7 +72,12 @@ struct GitCleanupRepository {
         snapshot: GitWorktreeSnapshot,
         repositoryPath: String
     ) -> GitCleanupBatchResult {
-        GitCleanupBatchResult(items: units.map { unit in
+        guard repositoryIdentity(repositoryPath) == snapshot.repositoryIdentity else {
+            return GitCleanupBatchResult(items: units.map {
+                GitCleanupItemResult(unit: $0, status: .skipped(reason: "The shared repository identity changed; cleanup was skipped."))
+            })
+        }
+        return GitCleanupBatchResult(items: units.map { unit in
             GitCleanupItemResult(unit: unit, status: cleanup(unit, snapshot: snapshot, repositoryPath: repositoryPath))
         })
     }
@@ -81,7 +87,12 @@ struct GitCleanupRepository {
         snapshot: GitWorktreeSnapshot,
         repositoryPath: String
     ) -> GitCleanupBatchResult {
-        GitCleanupBatchResult(items: targets.map { target in
+        guard repositoryIdentity(repositoryPath) == snapshot.repositoryIdentity else {
+            return GitCleanupBatchResult(items: targets.map {
+                GitCleanupItemResult(target: $0, status: .skipped(reason: "The shared repository identity changed; cleanup was skipped."))
+            })
+        }
+        return GitCleanupBatchResult(items: targets.map { target in
             let status: GitCleanupItemResultStatus = switch target {
             case let .localBranch(info):
                 cleanupBranch(info, snapshot: snapshot, repositoryPath: repositoryPath, requireDetached: true)
@@ -101,7 +112,7 @@ struct GitCleanupRepository {
     ) -> GitCleanupItemResultStatus {
         guard unit.branch.status == .mergedIntoDefault || unit.branch.status.isCheckedOutElsewhere else { return .skipped(reason: "The branch is no longer eligible for cleanup.") }
         if let worktree = unit.worktree {
-            let worktreeStatus = cleanupWorktreeValidation(worktree, snapshot: snapshot, repositoryPath: repositoryPath)
+            let worktreeStatus = cleanupWorktreeValidation(worktree, branchName: unit.branch.reference.name, snapshot: snapshot, repositoryPath: repositoryPath)
             if let worktreeStatus {
                 return .skipped(reason: worktreeStatus)
             }
@@ -141,19 +152,27 @@ struct GitCleanupRepository {
     }
 
     private func cleanupWorktree(_ info: GitWorktreeCleanupInfo, snapshot: GitWorktreeSnapshot, repositoryPath: String) -> GitCleanupItemResultStatus {
-        guard let reason = cleanupWorktreeValidation(info, snapshot: snapshot, repositoryPath: repositoryPath) else {
-            let result = execute(repositoryPath, ["worktree", "remove", info.worktree.path])
-            return result.failure ? .failed(reason: "Failed to remove '\(info.worktree.path)': \(result.output)") : .succeeded
+        guard let branchName = info.worktree.branchName else {
+            return .skipped(reason: "The worktree is no longer eligible for cleanup.")
         }
-        return .skipped(reason: reason)
+        if let reason = cleanupWorktreeValidation(info, branchName: branchName, snapshot: snapshot, repositoryPath: repositoryPath) {
+            return .skipped(reason: reason)
+        }
+        let result = execute(repositoryPath, ["worktree", "remove", info.worktree.path])
+        return result.failure ? .failed(reason: "Failed to remove '\(info.worktree.path)': \(result.output)") : .succeeded
     }
 
-    private func cleanupWorktreeValidation(_ info: GitWorktreeCleanupInfo, snapshot: GitWorktreeSnapshot, repositoryPath: String) -> String? {
+    private func cleanupWorktreeValidation(_ info: GitWorktreeCleanupInfo, branchName: String, snapshot: GitWorktreeSnapshot, repositoryPath: String) -> String? {
         guard info.status.isEligible else { return "The worktree is no longer eligible for cleanup." }
         guard !info.worktree.isMainWorktree, GitRepositoryContext.normalizedPath(info.worktree.path) != GitRepositoryContext.normalizedPath(repositoryPath) else { return "The current worktree cannot be removed." }
+        guard !snapshot.protectedWorktreePaths.contains(GitRepositoryContext.normalizedPath(info.worktree.path)) else { return "Worktree is monitored as a project and protected from cleanup." }
         guard FileManager.default.fileExists(atPath: info.worktree.path) else { return "The worktree path no longer exists." }
         guard let current = queryWorktrees(repositoryPath)?.first(where: { GitRepositoryContext.normalizedPath($0.path) == GitRepositoryContext.normalizedPath(info.worktree.path) }) else { return "The worktree changed or is no longer registered." }
-        guard current.headHash == info.worktree.headHash, current.lockReason == nil, current.pruneReason == nil, current.branchName != nil else { return "The worktree changed or is no longer eligible for cleanup." }
+        guard !current.isMainWorktree,
+              current.branchName == branchName,
+              current.headHash == info.worktree.headHash,
+              current.lockReason == nil,
+              current.pruneReason == nil else { return "The worktree changed or is no longer eligible for cleanup." }
         guard let branch = current.branchName,
               isClean(info.worktree.path),
               refHash("refs/heads/\(branch)", in: repositoryPath) != nil else { return "The worktree is no longer eligible for cleanup." }

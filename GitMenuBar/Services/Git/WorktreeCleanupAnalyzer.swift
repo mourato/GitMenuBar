@@ -112,7 +112,8 @@ struct WorktreeCleanupAnalyzer {
             analysisDescription: input.analysisDescription,
             worktrees: worktrees,
             branches: branches,
-            repositoryIdentity: GitRepositoryContext.normalizedPath(input.currentWorktreePath)
+            repositoryIdentity: GitRepositoryContext.normalizedPath(input.currentWorktreePath),
+            protectedWorktreePaths: input.protectedWorktreePaths
         )
         return GitWorktreeSnapshot(
             repositoryPath: snapshot.repositoryPath,
@@ -122,6 +123,7 @@ struct WorktreeCleanupAnalyzer {
             worktrees: snapshot.worktrees,
             branches: snapshot.branches,
             repositoryIdentity: snapshot.repositoryIdentity,
+            protectedWorktreePaths: snapshot.protectedWorktreePaths,
             cleanupUnits: GitCleanupUnit.build(
                 repositoryIdentity: snapshot.repositoryIdentity,
                 branches: snapshot.branches,
