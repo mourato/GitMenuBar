@@ -879,3 +879,77 @@ the path-scoped, shared-repository boundary and the canonical-row rule.
   usage shows a discovery gap.
 - Persistent selections, project grouping/search, caching, and a new window:
   deferred as speculative scope.
+
+## Faster opening and progressive project loading — 2026-08-07
+
+The current latency is split across three different boundaries: a fixed
+200 ms window fade, synchronous monitor seeding during
+`StatusBarController` initialization, and a selected-project refresh that
+waits for history before publishing useful local state. Automatic monitor
+snapshots also calculate line-level diffs for every dirty project, although
+the sidebar only needs compact attention data.
+
+This scope is intentionally three plans rather than one broad performance
+rewrite. Plan 061 owns the opening path and background bootstrap, Plan 062
+owns selected-project fast/detail loading and skeletons, and Plan 063 owns the
+sidebar monitor's compact-read contract. There is no custom cache, Git daemon,
+debounce, renderer rewrite, or new dependency in this batch.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|---|---|---:|---:|---|---|
+| [061](061-make-window-open-and-monitor-seed-nonblocking.md) | Make window opening and monitor seeding non-blocking | P0 | L | 057; 050–053 DONE | TODO |
+| [062](062-progressive-project-switch-loading.md) | Show selected-project content progressively with skeleton states | P0 | L | 061; 057; 050–052 DONE | TODO |
+| [063](063-use-compact-sidebar-monitor-reads.md) | Keep sidebar monitor reads compact | P1 | M | 061; 057; 053 DONE | TODO |
+
+### Dependency notes
+
+- Plan 057 is an existing repository-wide Swift 6.2/concurrency baseline and
+  should be reconciled before these plans touch shared async APIs. It is a
+  prerequisite, not an additional plan created by this performance scope.
+- Plan 061 should land first because it owns the opening controller and
+  `ProjectMonitorStore` seed boundary.
+- Plans 062 and 063 can be implemented in parallel after 061 in isolated
+  worktrees, but integration should be serial because both change user-visible
+  performance behavior and share final validation.
+
+### Confirmed product constraints
+
+- The window opens at full alpha immediately; there is no replacement delay.
+- Monitor seeding is asynchronous and generation-gated, while existing
+  monitored-project persistence/filtering remains intact.
+- Selected-project content is progressive: local working-tree/branch state
+  appears before remote/history detail, with stable skeletons for regions that
+  are still loading.
+- The Projects sidebar remains a compact attention surface. It stops showing
+  additions/deletions from monitor snapshots; selected-project detail keeps
+  exact line diffs.
+- Quota refreshes triggered by presentation are bounded by the existing
+  120-second interval; explicit refresh remains available.
+
+### Findings considered and rejected/deferred
+
+- Removing only the fade was rejected as insufficient: synchronous monitor
+  seed and repeated quota work can still consume the opening budget.
+- A custom cache, Git daemon, SQLite store, debounce, broad `EquatableView`,
+  and a second render store were rejected until traces show they are needed.
+- A background line-diff enrichment pass for every monitored project was
+  rejected in this batch; it recreates expensive work and adds churn to a
+  sidebar that only needs attention state.
+- A new global loading overlay or shimmer animation was rejected; native,
+  stable skeleton geometry is sufficient and respects reduced motion.
+
+### Validation baseline
+
+- Plans must record before/after window-open and monitor timing on a real
+  repository, not only simulator or preview behavior.
+- Focused implementation checks are `make agent-check`, `make test`,
+  `make check-preview`, `make guidance-check`, and `git diff --check`.
+- Before merge, run `make lint && make test` and record any
+  environment-only preview limitation rather than weakening the gate. The
+  current clean-tree `make check-preview` baseline fails at
+  `scripts/check-preview.sh:126` because an empty `files[@]` array is
+  expanded under Bash `set -u`; UI plans should use their explicit candidate
+  file command when that baseline applies. Repairing the script is deferred
+  from this performance scope.
