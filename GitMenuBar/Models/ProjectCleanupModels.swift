@@ -110,9 +110,13 @@ struct ProjectCleanupProjectResult: Identifiable {
     }
 }
 
-struct ProjectCleanupRunResult {
+struct ProjectCleanupRunResult: Identifiable {
     let projects: [ProjectCleanupProjectResult]
     let affectedPaths: Set<String>
+
+    var id: String {
+        projects.map(\.id).joined(separator: "|")
+    }
 
     var completedCount: Int {
         projects.flatMap(\.items).filter { $0.status == .succeeded }.count

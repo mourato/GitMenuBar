@@ -14,19 +14,24 @@ struct ProjectCleanupResultsView: View {
                 Button("Refresh", systemImage: "arrow.clockwise", action: onRefresh)
                 Button("Dismiss", action: onDismiss)
             }
-            ForEach(result.projects) { project in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(project.project.name).font(.subheadline.weight(.semibold))
-                    if let reason = project.exclusionReason {
-                        Text("Excluded: \(reason)").foregroundStyle(.secondary)
-                    }
-                    ForEach(project.items) { item in
-                        Text("\(item.unit?.title ?? item.target.title): \(status(item.status))").font(.caption)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+                    ForEach(result.projects) { project in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(project.project.name).font(.subheadline.weight(.semibold))
+                            if let reason = project.exclusionReason {
+                                Text("Excluded: \(reason)").foregroundStyle(.secondary)
+                            }
+                            ForEach(project.items) { item in
+                                Text("\(item.unit?.title ?? item.target.title): \(status(item.status))").font(.caption)
+                            }
+                        }
                     }
                 }
             }
         }
         .padding(WorkbenchMetrics.compactSpacing)
+        .frame(minWidth: 520, minHeight: 300)
         .accessibilityElement(children: .contain)
     }
 

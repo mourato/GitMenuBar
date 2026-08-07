@@ -3,7 +3,7 @@ import SwiftUI
 struct ProjectCleanupPage: View {
     @EnvironmentObject private var store: ProjectCleanupStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var review: ProjectCleanupReview?
+    @State private var presentedSheet: ProjectCleanupSheet?
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
@@ -16,9 +16,9 @@ struct ProjectCleanupPage: View {
                 Spacer()
                 Button("Refresh", systemImage: "arrow.clockwise") { store.refresh() }
                     .disabled(store.loadState.isLoading || store.isRunning)
-                Button("Clean Selected") { review = store.reviewSelected() }
+                Button("Clean Selected") { presentReview(store.reviewSelected()) }
                     .disabled(store.reviewSelected() == nil)
-                Button("Clean All") { review = store.reviewAll() }
+                Button("Clean All") { presentReview(store.reviewAll()) }
                     .disabled(store.reviewAll() == nil)
                     .buttonStyle(.borderedProminent)
             }
@@ -41,17 +41,12 @@ struct ProjectCleanupPage: View {
                     ScrollView {
                         VStack(spacing: WorkbenchMetrics.compactSpacing) {
                             ForEach(store.rows) { row in
-                                ProjectCleanupProjectRowView(row: row, isSelected: store.selectedPaths.contains(row.id), isRunning: store.isRunning, onToggle: { store.toggleSelection(path: row.id) }, onClean: {
+                                ProjectCleanupProjectRowView(row: row, isSelected: store.selectedPaths.contains(row.id), isRunning: store.isRunning, onToggle: { store.toggleSelection(path: row.id) }, onInspect: {
+                                    presentedSheet = .candidates(row)
+                                }, onClean: {
                                     store.selectOnly(path: row.id)
-                                    review = store.reviewSelected()
+                                    presentReview(store.reviewSelected())
                                 })
-                            }
-                            if let result = store.result {
-                                ProjectCleanupResultsView(
-                                    result: result,
-                                    onDismiss: store.dismissResult,
-                                    onRefresh: store.refresh
-                                )
                             }
                         }
                     }
@@ -63,13 +58,45 @@ struct ProjectCleanupPage: View {
                 store.load()
             }
         }
-        .sheet(item: $review) { value in
-            ProjectCleanupConfirmationView(review: value) {
-                store.runCleanup(value)
-                review = nil
+        .sheet(item: $presentedSheet) { sheet in
+            switch sheet {
+            case let .review(value):
+                ProjectCleanupConfirmationView(review: value) {
+                    store.runCleanup(value)
+                    presentedSheet = nil
+                }
+            case let .candidates(row):
+                ProjectCleanupCandidatesView(row: row)
+            case let .results(result):
+                ProjectCleanupResultsView(
+                    result: result,
+                    onDismiss: {
+                        presentedSheet = nil
+                        store.dismissResult()
+                    },
+                    onRefresh: {
+                        presentedSheet = nil
+                        store.refresh()
+                    }
+                )
+            }
+        }
+        .onChange(of: store.result?.id) { _, _ in
+            if let result = store.result {
+                presentedSheet = .results(result)
+            }
+        }
+        .onChange(of: presentedSheet?.id) { _, id in
+            if id == nil, store.result != nil {
+                store.dismissResult()
             }
         }
         .animation(WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion), value: store.loadState)
+    }
+
+    private func presentReview(_ review: ProjectCleanupReview?) {
+        guard let review else { return }
+        presentedSheet = .review(review)
     }
 
     private var summary: some View {
@@ -80,6 +107,20 @@ struct ProjectCleanupPage: View {
         }
         .font(.callout.monospacedDigit())
         .foregroundStyle(.secondary)
+    }
+}
+
+private enum ProjectCleanupSheet: Identifiable {
+    case review(ProjectCleanupReview)
+    case candidates(ProjectCleanupRow)
+    case results(ProjectCleanupRunResult)
+
+    var id: String {
+        switch self {
+        case let .review(review): "review-\(review.id)"
+        case let .candidates(row): "candidates-\(row.id)"
+        case .results: "results"
+        }
     }
 }
 

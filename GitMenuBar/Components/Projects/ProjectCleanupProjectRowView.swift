@@ -5,19 +5,31 @@ struct ProjectCleanupProjectRowView: View {
     let isSelected: Bool
     let isRunning: Bool
     let onToggle: () -> Void
+    let onInspect: () -> Void
     let onClean: () -> Void
 
     var body: some View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
-            Toggle("Select \(row.project.name)", isOn: Binding(get: { isSelected }, set: { _ in onToggle() }))
-                .toggleStyle(.checkbox)
-                .disabled(!row.isCanonical || row.units.isEmpty || isRunning)
+            Toggle(isOn: Binding(get: { isSelected }, set: { _ in onToggle() })) {
+                EmptyView()
+            }
+            .toggleStyle(.checkbox)
+            .labelsHidden()
+            .accessibilityLabel("Select \(row.project.name)")
+            .disabled(!row.isCanonical || row.units.isEmpty || isRunning)
             VStack(alignment: .leading, spacing: 2) {
                 Text(row.project.name).font(.headline)
                 Text(row.project.path).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 Text(statusText).font(.caption).foregroundStyle(row.isUnavailable ? .red : .secondary)
             }
             Spacer(minLength: 0)
+            Button(action: onInspect) {
+                Image(systemName: "eye")
+            }
+            .workbenchIcon()
+            .accessibilityLabel("View safe cleanup candidates for \(row.project.name)")
+            .accessibilityHint("Shows local branches and worktrees merged into the default branch.")
+            .disabled(isRunning)
             if row.isCanonical, !row.units.isEmpty {
                 Button("Clean \(row.project.name)", action: onClean)
                     .disabled(isRunning)
@@ -44,26 +56,26 @@ struct ProjectCleanupProjectRowView: View {
 }
 
 #Preview("Cleanup Row") {
-    ProjectCleanupProjectRowView(row: ProjectCleanupRow(project: ProjectReference(path: "/tmp/example"), repositoryIdentity: nil, isCanonical: false, isShared: false, snapshot: nil, unavailableReason: "Repository unavailable."), isSelected: false, isRunning: false, onToggle: {}, onClean: {})
+    ProjectCleanupProjectRowView(row: ProjectCleanupRow(project: ProjectReference(path: "/tmp/example"), repositoryIdentity: nil, isCanonical: false, isShared: false, snapshot: nil, unavailableReason: "Repository unavailable."), isSelected: false, isRunning: false, onToggle: {}, onInspect: {}, onClean: {})
         .frame(width: 640)
 }
 
 #Preview("Shared Cleanup Row") {
-    ProjectCleanupProjectRowView(row: ProjectCleanupRow(project: ProjectReference(path: "/tmp/shared"), repositoryIdentity: "/tmp/repository", isCanonical: false, isShared: true, snapshot: nil, unavailableReason: nil), isSelected: false, isRunning: false, onToggle: {}, onClean: {})
+    ProjectCleanupProjectRowView(row: ProjectCleanupRow(project: ProjectReference(path: "/tmp/shared"), repositoryIdentity: "/tmp/repository", isCanonical: false, isShared: true, snapshot: nil, unavailableReason: nil), isSelected: false, isRunning: false, onToggle: {}, onInspect: {}, onClean: {})
         .frame(width: 640)
 }
 
 #Preview("Selected Cleanup Row") {
-    ProjectCleanupProjectRowView(row: .previewEligible, isSelected: true, isRunning: false, onToggle: {}, onClean: {})
+    ProjectCleanupProjectRowView(row: .previewEligible, isSelected: true, isRunning: false, onToggle: {}, onInspect: {}, onClean: {})
         .frame(width: 640)
 }
 
 #Preview("Zero Candidate Row") {
-    ProjectCleanupProjectRowView(row: ProjectCleanupRow(project: ProjectReference(path: "/tmp/empty"), repositoryIdentity: "/tmp/empty", isCanonical: true, isShared: false, snapshot: nil, unavailableReason: nil), isSelected: false, isRunning: false, onToggle: {}, onClean: {})
+    ProjectCleanupProjectRowView(row: ProjectCleanupRow(project: ProjectReference(path: "/tmp/empty"), repositoryIdentity: "/tmp/empty", isCanonical: true, isShared: false, snapshot: nil, unavailableReason: nil), isSelected: false, isRunning: false, onToggle: {}, onInspect: {}, onClean: {})
         .frame(width: 640)
 }
 
-private extension ProjectCleanupRow {
+extension ProjectCleanupRow {
     static var previewEligible: ProjectCleanupRow {
         let project = ProjectReference(path: "/tmp/selected", name: "Selected")
         let unit = GitCleanupUnit(
