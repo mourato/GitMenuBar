@@ -36,3 +36,23 @@ struct ProjectCleanupConfirmationView: View {
 #Preview("Cleanup Confirmation") {
     ProjectCleanupConfirmationView(review: ProjectCleanupReview(rows: [], excludedProjects: []), onConfirm: {})
 }
+
+#Preview("Paired Worktree Confirmation") {
+    ProjectCleanupConfirmationView(review: .previewPaired, onConfirm: {})
+}
+
+private extension ProjectCleanupReview {
+    static var previewPaired: ProjectCleanupReview {
+        let project = ProjectReference(path: "/tmp/paired", name: "Paired Project")
+        let worktreeInfo = GitWorktreeInfo(path: "/tmp/paired-worktree", headHash: "hash", branchName: "feature/cleanup", isMainWorktree: false, workingTreeState: .clean)
+        let worktree = GitWorktreeCleanupInfo(worktree: worktreeInfo, status: .eligible)
+        let unit = GitCleanupUnit(
+            repositoryIdentity: project.path,
+            branch: GitBranchCleanupInfo(reference: GitBranchReference(name: "feature/cleanup", headHash: "hash", isRemote: false), status: .checkedOutElsewhere(path: worktreeInfo.path), worktreePath: worktreeInfo.path),
+            worktree: worktree
+        )
+        let snapshot = GitWorktreeSnapshot(repositoryPath: project.path, defaultBranchName: "main", defaultBranchRef: "refs/heads/main", analysisDescription: "preview", worktrees: [worktree], branches: [], repositoryIdentity: project.path, cleanupUnits: [unit])
+        let row = ProjectCleanupRow(project: project, repositoryIdentity: project.path, isCanonical: true, isShared: false, snapshot: snapshot, unavailableReason: nil)
+        return ProjectCleanupReview(rows: [row], excludedProjects: [])
+    }
+}

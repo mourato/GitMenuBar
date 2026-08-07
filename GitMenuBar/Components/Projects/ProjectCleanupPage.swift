@@ -27,7 +27,7 @@ struct ProjectCleanupPage: View {
 
             switch store.loadState {
             case let .loading(completed, total):
-                ProgressView("Analyzing (completed) of (total) projects…")
+                ProgressView("Analyzing \(completed) of \(total) projects…")
                     .accessibilityValue("Loading project cleanup analysis")
             case let .failed(message):
                 Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
@@ -41,7 +41,10 @@ struct ProjectCleanupPage: View {
                     ScrollView {
                         VStack(spacing: WorkbenchMetrics.compactSpacing) {
                             ForEach(store.rows) { row in
-                                ProjectCleanupProjectRowView(row: row, isSelected: store.selectedPaths.contains(row.id), isRunning: store.isRunning, onToggle: { store.toggleSelection(path: row.id) }, onClean: { review = store.review(for: [row.id]) })
+                                ProjectCleanupProjectRowView(row: row, isSelected: store.selectedPaths.contains(row.id), isRunning: store.isRunning, onToggle: { store.toggleSelection(path: row.id) }, onClean: {
+                                    store.selectOnly(path: row.id)
+                                    review = store.reviewSelected()
+                                })
                             }
                             if let result = store.result {
                                 ProjectCleanupResultsView(

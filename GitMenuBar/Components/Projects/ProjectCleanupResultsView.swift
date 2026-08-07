@@ -21,7 +21,7 @@ struct ProjectCleanupResultsView: View {
                         Text("Excluded: \(reason)").foregroundStyle(.secondary)
                     }
                     ForEach(project.items) { item in
-                        Text("\(item.target.title): \(status(item.status))").font(.caption)
+                        Text("\(item.unit?.title ?? item.target.title): \(status(item.status))").font(.caption)
                     }
                 }
             }
@@ -43,4 +43,32 @@ struct ProjectCleanupResultsView: View {
 #Preview("Cleanup Results") {
     ProjectCleanupResultsView(result: ProjectCleanupRunResult(projects: [], affectedPaths: []), onDismiss: {}, onRefresh: {})
         .frame(width: 640)
+}
+
+#Preview("Partial Skipped Excluded Results") {
+    ProjectCleanupResultsView(result: .previewResults, onDismiss: {}, onRefresh: {})
+        .frame(width: 640)
+}
+
+private extension ProjectCleanupRunResult {
+    static var previewResults: ProjectCleanupRunResult {
+        let project = ProjectReference(path: "/tmp/results", name: "Results Project")
+        let unit = GitCleanupUnit(
+            repositoryIdentity: project.path,
+            branch: GitBranchCleanupInfo(reference: GitBranchReference(name: "feature/cleanup", headHash: "hash", isRemote: false), status: .mergedIntoDefault, worktreePath: nil),
+            worktree: nil
+        )
+        let items = [
+            GitCleanupItemResult(unit: unit, status: .partiallySucceeded(reason: "Branch kept")),
+            GitCleanupItemResult(unit: unit, status: .skipped(reason: "Stale state")),
+            GitCleanupItemResult(unit: unit, status: .failed(reason: "Locked"))
+        ]
+        return ProjectCleanupRunResult(
+            projects: [
+                ProjectCleanupProjectResult(project: project, items: items, exclusionReason: nil),
+                ProjectCleanupProjectResult(project: ProjectReference(path: "/tmp/unavailable", name: "Unavailable Project"), items: [], exclusionReason: "Repository unavailable.")
+            ],
+            affectedPaths: []
+        )
+    }
 }
