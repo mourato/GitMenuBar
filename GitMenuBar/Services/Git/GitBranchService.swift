@@ -30,7 +30,7 @@ final class GitBranchService: ObservableObject {
     @Published var worktreeSnapshot: GitWorktreeSnapshot?
 
     private nonisolated(unsafe) let repositoryContext: GitRepositoryContext
-    private nonisolated(unsafe) let commandRunner: GitCommandRunner
+    nonisolated(unsafe) let commandRunner: GitCommandRunner
 
     /// Injected by `GitManager` so branch mutations can trigger a full app
     /// refresh (commit history, working tree, …) which lives outside this service.

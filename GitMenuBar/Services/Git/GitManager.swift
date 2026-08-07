@@ -1495,6 +1495,13 @@ class GitManager: ObservableObject {
     }
 
     func performCleanupAsync(
+        units: [GitCleanupUnit],
+        snapshot: GitWorktreeSnapshot
+    ) async -> Result<GitCleanupBatchResult, Error> {
+        await branchService.performCleanupAsync(units: units, snapshot: snapshot)
+    }
+
+    func performCleanupAsync(
         targets: [GitCleanupTarget],
         snapshot: GitWorktreeSnapshot
     ) async -> Result<GitCleanupBatchResult, Error> {

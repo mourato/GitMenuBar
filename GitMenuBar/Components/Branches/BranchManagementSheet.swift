@@ -30,17 +30,9 @@ struct BranchManagementSheet: View {
 
     @State private var operationError: String?
 
-    var selectedCleanupTargets: [GitCleanupTarget] {
+    var selectedCleanupUnits: [GitCleanupUnit] {
         guard let worktreeSnapshot else { return [] }
-        let branchTargets = worktreeSnapshot.branches
-            .filter { !$0.reference.isRemote && $0.isEligible }
-            .filter { selectedCleanupIDs.contains(GitCleanupTarget.localBranch($0).id) }
-            .map(GitCleanupTarget.localBranch)
-        let worktreeTargets = worktreeSnapshot.worktrees
-            .filter(\.status.isEligible)
-            .filter { selectedCleanupIDs.contains(GitCleanupTarget.worktree($0).id) }
-            .map(GitCleanupTarget.worktree)
-        return branchTargets + worktreeTargets
+        return worktreeSnapshot.cleanupUnits.filter { selectedCleanupIDs.contains($0.id) }
     }
 
     var body: some View {
@@ -180,7 +172,7 @@ struct BranchManagementSheet: View {
         }
         .sheet(isPresented: $showCleanupConfirmation) {
             CleanupConfirmationView(
-                targets: selectedCleanupTargets,
+                units: selectedCleanupUnits,
                 onCancel: { showCleanupConfirmation = false },
                 onConfirm: performCleanup
             )
@@ -243,10 +235,10 @@ struct BranchManagementSheet: View {
                     showCleanupConfirmation = true
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isLoading || isCleanupRunning || selectedCleanupTargets.isEmpty)
+                .disabled(isLoading || isCleanupRunning || selectedCleanupUnits.isEmpty)
                 .help(
-                    selectedCleanupTargets.isEmpty
-                        ? "Select an eligible branch or worktree first."
+                    selectedCleanupUnits.isEmpty
+                        ? "Select a cleanup unit first."
                         : "Review the selected cleanup items."
                 )
             }

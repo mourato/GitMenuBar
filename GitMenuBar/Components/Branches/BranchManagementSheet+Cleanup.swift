@@ -3,13 +3,13 @@ import Foundation
 extension BranchManagementSheet {
     func performCleanup() {
         guard let snapshot = worktreeSnapshot else { return }
-        let targets = selectedCleanupTargets
-        guard !targets.isEmpty else { return }
+        let units = selectedCleanupUnits
+        guard !units.isEmpty else { return }
 
         showCleanupConfirmation = false
         isCleanupRunning = true
         Task {
-            let result = await gitManager.performCleanupAsync(targets: targets, snapshot: snapshot)
+            let result = await gitManager.performCleanupAsync(units: units, snapshot: snapshot)
             await MainActor.run {
                 isCleanupRunning = false
                 selectedCleanupIDs = []
@@ -29,12 +29,14 @@ extension BranchManagementSheet {
             let status = switch item.status {
             case .succeeded:
                 "completed"
+            case let .partiallySucceeded(reason):
+                "partially completed — \(reason)"
             case let .skipped(reason):
                 "skipped — \(reason)"
             case let .failed(reason):
                 "failed — \(reason)"
             }
-            return "\(item.target.title): \(status)"
+            return "\(item.unit?.title ?? item.target.title): \(status)"
         }.joined(separator: "\n")
     }
 }
