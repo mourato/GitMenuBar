@@ -3,6 +3,7 @@ import Foundation
 
 @MainActor
 final class ProjectMonitorStore: ObservableObject {
+    /// Immutable value data is filled once on the worker and only crosses back to the actor.
     private struct SeedResult: @unchecked Sendable {
         let candidates: [ProjectReference]
         let snapshots: [String: ProjectStatusSnapshot]
@@ -134,7 +135,7 @@ final class ProjectMonitorStore: ObservableObject {
     }
 
     private func refresh(projects: [ProjectReference]) {
-        guard !projects.isEmpty else { return }
+        guard !isRefreshing, !projects.isEmpty else { return }
         refreshGeneration += 1
         let generation = refreshGeneration
         isRefreshing = true
