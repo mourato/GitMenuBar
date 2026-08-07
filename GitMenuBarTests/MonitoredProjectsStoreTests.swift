@@ -76,7 +76,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
     }
 
     @MainActor
-    func testSeedIgnoresNonGitRecentProjects() throws {
+    func testSeedIgnoresNonGitRecentProjects() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("GitMenuBarMonitorSeed-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -92,7 +92,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         let store = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
         let monitor = ProjectMonitorStore(projectStore: store)
 
-        monitor.seed(
+        await monitor.seed(
             currentPath: invalidPath,
             recentProjects: [ProjectReference(path: validPath), ProjectReference(path: invalidPath)]
         )
