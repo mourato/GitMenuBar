@@ -833,7 +833,7 @@ the path-scoped, shared-repository boundary and the canonical-row rule.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |---|---|---|---|---|---|
-| [059](059-unify-cleanup-units-path-scoped-service.md) | Unify branch/worktree cleanup units behind a path-scoped repository service | P0 | L | 019, 020 (DONE) | TODO |
+| [059](059-unify-cleanup-units-path-scoped-service.md) | Unify branch/worktree cleanup units behind a path-scoped repository service | P0 | L | 019, 020 (DONE) | DONE (8278653; review fixes 5b83c8b) |
 | [060](060-global-monitored-project-cleanup.md) | Add global monitored-project cleanup | P0 | L | 059 | TODO |
 
 ### Dependency notes
