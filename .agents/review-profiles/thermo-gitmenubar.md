@@ -9,8 +9,7 @@ It contains no generic review checklist and no model configuration.
   safety before convenience.
 - Treat `NSStatusItem` ownership, status-item click behavior, popover/window
   dismissal, repository switching, branch actions, commit flow, and sync flow
-  as product-critical behavior. Route `global:menubar` to `.agents/overlays/menubar.md`
-  when a diff touches those paths.
+  as product-critical behavior. Route `global:macos-app-engineering` to `.agents/overlays/macos-app-engineering.md` when a diff touches those paths.
 - Require a `#Preview` for every new Swift file that renders UI, including
   `View`, `NSViewRepresentable`, and `NSViewControllerRepresentable` files.
 - Do not accept orphaned UI, logic, assets, or stale resources introduced by a

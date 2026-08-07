@@ -31,14 +31,13 @@ require_text AGENTS.md 'global:improve'
 require_text AGENTS.md 'global:thermo-nuclear-code-quality-review'
 
 overlay_names=(
-  accessibility-audit
   apple-design
   benchmarking
   code-quality
   delivery-workflow
   macos-app-engineering
-  menubar
   swift-conventions
+  swiftui-accessibility-audit
 )
 
 route_pair_present() {
@@ -63,7 +62,7 @@ done
 
 profile="$ROOT/.agents/review-profiles/thermo-gitmenubar.md"
 for pair in \
-  'global:menubar|.agents/overlays/menubar.md' \
+  'global:macos-app-engineering|.agents/overlays/macos-app-engineering.md' \
   'global:delivery-workflow|.agents/overlays/delivery-workflow.md'; do
   IFS='|' read -r global_skill overlay <<< "$pair"
   if ! profile_route_present "$profile" "$global_skill" "$overlay"; then
@@ -73,9 +72,9 @@ done
 
 route_fixture="$(mktemp)"
 trap 'rm -f "$route_fixture"' EXIT
-sed 's#`global:menubar` + `.agents/overlays/menubar.md`#`global:menubar` + `.agents/overlays/apple-design.md`#' \
+sed 's#`global:macos-app-engineering` + `.agents/overlays/macos-app-engineering.md`#`global:macos-app-engineering` + `.agents/overlays/apple-design.md`#' \
   "$ROOT/AGENTS.md" > "$route_fixture"
-if route_pair_present "$route_fixture" 'global:menubar' '.agents/overlays/menubar.md'; then
+if route_pair_present "$route_fixture" 'global:macos-app-engineering' '.agents/overlays/macos-app-engineering.md'; then
   error "route-pair negative check accepted a swapped overlay"
 fi
 

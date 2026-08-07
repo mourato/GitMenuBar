@@ -1,6 +1,6 @@
 ---
 kind: project-overlay
-extends: accessibility-audit
+extends: swiftui-accessibility-audit
 project: GitMenuBar
 precedence: project
 ---

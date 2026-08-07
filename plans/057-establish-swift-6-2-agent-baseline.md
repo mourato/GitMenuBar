@@ -21,15 +21,15 @@
 
 ## Execution profile
 
-- Recommended profile: `implementer`
-- Risk/lane: High / Full
-- Parallelizable: No. The app, tests, CLI target, Xcode settings, and changed
+- **Recommended profile**: `implementer`
+- **Risk/lane**: High / Full
+- **Parallelizable**: No. The app, tests, CLI target, Xcode settings, and changed
   file gate share the same migration contract.
-- Reviewer required: Yes — Swift 6.2/concurrency, CLI, and release-gate review.
-- Rationale: GitMenuBar has the best targeted changed-file workflow in the
+- **Reviewer required**: Yes — Swift 6.2/concurrency, CLI, and release-gate review.
+- **Rationale**: GitMenuBar has the best targeted changed-file workflow in the
   group, but Swift 6.0, inconsistent strict-concurrency settings, and a few
   warning sites prevent it from being the common baseline.
-- Escalate when: a compiler fix changes Git operation semantics, requires a
+- **Escalate when**: a compiler fix changes Git operation semantics, requires a
   broad unsafe-concurrency escape, or reaches unrelated dirty files.
 
 ## Why it matters

@@ -55,13 +55,12 @@ specialist skill. The project-only review profile is
 
 Routes:
 
-- `global:accessibility-audit` + `.agents/overlays/accessibility-audit.md`
+- `global:swiftui-accessibility-audit` + `.agents/overlays/swiftui-accessibility-audit.md`
 - `global:apple-design` + `.agents/overlays/apple-design.md`
 - `global:benchmarking` + `.agents/overlays/benchmarking.md`
 - `global:code-quality` + `.agents/overlays/code-quality.md`
 - `global:delivery-workflow` + `.agents/overlays/delivery-workflow.md`
 - `global:macos-app-engineering` + `.agents/overlays/macos-app-engineering.md`
-- `global:menubar` + `.agents/overlays/menubar.md`
 - `global:swift-conventions` + `.agents/overlays/swift-conventions.md`
 
 Use `global:improve` for audits and plans and
