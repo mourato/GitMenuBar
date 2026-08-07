@@ -23,9 +23,11 @@ quota strip.
 | **Local path** | ~/Documents/Projects/References/T3Code |
 | **Cloned?** | Yes |
 | **Remote** | https://github.com/pingdotgg/t3code |
-| **Study ref** | `v0.0.29-nightly.20260725.899` (`5719e8ac4020`) — latest GitHub Nightly/prerelease at clone time |
+| **Reference revision** | `v0.0.29-nightly.20260725.899` (`5719e8ac4020`, 2026-07-24) |
 | **Channel note** | Public desktop releases are Nightly prereleases; the changed-files card also exists on `main`. Prefer the pinned Nightly tag when matching shipped Preview/Nightly UI; re-check `main` before assuming a feature is Nightly-only. |
-| **License** | MIT (T3 Tools Inc., 2026). File icons lean on `@pierre/trees` (Apache-2.0, verified 2026-07-26); GitMenuBar uses native SF Symbols + adaptive tints instead of vendoring Pierre SVGs — see `docs/file-type-icons.md`. |
+| **License** | MIT (`LICENSE`; copyright T3 Tools Inc., 2026). The separately reused `@pierre/trees` subset is Apache-2.0 with a MIT `headless-tree/core` notice. |
+| **License URL** | https://opensource.org/license/mit |
+| **Reuse decision** | T3Code is a UI/behavior reference only; reimplement the changed-files interaction natively. The separately audited `@pierre/trees` asset subset is reused under Apache-2.0; see `docs/file-type-icons.md` and `GitMenuBar/Resources/FileTypeIcons/NOTICE.md`. No T3Code README credit required. |
 | **Description** | Web/Electron coding-agent harness (Codex, Claude, Cursor, OpenCode). After each agent turn, a collapsible **Changed files** card shows aggregate `+N/-M` stats, optional compact scope preview, hierarchical folder tree with path compaction, expand/collapse-all, per-type Pierre file icons, and **Open diff**. Primary study surface for GitMenuBar's commit-detail and working-tree file summaries. |
 
 ### Vorssaint
@@ -37,6 +39,10 @@ quota strip.
 | **Local path** | ~/Documents/Projects/References/Vorssaint |
 | **Cloned?** | Yes |
 | **Remote** | https://github.com/vorssaint/vorssaint-utils |
+| **Reference revision** | `e83393cad615` (2026-08-05; nearest tag `v3.3.0`) |
+| **License** | GPL-3.0-or-later (`LICENSE`; copyright 2026 Vorssaint) |
+| **License URL** | https://www.gnu.org/licenses/gpl-3.0.html |
+| **Reuse decision** | Inspiration and independent reimplementation only; do not copy source, assets, trademarks, or brand identity. No README credit required. |
 | **Description** | Menu-bar toolkit (monitor, volume, windows, clipboard, keep-awake). Compact UI, permission-gated degradation, local-first design, sustainable polling, AppKit/SwiftUI interop |
 
 ### Mimir
@@ -48,6 +54,10 @@ quota strip.
 | **Local path** | ~/Documents/Projects/References/Mimir |
 | **Cloned?** | Yes |
 | **Remote** | https://github.com/erayendes/mimir |
+| **Reference revision** | `7d050393a6ec` (2026-07-11; nearest tag `v2.6`) |
+| **License** | MIT (`LICENSE`; copyright Eray Endes, 2026) |
+| **License URL** | https://opensource.org/license/mit |
+| **Reuse decision** | Codex usage parsing logic is adapted under MIT; preserve the copyright and license notice in `THIRD-PARTY-NOTICES.md` and credit the source in `README.md`. UI, telemetry, widgets, and unrelated providers remain inspiration-only. |
 | **Description** | macOS menu bar app for tracking AI tool usage limits (Claude, Codex, Antigravity). Real-time quota monitoring, reset countdowns, color status dots, privacy-first local-only data access, minimalist design with dark/light mode support |
 
 ### CodexBar
@@ -59,6 +69,10 @@ quota strip.
 | **Local path** | ~/Documents/Projects/References/CodexBar |
 | **Cloned?** | Yes |
 | **Remote** | https://github.com/steipete/CodexBar |
+| **Reference revision** | `cc8da27cec92` (2026-07-20) |
+| **License** | MIT (`LICENSE`; copyright Peter Steinberger, 2026) |
+| **License URL** | https://opensource.org/license/mit |
+| **Reuse decision** | OpenRouter credits parsing and three provider icons are adapted under MIT; preserve the copyright and license notice in `THIRD-PARTY-NOTICES.md` and credit the source in `README.md`. Other UI and provider code remains inspiration-only. |
 | **Description** | Benchmark menu-bar usage monitor for Codex, Claude, Cursor, and many other AI providers. Multi-window rate limits (`limit_window_seconds`), reset-credit inventory, pace tracking, tokenized status-item layouts, and provider-card density without cognitive overload |
 
 ## Relevant GitMenuBar touchpoints

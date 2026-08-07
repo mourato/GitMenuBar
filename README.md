@@ -126,3 +126,16 @@ open -a "GitMenuBar" "/path/to/your/folder"
 If you run into trouble or have an idea, please [open an issue](https://github.com/saihgupr/GitMenuBar/issues) on GitHub.
 
 GitMenuBar is **open-source** and **free**. If you find it useful, consider giving it a star ⭐ or making a [donation](https://ko-fi.com/saihgupr) to support development.
+
+## Credits and third-party notices
+
+Some GitMenuBar implementation details are adapted from open-source projects:
+
+- [Mimir](https://github.com/erayendes/mimir) — MIT, Copyright (c) 2026 Eray Endes; Codex usage parsing.
+- [CodexBar](https://github.com/steipete/CodexBar) — MIT, Copyright (c) 2026 Peter Steinberger; OpenRouter credits parsing and provider icons.
+- [`@pierre/trees`](https://www.npmjs.com/package/@pierre/trees) — Apache-2.0, with the retained `headless-tree/core` MIT notice; curated file-type SVG paths.
+
+See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and
+[`GitMenuBar/Resources/FileTypeIcons/NOTICE.md`](GitMenuBar/Resources/FileTypeIcons/NOTICE.md)
+for the applicable notices. T3Code is a UI reference only; its source is not
+copied into GitMenuBar.

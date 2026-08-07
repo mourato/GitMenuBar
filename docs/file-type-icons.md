@@ -6,7 +6,7 @@
 SVG path data** for common GitMenuBar file types, rendered natively through
 AppKit/SwiftUI with adaptive light/dark tint colors.
 
-**Reference package:** [`@pierre/trees@1.0.0-beta.4`](https://www.npmjs.com/package/@pierre/trees/v/1.0.0-beta.4)
+**Reference package:** [`@pierre/trees@1.0.0-beta.6`](https://www.npmjs.com/package/@pierre/trees/v/1.0.0-beta.6)
 
 | Attribute | Value |
 |-----------|-------|
