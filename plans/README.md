@@ -899,7 +899,7 @@ debounce, renderer rewrite, or new dependency in this batch.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |---|---|---:|---:|---|---|
-| [061](061-make-window-open-and-monitor-seed-nonblocking.md) | Make window opening and monitor seeding non-blocking | P0 | L | 057; 050–053 DONE | TODO |
+| [061](061-make-window-open-and-monitor-seed-nonblocking.md) | Make window opening and monitor seeding non-blocking | P0 | L | 057; 050–053 DONE | DONE (d545eb9; review fix 2c2c0f1) |
 | [062](062-progressive-project-switch-loading.md) | Show selected-project content progressively with skeleton states | P0 | L | 061; 057; 050–052 DONE | TODO |
 | [063](063-use-compact-sidebar-monitor-reads.md) | Keep sidebar monitor reads compact | P1 | M | 061; 057; 053 DONE | TODO |
 
@@ -913,6 +913,10 @@ debounce, renderer rewrite, or new dependency in this batch.
 - Plans 062 and 063 can be implemented in parallel after 061 in isolated
   worktrees, but integration should be serial because both change user-visible
   performance behavior and share final validation.
+- Plan 061 is shipped. Its review found and fixed concurrent monitor refresh
+  admission and a time-dependent quota test; the native window-open timing
+  trace remains an operator handoff because this session has no controlled
+  native UI measurement channel.
 
 ### Confirmed product constraints
 
@@ -953,3 +957,8 @@ debounce, renderer rewrite, or new dependency in this batch.
   expanded under Bash `set -u`; UI plans should use their explicit candidate
   file command when that baseline applies. Repairing the script is deferred
   from this performance scope.
+- Plan 061 evidence: implementer and remediation passed `make agent-check`,
+  `make lint && make test`, `make guidance-check`, and
+  `git diff --check`. The integrated full-suite rerun had one unrelated
+  flaky `GitManagerCommitMessageRewriteTests` failure; its focused retry
+  passed. `make check-preview` retained the known empty-array baseline.
