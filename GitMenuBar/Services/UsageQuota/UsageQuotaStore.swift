@@ -54,6 +54,9 @@ final class UsageQuotaStore: ObservableObject {
     private let providers: [any UsageQuotaProviding]
     private var refreshTimer: Timer?
     private var refreshTask: Task<Void, Never>?
+    private var refreshGeneration = 0
+    private var isRefreshInFlight = false
+    private var lastPresentationRefreshAt: Date?
 
     init(
         defaults: UserDefaults = .standard,
@@ -79,10 +82,21 @@ final class UsageQuotaStore: ObservableObject {
 
     func refresh(reason: RefreshReason = .manual) {
         guard showAIUsageQuotas else { return }
+        if reason == .windowPresented {
+            guard !isRefreshInFlight else { return }
+            if let lastPresentationRefreshAt,
+               Date().timeIntervalSince(lastPresentationRefreshAt) < Constants.refreshInterval
+            {
+                return
+            }
+        }
 
         refreshTask?.cancel()
+        refreshGeneration += 1
+        let generation = refreshGeneration
+        isRefreshInFlight = true
         refreshTask = Task { [weak self] in
-            await self?.performRefresh(reason: reason)
+            await self?.performRefresh(reason: reason, generation: generation)
         }
     }
 
@@ -138,12 +152,16 @@ final class UsageQuotaStore: ObservableObject {
         }
     }
 
-    private func performRefresh(reason: RefreshReason) async {
-        guard showAIUsageQuotas else { return }
+    private func performRefresh(reason: RefreshReason, generation: Int) async {
+        guard showAIUsageQuotas else {
+            finishRefresh(reason: reason, generation: generation)
+            return
+        }
 
         let activeProviders = enabledProviders()
         guard !activeProviders.isEmpty else {
             snapshots = []
+            finishRefresh(reason: reason, generation: generation)
             return
         }
 
@@ -162,8 +180,18 @@ final class UsageQuotaStore: ObservableObject {
         }
 
         merged.sort { $0.providerID.rawValue < $1.providerID.rawValue }
+        guard generation == refreshGeneration else { return }
         snapshots = merged
-        _ = reason
+        finishRefresh(reason: reason, generation: generation)
+    }
+
+    private func finishRefresh(reason: RefreshReason, generation: Int) {
+        guard generation == refreshGeneration else { return }
+        isRefreshInFlight = false
+        refreshTask = nil
+        if reason == .windowPresented {
+            lastPresentationRefreshAt = Date()
+        }
     }
 
     private func mergeSnapshot(_ fetched: UsageQuotaSnapshot) -> UsageQuotaSnapshot {

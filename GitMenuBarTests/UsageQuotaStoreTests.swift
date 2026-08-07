@@ -163,6 +163,21 @@ final class UsageQuotaStoreTests: XCTestCase {
         XCTAssertTrue(store.snapshots.isEmpty)
     }
 
+    func testWindowPresentedRefreshUsesFreshSuccessfulResult() async {
+        let provider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
+        let store = makeStore(provider: provider)
+        store.showAIUsageQuotas = true
+        await waitUntil { provider.fetchCount > 0 && !store.snapshots.isEmpty }
+
+        store.refresh(reason: .windowPresented)
+        await waitUntil { provider.fetchCount > 1 }
+        let countAfterFirstPresentation = provider.fetchCount
+        store.refresh(reason: .windowPresented)
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertEqual(provider.fetchCount, countAfterFirstPresentation)
+    }
+
     func testProviderTimeoutYieldsUnavailableWithoutHanging() async {
         let provider = HangingUsageQuotaProvider()
         let store = UsageQuotaStore(

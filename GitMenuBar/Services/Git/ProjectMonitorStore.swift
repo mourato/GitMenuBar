@@ -3,12 +3,18 @@ import Foundation
 
 @MainActor
 final class ProjectMonitorStore: ObservableObject {
+    private struct SeedResult: @unchecked Sendable {
+        let candidates: [ProjectReference]
+        let snapshots: [String: ProjectStatusSnapshot]
+    }
+
     @Published private(set) var snapshots: [String: ProjectStatusSnapshot] = [:]
 
     private let projectStore: MonitoredProjectsStore
     private let runner: GitCommandRunner
     private nonisolated(unsafe) var refreshTimer: Timer?
     private var isRefreshing = false
+    private var refreshGeneration = 0
 
     init(projectStore: MonitoredProjectsStore = MonitoredProjectsStore(), runner: GitCommandRunner = GitCommandRunner()) {
         self.projectStore = projectStore
@@ -28,27 +34,45 @@ final class ProjectMonitorStore: ObservableObject {
         snapshots.values.filter { [.needsAttention, .unavailable].contains($0.classification) }.count
     }
 
-    func seed(currentPath: String, recentProjects: [ProjectReference]) {
-        let reader = ProjectStatusReader(runner: runner)
-        var seededSnapshots: [String: ProjectStatusSnapshot] = [:]
-        func read(_ project: ProjectReference) -> ProjectStatusSnapshot {
-            if let snapshot = seededSnapshots[project.path] {
-                return snapshot
+    func seed(currentPath: String, recentProjects: [ProjectReference]) async {
+        refreshGeneration += 1
+        let generation = refreshGeneration
+        isRefreshing = true
+        let currentProject = currentPath.isEmpty ? nil : ProjectReference(path: currentPath)
+        var candidates = currentPath.isEmpty ? [] : [ProjectReference(path: currentPath)]
+        candidates.append(contentsOf: recentProjects)
+        var seen = Set<String>()
+        candidates = candidates.filter { seen.insert($0.path).inserted }
+        let runner = runner
+        let seedInput = SeedResult(candidates: candidates, snapshots: [:])
+
+        let result = await withCheckedContinuation { (continuation: CheckedContinuation<SeedResult, Never>) in
+            DispatchQueue.global(qos: .utility).async {
+                let reader = ProjectStatusReader(runner: runner)
+                var readSnapshots: [String: ProjectStatusSnapshot] = [:]
+                for project in seedInput.candidates {
+                    readSnapshots[project.path] = reader.read(project: project)
+                }
+
+                continuation.resume(returning: SeedResult(candidates: seedInput.candidates, snapshots: readSnapshots))
             }
-            let snapshot = reader.read(project: project)
-            seededSnapshots[project.path] = snapshot
-            return snapshot
         }
-        let current = currentPath.isEmpty ? nil : ProjectReference(path: currentPath)
-        let validCurrentPath = current.flatMap { read($0).lastErrorDescription == nil ? $0.path : nil } ?? ""
-        let validRecentProjects = recentProjects.filter { read($0).lastErrorDescription == nil }
+        guard generation == refreshGeneration else { return }
+        let validProjects = result.candidates.filter {
+            result.snapshots[$0.path]?.lastErrorDescription == nil
+        }
+        let validCurrentPath = currentProject.flatMap { current in
+            validProjects.contains(where: { $0.path == current.path }) ? current.path : nil
+        } ?? ""
+        let validRecentProjects = validProjects.filter { $0.path != validCurrentPath }
         _ = projectStore.seedIfNeeded(
             currentPath: validCurrentPath,
             recentProjects: validRecentProjects
         )
-        for snapshot in seededSnapshots.values where snapshot.lastErrorDescription == nil {
+        for snapshot in result.snapshots.values where snapshot.lastErrorDescription == nil {
             snapshots[snapshot.project.path] = snapshot
         }
+        isRefreshing = false
         if projectStore.monitoredProjects().contains(where: { snapshots[$0.path] == nil }) {
             refreshAll()
         }
@@ -110,7 +134,9 @@ final class ProjectMonitorStore: ObservableObject {
     }
 
     private func refresh(projects: [ProjectReference]) {
-        guard !isRefreshing, !projects.isEmpty else { return }
+        guard !projects.isEmpty else { return }
+        refreshGeneration += 1
+        let generation = refreshGeneration
         isRefreshing = true
         let runner = runner
         DispatchQueue.global(qos: .utility).async { [weak self] in
@@ -127,6 +153,7 @@ final class ProjectMonitorStore: ObservableObject {
             queue.waitUntilAllOperationsAreFinished()
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                guard generation == refreshGeneration else { return }
                 for snapshot in results {
                     snapshots[snapshot.project.path] = snapshot
                 }

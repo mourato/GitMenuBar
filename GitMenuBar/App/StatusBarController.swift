@@ -136,10 +136,12 @@ final class StatusBarController: ObservableObject {
         setupAuthenticationObservation()
         setupAppCommandObservation()
 
-        projectMonitor.seed(
-            currentPath: UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? "",
-            recentProjects: RecentProjectsStore().recentProjects()
-        )
+        Task { @MainActor [weak self] in
+            await self?.projectMonitor.seed(
+                currentPath: UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? "",
+                recentProjects: RecentProjectsStore().recentProjects()
+            )
+        }
         refreshAppCommands()
     }
 
@@ -597,11 +599,11 @@ final class StatusBarController: ObservableObject {
             }
         }
 
-        mainWindow.alphaValue = 0
+        mainWindow.alphaValue = 1
         NSApp.activate(ignoringOtherApps: true)
         mainWindow.makeKeyAndOrderFront(nil)
-        mainWindowPresentationState = .presenting
-        animateMainWindowAlpha(to: 1, trace: trace)
+        mainWindowPresentationState = .visible
+        logWindowOpen(trace, message: "window visible")
         refreshUsageQuotaOnWindowPresented()
     }
 
@@ -610,11 +612,13 @@ final class StatusBarController: ObservableObject {
     }
 
     private func activateAndShowMainWindow(_ window: NSWindow, trace: WindowOpenTrace) {
-        let transitionID = beginMainWindowTransition()
+        beginMainWindowTransition()
         mainWindowPresentationState = .presenting
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
-        animateMainWindowAlpha(to: 1, trace: trace, transitionID: transitionID)
+        window.alphaValue = 1
+        mainWindowPresentationState = .visible
+        logWindowOpen(trace, message: "window visible")
     }
 
     private func animateMainWindowAlpha(
