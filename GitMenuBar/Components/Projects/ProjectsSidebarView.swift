@@ -18,6 +18,9 @@ struct ProjectsSidebarView: View {
     let onRemove: (String) -> Void
     let onRename: (String, String) -> Void
     let onProjectCleanup: () -> Void
+    let onAddProject: () -> Void
+    let onRefreshAll: () -> Void
+    let onFetchAll: () -> Void
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -78,16 +81,34 @@ struct ProjectsSidebarView: View {
     @ViewBuilder
     private var sidebarControls: some View {
         if !isCollapsed {
-            HStack {
+            HStack(spacing: WorkbenchMetrics.microSpacing) {
                 Text("Projects")
                     .font(.headline)
-                Spacer()
-                Button(action: onProjectCleanup) {
-                    Image(systemName: "wand.and.stars")
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Project Cleanup")
-                .accessibilityHint("Review safe branch and worktree cleanup across monitored projects.")
+                Spacer(minLength: 0)
+                MainMenuHeaderIconButton(
+                    systemImage: "wand.and.stars",
+                    accessibilityLabel: "Project Cleanup",
+                    accessibilityHint: "Review safe branch and worktree cleanup across monitored projects.",
+                    action: onProjectCleanup
+                )
+                MainMenuHeaderIconButton(
+                    systemImage: "plus",
+                    accessibilityLabel: "Add Project",
+                    accessibilityHint: "Choose a local Git repository to monitor.",
+                    action: onAddProject
+                )
+                MainMenuHeaderIconButton(
+                    systemImage: "arrow.clockwise",
+                    accessibilityLabel: "Refresh All Projects",
+                    accessibilityHint: "Refreshes the Git status for every monitored project.",
+                    action: onRefreshAll
+                )
+                MainMenuHeaderIconButton(
+                    systemImage: "arrow.down.circle",
+                    accessibilityLabel: "Fetch All Projects",
+                    accessibilityHint: "Fetches remotes for every monitored project.",
+                    action: onFetchAll
+                )
             }
             .padding(.horizontal, 10)
         }
@@ -348,7 +369,10 @@ enum ProjectsSidebarMetrics {
         onStopMonitoring: { _ in },
         onRemove: { _ in },
         onRename: { _, _ in },
-        onProjectCleanup: {}
+        onProjectCleanup: {},
+        onAddProject: {},
+        onRefreshAll: {},
+        onFetchAll: {}
     )
     .environmentObject(ProjectMonitorStore())
     .environmentObject(UsageQuotaStore())

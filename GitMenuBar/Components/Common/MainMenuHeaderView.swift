@@ -27,24 +27,6 @@ extension MainMenuView {
                 accessibilityHint: "Shows or hides the Projects sidebar.",
                 action: toggleProjectsSidebar
             )
-            MainMenuHeaderIconButton(
-                systemImage: "plus",
-                accessibilityLabel: "Add Project",
-                accessibilityHint: "Choose a local Git repository to monitor.",
-                action: selectDirectory
-            )
-            MainMenuHeaderIconButton(
-                systemImage: "arrow.clockwise",
-                accessibilityLabel: "Refresh All Projects",
-                accessibilityHint: "Refreshes the Git status for every monitored project.",
-                action: projectMonitor.refreshAll
-            )
-            MainMenuHeaderIconButton(
-                systemImage: "arrow.down.circle",
-                accessibilityLabel: "Fetch All Projects",
-                accessibilityHint: "Fetches remotes for every monitored project.",
-                action: projectMonitor.fetchAll
-            )
         }
         .padding(.leading, ProjectsSidebarMetrics.sidebarToggleLeadingPadding)
     }

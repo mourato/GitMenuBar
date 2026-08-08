@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Compact header icon control shared by repository options and app Settings.
+/// Compact icon control shared by main-window chrome.
 struct MainMenuHeaderIconButton: View {
     let systemImage: String
     let accessibilityLabel: String

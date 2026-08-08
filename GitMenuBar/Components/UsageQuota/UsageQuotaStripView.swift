@@ -39,7 +39,7 @@ struct UsageQuotaStripView: View {
                         .transition(.opacity)
                 }
             }
-            .padding(.vertical, WorkbenchMetrics.compactSpacing)
+            .padding(.vertical, WorkbenchMetrics.microSpacing)
             .animation(
                 WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
                 value: isCollapsed

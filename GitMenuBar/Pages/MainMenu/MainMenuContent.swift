@@ -210,7 +210,10 @@ extension MainMenuView {
                         onStopMonitoring: { projectMonitor.remove(path: $0) },
                         onRemove: removeProject,
                         onRename: renameProject,
-                        onProjectCleanup: presentationModel.showProjectCleanup
+                        onProjectCleanup: presentationModel.showProjectCleanup,
+                        onAddProject: selectDirectory,
+                        onRefreshAll: projectMonitor.refreshAll,
+                        onFetchAll: projectMonitor.fetchAll
                     )
 
                     VStack(spacing: 0) {
