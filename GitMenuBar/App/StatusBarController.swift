@@ -981,10 +981,17 @@ final class StatusBarController: ObservableObject {
         openMainWindow()
         guard wasVisible else { return }
 
-        presentationModel.startRefresh()
-        gitManager.refreshSelectedRepository(path: path, includeReflogHistory: false) {
-            self.presentationModel.finishRefresh()
-        }
+        let refreshGeneration = presentationModel.startRefresh()
+        gitManager.refreshSelectedRepository(
+            path: path,
+            includeReflogHistory: false,
+            fastCompletion: { [weak self] in
+                self?.presentationModel.markFastPhaseReady(generation: refreshGeneration)
+            },
+            completion: { [weak self] in
+                self?.presentationModel.finishRefresh(generation: refreshGeneration)
+            }
+        )
     }
 
     private func revealCurrentRepositoryInFinder() {
@@ -1051,16 +1058,21 @@ final class StatusBarController: ObservableObject {
     }
 
     private func refreshMainWindowData(trace: WindowOpenTrace) {
-        presentationModel.startRefresh()
+        let refreshGeneration = presentationModel.startRefresh()
         logWindowOpen(trace, message: "refresh started")
 
-        gitManager.refreshSelectedRepository { [weak self] in
-            guard let self else { return }
+        gitManager.refreshSelectedRepository(
+            fastCompletion: { [weak self] in
+                self?.presentationModel.markFastPhaseReady(generation: refreshGeneration)
+            },
+            completion: { [weak self] in
+                guard let self else { return }
 
-            presentationModel.finishRefresh()
-            flushPendingShortcutActionsIfReady()
-            logWindowOpen(trace, message: "refresh completed")
-        }
+                presentationModel.finishRefresh(generation: refreshGeneration)
+                flushPendingShortcutActionsIfReady()
+                logWindowOpen(trace, message: "refresh completed")
+            }
+        )
     }
 
     private func validateRemoteIfNeeded(path: String?, isGitRepo: Bool, trace: WindowOpenTrace) {

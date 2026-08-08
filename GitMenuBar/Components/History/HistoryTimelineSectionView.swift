@@ -28,18 +28,34 @@ struct HistoryTimelineSectionView: View {
         }
     }
 
+    @ViewBuilder
     private var placeholderView: some View {
-        HStack(spacing: 8) {
-            if isLoading {
-                ProgressView()
-                    .controlSize(.small)
+        if isLoading {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(0 ..< 3, id: \.self) { _ in
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(Color.secondary.opacity(0.16))
+                            .frame(width: HistoryTimelineMetrics.circleSize, height: HistoryTimelineMetrics.circleSize)
+                            .accessibilityHidden(true)
+                        RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius)
+                            .fill(Color.secondary.opacity(0.14))
+                            .frame(height: 16)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, HistoryTimelineMetrics.rowContentVerticalPadding)
+                    .redacted(reason: .placeholder)
+                }
             }
-
-            Text(isLoading ? "Loading history" : "No commits yet")
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Loading history")
+            .accessibilityAddTraits(.updatesFrequently)
+        } else {
+            Text("No commits yet")
                 .font(WorkbenchTypography.caption)
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 4)
     }
 
     private var timelineList: some View {

@@ -199,13 +199,20 @@ extension MainMenuView {
 
         showProjectSelector = false
         dismissTransientPresentations()
-        presentationModel.startRefresh()
+        let refreshGeneration = presentationModel.startRefresh()
         gitManager.resetSelectedRepositoryState()
         setCurrentRepositoryPath(path)
         addToRecents(path)
-        gitManager.refreshSelectedRepository(path: path, includeReflogHistory: false) {
-            presentationModel.finishRefresh()
-        }
+        gitManager.refreshSelectedRepository(
+            path: path,
+            includeReflogHistory: false,
+            fastCompletion: {
+                self.presentationModel.markFastPhaseReady(generation: refreshGeneration)
+            },
+            completion: {
+                self.presentationModel.finishRefresh(generation: refreshGeneration)
+            }
+        )
     }
 
     func resetToLastCommit() {

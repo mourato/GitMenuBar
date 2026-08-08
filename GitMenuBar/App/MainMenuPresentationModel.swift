@@ -32,6 +32,8 @@ enum RemoteExistenceState: Equatable {
 final class MainMenuPresentationModel: ObservableObject {
     @Published private(set) var route: MainMenuRoute = .main
     @Published private(set) var refreshState: RefreshState = .idle
+    @Published private(set) var isFastLoading = false
+    @Published private(set) var isDetailLoading = false
     @Published private(set) var focusCommitFieldToken = 0
     @Published private(set) var showCommandPaletteToken = 0
     @Published private(set) var showRepositoryOptionsToken = 0
@@ -71,15 +73,30 @@ final class MainMenuPresentationModel: ObservableObject {
         route = .projectCleanup
     }
 
-    func startRefresh() {
+    @discardableResult
+    func startRefresh() -> Int {
+        refreshGeneration += 1
+        isFastLoading = true
+        isDetailLoading = true
         refreshState = .refreshing
+        return refreshGeneration
     }
 
-    func finishRefresh() {
+    func markFastPhaseReady(generation: Int? = nil) {
+        guard generation.map({ $0 == refreshGeneration }) ?? true else { return }
+        isFastLoading = false
+    }
+
+    func finishRefresh(generation: Int? = nil) {
+        guard generation.map({ $0 == refreshGeneration }) ?? true else { return }
+        isFastLoading = false
+        isDetailLoading = false
         refreshState = .idle
     }
 
     func failRefresh(message: String) {
+        isFastLoading = false
+        isDetailLoading = false
         refreshState = .failed(message: message)
     }
 
@@ -88,6 +105,8 @@ final class MainMenuPresentationModel: ObservableObject {
             refreshState = .idle
         }
     }
+
+    private var refreshGeneration = 0
 
     func suggestCreateRepo(path: String) {
         createRepoSuggestionPath = path

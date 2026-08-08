@@ -39,7 +39,7 @@ extension MainMenuView {
                 createRepoSuggestionBanner(path: suggestionPath)
             }
 
-            if presentationModel.refreshState.isRefreshing, !hasWorkingTreeChanges {
+            if presentationModel.isFastLoading, !hasWorkingTreeChanges {
                 loadingStateView
             }
 
@@ -158,7 +158,11 @@ extension MainMenuView {
                 await gitManager.refreshAsync(includeReflogHistory: false)
             }
 
-            footerSection
+            if presentationModel.isFastLoading {
+                branchLoadingStateView
+            } else {
+                footerSection
+            }
         }
     }
 
@@ -272,7 +276,7 @@ extension MainMenuView {
         HistorySectionView(
             sections: historyTimelineSections,
             selectedItemID: selectedMainItemID,
-            isLoading: presentationModel.refreshState.isRefreshing,
+            isLoading: presentationModel.isDetailLoading,
             canLoadMore: gitManager.canLoadMoreCommitHistory,
             animationNamespace: animationNamespace,
             onSelectRow: { row in

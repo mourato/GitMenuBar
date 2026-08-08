@@ -44,4 +44,35 @@ final class GitManagerRefreshTests: XCTestCase {
         XCTAssertEqual(manager.remoteUrl, "B")
         XCTAssertEqual(completions, 1)
     }
+
+    func testFastCompletionPrecedesFinalCompletionAndKeepsDetailState() async {
+        let manager = GitManager(repositoryPathOverride: "")
+        let finished = XCTestExpectation(description: "refresh finishes")
+        var events: [String] = []
+
+        manager.selectedRefreshOperation = { [weak manager] session in
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
+                manager?.changedFiles = [WorkingTreeFile(path: "README.md", lineDiff: .zero, status: .modified)]
+                manager?.currentBranch = "feature/progressive"
+                events.append("fast-state")
+            }
+            session.fastCompletion()
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
+                manager?.remoteUrl = "https://github.com/example/project"
+                events.append("detail-state")
+            }
+        }
+
+        await manager.refreshSelectedRepository(
+            fastCompletion: { events.append("fast") },
+            completion: {
+                events.append("final")
+                finished.fulfill()
+            }
+        )
+        await fulfillment(of: [finished])
+
+        XCTAssertEqual(events, ["fast-state", "fast", "detail-state", "final"])
+        XCTAssertEqual(manager.remoteUrl, "https://github.com/example/project")
+    }
 }
