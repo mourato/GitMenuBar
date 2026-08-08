@@ -6,7 +6,7 @@
 > not a new rendering architecture. Update the ledger only after
 > implementation and review pass.
 >
-> **Drift check (run first):** `git diff --stat f2c84e5..HEAD -- GitMenuBar/Services/Git/GitManager.swift GitMenuBar/App/StatusBarController.swift GitMenuBar/App/MainMenuPresentationModel.swift GitMenuBar/Pages/MainMenu/MainMenuContent.swift GitMenuBar/Pages/MainMenu/MainMenuSupportViews.swift GitMenuBar/Components/History/HistoryTimelineSectionView.swift GitMenuBarTests/GitManagerRefreshTests.swift GitMenuBarTests/MainMenuPresentationModelTests.swift GitMenuBarTests`
+> **Drift check (run first):** `git diff --stat f2c84e5..HEAD -- GitMenuBar/Services/Git/GitManager.swift GitMenuBar/Services/Git/GitRepositoryContext.swift GitMenuBar/App/StatusBarController.swift GitMenuBar/App/MainMenuPresentationModel.swift GitMenuBar/Pages/MainMenu/MainMenuContent.swift GitMenuBar/Pages/MainMenu/MainMenuSupportViews.swift GitMenuBar/Components/History/HistoryTimelineSectionView.swift GitMenuBarTests/GitManagerRefreshTests.swift GitMenuBarTests/MainMenuPresentationModelTests.swift GitMenuBarTests`
 > Plan 061 must be complete first because this plan shares the window
 > presentation controller and refresh scheduling path.
 
@@ -60,6 +60,8 @@ pretending history is ready or allowing stale project data across a switch.
   refresh.
 - `GitMenuBar/App/StatusBarController.swift:1049-1060` starts the
   presentation-model refresh and finishes it only from final completion.
+- `GitMenuBar/Pages/MainMenu/MainMenuActions.swift:194-209` is the sidebar
+  project-switch caller and likewise finishes only from final completion.
 - `GitMenuBar/Pages/MainMenu/MainMenuContent.swift:42-44` shows
   `loadingStateView` while refreshing and there are no working-tree changes.
 - `MainMenuContent.swift:271-303` passes the same refresh flag to history;
@@ -90,11 +92,13 @@ pretending history is ready or allowing stale project data across a switch.
 **In scope (the only implementation files for this plan):**
 
 - `GitMenuBar/Services/Git/GitManager.swift`
+- `GitMenuBar/Services/Git/GitRepositoryContext.swift`
 - `GitMenuBar/App/StatusBarController.swift`
 - `GitMenuBar/App/MainMenuPresentationModel.swift`
 - `GitMenuBar/Pages/MainMenu/MainMenuContent.swift`
 - `GitMenuBar/Pages/MainMenu/MainMenuSupportViews.swift`
 - `GitMenuBar/Components/History/HistoryTimelineSectionView.swift`
+- `GitMenuBar/Pages/MainMenu/MainMenuActions.swift`
 - `GitMenuBarTests/GitManagerRefreshTests.swift`
 - `GitMenuBarTests/MainMenuPresentationModelTests.swift`
 - `plans/062-progressive-project-switch-loading.md`

@@ -37,4 +37,5 @@ struct GitRefreshSession {
     let repositoryPath: String
     let generation: Int
     let isCurrent: @MainActor () -> Bool
+    let fastCompletion: @MainActor @Sendable () -> Void
 }

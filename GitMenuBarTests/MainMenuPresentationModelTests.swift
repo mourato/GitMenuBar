@@ -70,13 +70,39 @@ final class MainMenuPresentationModelTests: XCTestCase {
     func testRefreshStateTransitions() {
         let model = MainMenuPresentationModel()
 
-        model.startRefresh()
+        let generation = model.startRefresh()
         XCTAssertEqual(model.refreshState, .refreshing)
+        XCTAssertTrue(model.isFastLoading)
+        XCTAssertTrue(model.isDetailLoading)
+
+        model.markFastPhaseReady(generation: generation)
+        XCTAssertFalse(model.isFastLoading)
+        XCTAssertTrue(model.isDetailLoading)
+
+        model.finishRefresh(generation: generation)
+        XCTAssertFalse(model.isDetailLoading)
+        XCTAssertEqual(model.refreshState, .idle)
 
         model.failRefresh(message: "failed")
         XCTAssertEqual(model.refreshState, .failed(message: "failed"))
 
         model.clearRefreshError()
+        XCTAssertEqual(model.refreshState, .idle)
+    }
+
+    func testStaleRefreshCannotFinishNewerRefresh() {
+        let model = MainMenuPresentationModel()
+
+        let firstGeneration = model.startRefresh()
+        let secondGeneration = model.startRefresh()
+        model.finishRefresh(generation: firstGeneration)
+
+        XCTAssertEqual(model.refreshState, .refreshing)
+        XCTAssertTrue(model.isFastLoading)
+        XCTAssertTrue(model.isDetailLoading)
+
+        model.markFastPhaseReady(generation: secondGeneration)
+        model.finishRefresh(generation: secondGeneration)
         XCTAssertEqual(model.refreshState, .idle)
     }
 

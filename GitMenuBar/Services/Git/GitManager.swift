@@ -168,6 +168,9 @@ class GitManager: ObservableObject {
         let commitCount = await updateBranchInfoAsync(session: session)
         await GitExecution.publishOnMainActor(ifCurrent: session) {
             self.commitCount = commitCount
+            if let session {
+                session.fastCompletion()
+            }
         }
         guard !Task.isCancelled else { return }
         await updateRemoteUrlAsync(session: session)
@@ -195,6 +198,35 @@ class GitManager: ObservableObject {
         includeReflogHistory: Bool? = nil,
         completion: (() -> Void)? = nil
     ) {
+        startSelectedRefresh(
+            path: path,
+            includeReflogHistory: includeReflogHistory,
+            fastCompletion: nil,
+            completion: completion
+        )
+    }
+
+    @MainActor
+    func refreshSelectedRepository(
+        path: String? = nil,
+        includeReflogHistory: Bool? = nil,
+        fastCompletion: @escaping @MainActor @Sendable () -> Void,
+        completion: (() -> Void)? = nil
+    ) {
+        startSelectedRefresh(
+            path: path,
+            includeReflogHistory: includeReflogHistory,
+            fastCompletion: fastCompletion,
+            completion: completion
+        )
+    }
+
+    private func startSelectedRefresh(
+        path: String?,
+        includeReflogHistory: Bool?,
+        fastCompletion: (@MainActor @Sendable () -> Void)?,
+        completion: (() -> Void)?
+    ) {
         if let path {
             storedRepoPath = path
         }
@@ -203,7 +235,11 @@ class GitManager: ObservableObject {
         selectedRefreshPath = GitRepositoryContext.normalizedPath(storedRepoPath)
         let generation = selectedRefreshGeneration
         let sessionPath = selectedRefreshPath
-        let session = makeSelectedRefreshSession(path: sessionPath, generation: generation)
+        let session = makeSelectedRefreshSession(
+            path: sessionPath,
+            generation: generation,
+            fastCompletion: fastCompletion ?? {}
+        )
         let operation = selectedRefreshOperation
         selectedRefreshTask = Task { [weak self] in
             guard let self else { return }
@@ -243,13 +279,28 @@ class GitManager: ObservableObject {
     }
 
     @MainActor
-    private func makeSelectedRefreshSession(path: String, generation: Int) -> GitRefreshSession {
-        GitRefreshSession(repositoryPath: path, generation: generation) { [weak self] in
-            guard let self else { return false }
-            return selectedRefreshGeneration == generation
-                && selectedRefreshPath == path
-                && GitRepositoryContext.normalizedPath(storedRepoPath) == path
-        }
+    private func makeSelectedRefreshSession(
+        path: String,
+        generation: Int,
+        fastCompletion: @escaping @MainActor @Sendable () -> Void = {}
+    ) -> GitRefreshSession {
+        GitRefreshSession(
+            repositoryPath: path,
+            generation: generation,
+            isCurrent: { [weak self] in
+                guard let self else { return false }
+                return selectedRefreshGeneration == generation
+                    && selectedRefreshPath == path
+                    && GitRepositoryContext.normalizedPath(storedRepoPath) == path
+            },
+            fastCompletion: { [weak self] in
+                guard let self, selectedRefreshGeneration == generation,
+                      selectedRefreshPath == path,
+                      GitRepositoryContext.normalizedPath(storedRepoPath) == path
+                else { return }
+                fastCompletion()
+            }
+        )
     }
 
     func commitLocallyAsync(
