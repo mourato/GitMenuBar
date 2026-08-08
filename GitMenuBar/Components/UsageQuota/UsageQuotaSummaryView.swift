@@ -44,7 +44,7 @@ private struct UsageQuotaSummaryItem: View {
     }
 }
 
-private struct ProviderIconView: View {
+struct ProviderIconView: View {
     let providerID: UsageProviderID
 
     var body: some View {
@@ -53,11 +53,13 @@ private struct ProviderIconView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 18, height: 18)
+                .accessibilityHidden(true)
         } else {
             Image(systemName: "sparkles")
                 .font(WorkbenchTypography.captionStrong)
                 .foregroundStyle(.secondary)
                 .frame(width: 18, height: 18)
+                .accessibilityHidden(true)
         }
     }
 }

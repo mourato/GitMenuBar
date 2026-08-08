@@ -149,7 +149,7 @@ struct AISettingsPaneView: View {
                 UsageQuotaSettingsSection()
             } header: {
                 SettingsFormSectionHeader(
-                    title: "Usage Quotas",
+                    title: "Quotas",
                     icon: "gauge.with.dots.needle.33percent"
                 )
             }

@@ -22,11 +22,12 @@ struct UsageQuotaStripView: View {
         if usageQuotaStore.showAIUsageQuotas, !eligibleSnapshots(snapshots).isEmpty {
             VStack(alignment: .leading, spacing: 0) {
                 WorkbenchSectionHeaderChrome(
-                    title: "AI Usage Quotas",
+                    title: "Quotas",
                     isCollapsed: $isCollapsed,
-                    accessibilityLabel: "AI Usage Quotas section",
-                    accessibilityHintExpanded: "Expands AI usage quota details.",
-                    accessibilityHintCollapsed: "Collapses AI usage quota details."
+                    accessibilityLabel: "Quotas section",
+                    accessibilityHintExpanded: "Expands quota details.",
+                    accessibilityHintCollapsed: "Collapses quota details.",
+                    includesTrailingInToggle: true
                 ) { _ in
                     if isCollapsed {
                         UsageQuotaSummaryView(snapshots: eligibleSnapshots(snapshots))
@@ -115,6 +116,8 @@ private struct UsageQuotaProviderCard: View {
 
     private var headerRow: some View {
         HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.compactSpacing) {
+            ProviderIconView(providerID: snapshot.providerID)
+
             Text(snapshot.displayName)
                 .font(WorkbenchTypography.captionStrong)
                 .foregroundStyle(snapshot.isStale ? .secondary : .primary)

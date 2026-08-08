@@ -7,15 +7,15 @@ struct UsageQuotaSettingsSection: View {
         Toggle("Show AI usage in menu", isOn: $usageQuotaStore.showAIUsageQuotas)
             .toggleStyle(.switch)
 
-        Toggle("Codex", isOn: $usageQuotaStore.showCodexUsageQuota)
+        providerToggle("Codex", providerID: .codex, isOn: $usageQuotaStore.showCodexUsageQuota)
             .toggleStyle(.switch)
             .disabled(!usageQuotaStore.showAIUsageQuotas)
 
-        Toggle("Cursor", isOn: $usageQuotaStore.showCursorUsageQuota)
+        providerToggle("Cursor", providerID: .cursor, isOn: $usageQuotaStore.showCursorUsageQuota)
             .toggleStyle(.switch)
             .disabled(!usageQuotaStore.showAIUsageQuotas)
 
-        Toggle("OpenRouter", isOn: $usageQuotaStore.showOpenRouterUsageQuota)
+        providerToggle("OpenRouter", providerID: .openrouter, isOn: $usageQuotaStore.showOpenRouterUsageQuota)
             .toggleStyle(.switch)
             .disabled(!usageQuotaStore.showAIUsageQuotas)
 
@@ -35,6 +35,19 @@ struct UsageQuotaSettingsSection: View {
         .font(WorkbenchTypography.detail)
         .disabled(!usageQuotaStore.showAIUsageQuotas)
     }
+
+    private func providerToggle(
+        _ title: String,
+        providerID: UsageProviderID,
+        isOn: Binding<Bool>
+    ) -> some View {
+        Toggle(isOn: isOn) {
+            HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                ProviderIconView(providerID: providerID)
+                Text(title)
+            }
+        }
+    }
 }
 
 #Preview("Usage Quota Settings") {
@@ -50,7 +63,7 @@ struct UsageQuotaSettingsSection: View {
             UsageQuotaSettingsSection()
         } header: {
             SettingsFormSectionHeader(
-                title: "Usage Quotas",
+                title: "Quotas",
                 icon: "gauge.with.dots.needle.33percent"
             )
         }
