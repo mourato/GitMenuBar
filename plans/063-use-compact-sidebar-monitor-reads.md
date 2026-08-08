@@ -248,5 +248,9 @@ measured product need justifies a new plan.
   untracked file and confirms compact counts/branch/error behavior with zero
   line diff; full reader expectations remain explicit.
 - Local checks passed: `make agent-check`, `make test`, `make check-preview`,
-  `make guidance-check`, and `git diff --check`. Final lint/test gate remains
-  required before review handoff.
+  `make guidance-check`, `make lint && make test`, and `git diff --check`.
+- Review remediation changed sidebar rows to use adaptive minimum height,
+  readable changed-file counts, and honest unavailable/detached labels.
+- Merged and pushed as `ba10841`; a large-repository file-read/timing
+  comparison remains an operator handoff because this session has no
+  controlled native performance measurement channel.
