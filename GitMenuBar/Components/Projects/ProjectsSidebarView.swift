@@ -21,21 +21,23 @@ struct ProjectsSidebarView: View {
 
     var body: some View {
         ZStack(alignment: .trailing) {
-            VStack(alignment: .leading, spacing: 8) {
-                sidebarControls
+            if !isCollapsed {
+                VStack(alignment: .leading, spacing: 8) {
+                    sidebarControls
 
-                ScrollView(.vertical, showsIndicators: true) {
-                    projectGroups
+                    ScrollView(.vertical, showsIndicators: true) {
+                        projectGroups
+                    }
+                    .frame(maxHeight: .infinity, alignment: .topLeading)
+                    .layoutPriority(1)
+
+                    sidebarFooter
                 }
+                .padding(.top, ProjectsSidebarMetrics.headerHeight + WorkbenchMetrics.sectionSpacing)
+                .padding(.bottom, WorkbenchMetrics.windowPadding)
+                .frame(width: sidebarWidth, alignment: .topLeading)
                 .frame(maxHeight: .infinity, alignment: .topLeading)
-                .layoutPriority(1)
-
-                sidebarFooter
             }
-            .padding(.top, ProjectsSidebarMetrics.headerHeight + WorkbenchMetrics.sectionSpacing)
-            .padding(.bottom, WorkbenchMetrics.windowPadding)
-            .frame(width: sidebarWidth, alignment: .topLeading)
-            .frame(maxHeight: .infinity, alignment: .topLeading)
 
             if !isCollapsed {
                 resizeHandle
