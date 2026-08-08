@@ -210,7 +210,7 @@ struct ProjectsSidebarView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: ProjectsSidebarMetrics.rowHeight)
+            .frame(minHeight: ProjectsSidebarMetrics.rowHeight)
             .contentShape(Rectangle())
             .background(
                 snapshot.project.path == RecentProjectsStore.normalize(currentPath)
@@ -246,11 +246,23 @@ struct ProjectsSidebarView: View {
     }
 
     private func changeCountSummary(for snapshot: ProjectStatusSnapshot) -> String {
-        "S\(snapshot.stagedCount) U\(snapshot.unstagedCount) ?\(snapshot.untrackedCount)"
+        let count = snapshot.stagedCount + snapshot.unstagedCount + snapshot.untrackedCount
+        return count == 1 ? "1 changed" : "\(count) changed"
     }
 
     private func statusSummary(for snapshot: ProjectStatusSnapshot) -> String {
-        var parts = [snapshot.branchName.isEmpty ? "Detached" : snapshot.branchName]
+        if snapshot.lastErrorDescription != nil {
+            return "Unavailable"
+        }
+
+        let branch = if snapshot.isDetachedHead {
+            "Detached"
+        } else if snapshot.branchName.isEmpty {
+            "Unknown branch"
+        } else {
+            snapshot.branchName
+        }
+        var parts = [branch]
         if snapshot.hasUpstream {
             if snapshot.aheadCount > 0 {
                 parts.append("↑\(snapshot.aheadCount)")
@@ -318,7 +330,7 @@ enum ProjectsSidebarMetrics {
     static let defaultWidth: Double = 240
     static let minWidth: Double = 220
     static let maxWidth: Double = 360
-    static let rowHeight: CGFloat = 32
+    static let rowHeight: CGFloat = 44
     static let rowSpacing: CGFloat = 4
     static let keyboardResizeStep: Double = 16
     static let resizeHitWidth: CGFloat = 8
