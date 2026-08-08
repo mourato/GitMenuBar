@@ -6,39 +6,39 @@ struct WorkbenchSectionHeaderChrome<Trailing: View>: View {
     let accessibilityLabel: String
     let accessibilityHintExpanded: String
     let accessibilityHintCollapsed: String
+    let includesTrailingInToggle: Bool
     @ViewBuilder let trailing: (_ isHovered: Bool) -> Trailing
 
     @State private var isHovered = false
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    init(
+        title: String,
+        isCollapsed: Binding<Bool>,
+        accessibilityLabel: String,
+        accessibilityHintExpanded: String,
+        accessibilityHintCollapsed: String,
+        includesTrailingInToggle: Bool = false,
+        @ViewBuilder trailing: @escaping (_ isHovered: Bool) -> Trailing
+    ) {
+        self.title = title
+        _isCollapsed = isCollapsed
+        self.accessibilityLabel = accessibilityLabel
+        self.accessibilityHintExpanded = accessibilityHintExpanded
+        self.accessibilityHintCollapsed = accessibilityHintCollapsed
+        self.includesTrailingInToggle = includesTrailingInToggle
+        self.trailing = trailing
+    }
+
     var body: some View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
-            Button {
-                withAnimation(
-                    WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion)
-                ) {
-                    isCollapsed.toggle()
-                }
-            } label: {
-                HStack(spacing: WorkbenchMetrics.chipSpacing) {
-                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                        .font(WorkbenchTypography.captionStrong)
-                        .foregroundColor(.secondary)
-                        .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+            headerToggle
 
-                    Text(title)
-                        .font(WorkbenchTypography.body)
-                        .tracking(WorkbenchTypography.tracking(for: .subheadline))
-                }
+            if !includesTrailingInToggle {
+                Spacer(minLength: WorkbenchMetrics.compactSpacing)
+                trailing(isHovered)
             }
-            .buttonStyle(PressableButtonStyle())
-            .accessibilityLabel(accessibilityLabel)
-            .accessibilityHint(isCollapsed ? accessibilityHintExpanded : accessibilityHintCollapsed)
-
-            Spacer(minLength: WorkbenchMetrics.compactSpacing)
-
-            trailing(isHovered)
         }
         .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
         .padding(.horizontal, WorkbenchMetrics.microSpacing)
@@ -59,6 +59,53 @@ struct WorkbenchSectionHeaderChrome<Trailing: View>: View {
         )
         .onHover { inside in
             isHovered = inside
+        }
+    }
+
+    @ViewBuilder
+    private var headerToggle: some View {
+        if includesTrailingInToggle {
+            Button(action: toggleSection) {
+                HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                    sectionTitle
+                    Spacer(minLength: 0)
+                    trailing(isHovered)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, WorkbenchMetrics.compactSpacing)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableButtonStyle())
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityHint(isCollapsed ? accessibilityHintExpanded : accessibilityHintCollapsed)
+        } else {
+            Button(action: toggleSection) {
+                sectionTitle
+            }
+            .buttonStyle(PressableButtonStyle())
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityHint(isCollapsed ? accessibilityHintExpanded : accessibilityHintCollapsed)
+        }
+    }
+
+    private var sectionTitle: some View {
+        HStack(spacing: WorkbenchMetrics.chipSpacing) {
+            Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                .font(WorkbenchTypography.captionStrong)
+                .foregroundColor(.secondary)
+                .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+
+            Text(title)
+                .font(WorkbenchTypography.body)
+                .tracking(WorkbenchTypography.tracking(for: .subheadline))
+        }
+    }
+
+    private func toggleSection() {
+        withAnimation(
+            WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion)
+        ) {
+            isCollapsed.toggle()
         }
     }
 }
