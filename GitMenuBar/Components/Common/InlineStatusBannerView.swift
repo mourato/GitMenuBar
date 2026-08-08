@@ -56,6 +56,12 @@ struct InlineStatusBannerView: View {
             RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius)
                 .strokeBorder(borderColor, lineWidth: colorSchemeContrast == .increased ? 1.5 : 1)
         )
+        .task(id: banner) {
+            guard banner.style == .info else { return }
+            try? await Task.sleep(for: .seconds(4.5))
+            guard !Task.isCancelled else { return }
+            onDismiss()
+        }
     }
 
     private var infoBackground: AnyShapeStyle {
