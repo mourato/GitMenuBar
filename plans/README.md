@@ -900,7 +900,7 @@ debounce, renderer rewrite, or new dependency in this batch.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |---|---|---:|---:|---|---|
 | [061](061-make-window-open-and-monitor-seed-nonblocking.md) | Make window opening and monitor seeding non-blocking | P0 | L | 057; 050–053 DONE | DONE (d545eb9; review fix 2c2c0f1) |
-| [062](062-progressive-project-switch-loading.md) | Show selected-project content progressively with skeleton states | P0 | L | 061; 057; 050–052 DONE | TODO |
+| [062](062-progressive-project-switch-loading.md) | Show selected-project content progressively with skeleton states | P0 | L | 061; 057; 050–052 DONE | DONE (de28790) |
 | [063](063-use-compact-sidebar-monitor-reads.md) | Keep sidebar monitor reads compact | P1 | M | 061; 057; 053 DONE | TODO |
 
 ### Dependency notes
@@ -917,6 +917,10 @@ debounce, renderer rewrite, or new dependency in this batch.
   admission and a time-dependent quota test; the native window-open timing
   trace remains an operator handoff because this session has no controlled
   native UI measurement channel.
+- Plan 062 is shipped. Its review confirmed generation-gated fast/final
+  callbacks, preserved legacy refresh callers, and stable accessible
+  skeletons. The full post-merge test suite passed; native project-switch
+  timing remains an operator handoff.
 
 ### Confirmed product constraints
 
@@ -962,3 +966,7 @@ debounce, renderer rewrite, or new dependency in this batch.
   `git diff --check`. The integrated full-suite rerun had one unrelated
   flaky `GitManagerCommitMessageRewriteTests` failure; its focused retry
   passed. `make check-preview` retained the known empty-array baseline.
+- Plan 062 evidence: `make agent-check`, explicit changed-UI preview check,
+  `make guidance-check`, `git diff --check`, focused refresh/model tests, and
+  the post-merge `make test` passed. The clean-tree `make check-preview`
+  command still hits the documented empty-array baseline.
