@@ -52,7 +52,7 @@ final class ProjectMonitorStore: ObservableObject {
                 let reader = ProjectStatusReader(runner: runner)
                 var readSnapshots: [String: ProjectStatusSnapshot] = [:]
                 for project in seedInput.candidates {
-                    readSnapshots[project.path] = reader.read(project: project)
+                    readSnapshots[project.path] = reader.read(project: project, includeLineDiff: false)
                 }
 
                 continuation.resume(returning: SeedResult(candidates: seedInput.candidates, snapshots: readSnapshots))
@@ -128,7 +128,7 @@ final class ProjectMonitorStore: ObservableObject {
             guard let self else { return }
             for project in projects {
                 _ = runner.runGitCommand(in: project.path, args: ["fetch"])
-                let snapshot = ProjectStatusReader(runner: runner).read(project: project)
+                let snapshot = ProjectStatusReader(runner: runner).read(project: project, includeLineDiff: false)
                 Task { @MainActor [weak self] in self?.snapshots[project.path] = snapshot }
             }
         }
@@ -147,7 +147,7 @@ final class ProjectMonitorStore: ObservableObject {
             var results: [ProjectStatusSnapshot] = []
             for project in projects {
                 queue.addOperation {
-                    let snapshot = ProjectStatusReader(runner: runner).read(project: project)
+                    let snapshot = ProjectStatusReader(runner: runner).read(project: project, includeLineDiff: false)
                     lock.lock(); results.append(snapshot); lock.unlock()
                 }
             }

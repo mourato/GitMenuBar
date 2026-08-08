@@ -168,7 +168,11 @@ struct ProjectStatusReader {
     private static let emptyTreeHash = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
     let runner: GitCommandRunner
 
-    func read(project: ProjectReference, now: Date = Date()) -> ProjectStatusSnapshot {
+    func read(
+        project: ProjectReference,
+        now: Date = Date(),
+        includeLineDiff: Bool = true
+    ) -> ProjectStatusSnapshot {
         let status = runner.runGitCommand(
             in: project.path,
             args: ["status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"]
@@ -191,7 +195,7 @@ struct ProjectStatusReader {
         }
 
         let parsed = ProjectStatusPorcelainParser.parse(status.output)
-        let lineDiff = parsed.hasWorkingTreeChanges
+        let lineDiff = includeLineDiff && parsed.hasWorkingTreeChanges
             ? readLineDiff(project: project, untrackedPaths: parsed.untrackedPaths)
             : .zero
         return ProjectStatusSnapshot(

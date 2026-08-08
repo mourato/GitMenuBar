@@ -94,9 +94,36 @@ final class ProjectStatusReaderTests: XCTestCase {
         try "new\nfile\n".write(to: untrackedFile, atomically: true, encoding: .utf8)
 
         let snapshot = ProjectStatusReader(runner: GitCommandRunner())
-            .read(project: ProjectReference(path: root.path))
+            .read(project: ProjectReference(path: root.path), includeLineDiff: true)
 
         XCTAssertEqual(snapshot.lineDiff, LineDiffStats(added: 5, removed: 1))
+    }
+
+    func testCompactReaderPreservesStatusWithoutReadingLineDiffs() throws {
+        let root = try createTemporaryGitRepository(testName: #function)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try "tracked\n".write(
+            to: root.appendingPathComponent("README.md"), atomically: true, encoding: .utf8
+        )
+        try runGit(["add", "README.md"], in: root)
+        try runGit(["commit", "-qm", "initial"], in: root)
+        try "changed\n".write(
+            to: root.appendingPathComponent("README.md"), atomically: true, encoding: .utf8
+        )
+        try String(repeating: "untracked\n", count: 10000).write(
+            to: root.appendingPathComponent("large-untracked.txt"), atomically: true, encoding: .utf8
+        )
+
+        let snapshot = ProjectStatusReader(runner: GitCommandRunner()).read(
+            project: ProjectReference(path: root.path), includeLineDiff: false
+        )
+
+        XCTAssertEqual(snapshot.branchName, try runGit(["branch", "--show-current"], in: root).trimmingCharacters(in: .whitespacesAndNewlines))
+        XCTAssertEqual(snapshot.unstagedCount, 1)
+        XCTAssertEqual(snapshot.untrackedCount, 1)
+        XCTAssertEqual(snapshot.lineDiff, .zero)
+        XCTAssertNil(snapshot.lastErrorDescription)
     }
 
     func testReaderCountsStagedLinesBeforeFirstCommit() throws {
@@ -114,7 +141,7 @@ final class ProjectStatusReaderTests: XCTestCase {
         try runGit(["add", "New.swift"], in: root)
 
         let snapshot = ProjectStatusReader(runner: GitCommandRunner())
-            .read(project: ProjectReference(path: root.path))
+            .read(project: ProjectReference(path: root.path), includeLineDiff: true)
 
         XCTAssertEqual(snapshot.lineDiff, LineDiffStats(added: 2, removed: 0))
     }

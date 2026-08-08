@@ -190,14 +190,19 @@ struct ProjectsSidebarView: View {
                     .frame(width: 7, height: 7)
                 if !isCollapsed {
                     HStack(spacing: 7) {
-                        Text(snapshot.project.name)
-                            .lineLimit(1)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(snapshot.project.name)
+                                .lineLimit(1)
+                            Text(statusSummary(for: snapshot))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                         Spacer(minLength: 0)
                         if snapshot.hasWorkingTreeChanges {
-                            WorkingTreeLineDiffView(
-                                addedCount: snapshot.lineDiff.added,
-                                removedCount: snapshot.lineDiff.removed
-                            )
+                            Text(changeCountSummary(for: snapshot))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -205,7 +210,7 @@ struct ProjectsSidebarView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: ProjectsSidebarMetrics.rowHeight)
+            .frame(minHeight: ProjectsSidebarMetrics.rowHeight)
             .contentShape(Rectangle())
             .background(
                 snapshot.project.path == RecentProjectsStore.normalize(currentPath)
@@ -227,8 +232,48 @@ struct ProjectsSidebarView: View {
     }
 
     private func accessibilityLabel(for snapshot: ProjectStatusSnapshot) -> String {
-        guard snapshot.hasWorkingTreeChanges else { return snapshot.project.name }
-        return "\(snapshot.project.name), \(snapshot.lineDiff.added) lines added, \(snapshot.lineDiff.removed) lines deleted"
+        var parts = [snapshot.project.name, statusSummary(for: snapshot)]
+        if snapshot.hasWorkingTreeChanges {
+            parts.append(
+                "\(snapshot.stagedCount) staged, \(snapshot.unstagedCount) unstaged, "
+                    + "\(snapshot.untrackedCount) untracked"
+            )
+        }
+        if let error = snapshot.lastErrorDescription {
+            parts.append(error)
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    private func changeCountSummary(for snapshot: ProjectStatusSnapshot) -> String {
+        let count = snapshot.stagedCount + snapshot.unstagedCount + snapshot.untrackedCount
+        return count == 1 ? "1 changed" : "\(count) changed"
+    }
+
+    private func statusSummary(for snapshot: ProjectStatusSnapshot) -> String {
+        if snapshot.lastErrorDescription != nil {
+            return "Unavailable"
+        }
+
+        let branch = if snapshot.isDetachedHead {
+            "Detached"
+        } else if snapshot.branchName.isEmpty {
+            "Unknown branch"
+        } else {
+            snapshot.branchName
+        }
+        var parts = [branch]
+        if snapshot.hasUpstream {
+            if snapshot.aheadCount > 0 {
+                parts.append("↑\(snapshot.aheadCount)")
+            }
+            if snapshot.behindCount > 0 {
+                parts.append("↓\(snapshot.behindCount)")
+            }
+        } else {
+            parts.append("No upstream")
+        }
+        return parts.joined(separator: " ")
     }
 
     @ViewBuilder
@@ -285,7 +330,7 @@ enum ProjectsSidebarMetrics {
     static let defaultWidth: Double = 240
     static let minWidth: Double = 220
     static let maxWidth: Double = 360
-    static let rowHeight: CGFloat = 32
+    static let rowHeight: CGFloat = 44
     static let rowSpacing: CGFloat = 4
     static let keyboardResizeStep: Double = 16
     static let resizeHitWidth: CGFloat = 8

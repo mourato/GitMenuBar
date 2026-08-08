@@ -235,3 +235,18 @@ manager. Keep it cheap as new sidebar fields are proposed: first ask whether
 the field comes from the existing compact status result. If it requires file
 content or a new Git process, keep it in selected-project detail unless a
 measured product need justifies a new plan.
+
+## Local implementation evidence
+
+- `ProjectStatusReader.read` keeps full line-diff behavior by default and now
+  accepts `includeLineDiff`; monitor seed, refresh, and explicit fetch pass
+  `false`.
+- `ProjectsSidebarView` uses existing compact snapshot fields for branch,
+  upstream, changed-file count, and accessibility status; it no longer renders
+  `WorkingTreeLineDiffView` for monitor rows.
+- `ProjectStatusReaderTests` covers a dirty tracked file plus a large
+  untracked file and confirms compact counts/branch/error behavior with zero
+  line diff; full reader expectations remain explicit.
+- Local checks passed: `make agent-check`, `make test`, `make check-preview`,
+  `make guidance-check`, and `git diff --check`. Final lint/test gate remains
+  required before review handoff.
