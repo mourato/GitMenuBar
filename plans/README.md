@@ -901,7 +901,7 @@ debounce, renderer rewrite, or new dependency in this batch.
 |---|---|---:|---:|---|---|
 | [061](061-make-window-open-and-monitor-seed-nonblocking.md) | Make window opening and monitor seeding non-blocking | P0 | L | 057; 050–053 DONE | DONE (d545eb9; review fix 2c2c0f1) |
 | [062](062-progressive-project-switch-loading.md) | Show selected-project content progressively with skeleton states | P0 | L | 061; 057; 050–052 DONE | DONE (de28790) |
-| [063](063-use-compact-sidebar-monitor-reads.md) | Keep sidebar monitor reads compact | P1 | M | 061; 057; 053 DONE | TODO |
+| [063](063-use-compact-sidebar-monitor-reads.md) | Keep sidebar monitor reads compact | P1 | M | 061; 057; 053 DONE | IN REVIEW (local implementation) |
 
 ### Dependency notes
 
@@ -970,3 +970,7 @@ debounce, renderer rewrite, or new dependency in this batch.
   `make guidance-check`, `git diff --check`, focused refresh/model tests, and
   the post-merge `make test` passed. The clean-tree `make check-preview`
   command still hits the documented empty-array baseline.
+- Plan 063 local evidence: compact monitor reads skip line-diff enrichment,
+  while the full reader path remains covered; `make agent-check`, `make test`,
+  `make check-preview`, `make guidance-check`, and `git diff --check` passed.
+  Review and merge status remain pending.
