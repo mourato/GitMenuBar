@@ -204,4 +204,29 @@ final class AICommitGrouperServiceTests: XCTestCase {
         group.files = ["a"]
         XCTAssertEqual(group.fileCount, 1)
     }
+
+    func testHunkResponseAllowsDifferentHunksFromOneFile() throws {
+        let file = WorkingTreeFile(path: "a.swift", lineDiff: .zero, status: .modified)
+        let hunk1 = AtomicCommitHunk(id: "a.swift#hunk-1", path: "a.swift", ordinal: 1, header: "@@ -1 +1 @@", additions: 1, removals: 1, patch: "")
+        let hunk2 = AtomicCommitHunk(id: "a.swift#hunk-2", path: "a.swift", ordinal: 2, header: "@@ -4 +4 @@", additions: 1, removals: 1, patch: "")
+        let snapshot = AtomicCommitSnapshot(fingerprint: "x", files: [file], hunks: [hunk1, hunk2])
+        let service = AICommitGrouperService(aiService: StubGroupingAI(response: ""))
+        let groups = try service.parseHunkGroupsFromResponse("""
+        [{"hunks":["a.swift#hunk-1"],"message":"fix: first"},{"hunks":["a.swift#hunk-2"],"message":"fix: second"}]
+        """, snapshot: snapshot)
+        XCTAssertEqual(groups.map(\.hunks), [["a.swift#hunk-1"], ["a.swift#hunk-2"]])
+    }
+
+    func testHunkResponseRejectsDuplicateAndUnknownReferences() {
+        let file = WorkingTreeFile(path: "a.swift", lineDiff: .zero, status: .modified)
+        let hunk = AtomicCommitHunk(id: "a.swift#hunk-1", path: "a.swift", ordinal: 1, header: "@@", additions: 1, removals: 0, patch: "")
+        let snapshot = AtomicCommitSnapshot(fingerprint: "x", files: [file], hunks: [hunk])
+        let service = AICommitGrouperService(aiService: StubGroupingAI(response: ""))
+        XCTAssertThrowsError(try service.parseHunkGroupsFromResponse("""
+        [{"hunks":["a.swift#hunk-1"],"message":"fix: a"},{"hunks":["a.swift#hunk-1"],"message":"fix: b"}]
+        """, snapshot: snapshot))
+        XCTAssertThrowsError(try service.parseHunkGroupsFromResponse("""
+        [{"hunks":["a.swift#hunk-9"],"message":"fix: a"}]
+        """, snapshot: snapshot))
+    }
 }

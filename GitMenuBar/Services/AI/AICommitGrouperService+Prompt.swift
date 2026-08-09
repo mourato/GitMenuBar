@@ -43,4 +43,25 @@ extension AICommitGrouperService {
 
         return sections.joined(separator: "\n")
     }
+
+    func buildHunkGroupingPrompt(snapshot: AtomicCommitSnapshot) -> String {
+        var sections = [
+            "Group the changed files and ordinary text hunks into atomic commits.",
+            "A complete file belongs in files. A splittable hunk belongs in hunks using its exact ID.",
+            "The same hunk ID may appear at most once. A path may repeat only through distinct hunk IDs.",
+            "Respond with ONLY a JSON array of {\"files\":[...],\"hunks\":[...],\"message\":\"type: subject\"}.",
+            "Every changed path must be selected exactly once, either as a complete file or through all of its listed hunks.",
+            ""
+        ]
+        for file in snapshot.files.sorted(by: { $0.path < $1.path }) {
+            let hunks = snapshot.hunks.filter { $0.path == file.path }
+            if hunks.isEmpty {
+                sections.append("FILE \(file.path)")
+            } else {
+                sections.append("FILE \(file.path) (select hunks, or the complete file)")
+                sections.append(contentsOf: hunks.map { "- \($0.id): \($0.header) (+\($0.additions)/-\($0.removals))" })
+            }
+        }
+        return sections.joined(separator: "\n")
+    }
 }

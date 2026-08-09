@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 @MainActor
@@ -25,12 +26,14 @@ final class GitAtomicCommitService: ObservableObject {
     private nonisolated func executeGitCommand(
         in directory: String,
         args: [String],
-        useAuth: Bool = false
+        useAuth: Bool = false,
+        additionalEnvironment: [String: String] = [:]
     ) -> (output: String, failure: Bool) {
         GitExecution.executeGitCommand(
             in: directory,
             args: args,
             useAuth: useAuth,
+            additionalEnvironment: additionalEnvironment,
             using: commandRunner
         )
     }
@@ -58,6 +61,28 @@ final class GitAtomicCommitService: ObservableObject {
             }
             return result
         }
+    }
+
+    func makeSnapshotAsync(files: [WorkingTreeFile]) async -> AtomicCommitSnapshot? {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else { return nil }
+        let diffs = await diffForChangedFilesAsync(changedFiles: files)
+        let status = await runOnBackground {
+            self.executeGitCommand(in: repositoryPath, args: ["status", "--porcelain=v1"]).output
+        }
+        let fingerprint = Self.fingerprint(files: files, diffs: diffs, status: status)
+        let hunks: [AtomicCommitHunk] = files.flatMap { file in
+            guard file.status == .modified, let diff = diffs[file.path] else { return [] as [AtomicCommitHunk] }
+            return GitDiffHunkParser.parse(path: file.path, diff: diff)
+        }
+        return AtomicCommitSnapshot(fingerprint: fingerprint, files: files, hunks: hunks)
+    }
+
+    private static func fingerprint(files: [WorkingTreeFile], diffs: [String: String], status: String) -> String {
+        let canonical = files.sorted { $0.path < $1.path }.map { file in
+            "\(file.path)\u{0}\(file.status.rawValue)\u{0}\(diffs[file.path] ?? "")"
+        }.joined(separator: "\u{1}") + "\u{2}" + status
+        return SHA256.hash(data: Data(canonical.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
     /// Stage specific files and commit with the given message.
@@ -160,6 +185,107 @@ final class GitAtomicCommitService: ObservableObject {
         }
 
         return .success(())
+    }
+
+    func performHunkCommitsAsync(
+        groups: [AtomicCommitGroup],
+        snapshot: AtomicCommitSnapshot,
+        progress: ((Int, Int) -> Void)? = nil
+    ) async -> Result<Void, Error> {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
+        guard !FileManager.default.fileExists(atPath: (repositoryPath as NSString).appendingPathComponent(".git/index.lock")) else {
+            return .failure(Self.hunkError("Git index is locked; close other Git operations and try again."))
+        }
+
+        let staged = await runOnBackground {
+            self.executeGitCommand(in: repositoryPath, args: ["diff", "--cached", "--quiet"])
+        }
+        guard !staged.failure else {
+            return .failure(Self.hunkError("Unstage existing changes before splitting hunks."))
+        }
+
+        guard let current = await makeSnapshotAsync(files: snapshot.files), current.fingerprint == snapshot.fingerprint else {
+            return .failure(Self.hunkError("The working tree changed; regenerate the atomic commit groups."))
+        }
+
+        let originalHeadResult = await runOnBackground {
+            self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "HEAD"])
+        }
+        guard !originalHeadResult.failure else { return .failure(Self.hunkError("Could not determine the current HEAD.")) }
+        let originalHead = originalHeadResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let plan: AtomicCommitPlan
+        do {
+            plan = try AtomicCommitPlan(groups: groups, allowedFiles: snapshot.allowedFiles, hunksByID: snapshot.hunksByID)
+        } catch { return .failure(error) }
+
+        let temporaryIndex = FileManager.default.temporaryDirectory.appendingPathComponent("gitmenubar-index-\(UUID().uuidString)").path
+        defer { try? FileManager.default.removeItem(atPath: temporaryIndex) }
+        let environment = ["GIT_INDEX_FILE": temporaryIndex]
+        let initialized = await runOnBackground {
+            self.executeGitCommand(in: repositoryPath, args: ["read-tree", originalHead], additionalEnvironment: environment)
+        }
+        guard !initialized.failure else { return .failure(Self.hunkError("Could not initialize the temporary Git index.")) }
+
+        for (index, group) in plan.groups.enumerated() {
+            progress?(index + 1, plan.groups.count)
+            let stageResult = await runOnBackground {
+                self.stage(group: group, snapshot: snapshot, repositoryPath: repositoryPath, environment: environment)
+            }
+            guard !stageResult.failure else {
+                await rollbackAtomicCommits(to: originalHead, repositoryPath: repositoryPath)
+                return .failure(Self.hunkError("Git rejected group \(index + 1): \(stageResult.output)"))
+            }
+            let commit = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["commit", "--no-gpg-sign", "-m", group.message], additionalEnvironment: environment)
+            }
+            guard !commit.failure else {
+                await rollbackAtomicCommits(to: originalHead, repositoryPath: repositoryPath)
+                return .failure(Self.hunkError("Commit group \(index + 1) failed: \(commit.output)"))
+            }
+            if index + 1 < plan.groups.count {
+                _ = await runOnBackground {
+                    self.executeGitCommand(in: repositoryPath, args: ["read-tree", "HEAD"], additionalEnvironment: environment)
+                }
+            }
+        }
+        _ = await runOnBackground { self.executeGitCommand(in: repositoryPath, args: ["reset", "--mixed", "HEAD"]) }
+        return .success(())
+    }
+
+    private nonisolated func stage(
+        group: AtomicCommitGroup,
+        snapshot: AtomicCommitSnapshot,
+        repositoryPath: String,
+        environment: [String: String]
+    ) -> (output: String, failure: Bool) {
+        if !group.files.isEmpty {
+            let result = executeGitCommand(in: repositoryPath, args: ["add", "--"] + group.files, additionalEnvironment: environment)
+            if result.failure {
+                return result
+            }
+        }
+        for hunkID in group.hunks {
+            guard let hunk = snapshot.hunksByID[hunkID] else { return ("Unknown hunk \(hunkID)", true) }
+            let patchURL = FileManager.default.temporaryDirectory.appendingPathComponent("gitmenubar-patch-\(UUID().uuidString)")
+            defer { try? FileManager.default.removeItem(at: patchURL) }
+            do {
+                try hunk.patch.write(to: patchURL, atomically: true, encoding: .utf8)
+            } catch { return (error.localizedDescription, true) }
+            let check = executeGitCommand(in: repositoryPath, args: ["apply", "--cached", "--check", patchURL.path], additionalEnvironment: environment)
+            if check.failure {
+                return check
+            }
+            let applied = executeGitCommand(in: repositoryPath, args: ["apply", "--cached", patchURL.path], additionalEnvironment: environment)
+            if applied.failure {
+                return applied
+            }
+        }
+        return ("", false)
+    }
+
+    private static func hunkError(_ message: String) -> NSError {
+        NSError(domain: "GitManager", code: 35, userInfo: [NSLocalizedDescriptionKey: message])
     }
 
     private func rollbackAtomicCommits(to originalHead: String, repositoryPath: String) async {

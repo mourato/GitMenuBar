@@ -328,8 +328,8 @@ extension MainMenuView {
 
         if resolvedCommitButtonAction == .commitAndPush {
             Task {
-                let result = await actionCoordinator.performAutomaticAtomicCommitsAndPush {
-                    await generateAutomaticAtomicCommitGroups()
+                let result = await actionCoordinator.performAutomaticHunkCommitsAndPush {
+                    await generateAutomaticAtomicCommitPlan()
                 }
                 if result.didCommit {
                     HapticFeedback.actionSucceeded()
@@ -352,6 +352,16 @@ extension MainMenuView {
             return groups.isEmpty ? AtomicCommitGroup.fallbackGroups(for: changedFiles) : groups
         } catch {
             return AtomicCommitGroup.fallbackGroups(for: gitManager.changedFiles)
+        }
+    }
+
+    private func generateAutomaticAtomicCommitPlan() async -> AtomicCommitExecutionPlan? {
+        guard let snapshot = await gitManager.makeAtomicCommitSnapshotAsync() else { return nil }
+        do {
+            let groups = try await aiCommitCoordinator.generateAtomicHunkGroups(snapshot: snapshot)
+            return AtomicCommitExecutionPlan(groups: groups.isEmpty ? AtomicCommitGroup.fallbackGroups(for: snapshot.files) : groups, snapshot: snapshot)
+        } catch {
+            return AtomicCommitExecutionPlan(groups: AtomicCommitGroup.fallbackGroups(for: snapshot.files), snapshot: snapshot)
         }
     }
 

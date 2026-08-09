@@ -116,6 +116,24 @@ final class AICommitCoordinator: ObservableObject {
         }
     }
 
+    func generateAtomicHunkGroups(snapshot: AtomicCommitSnapshot) async throws -> [AtomicCommitGroup] {
+        generationError = nil
+        let dependencies = try resolvedGenerationDependencies()
+        isGenerating = true
+        defer { isGenerating = false }
+        do {
+            return try await grouper.generateAtomicHunkGroups(
+                snapshot: snapshot,
+                provider: dependencies.provider,
+                apiKey: dependencies.apiKey,
+                model: dependencies.model
+            )
+        } catch {
+            generationError = error.localizedDescription
+            throw error
+        }
+    }
+
     func apiKey(for providerId: UUID) -> String {
         guard let provider = providerStore.providers.first(where: { $0.id == providerId }) else { return "" }
         let apiKey: String

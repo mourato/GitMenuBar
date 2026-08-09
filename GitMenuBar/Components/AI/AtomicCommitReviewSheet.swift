@@ -2,11 +2,13 @@ import SwiftUI
 
 struct AtomicCommitReviewSheet: View {
     @ObservedObject var gitManager: GitManager
-    let generateGroups: () async throws -> [AtomicCommitGroup]
+    let makeSnapshot: () async -> AtomicCommitSnapshot?
+    let generateGroups: (AtomicCommitSnapshot) async throws -> [AtomicCommitGroup]
     let onCancel: () -> Void
-    let onCommit: ([AtomicCommitGroup]) -> Void
+    let onCommit: (AtomicCommitExecutionPlan) -> Void
 
     @State private var groups: [AtomicCommitGroup] = []
+    @State private var snapshot: AtomicCommitSnapshot?
     @State private var isGenerating = false
     @State private var errorMessage: String?
 
@@ -32,7 +34,7 @@ struct AtomicCommitReviewSheet: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Review Atomic Commits")
                 .font(.headline.weight(.semibold))
-            Text("Grouped changes into logical commits. Edit messages, move files between groups, then create the commits.")
+            Text("Grouped changes into logical commits. Edit messages, move files or hunks between groups, then create the commits.")
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -109,7 +111,7 @@ struct AtomicCommitReviewSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .disabled(groups.isEmpty || groups.allSatisfy(\.files.isEmpty))
+                .disabled(!isValidDraft)
             }
         }
     }
@@ -121,7 +123,7 @@ struct AtomicCommitReviewSheet: View {
                     .font(WorkbenchTypography.captionStrong)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text("\(groups[index].fileCount) file\(groups[index].fileCount == 1 ? "" : "s")")
+                Text("\(groups[index].selectionCount) item\(groups[index].selectionCount == 1 ? "" : "s")")
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
                 if groups.count > 1 {
@@ -144,11 +146,52 @@ struct AtomicCommitReviewSheet: View {
                 ForEach(groups[index].files, id: \.self) { file in
                     fileRow(file: file, groupIndex: index)
                 }
+                ForEach(groups[index].hunks, id: \.self) { hunkID in
+                    if let hunk = snapshot?.hunksByID[hunkID] {
+                        hunkRow(hunk, groupIndex: index)
+                    }
+                }
             }
         }
         .padding(12)
         .background(Color(nsColor: .controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
+    }
+
+    private func hunkRow(_ hunk: AtomicCommitHunk, groupIndex: Int) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "text.badge.plus")
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(hunk.path).lineLimit(1)
+                Text("Hunk \(hunk.ordinal) · +\(hunk.additions) / -\(hunk.removals) · \(hunk.header)")
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            if groupIndex > 0 {
+                Button { moveHunk(hunk.id, from: groupIndex, to: groupIndex - 1) } label: {
+                    Image(systemName: "arrow.up")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Move hunk to previous group")
+            }
+            if groupIndex < groups.count - 1 {
+                Button { moveHunk(hunk.id, from: groupIndex, to: groupIndex + 1) } label: {
+                    Image(systemName: "arrow.down")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Move hunk to next group")
+            }
+            Button { groups[groupIndex].hunks.removeAll { $0 == hunk.id } } label: {
+                Image(systemName: "xmark.circle").foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Exclude hunk from commits")
+        }
+        .padding(.horizontal, 4)
+        .frame(minHeight: 34)
     }
 
     private func fileRow(file: String, groupIndex: Int) -> some View {
@@ -201,8 +244,12 @@ struct AtomicCommitReviewSheet: View {
         isGenerating = true
         errorMessage = nil
         do {
-            let generated = try await generateGroups()
+            guard let generatedSnapshot = await makeSnapshot() else {
+                throw NSError(domain: "GitManager", code: 35, userInfo: [NSLocalizedDescriptionKey: "Could not capture the working tree snapshot."])
+            }
+            let generated = try await generateGroups(generatedSnapshot)
             await MainActor.run {
+                snapshot = generatedSnapshot
                 groups = generated
                 isGenerating = false
             }
@@ -215,7 +262,9 @@ struct AtomicCommitReviewSheet: View {
     }
 
     private func fallbackToPerFile() {
-        groups = AtomicCommitGroup.fallbackGroups(for: gitManager.changedFiles)
+        if let snapshot {
+            groups = AtomicCommitGroup.fallbackGroups(for: snapshot.files)
+        }
         errorMessage = nil
     }
 
@@ -239,16 +288,35 @@ struct AtomicCommitReviewSheet: View {
         groups[groupIndex].files.removeAll { $0 == file }
     }
 
+    private func moveHunk(_ hunk: String, from source: Int, to target: Int) {
+        guard groups.indices.contains(source), groups.indices.contains(target) else { return }
+        groups[source].hunks.removeAll { $0 == hunk }
+        if !groups[target].hunks.contains(hunk) {
+            groups[target].hunks.append(hunk)
+        }
+    }
+
+    private var isValidDraft: Bool {
+        guard let snapshot else { return false }
+        do {
+            _ = try AtomicCommitPlan(groups: groups, allowedFiles: snapshot.allowedFiles, hunksByID: snapshot.hunksByID)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     private func commit() {
-        let commitGroups = groups.filter { !$0.files.isEmpty }
-        onCommit(commitGroups)
+        guard let snapshot, isValidDraft else { return }
+        onCommit(AtomicCommitExecutionPlan(groups: groups, snapshot: snapshot))
     }
 }
 
 #Preview("Atomic Commit Review Sheet") {
     AtomicCommitReviewSheet(
         gitManager: GitManager(repositoryPathOverride: NSHomeDirectory()),
-        generateGroups: {
+        makeSnapshot: { nil },
+        generateGroups: { _ in
             [
                 AtomicCommitGroup(files: ["Sources/Feature/api.swift"], message: "feat: add endpoint"),
                 AtomicCommitGroup(files: ["Sources/Utils/helper.swift"], message: "refactor: extract helper")

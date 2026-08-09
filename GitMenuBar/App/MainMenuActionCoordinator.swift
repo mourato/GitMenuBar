@@ -272,6 +272,22 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
+    func performAutomaticHunkCommitsAndPush(
+        generatePlan: @escaping () async -> AtomicCommitExecutionPlan?
+    ) async -> MainMenuCommitExecutionResult {
+        guard !isBusy else { return .skipped }
+        return await executeCommitOperation {
+            clearAlert()
+            showSyncOptions = false
+            operationStatus = .groupingChanges
+            guard let plan = await generatePlan(), !plan.groups.isEmpty else {
+                publishAlert(title: "Split Commits Failed", message: "No changes could be grouped into commits.")
+                return .failed
+            }
+            return await executeAtomicCommitsAndPush(groups: plan.groups, snapshot: plan.snapshot)
+        }
+    }
+
     func syncWithRemote(rebase: Bool) async -> MainMenuSyncExecutionResult {
         guard !isBusy else {
             return .skipped
@@ -405,9 +421,22 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     private func executeAtomicCommitsAndPush(groups: [AtomicCommitGroup]) async -> MainMenuCommitExecutionResult {
+        await executeAtomicCommitsAndPush(groups: groups, snapshot: nil)
+    }
+
+    private func executeAtomicCommitsAndPush(
+        groups: [AtomicCommitGroup],
+        snapshot: AtomicCommitSnapshot?
+    ) async -> MainMenuCommitExecutionResult {
         operationStatus = .committingGroup(current: 0, total: groups.count)
-        let commitResult = await gitManager.performAtomicCommitsAsync(groups: groups) { current, total in
-            self.operationStatus = .committingGroup(current: current, total: total)
+        let commitResult: Result<Void, Error> = if let snapshot {
+            await gitManager.performHunkCommitsAsync(groups: groups, snapshot: snapshot) { current, total in
+                self.operationStatus = .committingGroup(current: current, total: total)
+            }
+        } else {
+            await gitManager.performAtomicCommitsAsync(groups: groups) { current, total in
+                self.operationStatus = .committingGroup(current: current, total: total)
+            }
         }
         guard case .success = commitResult else {
             if case let .failure(error) = commitResult {

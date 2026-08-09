@@ -393,27 +393,23 @@ extension MainMenuView {
     private func atomicCommitSheet() -> some View {
         AtomicCommitReviewSheet(
             gitManager: gitManager,
-            generateGroups: { [weak gitManager, weak aiCommitCoordinator] in
-                guard let gitManager,
-                      let coordinator = aiCommitCoordinator
-                else {
+            makeSnapshot: { [weak gitManager] in
+                await gitManager?.makeAtomicCommitSnapshotAsync()
+            },
+            generateGroups: { [weak aiCommitCoordinator] snapshot in
+                guard let coordinator = aiCommitCoordinator else {
                     return []
                 }
-                let changed = gitManager.changedFiles
-                let diffs = await gitManager.diffForChangedFilesAsync()
-                return try await coordinator.generateAtomicGroups(
-                    changedFiles: changed,
-                    diffPerFile: diffs
-                )
+                return try await coordinator.generateAtomicHunkGroups(snapshot: snapshot)
             },
             onCancel: {
                 showAtomicCommitSheet = false
             },
-            onCommit: { groups in
+            onCommit: { executionPlan in
                 showAtomicCommitSheet = false
                 let repositoryPath = gitManager.repositoryPath
                 Task {
-                    let result = await gitManager.performAtomicCommitsAsync(groups: groups)
+                    let result = await gitManager.performHunkCommitsAsync(groups: executionPlan.groups, snapshot: executionPlan.snapshot)
                     if case .success = result {
                         projectMonitor.refresh(path: repositoryPath)
                     }

@@ -359,6 +359,20 @@ class GitManager: ObservableObject {
         await atomicCommitService.diffForChangedFilesAsync(changedFiles: changedFiles)
     }
 
+    func makeAtomicCommitSnapshotAsync() async -> AtomicCommitSnapshot? {
+        await atomicCommitService.makeSnapshotAsync(files: changedFiles)
+    }
+
+    func performHunkCommitsAsync(
+        groups: [AtomicCommitGroup],
+        snapshot: AtomicCommitSnapshot,
+        progress: ((Int, Int) -> Void)? = nil
+    ) async -> Result<Void, Error> {
+        let result = await atomicCommitService.performHunkCommitsAsync(groups: groups, snapshot: snapshot, progress: progress)
+        await refreshAsync()
+        return result
+    }
+
     /// Stage specific files and commit with the given message.
     func commitAtomicGroupAsync(
         files: [String],

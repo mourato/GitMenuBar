@@ -57,6 +57,28 @@ final class AICommitGrouperService: ObservableObject, @unchecked Sendable {
         }
     }
 
+    func generateAtomicHunkGroups(
+        snapshot: AtomicCommitSnapshot,
+        provider: AIProviderConfig,
+        apiKey: String,
+        model: String
+    ) async throws -> [AtomicCommitGroup] {
+        let prompt = buildHunkGroupingPrompt(snapshot: snapshot)
+        do {
+            let response = try await aiService.generateRawResponse(prompt: prompt, provider: provider, apiKey: apiKey, model: model)
+            let groups = try parseHunkGroupsFromResponse(response, snapshot: snapshot)
+            guard !groups.isEmpty else { return AtomicCommitGroup.fallbackGroups(for: snapshot.files) }
+            return groups
+        } catch let error as AIError {
+            if case .messagePolicyRejected = error {
+                throw error
+            }
+            return AtomicCommitGroup.fallbackGroups(for: snapshot.files)
+        } catch {
+            return AtomicCommitGroup.fallbackGroups(for: snapshot.files)
+        }
+    }
+
     /// Partition an existing set of groups: move `file` from `source` to `target`.
     static func moveFile(
         _ file: String,
@@ -106,6 +128,41 @@ final class AICommitGrouperService: ObservableObject, @unchecked Sendable {
         return groups
     }
 
+    func parseHunkGroupsFromResponse(
+        _ response: String,
+        snapshot: AtomicCommitSnapshot
+    ) throws -> [AtomicCommitGroup] {
+        let cleaned = strippingCodeFences(from: response)
+        let data = cleaned.data(using: .utf8) ?? extractJSONArray(from: cleaned)
+        guard let data, let rawGroups = try? JSONDecoder().decode([RawAtomicGroup].self, from: data) else {
+            throw AIError.invalidResponse
+        }
+        let groups = try rawGroups.compactMap { raw -> AtomicCommitGroup? in
+            let files = raw.files.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+            let hunks = raw.hunks.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+            guard !files.isEmpty || !hunks.isEmpty else { return nil }
+            let message: String
+            switch messagePolicy.sanitize(raw.message.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            case let .success(sanitized): message = sanitized
+            case let .failure(error): throw error.aiError
+            }
+            return AtomicCommitGroup(files: files, hunks: hunks, message: message)
+        }
+        do {
+            let plan = try AtomicCommitPlan(groups: groups, allowedFiles: snapshot.allowedFiles, hunksByID: snapshot.hunksByID)
+            let completeFiles = Set(plan.groups.flatMap(\.files))
+            let selectedHunks = Set(plan.groups.flatMap(\.hunks))
+            let selectedHunkPaths = Set(selectedHunks.compactMap { snapshot.hunksByID[$0]?.path })
+            guard completeFiles.isDisjoint(with: selectedHunkPaths) else { throw AIError.invalidResponse }
+            guard Set(snapshot.files.map(\.path)) == completeFiles.union(selectedHunkPaths) else { throw AIError.invalidResponse }
+            return plan.groups
+        } catch let error as AIError {
+            throw error
+        } catch {
+            throw AIError.invalidResponse
+        }
+    }
+
     private func strippingCodeFences(from text: String) -> String {
         var result = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if result.hasPrefix("```") {
@@ -136,5 +193,17 @@ final class AICommitGrouperService: ObservableObject, @unchecked Sendable {
 
 private struct RawAtomicGroup: Codable {
     let files: [String]
+    let hunks: [String]
     let message: String
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        files = try container.decodeIfPresent([String].self, forKey: .files) ?? []
+        hunks = try container.decodeIfPresent([String].self, forKey: .hunks) ?? []
+        message = try container.decode(String.self, forKey: .message)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case files, hunks, message
+    }
 }

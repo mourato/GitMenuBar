@@ -167,4 +167,52 @@ final class GitManagerAtomicCommitTests: XCTestCase {
         XCTAssertTrue(status.contains("alpha.swift"))
         XCTAssertTrue(status.contains("beta.swift"))
     }
+
+    func testPerformHunkCommitsAsyncCreatesSeparateCommitsAndLeavesOmittedHunk() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let fileURL = repoURL.appendingPathComponent("feature.swift")
+        let baseLines = (1 ... 25).map { "line\($0)" }
+        try (baseLines.joined(separator: "\n") + "\n").write(to: fileURL, atomically: true, encoding: .utf8)
+        _ = try runGit(["add", "feature.swift"], in: repoURL)
+        _ = try runGit(["commit", "-m", "base feature"], in: repoURL)
+        let manager = GitManager(repositoryPathOverride: repoURL.path)
+        var changedLines = baseLines
+        changedLines[1] = "first"
+        changedLines[11] = "second"
+        changedLines[21] = "third"
+        try (changedLines.joined(separator: "\n") + "\n").write(to: fileURL, atomically: true, encoding: .utf8)
+        let initial = expectation(description: "refresh")
+        manager.updateUncommittedFiles { initial.fulfill() }
+        await fulfillment(of: [initial], timeout: 3)
+        guard let snapshot = await manager.makeAtomicCommitSnapshotAsync(), snapshot.hunks.count == 3 else {
+            return XCTFail("Expected three hunks in the snapshot")
+        }
+        let groups = [
+            AtomicCommitGroup(files: [], hunks: [snapshot.hunks[0].id], message: "feat: first hunk"),
+            AtomicCommitGroup(files: [], hunks: [snapshot.hunks[1].id], message: "feat: second hunk")
+        ]
+        let result = await manager.performHunkCommitsAsync(groups: groups, snapshot: snapshot)
+        if case let .failure(error) = result {
+            XCTFail(error.localizedDescription)
+        }
+        XCTAssertEqual(try runGit(["rev-list", "--count", "HEAD"], in: repoURL).trimmingCharacters(in: .whitespacesAndNewlines), "4")
+        XCTAssertTrue(try runGit(["status", "--porcelain"], in: repoURL).contains("feature.swift"))
+    }
+
+    func testPerformHunkCommitsAsyncRejectsStagedInput() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let fileURL = repoURL.appendingPathComponent("feature.swift")
+        try "base\n".write(to: fileURL, atomically: true, encoding: .utf8)
+        try "base\nchanged\n".write(to: fileURL, atomically: true, encoding: .utf8)
+        _ = try runGit(["add", "feature.swift"], in: repoURL)
+        let manager = GitManager(repositoryPathOverride: repoURL.path)
+        let result = await manager.performHunkCommitsAsync(
+            groups: [AtomicCommitGroup(files: ["feature.swift"], message: "feat: no")],
+            snapshot: AtomicCommitSnapshot.fallback(for: [WorkingTreeFile(path: "feature.swift", lineDiff: .zero, status: .modified)])
+        )
+        if case .success = result {
+            XCTFail("Expected staged-input rejection")
+        }
+        XCTAssertEqual(try runGit(["rev-list", "--count", "HEAD"], in: repoURL).trimmingCharacters(in: .whitespacesAndNewlines), "1")
+    }
 }
