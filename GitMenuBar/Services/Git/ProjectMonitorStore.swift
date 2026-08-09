@@ -16,6 +16,7 @@ final class ProjectMonitorStore: ObservableObject {
     private nonisolated(unsafe) var refreshTimer: Timer?
     private var isRefreshing = false
     private var refreshGeneration = 0
+    private var pendingRefreshPaths = Set<String>()
 
     init(projectStore: MonitoredProjectsStore = MonitoredProjectsStore(), runner: GitCommandRunner = GitCommandRunner()) {
         self.projectStore = projectStore
@@ -74,7 +75,8 @@ final class ProjectMonitorStore: ObservableObject {
             snapshots[snapshot.project.path] = snapshot
         }
         isRefreshing = false
-        if projectStore.monitoredProjects().contains(where: { snapshots[$0.path] == nil }) {
+        refreshPendingPathsIfNeeded()
+        if !isRefreshing, projectStore.monitoredProjects().contains(where: { snapshots[$0.path] == nil }) {
             refreshAll()
         }
     }
@@ -114,7 +116,12 @@ final class ProjectMonitorStore: ObservableObject {
     }
 
     func refresh(path: String) {
-        guard let project = monitoredProjects.first(where: { $0.path == RecentProjectsStore.normalize(path) }) else { return }
+        let normalizedPath = RecentProjectsStore.normalize(path)
+        guard let project = monitoredProjects.first(where: { $0.path == normalizedPath }) else { return }
+        if isRefreshing {
+            pendingRefreshPaths.insert(normalizedPath)
+            return
+        }
         refresh(projects: [project])
     }
 
@@ -159,7 +166,16 @@ final class ProjectMonitorStore: ObservableObject {
                     snapshots[snapshot.project.path] = snapshot
                 }
                 isRefreshing = false
+                refreshPendingPathsIfNeeded()
             }
         }
+    }
+
+    private func refreshPendingPathsIfNeeded() {
+        guard !pendingRefreshPaths.isEmpty else { return }
+        let paths = pendingRefreshPaths
+        pendingRefreshPaths.removeAll()
+        let projects = monitoredProjects.filter { paths.contains($0.path) }
+        refresh(projects: projects)
     }
 }
