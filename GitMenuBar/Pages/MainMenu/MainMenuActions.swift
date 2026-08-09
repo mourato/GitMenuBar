@@ -199,6 +199,7 @@ extension MainMenuView {
 
         showProjectSelector = false
         dismissTransientPresentations()
+        presentationModel.showMain()
         let refreshGeneration = presentationModel.startRefresh()
         gitManager.resetSelectedRepositoryState()
         setCurrentRepositoryPath(path)
