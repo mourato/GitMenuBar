@@ -313,13 +313,55 @@ struct AtomicCommitReviewSheet: View {
 }
 
 #Preview("Atomic Commit Review Sheet") {
+    let feature = WorkingTreeFile(
+        path: "Sources/Feature/api.swift",
+        lineDiff: LineDiffStats(added: 2, removed: 1),
+        status: .modified
+    )
+    let helper = WorkingTreeFile(
+        path: "Sources/Utils/helper.swift",
+        lineDiff: LineDiffStats(added: 8, removed: 0),
+        status: .modified
+    )
+    let snapshot = AtomicCommitSnapshot(
+        head: "preview-head",
+        fingerprint: "preview-fingerprint",
+        files: [feature, helper],
+        hunks: [
+            AtomicCommitHunk(
+                id: "Sources/Feature/api.swift#hunk-1",
+                path: feature.path,
+                ordinal: 1,
+                header: "@@ -10,3 +10,4 @@",
+                additions: 1,
+                removals: 0,
+                patch: ""
+            ),
+            AtomicCommitHunk(
+                id: "Sources/Feature/api.swift#hunk-2",
+                path: feature.path,
+                ordinal: 2,
+                header: "@@ -28,4 +29,5 @@",
+                additions: 1,
+                removals: 1,
+                patch: ""
+            )
+        ]
+    )
     AtomicCommitReviewSheet(
         gitManager: GitManager(repositoryPathOverride: NSHomeDirectory()),
-        makeSnapshot: { nil },
+        makeSnapshot: { snapshot },
         generateGroups: { _ in
             [
-                AtomicCommitGroup(files: ["Sources/Feature/api.swift"], message: "feat: add endpoint"),
-                AtomicCommitGroup(files: ["Sources/Utils/helper.swift"], message: "refactor: extract helper")
+                AtomicCommitGroup(
+                    files: [],
+                    hunks: snapshot.hunks.map(\.id),
+                    message: "feat: add endpoint"
+                ),
+                AtomicCommitGroup(
+                    files: [helper.path],
+                    message: "refactor: extract helper"
+                )
             ]
         },
         onCancel: {},

@@ -247,31 +247,6 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
-    func performAutomaticAtomicCommitsAndPush(
-        generateGroups: @escaping () async -> [AtomicCommitGroup]
-    ) async -> MainMenuCommitExecutionResult {
-        guard !isBusy else {
-            return .skipped
-        }
-
-        return await executeCommitOperation {
-            clearAlert()
-            showSyncOptions = false
-            operationStatus = .groupingChanges
-
-            let groups = await generateGroups()
-            guard !groups.isEmpty else {
-                publishAlert(
-                    title: "Split Commits Failed",
-                    message: "No changes could be grouped into commits."
-                )
-                return .failed
-            }
-
-            return await executeAtomicCommitsAndPush(groups: groups)
-        }
-    }
-
     func performAutomaticHunkCommitsAndPush(
         generatePlan: @escaping () async -> AtomicCommitExecutionPlan?
     ) async -> MainMenuCommitExecutionResult {

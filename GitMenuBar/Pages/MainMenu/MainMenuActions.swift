@@ -341,20 +341,6 @@ extension MainMenuView {
         showAtomicCommitSheet = true
     }
 
-    private func generateAutomaticAtomicCommitGroups() async -> [AtomicCommitGroup] {
-        do {
-            let changedFiles = gitManager.changedFiles
-            let diffs = await gitManager.diffForChangedFilesAsync()
-            let groups = try await aiCommitCoordinator.generateAtomicGroups(
-                changedFiles: changedFiles,
-                diffPerFile: diffs
-            )
-            return groups.isEmpty ? AtomicCommitGroup.fallbackGroups(for: changedFiles) : groups
-        } catch {
-            return AtomicCommitGroup.fallbackGroups(for: gitManager.changedFiles)
-        }
-    }
-
     private func generateAutomaticAtomicCommitPlan() async -> AtomicCommitExecutionPlan? {
         guard let snapshot = await gitManager.makeAtomicCommitSnapshotAsync() else { return nil }
         do {

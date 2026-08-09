@@ -332,6 +332,13 @@ enum AtomicCommitPlanValidationError: LocalizedError, Equatable {
 struct AtomicCommitPlan: Equatable {
     let groups: [AtomicCommitGroup]
 
+    private struct ValidationState {
+        var seenFiles = Set<String>()
+        var seenHunks = Set<String>()
+        var wholeFiles = Set<String>()
+        var hunkPaths = Set<String>()
+    }
+
     init(groups: [AtomicCommitGroup], allowedFiles: Set<String>) throws {
         try self.init(groups: groups, allowedFiles: allowedFiles, hunksByID: [:])
     }
@@ -345,56 +352,68 @@ struct AtomicCommitPlan: Equatable {
             throw AtomicCommitPlanValidationError.emptyPlan
         }
 
-        var seenFiles = Set<String>()
-        var seenHunks = Set<String>()
-        var wholeFiles = Set<String>()
-        var validatedGroups: [AtomicCommitGroup] = []
+        var state = ValidationState()
+        let validatedGroups = try groups.enumerated().map { index, group in
+            try Self.validateGroup(
+                group,
+                index: index,
+                allowedFiles: allowedFiles,
+                hunksByID: hunksByID,
+                state: &state
+            )
+        }
+        if let overlap = state.wholeFiles.intersection(state.hunkPaths).first {
+            throw AtomicCommitPlanValidationError.fileHunkOverlap(overlap)
+        }
+        self.groups = validatedGroups
+    }
 
-        for (index, group) in groups.enumerated() {
-            let files = group.files
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-            let hunks = group.hunks
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-            guard !files.isEmpty || !hunks.isEmpty else {
-                throw AtomicCommitPlanValidationError.emptyGroup(index)
-            }
-
-            let message = group.message.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !message.isEmpty else {
-                throw AtomicCommitPlanValidationError.emptyMessage(index)
-            }
-
-            for file in files {
-                guard allowedFiles.contains(file) else {
-                    throw AtomicCommitPlanValidationError.unknownFile(file)
-                }
-                guard seenFiles.insert(file).inserted else {
-                    throw AtomicCommitPlanValidationError.duplicateFile(file)
-                }
-                wholeFiles.insert(file)
-            }
-
-            for hunk in hunks {
-                guard let metadata = hunksByID[hunk] else {
-                    throw AtomicCommitPlanValidationError.unknownHunk(hunk)
-                }
-                guard allowedFiles.contains(metadata.path) else {
-                    throw AtomicCommitPlanValidationError.unknownFile(metadata.path)
-                }
-                guard seenHunks.insert(hunk).inserted else {
-                    throw AtomicCommitPlanValidationError.duplicateHunk(hunk)
-                }
-                guard !wholeFiles.contains(metadata.path) else {
-                    throw AtomicCommitPlanValidationError.fileHunkOverlap(metadata.path)
-                }
-            }
-
-            validatedGroups.append(AtomicCommitGroup(id: group.id, files: files, hunks: hunks, message: message))
+    private static func validateGroup(
+        _ group: AtomicCommitGroup,
+        index: Int,
+        allowedFiles: Set<String>,
+        hunksByID: [String: AtomicCommitHunk],
+        state: inout ValidationState
+    ) throws -> AtomicCommitGroup {
+        let files = group.files
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let hunks = group.hunks
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard !files.isEmpty || !hunks.isEmpty else {
+            throw AtomicCommitPlanValidationError.emptyGroup(index)
         }
 
-        self.groups = validatedGroups
+        let message = group.message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty else {
+            throw AtomicCommitPlanValidationError.emptyMessage(index)
+        }
+
+        for file in files {
+            guard allowedFiles.contains(file) else {
+                throw AtomicCommitPlanValidationError.unknownFile(file)
+            }
+            guard state.seenFiles.insert(file).inserted else {
+                throw AtomicCommitPlanValidationError.duplicateFile(file)
+            }
+            state.wholeFiles.insert(file)
+        }
+
+        for hunk in hunks {
+            guard let metadata = hunksByID[hunk] else {
+                throw AtomicCommitPlanValidationError.unknownHunk(hunk)
+            }
+            guard allowedFiles.contains(metadata.path) else {
+                throw AtomicCommitPlanValidationError.unknownFile(metadata.path)
+            }
+            guard state.seenHunks.insert(hunk).inserted else {
+                throw AtomicCommitPlanValidationError.duplicateHunk(hunk)
+            }
+            state.hunkPaths.insert(metadata.path)
+        }
+
+        return AtomicCommitGroup(id: group.id, files: files, hunks: hunks, message: message)
     }
 }
 
@@ -409,9 +428,22 @@ struct AtomicCommitHunk: Equatable, Hashable, Identifiable {
 }
 
 struct AtomicCommitSnapshot: Equatable {
+    let head: String
     let fingerprint: String
     let files: [WorkingTreeFile]
     let hunks: [AtomicCommitHunk]
+
+    init(
+        head: String = "",
+        fingerprint: String,
+        files: [WorkingTreeFile],
+        hunks: [AtomicCommitHunk]
+    ) {
+        self.head = head
+        self.fingerprint = fingerprint
+        self.files = files
+        self.hunks = hunks
+    }
 
     var filesByPath: [String: WorkingTreeFile] {
         Dictionary(uniqueKeysWithValues: files.map { ($0.path, $0) })

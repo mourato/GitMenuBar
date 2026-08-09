@@ -120,6 +120,32 @@ final class GitManagerAtomicCommitTests: XCTestCase {
         XCTAssertEqual(commitCount, "1", "Invalid atomic plans should fail before creating commits")
     }
 
+    func testAtomicCommitPlanRejectsHunkThenWholeFileOverlap() {
+        let hunk = AtomicCommitHunk(
+            id: "feature.swift#hunk-1",
+            path: "feature.swift",
+            ordinal: 1,
+            header: "@@ -1 +1 @@",
+            additions: 1,
+            removals: 1,
+            patch: ""
+        )
+        let groups = [
+            AtomicCommitGroup(files: [], hunks: [hunk.id], message: "feat: hunk"),
+            AtomicCommitGroup(files: [hunk.path], message: "feat: whole file")
+        ]
+
+        XCTAssertThrowsError(
+            try AtomicCommitPlan(
+                groups: groups,
+                allowedFiles: [hunk.path],
+                hunksByID: [hunk.id: hunk]
+            )
+        ) { error in
+            XCTAssertEqual(error as? AtomicCommitPlanValidationError, .fileHunkOverlap(hunk.path))
+        }
+    }
+
     func testPerformAtomicCommitsAsyncRollsBackWhenLaterCommitFails() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let alphaFile = repoURL.appendingPathComponent("alpha.swift")
@@ -214,5 +240,94 @@ final class GitManagerAtomicCommitTests: XCTestCase {
             XCTFail("Expected staged-input rejection")
         }
         XCTAssertEqual(try runGit(["rev-list", "--count", "HEAD"], in: repoURL).trimmingCharacters(in: .whitespacesAndNewlines), "1")
+    }
+
+    func testPerformHunkCommitsAsyncRollsBackWhenLaterCommitFails() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let fileURL = repoURL.appendingPathComponent("feature.swift")
+        let baseLines = (1 ... 25).map { "line\($0)" }
+        try (baseLines.joined(separator: "\n") + "\n").write(to: fileURL, atomically: true, encoding: .utf8)
+        _ = try runGit(["add", "feature.swift"], in: repoURL)
+        _ = try runGit(["commit", "-m", "base feature"], in: repoURL)
+
+        let hookURL = repoURL.appendingPathComponent(".git/hooks/pre-commit")
+        try """
+        #!/bin/sh
+        counter=".git/hooks/atomic-counter"
+        count=0
+        if [ -f "$counter" ]; then
+          count=$(cat "$counter")
+        fi
+        count=$((count + 1))
+        echo "$count" > "$counter"
+        if [ "$count" -ge 2 ]; then
+          echo "stop second hunk commit" >&2
+          exit 1
+        fi
+        exit 0
+        """.write(to: hookURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hookURL.path)
+
+        var changedLines = baseLines
+        changedLines[1] = "first"
+        changedLines[11] = "second"
+        changedLines[21] = "third"
+        try (changedLines.joined(separator: "\n") + "\n").write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let manager = GitManager(repositoryPathOverride: repoURL.path)
+        let refresh = expectation(description: "refresh")
+        manager.updateUncommittedFiles { refresh.fulfill() }
+        await fulfillment(of: [refresh], timeout: 3)
+        guard let snapshot = await manager.makeAtomicCommitSnapshotAsync(), snapshot.hunks.count == 3 else {
+            return XCTFail("Expected three hunks in the snapshot")
+        }
+        let groups = [
+            AtomicCommitGroup(files: [], hunks: [snapshot.hunks[0].id], message: "feat: first hunk"),
+            AtomicCommitGroup(files: [], hunks: [snapshot.hunks[1].id], message: "feat: second hunk")
+        ]
+
+        let result = await manager.performHunkCommitsAsync(groups: groups, snapshot: snapshot)
+        if case .success = result {
+            XCTFail("Expected later hunk commit failure")
+        }
+        XCTAssertEqual(
+            try runGit(["rev-list", "--count", "HEAD"], in: repoURL).trimmingCharacters(in: .whitespacesAndNewlines),
+            "2"
+        )
+        XCTAssertTrue(try runGit(["status", "--porcelain"], in: repoURL).contains("feature.swift"))
+        let content = try String(contentsOf: fileURL, encoding: .utf8)
+        XCTAssertTrue(content.contains("first"))
+        XCTAssertTrue(content.contains("second"))
+        XCTAssertTrue(content.contains("third"))
+    }
+
+    func testPerformHunkCommitsAsyncRejectsChangedHeadAsStale() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let fileURL = repoURL.appendingPathComponent("feature.swift")
+        try "base\n".write(to: fileURL, atomically: true, encoding: .utf8)
+        _ = try runGit(["add", "feature.swift"], in: repoURL)
+        _ = try runGit(["commit", "-m", "base feature"], in: repoURL)
+        try "base\nchanged\n".write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let manager = GitManager(repositoryPathOverride: repoURL.path)
+        let refresh = expectation(description: "refresh")
+        manager.updateUncommittedFiles { refresh.fulfill() }
+        await fulfillment(of: [refresh], timeout: 3)
+        guard let snapshot = await manager.makeAtomicCommitSnapshotAsync(), let hunk = snapshot.hunks.first else {
+            return XCTFail("Expected a snapshot hunk")
+        }
+        _ = try runGit(["commit", "--allow-empty", "-m", "move HEAD"], in: repoURL)
+
+        let result = await manager.performHunkCommitsAsync(
+            groups: [AtomicCommitGroup(files: [], hunks: [hunk.id], message: "feat: stale")],
+            snapshot: snapshot
+        )
+        if case .success = result {
+            XCTFail("Expected changed HEAD to invalidate the snapshot")
+        }
+        XCTAssertEqual(
+            try runGit(["log", "-1", "--format=%s"], in: repoURL).trimmingCharacters(in: .whitespacesAndNewlines),
+            "move HEAD"
+        )
     }
 }
