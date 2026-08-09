@@ -411,8 +411,12 @@ extension MainMenuView {
             },
             onCommit: { groups in
                 showAtomicCommitSheet = false
+                let repositoryPath = gitManager.repositoryPath
                 Task {
-                    _ = await gitManager.performAtomicCommitsAsync(groups: groups)
+                    let result = await gitManager.performAtomicCommitsAsync(groups: groups)
+                    if case .success = result {
+                        projectMonitor.refresh(path: repositoryPath)
+                    }
                 }
             }
         )

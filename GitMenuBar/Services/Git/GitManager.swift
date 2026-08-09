@@ -111,6 +111,10 @@ class GitManager: ObservableObject {
         set { repositoryContext.repositoryPath = newValue }
     }
 
+    var repositoryPath: String {
+        storedRepoPath
+    }
+
     private func runOnBackground<T: Sendable>(_ operation: @escaping @Sendable () -> T) async -> T {
         await GitExecution.runOnBackground(operation)
     }

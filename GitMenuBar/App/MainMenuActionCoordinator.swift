@@ -70,10 +70,16 @@ final class MainMenuActionCoordinator: ObservableObject {
 
     private let gitManager: GitManager
     private let aiCommitCoordinator: AICommitCoordinator
+    private let onCommitCompleted: (@MainActor (String) -> Void)?
 
-    init(gitManager: GitManager, aiCommitCoordinator: AICommitCoordinator) {
+    init(
+        gitManager: GitManager,
+        aiCommitCoordinator: AICommitCoordinator,
+        onCommitCompleted: (@MainActor (String) -> Void)? = nil
+    ) {
         self.gitManager = gitManager
         self.aiCommitCoordinator = aiCommitCoordinator
+        self.onCommitCompleted = onCommitCompleted
     }
 
     var hasWorkingTreeChanges: Bool {
@@ -122,7 +128,7 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
 
-        return await executePrimaryAction {
+        return await executeCommitOperation {
             clearAlert()
             showSyncOptions = false
             whitespaceCommitPrompt = nil
@@ -166,7 +172,7 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
 
-        return await executePrimaryAction {
+        return await executeCommitOperation {
             clearAlert()
             showSyncOptions = false
             whitespaceCommitPrompt = nil
@@ -188,7 +194,7 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
 
-        return await executePrimaryAction {
+        return await executeCommitOperation {
             clearAlert()
             showSyncOptions = false
             whitespaceCommitPrompt = nil
@@ -234,7 +240,7 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
 
-        return await executePrimaryAction {
+        return await executeCommitOperation {
             clearAlert()
             showSyncOptions = false
             return await executeAtomicCommitsAndPush(groups: groups)
@@ -248,7 +254,7 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
 
-        return await executePrimaryAction {
+        return await executeCommitOperation {
             clearAlert()
             showSyncOptions = false
             operationStatus = .groupingChanges
@@ -364,6 +370,8 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .failed
         }
 
+        commitWasCreated = true
+
         await refreshRepository()
         await refreshRemoteStatus()
 
@@ -408,6 +416,8 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .failed
         }
 
+        commitWasCreated = true
+
         await refreshRemoteStatus()
         if gitManager.isRemoteAhead {
             showSyncOptions = true
@@ -443,6 +453,21 @@ final class MainMenuActionCoordinator: ObservableObject {
             operationStatus = nil
         }
         return await operation()
+    }
+
+    private var commitWasCreated = false
+
+    private func executeCommitOperation(
+        _ operation: () async -> MainMenuCommitExecutionResult
+    ) async -> MainMenuCommitExecutionResult {
+        commitWasCreated = false
+        let repositoryPath = gitManager.repositoryPath
+        let result = await executePrimaryAction(operation)
+        if commitWasCreated {
+            onCommitCompleted?(repositoryPath)
+        }
+        commitWasCreated = false
+        return result
     }
 
     private func commitLocally(_ message: String) async -> Result<Void, Error> {

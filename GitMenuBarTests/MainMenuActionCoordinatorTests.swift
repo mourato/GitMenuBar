@@ -18,11 +18,13 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
 
         let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
         let apiKeyStore = SpyAIAPIKeyStore()
+        var refreshedPaths: [String] = []
         let actionCoordinator = makeActionCoordinator(
             gitManager: gitManager,
             providerStore: providerStore,
             apiKeyStore: apiKeyStore,
-            session: makeMockedURLSession()
+            session: makeMockedURLSession(),
+            onCommitCompleted: { path in refreshedPaths.append(path) }
         )
 
         let result = await actionCoordinator.performCommit(commentText: "feat: manual commit")
@@ -30,10 +32,47 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertEqual(result, .committed)
         XCTAssertEqual(apiKeyStore.readCount, 0)
         XCTAssertNil(actionCoordinator.alert)
+        XCTAssertEqual(refreshedPaths, [repoURL.path])
 
         let headMessage = try runGit(["log", "-1", "--pretty=%B"], in: repoURL)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         XCTAssertEqual(headMessage, "feat: manual commit")
+    }
+
+    func testAtomicCommitsRefreshOnceAfterTheLastCommit() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let alphaFile = repoURL.appendingPathComponent("alpha.swift")
+        let betaFile = repoURL.appendingPathComponent("beta.swift")
+        try "base\n".write(to: alphaFile, atomically: true, encoding: .utf8)
+        try "base\n".write(to: betaFile, atomically: true, encoding: .utf8)
+        try "base\nalpha\n".write(to: alphaFile, atomically: true, encoding: .utf8)
+        try "base\nbeta\n".write(to: betaFile, atomically: true, encoding: .utf8)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        await waitForWorkingTreeUpdate(gitManager)
+
+        var refreshedPaths: [String] = []
+        var observedCommitCount: String?
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession(),
+            onCommitCompleted: { path in
+                refreshedPaths.append(path)
+                observedCommitCount = try? runGit(["rev-list", "--count", "HEAD"], in: repoURL)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        )
+
+        let result = await actionCoordinator.performAtomicCommitsAndPush(groups: [
+            AtomicCommitGroup(files: ["alpha.swift"], message: "feat: alpha"),
+            AtomicCommitGroup(files: ["beta.swift"], message: "feat: beta")
+        ])
+
+        XCTAssertEqual(result, .failed)
+        XCTAssertEqual(refreshedPaths, [repoURL.path])
+        XCTAssertEqual(observedCommitCount, "3")
     }
 
     func testPerformCommitGeneratesMessageWhenInputIsEmpty() async throws {
@@ -353,7 +392,8 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         gitManager: GitManager,
         providerStore: AIProviderStore,
         apiKeyStore: any AIAPIKeyStore,
-        session: URLSession
+        session: URLSession,
+        onCommitCompleted: (@MainActor (String) -> Void)? = nil
     ) -> MainMenuActionCoordinator {
         let aiCoordinator = AICommitCoordinator(
             providerStore: providerStore,
@@ -364,7 +404,8 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
 
         return MainMenuActionCoordinator(
             gitManager: gitManager,
-            aiCommitCoordinator: aiCoordinator
+            aiCommitCoordinator: aiCoordinator,
+            onCommitCompleted: onCommitCompleted
         )
     }
 

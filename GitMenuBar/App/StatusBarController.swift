@@ -87,7 +87,10 @@ final class StatusBarController: ObservableObject {
     )
     lazy var actionCoordinator = MainMenuActionCoordinator(
         gitManager: gitManager,
-        aiCommitCoordinator: aiCommitCoordinator
+        aiCommitCoordinator: aiCommitCoordinator,
+        onCommitCompleted: { [weak self] path in
+            self?.projectMonitor.refresh(path: path)
+        }
     )
     lazy var commitHistoryEditCoordinator = CommitHistoryEditCoordinator(
         gitManager: gitManager,
