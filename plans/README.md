@@ -980,3 +980,37 @@ debounce, renderer rewrite, or new dependency in this batch.
   `git diff --check` passed before merge. The post-merge `make test` also
   passed. The clean-tree `make check-preview` empty-array baseline remains
   documented above.
+
+## Hunk-aware atomic commits — 2026-08-09
+
+The current atomic-commit flow validates uniqueness at the file-path level and
+stages complete paths. That rejects a legitimate case where two unrelated
+changes in one tracked text file belong to different commits. Plan 064 adds a
+snapshot-backed hunk model, AI hunk references, review controls, and temporary
+index execution while keeping unsupported changes whole-file-only and leaving
+the Companion CLI contract unchanged.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|---|---|---:|---:|---|---|
+| [064](064-hunk-aware-atomic-commits.md) | Split atomic commits by diff hunk | P1 | L | — | DONE |
+
+### Dependency notes
+
+- Plan 064 is serial because the model, AI response contract, review sheet,
+  Git index transaction, and automatic commit path must agree on one snapshot.
+- The Companion CLI remains file-level in Plan 064. Hunk-aware CLI proposal/apply
+  is a separate follow-up because it needs a versioned non-interactive JSON
+  contract and stale-plan semantics.
+
+### Confirmed constraints
+
+- Repeated paths are valid only when the groups refer to distinct hunk IDs.
+- Hunk mode supports tracked text modifications; untracked, binary, deleted,
+  renamed, and unsupported changes remain whole-file selections.
+- Hunk mode refuses pre-existing staged changes before any mutation.
+- Snapshot drift, patch conflicts, duplicate hunks, and overlapping complete-file
+  selections fail closed.
+- Temporary `GIT_INDEX_FILE` and patch files are runtime-only and cleaned up;
+  no prompts, diffs, or credentials are persisted.
