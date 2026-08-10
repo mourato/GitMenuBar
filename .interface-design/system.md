@@ -159,6 +159,35 @@ Current single-project vertical order (do not invent a new IA without a plan):
 4. Footer: branch chip · Ghost actions (Atomic / Manage)
 5. Optional usage quota cards (Mimir-style; secondary to Git workflow)
 
+### Workbench scroll contract
+
+The main project content, Commit Details, Project Cleanup, and Command Palette
+scroll owners share one visual contract: apply `workbenchEdgeDissolve()` before
+`workbenchThinScrollbar()`. The sidebar, sheets, and unrelated popovers keep
+their existing scroll treatment unless a later design decision explicitly
+opts them in.
+
+The edge dissolve is a scroll-driven mask, not a route transition. It appears
+only when content exceeds the viewport, keeps the middle of a long list fully
+visible, and uses transparent stops so content softens into the surrounding
+Workbench surface rather than ending at a hard rectangle or divider. The main
+route keeps the commit composer and branch footer fixed outside the scroll
+owner; the top and bottom bands dissolve content into those adjacent zones.
+
+The thin scrollbar replaces the native visible scroller on opted-in surfaces.
+Its thumb is 6 pt at rest, expands to 10 pt while hovered or dragged, supports
+track-jump and drag interaction, and fades after scrolling stops. It remains
+hidden when the surface is not scrollable. Reduce Motion removes the morph and
+fade animation without removing scrolling or state feedback. The `ScrollView`
+remains the semantic owner for keyboard focus and VoiceOver; the custom thumb is
+only a visual and pointer affordance.
+
+Use the shared Workbench metrics and motion tokens for bands, thumb geometry,
+fade timing, and morph timing. Verify the contract in short and long content,
+light and dark appearance, increased contrast, Reduce Transparency, and Reduce
+Motion. The Command Palette keeps its existing `ScrollViewReader` selection
+behavior while adopting the same scroll treatment for its result list.
+
 For multi-project monitoring, the main window becomes a split workbench: a
 left Projects sidebar plus the existing selected-project detail column. The
 sidebar is visible by default when monitoring is active and can collapse fully

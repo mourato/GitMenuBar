@@ -1014,3 +1014,35 @@ the Companion CLI contract unchanged.
   selections fail closed.
 - Temporary `GIT_INDEX_FILE` and patch files are runtime-only and cleaned up;
   no prompts, diffs, or credentials are persisted.
+
+## Workbench scroll effects — 2026-08-10
+
+The accepted visual contract ports Gordon's edge dissolve and thin scrollbar to
+the four central scroll owners: main project content, Commit Details, Project
+Cleanup, and Command Palette. The effect is explicit per `ScrollView`; the
+Projects sidebar, sheets, and unrelated popovers remain outside the contract.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|---|---|---:|---:|---|---|
+| [065](065-workbench-scroll-effects.md) | Unify Workbench scroll edge dissolve and thin scrollbar | P1 | M | — | TODO |
+
+### Dependency notes
+
+- Plan 065 is independent of the Git data and route-state plans. It must keep
+  the existing scroll owners and command-palette `ScrollViewReader` behavior.
+- The shared effect core must land before its four callers; execution is
+  intentionally serial because modifier order, native-scroller suppression,
+  and accessibility semantics are shared.
+
+### Confirmed constraints
+
+- Edge dissolve is a scroll-driven mask, not a route transition, and disappears
+  when content fits.
+- Thin scrollbar hides native visible scrollers only on opted-in surfaces,
+  supports hover, track-jump, drag, and reduced-motion behavior, and remains
+  above the mask.
+- The underlying `ScrollView` remains the owner of keyboard focus, VoiceOver,
+  refresh, and programmatic scrolling.
+- The main composer/footer stay fixed outside the main content scroll.
