@@ -11,6 +11,7 @@ Related ADRs:
 
 - `docs/adr/0001-workbench-depth-and-token-naming.md`
 - `docs/adr/0002-window-shell-material-and-titlebar-chrome.md`
+- `docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md`
 
 ---
 
@@ -187,6 +188,22 @@ fade timing, and morph timing. Verify the contract in short and long content,
 light and dark appearance, increased contrast, Reduce Transparency, and Reduce
 Motion. The Command Palette keeps its existing `ScrollViewReader` selection
 behavior while adopting the same scroll treatment for its result list.
+
+### Scroll implementation invariants
+
+- Each opted-in surface has exactly one vertical `ScrollView` owner. The main
+  composer and branch footer remain outside that owner.
+- Set native indicators to hidden on the owner and attach
+  `workbenchHideNativeScrollers()` to its content. The shared native scrollbar
+  style may configure general scroll views, but must preserve opted-in native
+  scrollers as disabled.
+- The custom interaction bridge occupies only the scrollbar hover rail. Hit
+  testing returns to the underlying content outside that rail, so row controls,
+  keyboard scrolling, VoiceOver, and mouse-wheel scrolling keep their native
+  ownership.
+- Keep the modifier order on the owner: `workbenchEdgeDissolve()` followed by
+  `workbenchThinScrollbar()`. The custom thumb must remain above the dissolve;
+  no second native scrollbar or parallel scroll owner is introduced.
 
 For multi-project monitoring, the main window becomes a split workbench: a
 left Projects sidebar plus the existing selected-project detail column. The

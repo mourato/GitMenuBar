@@ -10,6 +10,14 @@ GitMenuBar is a native macOS menu bar app for day-to-day Git workflows.
 implementation, `make check-preview` for UI work, and `make lint && make test`
 before merge.
 
+## UI design gate
+
+Before changing native UI, read [`.interface-design/system.md`](.interface-design/system.md).
+It is the canonical active design contract for visual hierarchy, Workbench
+tokens, scroll ownership, motion, accessibility, and surface exclusions. When
+an interface change intentionally changes a locked decision, update that
+system document and record the rationale in the relevant ADR before shipping.
+
 ## Execution Policy
 
 Every implementation plan must contain an `## Execution profile` section.
