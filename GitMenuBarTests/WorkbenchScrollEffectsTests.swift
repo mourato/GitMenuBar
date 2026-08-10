@@ -17,6 +17,9 @@ final class WorkbenchScrollEffectsTests: XCTestCase {
         let metrics = WorkbenchEdgeDissolveMetrics(contentOffset: -20, contentHeight: 300, containerHeight: 100, topInset: 0, bottomInset: 0)
         XCTAssertEqual(metrics.topDistance, 0)
         XCTAssertEqual(metrics.bottomDistance, 220)
+
+        let bottomMetrics = WorkbenchEdgeDissolveMetrics(contentOffset: 1000, contentHeight: 300, containerHeight: 100, topInset: 0, bottomInset: 0)
+        XCTAssertEqual(bottomMetrics.bottomDistance, 0)
     }
 
     func testThumbStaysWithinTrackAndUsesMinimumHeight() {

@@ -330,7 +330,7 @@ private struct WorkbenchScrollbarInteraction: NSViewRepresentable {
         }
 
         override func scrollWheel(with event: NSEvent) {
-            targetScrollView()?.scrollWheel(with: event)
+            targetScrollView()?.scrollWheel(with: event) ?? super.scrollWheel(with: event)
         }
 
         override func mouseDown(with event: NSEvent) {
