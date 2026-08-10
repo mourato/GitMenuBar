@@ -8,6 +8,22 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         super.tearDown()
     }
 
+    func testRepositorySwitchIsBlockedWhileActionIsBusy() {
+        let gitManager = GitManager(repositoryPathOverride: "")
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        XCTAssertTrue(actionCoordinator.canSwitchRepository)
+
+        gitManager.isCommitting = true
+
+        XCTAssertFalse(actionCoordinator.canSwitchRepository)
+    }
+
     func testPerformCommitUsesManualMessageWithoutInvokingAI() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let fileURL = repoURL.appendingPathComponent("README.md")

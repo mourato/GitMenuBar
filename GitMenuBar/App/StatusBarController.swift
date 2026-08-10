@@ -967,6 +967,8 @@ final class StatusBarController: ObservableObject {
     }
 
     private func selectRepository(_ path: String) {
+        guard actionCoordinator.canSwitchRepository else { return }
+
         let wasVisible = isMainWindowVisible
         UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
         RecentProjectsStore().add(path)

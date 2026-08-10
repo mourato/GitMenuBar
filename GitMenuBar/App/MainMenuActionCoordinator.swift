@@ -98,6 +98,10 @@ final class MainMenuActionCoordinator: ObservableObject {
         gitManager.isCommitting || aiCommitCoordinator.isGenerating || isExecutingPrimaryAction
     }
 
+    var canSwitchRepository: Bool { // ponytail: serialize project switching; use an immutable context for concurrent projects.
+        !isBusy
+    }
+
     var canAutoCommit: Bool {
         hasWorkingTreeChanges && aiCommitCoordinator.isReadyForGeneration && !isBusy
     }

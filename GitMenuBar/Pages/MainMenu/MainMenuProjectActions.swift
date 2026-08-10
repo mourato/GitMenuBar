@@ -42,6 +42,8 @@ extension MainMenuView {
     }
 
     func setCurrentRepositoryPath(_ path: String) {
+        guard actionCoordinator.canSwitchRepository else { return }
+
         UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
         currentRepositoryPath = path
     }

@@ -90,11 +90,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Check if this is a git repository
         let gitPath = (path as NSString).appendingPathComponent(".git")
         let isGitRepo = FileManager.default.fileExists(atPath: gitPath)
+        guard canSwitchRepository else { return }
 
         if isGitRepo, githubAuthManager?.isAuthenticated == true {
             // Check if remote repo actually exists on GitHub
             statusBarController?.gitManager.remoteRepositoryExists(at: path) { [weak self] exists in
                 guard let self else { return }
+
+                guard canSwitchRepository else { return }
 
                 UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
                 recentProjectsStore.add(path)
@@ -111,33 +114,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
             }
-        } else if isGitRepo {
-            // Git repo but not authenticated - just open normally
+        } else {
             UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
             recentProjectsStore.add(path)
-            statusBarController?.projectMonitor.add(path: path)
-
-            DispatchQueue.main.async {
-                self.statusBarController?.openMainWindow()
+            if isGitRepo {
+                statusBarController?.projectMonitor.add(path: path)
             }
-        } else {
-            // Not a git repo at all - show create repo window if GitHub is connected
-            if githubAuthManager?.isAuthenticated == true {
-                UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
-                recentProjectsStore.add(path)
 
+            if !isGitRepo, githubAuthManager?.isAuthenticated == true {
                 DispatchQueue.main.async {
                     self.statusBarController?.openMainWindowWithCreateRepo(path: path)
                 }
             } else {
-                // Not connected to GitHub - just open normally
-                UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
-                recentProjectsStore.add(path)
-
                 DispatchQueue.main.async {
                     self.statusBarController?.openMainWindow()
                 }
             }
         }
+    }
+
+    private var canSwitchRepository: Bool {
+        statusBarController?.actionCoordinator.canSwitchRepository ?? true
     }
 }

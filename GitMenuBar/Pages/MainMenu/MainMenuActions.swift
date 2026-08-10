@@ -192,6 +192,8 @@ extension MainMenuView {
     }
 
     func switchRepository(path: String) {
+        guard actionCoordinator.canSwitchRepository else { return }
+
         if !gitManager.isGitRepository(at: path), githubAuthManager.isAuthenticated {
             presentationModel.showCreateRepo(path: path)
             return
