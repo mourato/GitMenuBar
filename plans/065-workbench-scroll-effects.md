@@ -186,6 +186,25 @@ and focused metric tests may change.
 explicit preview command all exit 0, with any environment-only manual limitation
 recorded in the handoff.
 
+## Verification record — 2026-08-10
+
+- `make agent-check`: passed; Debug build and companion CLI build succeeded.
+- Explicit candidate preview check: passed for all four opted-in route files and
+  the shared effects file.
+- `make test`: passed.
+- `make lint && make test`: passed; the eight SwiftLint warnings are pre-existing
+  and outside this change.
+- `make guidance-check` and `git diff --check`: passed.
+- `make check-preview`: reproduces the clean-tree baseline failure at
+  `scripts/check-preview.sh:126` (`files[@]: unbound variable`); the explicit
+  candidate command above passes.
+- Code review: the first pass found and the review-fix merge `ca3d2b7` resolves
+  Project Cleanup scroll ownership, wheel fallback, and metric boundary coverage;
+  the final standards/spec pass reported no remaining code findings.
+- Manual WindowServer, VoiceOver, appearance, contrast, transparency, motion,
+  and route-interaction checks were not run in this CLI environment. No UI
+  screenshot is available; this limitation is recorded for a macOS session.
+
 ## Test plan
 
 - Model pure metric assertions after the small XCTest style in
@@ -199,15 +218,15 @@ recorded in the handoff.
 
 ## Done criteria
 
-- [ ] `workbenchEdgeDissolve()` and `workbenchThinScrollbar()` exist in one shared Workbench scroll-effects source file and use shared tokens.
-- [ ] Main, Commit Details, Project Cleanup, and Command Palette use the modifiers in the documented order.
-- [ ] Sidebar, sheets, and unrelated popovers do not use the modifiers.
-- [ ] Native visible scrollers are suppressed only for opted-in surfaces; custom thumbs remain above the mask and do not block content interaction.
-- [ ] Short content has no mask/thumb; long content follows the Gordon edge-alpha contract.
-- [ ] Reduce Motion, Reduce Transparency, increased contrast, keyboard, focus, and VoiceOver behavior remain usable.
-- [ ] `WorkbenchScrollEffectsTests.swift` covers the pure metric boundary cases and passes.
-- [ ] `make agent-check`, `make test`, `make check-preview` (or documented baseline fallback), `make guidance-check`, `git diff --check`, and pre-merge `make lint && make test` pass.
-- [ ] No files outside the in-scope list are modified; `plans/README.md` status row is updated by the executor.
+- [x] `workbenchEdgeDissolve()` and `workbenchThinScrollbar()` exist in one shared Workbench scroll-effects source file and use shared tokens.
+- [x] Main, Commit Details, Project Cleanup, and Command Palette use the modifiers in the documented order.
+- [x] Sidebar, sheets, and unrelated popovers do not use the modifiers.
+- [x] Native visible scrollers are suppressed only for opted-in surfaces; custom thumbs remain above the mask and do not block content interaction.
+- [x] Short content has no mask/thumb; long content follows the Gordon edge-alpha contract.
+- [x] Reduce Motion, Reduce Transparency, increased contrast, keyboard, focus, and VoiceOver behavior remain implemented through the underlying ScrollView and native accessibility semantics; manual validation is deferred because this environment has no WindowServer/VoiceOver session.
+- [x] `WorkbenchScrollEffectsTests.swift` covers the pure metric boundary cases and passes.
+- [x] `make agent-check`, `make test`, `make check-preview` (via the documented baseline fallback), `make guidance-check`, `git diff --check`, and pre-merge `make lint && make test` pass.
+- [x] No files outside the in-scope list are modified; the `plans/README.md` status row is updated by the executor.
 
 ## STOP conditions
 

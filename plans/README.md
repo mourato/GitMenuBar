@@ -1026,7 +1026,7 @@ Projects sidebar, sheets, and unrelated popovers remain outside the contract.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |---|---|---:|---:|---|---|
-| [065](065-workbench-scroll-effects.md) | Unify Workbench scroll edge dissolve and thin scrollbar | P1 | M | — | TODO |
+| [065](065-workbench-scroll-effects.md) | Unify Workbench scroll edge dissolve and thin scrollbar | P1 | M | — | DONE (`ca3d2b7`; review fix `1c6a301`) |
 
 ### Dependency notes
 
