@@ -76,6 +76,13 @@ enum WorkbenchMetrics {
     static let largeCornerRadius: CGFloat = 14
     static let overlayCornerRadius: CGFloat = 16
     static let iconHitTarget: CGFloat = 28
+    static let scrollEdgeTopBand: CGFloat = 32
+    static let scrollEdgeBottomBand: CGFloat = 28
+    static let scrollbarInset: CGFloat = 8
+    static let scrollbarWidth: CGFloat = 6
+    static let scrollbarExpandedWidth: CGFloat = 10
+    static let scrollbarMinimumThumbHeight: CGFloat = 28
+    static let scrollbarHoverZone: CGFloat = 16
 }
 
 enum WorkbenchTypography {

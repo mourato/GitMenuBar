@@ -150,6 +150,8 @@ struct MainMenuCommandPaletteView: View {
                         }
                         .padding(.bottom, 2)
                     }
+                    .workbenchEdgeDissolve()
+                    .workbenchThinScrollbar()
                     .scrollIndicators(.hidden)
                     .frame(maxHeight: 330)
                     .onAppear {

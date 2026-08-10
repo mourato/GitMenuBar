@@ -49,6 +49,8 @@ struct ProjectCleanupPage: View {
                                 })
                             }
                         }
+                        .workbenchEdgeDissolve()
+                        .workbenchThinScrollbar()
                     }
                 }
             }

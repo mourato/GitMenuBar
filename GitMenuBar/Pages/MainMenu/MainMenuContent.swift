@@ -151,6 +151,8 @@ extension MainMenuView {
             ScrollView(.vertical, showsIndicators: !isCommandPalettePresented) {
                 mainScrollContent
             }
+            .workbenchEdgeDissolve()
+            .workbenchThinScrollbar()
             .scrollDisabled(isCommandPalettePresented)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .layoutPriority(1)

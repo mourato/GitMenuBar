@@ -22,6 +22,9 @@ enum WorkbenchMotion {
     static let press: Animation = .spring(response: 0.15, dampingFraction: 1.0)
     static let route: Animation = .spring(response: 0.35, dampingFraction: 1.0)
     static let reduceMotion: Animation = .easeInOut(duration: 0.20)
+    static let scrollbarFade: Animation = .easeOut(duration: 0.18)
+    static let scrollbarMorph: Animation = .spring(response: 0.28, dampingFraction: 0.85)
+    static let scrollbarFadeDelay: Duration = .milliseconds(800)
 
     static func adaptive(_ animation: Animation, usesReducedMotion: Bool) -> Animation {
         usesReducedMotion ? reduceMotion : animation
