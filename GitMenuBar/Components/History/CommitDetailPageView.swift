@@ -45,6 +45,8 @@ struct CommitDetailPageView: View {
                         changedFilesSection(commit: commit)
                     }
                 }
+                .workbenchEdgeDissolve()
+                .workbenchThinScrollbar()
                 .frame(maxHeight: 520)
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
