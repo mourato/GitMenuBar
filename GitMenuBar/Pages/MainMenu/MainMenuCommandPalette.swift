@@ -149,6 +149,7 @@ struct MainMenuCommandPaletteView: View {
                             }
                         }
                         .padding(.bottom, 2)
+                        .workbenchHideNativeScrollers()
                     }
                     .workbenchEdgeDissolve()
                     .workbenchThinScrollbar()

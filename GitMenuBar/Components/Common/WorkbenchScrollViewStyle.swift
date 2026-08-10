@@ -13,8 +13,12 @@ enum WorkbenchScrollViewStyle {
         scrollView.backgroundColor = .clear
         scrollView.scrollerStyle = .overlay
         scrollView.autohidesScrollers = true
-        scrollView.verticalScroller?.controlSize = .small
-        scrollView.horizontalScroller?.controlSize = .small
+        if scrollView.hasVerticalScroller {
+            scrollView.verticalScroller?.controlSize = .small
+        }
+        if scrollView.hasHorizontalScroller {
+            scrollView.horizontalScroller?.controlSize = .small
+        }
     }
 }
 

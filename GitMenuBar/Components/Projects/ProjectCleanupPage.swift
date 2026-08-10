@@ -38,7 +38,7 @@ struct ProjectCleanupPage: View {
                 if store.rows.isEmpty {
                     ContentUnavailableView("No Monitored Projects", systemImage: "folder", description: Text("Add a project before reviewing cleanup."))
                 } else {
-                    ScrollView {
+                    ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: WorkbenchMetrics.compactSpacing) {
                             ForEach(store.rows) { row in
                                 ProjectCleanupProjectRowView(row: row, isSelected: store.selectedPaths.contains(row.id), isRunning: store.isRunning, onToggle: { store.toggleSelection(path: row.id) }, onInspect: {
@@ -49,6 +49,7 @@ struct ProjectCleanupPage: View {
                                 })
                             }
                         }
+                        .workbenchHideNativeScrollers()
                     }
                     .workbenchEdgeDissolve()
                     .workbenchThinScrollbar()

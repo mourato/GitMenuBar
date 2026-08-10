@@ -34,7 +34,7 @@ struct CommitDetailPageView: View {
     var body: some View {
         VStack(spacing: WorkbenchMetrics.panelPadding) {
             if let commit {
-                ScrollView {
+                ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
                         metadataSection(commit: commit)
                         titleSection(commit: commit)
@@ -44,6 +44,7 @@ struct CommitDetailPageView: View {
 
                         changedFilesSection(commit: commit)
                     }
+                    .workbenchHideNativeScrollers()
                 }
                 .workbenchEdgeDissolve()
                 .workbenchThinScrollbar()

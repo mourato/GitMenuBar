@@ -140,7 +140,6 @@ private struct WorkbenchThinScrollbarModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .scrollIndicators(.hidden)
-            .background(WorkbenchNativeScrollerHider().allowsHitTesting(false))
             .onScrollGeometryChange(for: WorkbenchScrollbarMetrics.self) { geometry in
                 WorkbenchScrollbarMetrics(
                     contentOffset: geometry.contentOffset.y,
@@ -160,7 +159,7 @@ private struct WorkbenchThinScrollbarModifier: ViewModifier {
                 }
             }
             .overlay(alignment: .topTrailing) { scrollbar }
-            .overlay {
+            .overlay(alignment: .topTrailing) {
                 WorkbenchScrollbarInteraction(
                     edgeWidth: WorkbenchMetrics.scrollbarHoverZone,
                     inset: WorkbenchMetrics.scrollbarInset,
@@ -171,6 +170,8 @@ private struct WorkbenchThinScrollbarModifier: ViewModifier {
                     onZoneChange: updateHover,
                     onDragChange: updateDragging
                 )
+                .frame(width: WorkbenchMetrics.scrollbarHoverZone)
+                .frame(maxHeight: .infinity)
             }
     }
 
@@ -324,9 +325,7 @@ private struct WorkbenchScrollbarInteraction: NSViewRepresentable {
         }
 
         override func hitTest(_ point: NSPoint) -> NSView? {
-            guard let superview else { return nil }
-            let localPoint = convert(point, from: superview)
-            return grabRect.contains(localPoint) || railActive && localPoint.x >= bounds.width - edgeWidth ? self : nil
+            grabRect.contains(point) || railActive && point.x >= bounds.width - edgeWidth ? self : nil
         }
 
         override func scrollWheel(with event: NSEvent) {
@@ -452,6 +451,14 @@ private struct WorkbenchScrollbarInteraction: NSViewRepresentable {
 }
 
 extension View {
+    func workbenchHideNativeScrollers() -> some View {
+        background {
+            WorkbenchNativeScrollerHider()
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
+        }
+    }
+
     func workbenchEdgeDissolve() -> some View {
         modifier(WorkbenchEdgeDissolveModifier())
     }

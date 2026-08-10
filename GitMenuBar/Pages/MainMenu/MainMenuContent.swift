@@ -148,8 +148,9 @@ extension MainMenuView {
                 commitHistoryEditCoordinator: commitHistoryEditCoordinator
             )
 
-            ScrollView(.vertical, showsIndicators: !isCommandPalettePresented) {
+            ScrollView(.vertical, showsIndicators: false) {
                 mainScrollContent
+                    .workbenchHideNativeScrollers()
             }
             .workbenchEdgeDissolve()
             .workbenchThinScrollbar()
