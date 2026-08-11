@@ -1,6 +1,23 @@
 @testable import GitMenuBar
 import XCTest
 
+private struct RecordingAtomicAI: AtomicGroupingAIProviding, Sendable {
+    let response: String
+    let capture: PromptCapture
+
+    // swiftlint:disable async_without_await
+    func generateRawResponse(
+        prompt: String,
+        provider _: AIProviderConfig,
+        apiKey _: String,
+        model _: String
+    ) async throws -> String {
+        capture.set(prompt)
+        return response
+    }
+    // swiftlint:enable async_without_await
+}
+
 final class CompanionCLIServiceTests: XCTestCase {
     private let service = CompanionCLIService()
     private let policy = CommitMessagePolicy.shared
@@ -177,5 +194,132 @@ final class CompanionCLIServiceTests: XCTestCase {
             messageOverride: nil
         )
         XCTAssertEqual(all.resolvedDiffScope(), DiffScope.all.rawValue)
+    }
+
+    func testAtomicProposalUsesStagedFilesAndDiffs() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let stagedFile = repoURL.appendingPathComponent("staged.swift")
+        let unstagedFile = repoURL.appendingPathComponent("unstaged.swift")
+        try "base\n".write(to: stagedFile, atomically: true, encoding: .utf8)
+        try "base\n".write(to: unstagedFile, atomically: true, encoding: .utf8)
+        try runGit(["add", "."], in: repoURL)
+        try "base\nstaged\n".write(to: stagedFile, atomically: true, encoding: .utf8)
+        try runGit(["add", stagedFile.lastPathComponent], in: repoURL)
+        try "base\nunstaged\n".write(to: unstagedFile, atomically: true, encoding: .utf8)
+
+        let capture = PromptCapture()
+        let response = "[{\"files\":[\"staged.swift\"],\"message\":\"feat: staged\"}]"
+        let session = try await readySession(
+            repositoryPath: repoURL.path,
+            grouper: AICommitGrouperService(aiService: RecordingAtomicAI(response: response, capture: capture))
+        )
+        let options = CompanionCLIScopeOptions(repositoryPathScope: repoURL.path, staged: true, all: false, outputFormat: .json, messageOverride: nil)
+
+        let plan = try await service.buildAtomicPlan(session: session, options: options)
+
+        XCTAssertEqual(plan.groups[0].files, ["staged.swift"])
+        XCTAssertTrue(capture.value.contains("+staged"))
+        XCTAssertFalse(capture.value.contains("+unstaged"))
+    }
+
+    func testAtomicProposalAllIncludesStagedUnstagedAndUntrackedFiles() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let stagedFile = repoURL.appendingPathComponent("staged.swift")
+        let unstagedFile = repoURL.appendingPathComponent("unstaged.swift")
+        try "base\n".write(to: stagedFile, atomically: true, encoding: .utf8)
+        try "base\n".write(to: unstagedFile, atomically: true, encoding: .utf8)
+        try runGit(["add", "."], in: repoURL)
+        try "base\nstaged\n".write(to: stagedFile, atomically: true, encoding: .utf8)
+        try runGit(["add", stagedFile.lastPathComponent], in: repoURL)
+        try "base\nunstaged\n".write(to: unstagedFile, atomically: true, encoding: .utf8)
+        try "untracked\n".write(to: repoURL.appendingPathComponent("untracked.swift"), atomically: true, encoding: .utf8)
+
+        let capture = PromptCapture()
+        let response = "[{\"files\":[\"staged.swift\",\"unstaged.swift\",\"untracked.swift\"],\"message\":\"feat: all\"}]"
+        let session = try await readySession(
+            repositoryPath: repoURL.path,
+            grouper: AICommitGrouperService(aiService: RecordingAtomicAI(response: response, capture: capture))
+        )
+        let options = CompanionCLIScopeOptions(repositoryPathScope: repoURL.path, staged: false, all: true, outputFormat: .json, messageOverride: nil)
+
+        let plan = try await service.buildAtomicPlan(session: session, options: options)
+
+        XCTAssertEqual(plan.groups[0].files, ["staged.swift", "unstaged.swift", "untracked.swift"])
+        XCTAssertTrue(capture.value.contains("+staged"))
+        XCTAssertTrue(capture.value.contains("+unstaged"))
+        XCTAssertTrue(capture.value.contains("+untracked"))
+    }
+
+    func testAtomicProposalWithoutScopePreservesUnstagedCompatibility() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let stagedFile = repoURL.appendingPathComponent("staged.swift")
+        let unstagedFile = repoURL.appendingPathComponent("unstaged.swift")
+        try "base\n".write(to: stagedFile, atomically: true, encoding: .utf8)
+        try "base\n".write(to: unstagedFile, atomically: true, encoding: .utf8)
+        try runGit(["add", "."], in: repoURL)
+        try "base\nstaged\n".write(to: stagedFile, atomically: true, encoding: .utf8)
+        try runGit(["add", stagedFile.lastPathComponent], in: repoURL)
+        try "base\nunstaged\n".write(to: unstagedFile, atomically: true, encoding: .utf8)
+
+        let capture = PromptCapture()
+        let response = "[{\"files\":[\"unstaged.swift\"],\"message\":\"fix: unstaged\"}]"
+        let session = try await readySession(
+            repositoryPath: repoURL.path,
+            grouper: AICommitGrouperService(aiService: RecordingAtomicAI(response: response, capture: capture))
+        )
+        let options = CompanionCLIScopeOptions(repositoryPathScope: repoURL.path, staged: false, all: false, outputFormat: .json, messageOverride: nil)
+
+        let plan = try await service.buildAtomicPlan(session: session, options: options)
+
+        XCTAssertEqual(plan.groups[0].files, ["unstaged.swift"])
+        XCTAssertTrue(capture.value.contains("+unstaged"))
+        XCTAssertFalse(capture.value.contains("+staged"))
+    }
+
+    func testAtomicPlanJSONRemainsFileLevelAndBackwardCompatible() throws {
+        let plan = CompanionCLIAtomicPlan(groups: [AtomicCommitGroup(files: ["a.swift"], message: "feat: a")])
+        let json = try CompanionCLIEncoder.encodeJSON(plan)
+        let decoded = try JSONDecoder().decode(CompanionCLIAtomicPlan.self, from: Data(json.utf8))
+
+        XCTAssertEqual(decoded, plan)
+        XCTAssertFalse(json.contains("hunks"))
+    }
+
+    func testStagedAtomicApplyPreservesUnstagedAndUnrelatedIndexChanges() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let selected = repoURL.appendingPathComponent("selected.swift")
+        let unrelated = repoURL.appendingPathComponent("unrelated.swift")
+        try "base\n".write(to: selected, atomically: true, encoding: .utf8)
+        try "base\n".write(to: unrelated, atomically: true, encoding: .utf8)
+        try runGit(["add", "."], in: repoURL)
+        try "base\nstaged\n".write(to: selected, atomically: true, encoding: .utf8)
+        try runGit(["add", selected.lastPathComponent], in: repoURL)
+        try "base\nunrelated\n".write(to: unrelated, atomically: true, encoding: .utf8)
+        try runGit(["add", unrelated.lastPathComponent], in: repoURL)
+        try "base\nstaged\nworktree\n".write(to: selected, atomically: true, encoding: .utf8)
+
+        let session = try await readySession(
+            repositoryPath: repoURL.path,
+            grouper: AICommitGrouperService(aiService: RecordingAtomicAI(response: "[]", capture: PromptCapture()))
+        )
+        let groups = [AtomicCommitGroup(files: ["selected.swift"], message: "feat: selected")]
+
+        let progress = try await service.applyAtomicPlan(session: session, groups: groups, scope: .staged)
+        XCTAssertNil(progress)
+        XCTAssertEqual(try runGit(["show", "HEAD:selected.swift"], in: repoURL), "base\nstaged\n")
+        XCTAssertEqual(try String(contentsOf: selected, encoding: .utf8), "base\nstaged\nworktree\n")
+        XCTAssertTrue(try runGit(["diff", "--cached", "--", unrelated.lastPathComponent], in: repoURL).contains("+unrelated"))
+    }
+
+    private func readySession(repositoryPath: String, grouper: AICommitGrouperService) async throws -> GitMenuBarCommitSession {
+        let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
+        let provider = AIProviderConfig(name: "stub", type: .openAI, endpointURL: "https://example.com/v1", selectedModel: "model")
+        providerStore.upsertProvider(provider)
+        return await GitMenuBarCommitSession(
+            repositoryPath: repositoryPath,
+            providerStore: providerStore,
+            keychainStore: InMemoryAIAPIKeyStore(storage: [provider.id: "key"]),
+            grouper: grouper
+        )
     }
 }

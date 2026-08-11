@@ -51,23 +51,46 @@ final class GitAtomicCommitService: ObservableObject {
 
     /// Returns a map of changed file path -> diff string for all changed files.
     func diffForChangedFilesAsync(changedFiles: [WorkingTreeFile]) async -> [String: String] {
+        await diffForFilesAsync(files: changedFiles, scope: .unstaged)
+    }
+
+    func diffForFilesAsync(files: [WorkingTreeFile], scope: DiffScope) async -> [String: String] {
         let repositoryPath = storedRepoPath
         guard !repositoryPath.isEmpty else { return [:] }
 
         return await runOnBackground {
             var result: [String: String] = [:]
-            let files = changedFiles.map(\.path)
-            for file in files {
-                let diffResult = self.executeGitCommand(
-                    in: repositoryPath,
-                    args: ["diff", "--", file]
-                )
-                if !diffResult.failure {
-                    result[file] = diffResult.output
+            for file in files.map(\.path) {
+                if let diff = self.diffForFile(path: file, scope: scope, repositoryPath: repositoryPath) {
+                    result[file] = diff
                 }
             }
             return result
         }
+    }
+
+    private nonisolated func diffForFile(path: String, scope: DiffScope, repositoryPath: String) -> String? {
+        let includeStaged = scope.rawValue == DiffScope.staged.rawValue || scope.rawValue == DiffScope.all.rawValue
+        let includeUnstaged = scope.rawValue == DiffScope.unstaged.rawValue || scope.rawValue == DiffScope.all.rawValue
+        var diffs: [String] = []
+        if includeStaged {
+            let staged = executeGitCommand(in: repositoryPath, args: ["diff", "--cached", "--", path])
+            if !staged.failure, !staged.output.isEmpty {
+                diffs.append(staged.output)
+            }
+        }
+        if includeUnstaged {
+            let tracked = executeGitCommand(in: repositoryPath, args: ["diff", "--", path])
+            if !tracked.failure, !tracked.output.isEmpty {
+                diffs.append(tracked.output)
+            } else if executeGitCommand(in: repositoryPath, args: ["ls-files", "--error-unmatch", path]).failure {
+                let untracked = executeGitCommand(in: repositoryPath, args: ["diff", "--no-index", "--", "/dev/null", path])
+                if !untracked.output.isEmpty {
+                    diffs.append(untracked.output)
+                }
+            }
+        }
+        return diffs.isEmpty ? nil : diffs.joined(separator: "\n\n")
     }
 
     func makeSnapshotAsync(files: [WorkingTreeFile]) async -> AtomicCommitSnapshot? {
@@ -105,7 +128,8 @@ final class GitAtomicCommitService: ObservableObject {
     /// Stage specific files and commit with the given message.
     func commitAtomicGroupAsync(
         files: [String],
-        message: String
+        message: String,
+        scope: DiffScope = .all
     ) async -> Result<Void, Error> {
         let repositoryPath = storedRepoPath
         guard !repositoryPath.isEmpty else {
@@ -127,6 +151,10 @@ final class GitAtomicCommitService: ObservableObject {
                 code: 33,
                 userInfo: [NSLocalizedDescriptionKey: "Commit message cannot be empty"]
             ))
+        }
+
+        if case .staged = scope {
+            return await commitStagedGroupAsync(files: files, message: trimmedMessage)
         }
 
         _ = await runOnBackground {
@@ -156,6 +184,63 @@ final class GitAtomicCommitService: ObservableObject {
             ))
         }
 
+        return .success(())
+    }
+
+    private func commitStagedGroupAsync(files: [String], message: String) async -> Result<Void, Error> {
+        let repositoryPath = storedRepoPath
+        let temporaryIndex = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gitmenubar-index-\(UUID().uuidString)").path
+        let environment = ["GIT_INDEX_FILE": temporaryIndex]
+        defer { try? FileManager.default.removeItem(atPath: temporaryIndex) }
+
+        let initialized = await runOnBackground {
+            self.executeGitCommand(in: repositoryPath, args: ["read-tree", "HEAD"], additionalEnvironment: environment)
+        }
+        guard !initialized.failure else {
+            return .failure(Self.stagedError("Could not initialize a temporary index; no changes were committed."))
+        }
+
+        let patch = await runOnBackground {
+            self.executeGitCommand(
+                in: repositoryPath,
+                args: ["diff", "--cached", "--binary", "--no-renames", "--"] + files
+            )
+        }
+        guard !patch.failure, !patch.output.isEmpty else {
+            return .failure(Self.stagedError("The selected files have no staged content; regenerate the atomic plan."))
+        }
+
+        let patchURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gitmenubar-staged-\(UUID().uuidString).patch")
+        defer { try? FileManager.default.removeItem(at: patchURL) }
+        do {
+            try patch.output.write(to: patchURL, atomically: true, encoding: .utf8)
+        } catch {
+            return .failure(Self.stagedError("Could not prepare the staged commit: \(error.localizedDescription)"))
+        }
+
+        let applied = await runOnBackground {
+            self.executeGitCommand(
+                in: repositoryPath,
+                args: ["apply", "--cached", "--binary", patchURL.path],
+                additionalEnvironment: environment
+            )
+        }
+        guard !applied.failure else {
+            return .failure(Self.stagedError("Could not safely apply the staged content; no changes were committed. Regenerate the atomic plan."))
+        }
+
+        let committed = await runOnBackground {
+            self.executeGitCommand(
+                in: repositoryPath,
+                args: ["commit", "--no-gpg-sign", "-m", message],
+                additionalEnvironment: environment
+            )
+        }
+        guard !committed.failure else {
+            return .failure(Self.stagedError("Failed to commit staged content: \(committed.output)"))
+        }
         return .success(())
     }
 
@@ -356,6 +441,10 @@ final class GitAtomicCommitService: ObservableObject {
 
     private static func hunkError(_ message: String) -> NSError {
         NSError(domain: "GitManager", code: 35, userInfo: [NSLocalizedDescriptionKey: message])
+    }
+
+    private static func stagedError(_ message: String) -> NSError {
+        NSError(domain: "GitManager", code: 36, userInfo: [NSLocalizedDescriptionKey: message])
     }
 
     private func rollbackAtomicCommits(to originalHead: String, repositoryPath: String) async {

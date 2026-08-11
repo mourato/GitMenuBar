@@ -104,7 +104,7 @@ public struct CompanionCLIService: Sendable {
 
     func buildAtomicPlan(
         session: GitMenuBarCommitSession,
-        options _: CompanionCLIScopeOptions
+        options: CompanionCLIScopeOptions
     ) async throws -> CompanionCLIAtomicPlan {
         guard session.isReadyForGeneration else {
             throw Error.notReady(session.generationDisabledReason)
@@ -113,14 +113,20 @@ public struct CompanionCLIService: Sendable {
         let gitManager = session.gitManager
         await gitManager.updateUncommittedFilesAsync()
 
+        let scope = options.resolvedDiffScopeValue() ?? .unstaged
         let changedFiles = await MainActor.run {
-            gitManager.changedFilesCLI
+            let paths = filePaths(for: scope, gitManager: gitManager)
+            let filesByPath = Dictionary(
+                (gitManager.changedFilesCLI + gitManager.stagedFilesCLI).map { ($0.path, $0) },
+                uniquingKeysWith: { first, _ in first }
+            )
+            return paths.compactMap { filesByPath[$0] }
         }
         guard !changedFiles.isEmpty else {
             throw Error.operational("No changed files found for atomic grouping.")
         }
 
-        let diffPerFile = await gitManager.diffForChangedFilesAsync()
+        let diffPerFile = await gitManager.diffForFilesAsync(files: changedFiles, scope: scope)
         let groups: [AtomicCommitGroup]
         do {
             groups = try await session.generateAtomicGroups(
@@ -143,12 +149,13 @@ public struct CompanionCLIService: Sendable {
         plan: CompanionCLIAtomicPlan
     ) async throws -> CompanionCLIAtomicApplyProgress? {
         let groups = plan.groups.map { AtomicCommitGroup(files: $0.files, message: $0.message) }
-        return try await applyAtomicPlan(session: session, groups: groups)
+        return try await applyAtomicPlan(session: session, groups: groups, scope: .unstaged)
     }
 
     func applyAtomicPlan(
         session: GitMenuBarCommitSession,
-        groups: [AtomicCommitGroup]
+        groups: [AtomicCommitGroup],
+        scope: DiffScope = .unstaged
     ) async throws -> CompanionCLIAtomicApplyProgress? {
         try assertIndexUnlocked(at: session.repositoryPath)
 
@@ -156,11 +163,7 @@ public struct CompanionCLIService: Sendable {
         await gitManager.updateUncommittedFilesAsync()
 
         let allowedFiles = await MainActor.run {
-            Set(
-                gitManager.changedFilesCLI.map(\.path)
-                    + gitManager.stagedFilesCLI.map(\.path)
-                    + gitManager.uncommittedFilesCLI
-            )
+            Set(filePaths(for: scope, gitManager: gitManager))
         }
 
         let plan: AtomicCommitPlan
@@ -172,7 +175,11 @@ public struct CompanionCLIService: Sendable {
 
         var completed: [AtomicCommitGroup] = []
         for group in plan.groups {
-            let result = await gitManager.commitAtomicGroupAsync(files: group.files, message: group.message)
+            let result = await gitManager.commitAtomicGroupAsync(
+                files: group.files,
+                message: group.message,
+                scope: scope
+            )
             if case let .failure(error) = result {
                 let remaining = Array(plan.groups.dropFirst(completed.count))
                 return CompanionCLIAtomicApplyProgress(

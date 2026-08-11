@@ -50,7 +50,8 @@ final class GitMenuBarCommitSession {
         keychainStore: any AIAPIKeyStore = AIKeychainStore(service: "com.mourato.GitMenuBar"),
         messagePolicy: CommitMessagePolicy = .shared,
         messageService: AICommitMessageService? = nil,
-        commandRunner: GitCommandRunner = GitCommandRunner()
+        commandRunner: GitCommandRunner = GitCommandRunner(),
+        grouper: AICommitGrouperService? = nil
     ) async throws {
         let resolvedPath = try Self.resolveGitRoot(from: repositoryPathScope, using: commandRunner)
         repositoryPath = resolvedPath
@@ -62,10 +63,7 @@ final class GitMenuBarCommitSession {
         gitManager = await MainActor.run {
             GitManager(repositoryPathOverride: resolvedPath)
         }
-        grouper = AICommitGrouperService(
-            aiService: resolvedMessageService,
-            messagePolicy: messagePolicy
-        )
+        self.grouper = grouper ?? AICommitGrouperService(aiService: resolvedMessageService, messagePolicy: messagePolicy)
     }
 
     init(
@@ -73,7 +71,8 @@ final class GitMenuBarCommitSession {
         providerStore: AIProviderStore,
         keychainStore: any AIAPIKeyStore,
         messagePolicy: CommitMessagePolicy = .shared,
-        messageService: AICommitMessageService? = nil
+        messageService: AICommitMessageService? = nil,
+        grouper: AICommitGrouperService? = nil
     ) async {
         self.repositoryPath = repositoryPath
         self.providerStore = providerStore
@@ -85,10 +84,7 @@ final class GitMenuBarCommitSession {
         gitManager = await MainActor.run {
             GitManager(repositoryPathOverride: resolvedPath)
         }
-        grouper = AICommitGrouperService(
-            aiService: resolvedMessageService,
-            messagePolicy: messagePolicy
-        )
+        self.grouper = grouper ?? AICommitGrouperService(aiService: resolvedMessageService, messagePolicy: messagePolicy)
     }
 
     var isReadyForGeneration: Bool {

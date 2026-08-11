@@ -166,7 +166,9 @@ public extension CompanionCLIService {
         options: CompanionCLIScopeOptions
     ) async throws -> CompanionCLIAtomicApplyProgress? {
         let session = try await makeSession(options: options)
-        return try await applyAtomicPlan(session: session, plan: plan)
+        let scope = options.resolvedDiffScopeValue() ?? .unstaged
+        let groups = plan.groups.map { AtomicCommitGroup(files: $0.files, message: $0.message) }
+        return try await applyAtomicPlan(session: session, groups: groups, scope: scope)
     }
 }
 

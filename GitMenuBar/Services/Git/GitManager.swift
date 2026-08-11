@@ -356,7 +356,11 @@ class GitManager: ObservableObject {
 
     /// Returns a map of changed file path -> diff string for all changed files.
     func diffForChangedFilesAsync() async -> [String: String] {
-        await atomicCommitService.diffForChangedFilesAsync(changedFiles: changedFiles)
+        await diffForFilesAsync(files: changedFiles, scope: .unstaged)
+    }
+
+    func diffForFilesAsync(files: [WorkingTreeFile], scope: DiffScope) async -> [String: String] {
+        await atomicCommitService.diffForFilesAsync(files: files, scope: scope)
     }
 
     func makeAtomicCommitSnapshotAsync() async -> AtomicCommitSnapshot? {
@@ -376,9 +380,10 @@ class GitManager: ObservableObject {
     /// Stage specific files and commit with the given message.
     func commitAtomicGroupAsync(
         files: [String],
-        message: String
+        message: String,
+        scope: DiffScope = .all
     ) async -> Result<Void, Error> {
-        await atomicCommitService.commitAtomicGroupAsync(files: files, message: message)
+        await atomicCommitService.commitAtomicGroupAsync(files: files, message: message, scope: scope)
     }
 
     /// Execute the full atomic commit sequence for a list of groups.
