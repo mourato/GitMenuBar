@@ -1,3 +1,4 @@
+import Combine
 @testable import GitMenuBar
 import XCTest
 
@@ -139,7 +140,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         let started = expectation(description: "fetch started")
         let release = expectation(description: "release fetch")
         let finished = expectation(description: "fetch finished")
-        let refreshFinished = expectation(description: "refresh finished")
+        let newerSnapshotPublished = expectation(description: "newer snapshot published")
         monitor.fetchOperation = { project, _ in
             started.fulfill()
             _ = XCTWaiter.wait(for: [release], timeout: 5)
@@ -147,14 +148,19 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             return Self.snapshot(path: project.path, branch: "stale")
         }
         monitor.refreshOperation = { project, _ in
-            refreshFinished.fulfill()
-            return Self.snapshot(path: project.path, branch: "newer")
+            Self.snapshot(path: project.path, branch: "newer")
         }
+        let observation = monitor.$snapshots.sink { snapshots in
+            if snapshots["/tmp/project"]?.branchName == "newer" {
+                newerSnapshotPublished.fulfill()
+            }
+        }
+        defer { observation.cancel() }
 
         monitor.fetchAll()
         await fulfillment(of: [started])
         monitor.refresh(path: "/tmp/project")
-        await fulfillment(of: [refreshFinished])
+        await fulfillment(of: [newerSnapshotPublished])
         XCTAssertEqual(monitor.snapshots["/tmp/project"]?.branchName, "newer")
 
         release.fulfill()
