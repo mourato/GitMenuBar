@@ -158,7 +158,7 @@ extension MainMenuView {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .layoutPriority(1)
             .refreshable {
-                await gitManager.refreshAsync(includeReflogHistory: false)
+                await gitManager.refreshSelectedRepositoryAsync(includeReflogHistory: false)
             }
 
             if presentationModel.isFastLoading {

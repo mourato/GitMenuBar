@@ -45,6 +45,47 @@ final class GitManagerRefreshTests: XCTestCase {
         XCTAssertEqual(completions, 1)
     }
 
+    func testPullToRefreshTerminatesAndCannotPublishAfterRepositorySwitch() async {
+        let manager = GitManager(repositoryPathOverride: "")
+        let firstStarted = XCTestExpectation(description: "pull refresh starts")
+        let secondFinished = XCTestExpectation(description: "selected refresh finishes")
+
+        manager.selectedRefreshOperation = { [weak manager] session in
+            if session.generation == 1 {
+                firstStarted.fulfill()
+                while !Task.isCancelled {
+                    await Task.yield()
+                }
+                await GitExecution.publishOnMainActor(ifCurrent: session) {
+                    manager?.remoteUrl = "A"
+                    manager?.currentBranch = "branch-a"
+                }
+                return
+            }
+
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
+                manager?.remoteUrl = "B"
+                manager?.currentBranch = "branch-b"
+            }
+            secondFinished.fulfill()
+        }
+
+        let pullRefresh = Task { @MainActor in
+            await manager.refreshSelectedRepositoryAsync(
+                path: "/tmp/project-a",
+                includeReflogHistory: false
+            )
+        }
+        await fulfillment(of: [firstStarted])
+
+        await manager.refreshSelectedRepository(path: "/tmp/project-b")
+        await fulfillment(of: [secondFinished])
+        await pullRefresh.value
+
+        XCTAssertEqual(manager.remoteUrl, "B")
+        XCTAssertEqual(manager.currentBranch, "branch-b")
+    }
+
     func testFastCompletionPrecedesFinalCompletionAndKeepsDetailState() async {
         let manager = GitManager(repositoryPathOverride: "")
         let finished = XCTestExpectation(description: "refresh finishes")

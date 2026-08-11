@@ -211,6 +211,20 @@ class GitManager: ObservableObject {
     }
 
     @MainActor
+    func refreshSelectedRepositoryAsync(
+        path: String? = nil,
+        includeReflogHistory: Bool? = nil
+    ) async {
+        let task = startSelectedRefresh(
+            path: path,
+            includeReflogHistory: includeReflogHistory,
+            fastCompletion: nil,
+            completion: nil
+        )
+        await task.value
+    }
+
+    @MainActor
     func refreshSelectedRepository(
         path: String? = nil,
         includeReflogHistory: Bool? = nil,
@@ -230,7 +244,7 @@ class GitManager: ObservableObject {
         includeReflogHistory: Bool?,
         fastCompletion: (@MainActor @Sendable () -> Void)?,
         completion: (() -> Void)?
-    ) {
+    ) -> Task<Void, Never> {
         if let path {
             storedRepoPath = path
         }
@@ -245,7 +259,7 @@ class GitManager: ObservableObject {
             fastCompletion: fastCompletion ?? {}
         )
         let operation = selectedRefreshOperation
-        selectedRefreshTask = Task { [weak self] in
+        let task = Task { [weak self] in
             guard let self else { return }
             if let operation {
                 await operation(session)
@@ -257,6 +271,8 @@ class GitManager: ObservableObject {
                 completion?()
             }
         }
+        selectedRefreshTask = task
+        return task
     }
 
     @MainActor
