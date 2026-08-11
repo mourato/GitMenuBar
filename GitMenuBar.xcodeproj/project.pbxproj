@@ -510,18 +510,18 @@
 		2A0000012F00000100000008 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-					BUNDLE_LOADER = "$(TEST_HOST)";
-					CODE_SIGN_STYLE = Automatic;
-					CURRENT_PROJECT_VERSION = 1;
-					GENERATE_INFOPLIST_FILE = YES;
-					MACOSX_DEPLOYMENT_TARGET = 15.5;
-					PRODUCT_BUNDLE_IDENTIFIER = com.mourato.GitMenuBarTests;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mourato.GitMenuBarTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
-					TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GitMenuBar.app/Contents/MacOS/GitMenuBar";
-				};
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GitMenuBar.app/Contents/MacOS/GitMenuBar";
+			};
 			name = Debug;
 		};
 		2A0000012F00000100000009 /* Release */ = {

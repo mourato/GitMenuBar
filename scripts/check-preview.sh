@@ -46,13 +46,15 @@ elif [[ "${mode}" == "all" ]]; then
     done < <(find GitMenuBar/Components GitMenuBar/Pages -name '*.swift' -type f | sort)
 else
     files=()
+    if ! changed_swift_files="$(./scripts/changed-swift-files.sh)"; then
+        echo "check-preview: failed to discover changed Swift files" >&2
+        exit 1
+    fi
     while IFS= read -r file; do
-        files+=("$file")
-    done < <(
-        ./scripts/changed-swift-files.sh \
-            | grep -E '^GitMenuBar/(Components|Pages)/.*\.swift$' \
-            || true
-    )
+        if [[ "$file" =~ ^GitMenuBar/(Components|Pages)/.*\.swift$ ]]; then
+            files+=("$file")
+        fi
+    done <<< "$changed_swift_files"
 fi
 
 if [[ ${#files[@]} -eq 0 ]]; then
