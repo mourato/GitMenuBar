@@ -10,14 +10,6 @@ extension MainMenuView {
         RecentProjectsStore()
     }
 
-    func addToRecents(_ path: String) {
-        recentProjectsStore.add(path)
-        if gitManager.isGitRepository(at: path), !projectMonitor.contains(path: path) {
-            projectMonitor.add(path: path)
-        }
-        recentProjectReferences = recentProjectsStore.recentProjects()
-    }
-
     func renameProject(path: String, name: String) {
         recentProjectsStore.rename(path: path, name: name)
         projectMonitor.rename(path: path, name: name)
@@ -34,17 +26,17 @@ extension MainMenuView {
         projectMonitor.remove(path: path)
         recentProjectReferences = recentProjectsStore.recentProjects()
         if RecentProjectsStore.normalize(path) == RecentProjectsStore.normalize(currentRepositoryPath) {
-            setCurrentRepositoryPath("")
+            clearCurrentRepositoryPath()
             dismissTransientPresentations()
             gitManager.refresh(includeReflogHistory: false)
             refreshRenderSnapshot()
         }
     }
 
-    func setCurrentRepositoryPath(_ path: String) {
+    private func clearCurrentRepositoryPath() {
         guard actionCoordinator.canSwitchRepository else { return }
 
-        UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
-        currentRepositoryPath = path
+        UserDefaults.standard.set("", forKey: AppPreferences.Keys.gitRepoPath)
+        currentRepositoryPath = ""
     }
 }

@@ -26,7 +26,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let appCommandCenter = AppCommandCenter()
     var statusBarController: StatusBarController?
     var githubAuthManager: GitHubAuthManager?
-    private let recentProjectsStore = RecentProjectsStore()
 
     @MainActor
     func showSettingsWindow() {
@@ -99,9 +98,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                 guard canSwitchRepository else { return }
 
-                UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
-                recentProjectsStore.add(path)
-                statusBarController?.projectMonitor.add(path: path)
+                guard let selection = statusBarController?.repositorySelectionCoordinator.select(path: path) else {
+                    return
+                }
+                guard case let .selected(selectedPath) = selection else { return }
 
                 if exists {
                     DispatchQueue.main.async {
@@ -110,22 +110,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     // Remote doesn't exist (either no remote or 404) - show create repo UI
                     DispatchQueue.main.async {
-                        self.statusBarController?.openMainWindowWithCreateRepo(path: path)
+                        self.statusBarController?.openMainWindowWithCreateRepo(path: selectedPath)
                     }
                 }
             }
         } else {
-            UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
-            recentProjectsStore.add(path)
-            if isGitRepo {
-                statusBarController?.projectMonitor.add(path: path)
-            }
+            guard let selection = statusBarController?.repositorySelectionCoordinator.select(
+                path: path,
+                allowsNonGitSelection: githubAuthManager?.isAuthenticated != true
+            ) else { return }
 
-            if !isGitRepo, githubAuthManager?.isAuthenticated == true {
+            if case let .requiresRepositoryCreation(candidatePath) = selection {
                 DispatchQueue.main.async {
-                    self.statusBarController?.openMainWindowWithCreateRepo(path: path)
+                    self.statusBarController?.openMainWindowWithCreateRepo(path: candidatePath)
                 }
-            } else {
+            } else if case .selected = selection {
                 DispatchQueue.main.async {
                     self.statusBarController?.openMainWindow()
                 }

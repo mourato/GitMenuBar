@@ -194,8 +194,14 @@ extension MainMenuView {
     func switchRepository(path: String) {
         guard actionCoordinator.canSwitchRepository else { return }
 
-        if !gitManager.isGitRepository(at: path), githubAuthManager.isAuthenticated {
-            presentationModel.showCreateRepo(path: path)
+        let result = repositorySelectionCoordinator.select(
+            path: path,
+            allowsNonGitSelection: !githubAuthManager.isAuthenticated
+        )
+        guard case let .selected(selectedPath) = result else {
+            if case let .requiresRepositoryCreation(candidatePath) = result {
+                presentationModel.showCreateRepo(path: candidatePath)
+            }
             return
         }
 
@@ -203,11 +209,9 @@ extension MainMenuView {
         dismissTransientPresentations()
         presentationModel.showMain()
         let refreshGeneration = presentationModel.startRefresh()
-        gitManager.resetSelectedRepositoryState()
-        setCurrentRepositoryPath(path)
-        addToRecents(path)
+        currentRepositoryPath = selectedPath
+        recentProjectReferences = RecentProjectsStore().recentProjects()
         gitManager.refreshSelectedRepository(
-            path: path,
             includeReflogHistory: false,
             fastCompletion: {
                 self.presentationModel.markFastPhaseReady(generation: refreshGeneration)

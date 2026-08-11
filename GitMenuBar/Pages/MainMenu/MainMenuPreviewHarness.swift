@@ -11,7 +11,8 @@ struct MainMenuPreviewHarness<Content: View>: View {
     @StateObject private var shortcutActionBridge = MainMenuShortcutActionBridge()
     @StateObject private var presentationModel = MainMenuPresentationModel()
     @StateObject private var usageQuotaStore = UsageQuotaStore()
-    @StateObject private var projectMonitor = ProjectMonitorStore()
+    @StateObject private var projectMonitor: ProjectMonitorStore
+    @StateObject private var repositorySelectionCoordinator: RepositorySelectionCoordinator
 
     private let width: CGFloat
     private let showsTransparentTitlebar: Bool
@@ -23,6 +24,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
         @ViewBuilder content: () -> Content
     ) {
         let previewGitManager = GitManager(repositoryPathOverride: NSHomeDirectory())
+        let previewProjectMonitor = ProjectMonitorStore()
         let previewGitHubAuthManager = GitHubAuthManager(
             tokenStore: InMemoryGitHubTokenStore(),
             preloadStoredToken: false
@@ -37,6 +39,13 @@ struct MainMenuPreviewHarness<Content: View>: View {
         )
 
         _gitManager = StateObject(wrappedValue: previewGitManager)
+        _projectMonitor = StateObject(wrappedValue: previewProjectMonitor)
+        _repositorySelectionCoordinator = StateObject(
+            wrappedValue: RepositorySelectionCoordinator(
+                gitManager: previewGitManager,
+                projectMonitor: previewProjectMonitor
+            )
+        )
         _githubAuthManager = StateObject(wrappedValue: previewGitHubAuthManager)
         _aiProviderStore = StateObject(wrappedValue: previewProviderStore)
         _aiCommitCoordinator = StateObject(wrappedValue: previewCoordinator)
@@ -71,6 +80,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
             .environmentObject(presentationModel)
             .environmentObject(usageQuotaStore)
             .environmentObject(projectMonitor)
+            .environmentObject(repositorySelectionCoordinator)
             .frame(width: width)
             .modifier(TransparentTitlebarPreviewChrome(isVisible: showsTransparentTitlebar))
     }

@@ -404,7 +404,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertNil(actionCoordinator.alert)
     }
 
-    private func makeActionCoordinator(
+    func makeActionCoordinator(
         gitManager: GitManager,
         providerStore: AIProviderStore,
         apiKeyStore: any AIAPIKeyStore,
@@ -425,7 +425,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         )
     }
 
-    private func waitForWorkingTreeUpdate(_ gitManager: GitManager, timeout: TimeInterval = 3) async {
+    func waitForWorkingTreeUpdate(_ gitManager: GitManager, timeout: TimeInterval = 3) async {
         let expectation = expectation(description: "working tree refresh")
         gitManager.updateUncommittedFiles {
             expectation.fulfill()

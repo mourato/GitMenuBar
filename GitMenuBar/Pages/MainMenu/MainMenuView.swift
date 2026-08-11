@@ -27,6 +27,7 @@ struct MainMenuView: View {
     @EnvironmentObject var presentationModel: MainMenuPresentationModel
     @EnvironmentObject var projectMonitor: ProjectMonitorStore
     @EnvironmentObject var usageQuotaStore: UsageQuotaStore
+    @EnvironmentObject var repositorySelectionCoordinator: RepositorySelectionCoordinator
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Environment(\.accessibilityReduceTransparency) var reduceTransparency
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
@@ -124,8 +125,13 @@ struct MainMenuView: View {
                         presentationModel.showMain(requestCommitFocus: true)
                     },
                     onSuccess: { path in
-                        setCurrentRepositoryPath(path)
-                        addToRecents(path)
+                        if case let .selected(selectedPath) = repositorySelectionCoordinator.select(
+                            path: path,
+                            allowsNonGitSelection: true
+                        ) {
+                            currentRepositoryPath = selectedPath
+                            recentProjectReferences = RecentProjectsStore().recentProjects()
+                        }
                         presentationModel.showMain(requestCommitFocus: true)
                         gitManager.updateRemoteUrl()
                         gitManager.refresh(includeReflogHistory: false)

@@ -1046,3 +1046,83 @@ Projects sidebar, sheets, and unrelated popovers remain outside the contract.
 - The underlying `ScrollView` remains the owner of keyboard focus, VoiceOver,
   refresh, and programmatic scrolling.
 - The main composer/footer stay fixed outside the main content scroll.
+
+## Architecture simplification — 2026-08-10
+
+The current architecture audit found two bounded ownership splits rather than a
+case for a broad rewrite. Repository selection repeats persistence, monitor
+enrollment, and selected-state reset across AppKit, SwiftUI, and external-URL
+entry points, with a meaningful non-Git create-repository exception. Reviewed
+Atomic Commits execute directly from the sheet while automatic Atomic Commits
+already use `MainMenuActionCoordinator`, so status, failure, success, refresh,
+and completion behavior can diverge.
+
+This scope deliberately creates two small plans. Plan 066 centralizes the
+selected-repository transaction while leaving route/remote decisions at their
+existing owners. Plan 067 routes reviewed execution through the existing action
+coordinator while reusing Plan 064's hunk/index safety boundary. There is no
+event bus, per-project `GitManager`, cache, new dependency, or Companion CLI
+contract change.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|---|---|---:|---:|---|---|
+| [066](066-centralize-repository-selection-transaction.md) | Centralize the selected-repository transaction | P1 | M | 050–053, 059–063 DONE; reconcile 057 | DONE (root review; focused/full test retry passed; native UI smoke handoff pending) |
+| [067](067-route-reviewed-atomic-commits-through-coordinator.md) | Route reviewed Atomic Commits through the action coordinator | P1 | M | 064 DONE; reconcile 057 | DONE (root review; full lint/test passed; native UI smoke handoff pending) |
+
+### Dependency notes
+
+- Plan 066 should be integrated serially because it changes every repository
+  selection entry point and the shared AppKit/SwiftUI root injection. It does
+  not change the Git refresh implementation or monitor scheduler.
+- Plan 067 is source-independent from 066 and may be implemented in an
+  isolated worktree, but integration and final validation should be serial
+  because both plans alter main-window action ownership.
+- Plan 057 is a repository-wide Swift 6.2/concurrency baseline. Reconcile its
+  live status before either plan changes MainActor or async call boundaries.
+- Plan 066 preserves the existing non-Git create-candidate behavior: an
+  authenticated non-Git folder is not selected until creation succeeds, while
+  a local Git repository with a missing remote remains selectable.
+- Plan 067 preserves Plan 064's hunk-aware snapshot, temporary-index, rollback,
+  and fail-closed rules. Reviewed execution is local-only; automatic execution
+  retains push behavior.
+
+### Confirmed constraints
+
+- `RecentProjectsStore` and `MonitoredProjectsStore` remain separate concepts,
+  keys, and limits; centralization only removes duplicated selection mutation.
+- `GitManager` remains the single selected-repository facade. Monitored
+  projects continue to use path-scoped snapshots and `ProjectMonitorStore`.
+- Route selection, remote-existence checks, window presentation, and SwiftUI
+  presentation state remain at their current owners because their lifecycles
+  differ from the persistence transaction.
+- `MainMenuActionCoordinator` owns Atomic Commit action state, push policy, and
+  completion notification; `GitAtomicCommitService` remains the owner of hunk
+  and temporary-index safety.
+
+### Findings considered and rejected/deferred
+
+- A full `StatusBarController`/`MainMenuView` navigation rewrite was rejected:
+  these plans only need one selection transaction and one execution owner.
+- Merging recent and monitored project stores was rejected because they have
+  different product semantics and retention limits.
+- An event bus, notification fan-out, or per-project `GitManager` was rejected
+  by the existing selected/monitored architecture and would add lifecycle
+  complexity without evidence of need.
+- Reimplementing hunk staging, rollback, or temporary-index handling was
+  rejected because Plan 064 already owns and tests those invariants.
+- Hunk-aware Companion CLI execution remains deferred until a versioned
+  non-interactive JSON and stale-plan contract exists.
+
+### Validation baseline
+
+- Focused implementation checks are `make agent-check`, explicit changed-UI
+  preview checks, `make test`, `make guidance-check`, and `git diff --check`.
+- Before merge, run `make lint && make test`. The clean-tree
+  `make check-preview` command may retain the known empty-array Bash `set -u`
+  baseline at `scripts/check-preview.sh:126`; use explicit candidates and
+  record the limitation rather than repairing that unrelated script here.
+- Implementation is delegated to one isolated `implementer` subagent at the
+  GPT-5.6 Luna / Medium profile. The root session owns all code review and
+  remediation decisions; do not delegate review to a child agent.

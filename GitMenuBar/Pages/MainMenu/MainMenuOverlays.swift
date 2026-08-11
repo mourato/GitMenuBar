@@ -407,11 +407,10 @@ extension MainMenuView {
             },
             onCommit: { executionPlan in
                 showAtomicCommitSheet = false
-                let repositoryPath = gitManager.repositoryPath
                 Task {
-                    let result = await gitManager.performHunkCommitsAsync(groups: executionPlan.groups, snapshot: executionPlan.snapshot)
-                    if case .success = result {
-                        projectMonitor.refresh(path: repositoryPath)
+                    let result = await actionCoordinator.performReviewedAtomicCommits(plan: executionPlan)
+                    if result.didCommit {
+                        HapticFeedback.actionSucceeded()
                     }
                 }
             }

@@ -69,6 +69,7 @@ final class StatusBarController: ObservableObject {
     let presentationModel = MainMenuPresentationModel()
     let usageQuotaStore: UsageQuotaStore
     let projectMonitor = ProjectMonitorStore()
+    let repositorySelectionCoordinator: RepositorySelectionCoordinator
     lazy var projectCleanupStore = ProjectCleanupStore(
         projectMonitor: projectMonitor,
         onAffectedPaths: { [weak self] paths in
@@ -119,6 +120,10 @@ final class StatusBarController: ObservableObject {
             aiKeychainStore = cachedStore
         }
         usageQuotaStore = UsageQuotaStore(providers: [CodexUsageProvider(), CursorUsageProvider(), OpenRouterUsageProvider(keyStore: aiKeychainStore)])
+        repositorySelectionCoordinator = RepositorySelectionCoordinator(
+            gitManager: gitManager,
+            projectMonitor: projectMonitor
+        )
 
         // Wire up token provider for git push operations
         gitManager.tokenProvider = { [weak githubAuthManager] in
@@ -373,6 +378,7 @@ final class StatusBarController: ObservableObject {
         .environmentObject(presentationModel)
         .environmentObject(usageQuotaStore)
         .environmentObject(projectMonitor)
+        .environmentObject(repositorySelectionCoordinator)
         .environmentObject(projectCleanupStore)
 
         return AnyView(rootView)
@@ -970,16 +976,16 @@ final class StatusBarController: ObservableObject {
         guard actionCoordinator.canSwitchRepository else { return }
 
         let wasVisible = isMainWindowVisible
-        UserDefaults.standard.set(path, forKey: AppPreferences.Keys.gitRepoPath)
-        RecentProjectsStore().add(path)
-        if gitManager.isGitRepository(at: path) {
-            projectMonitor.add(path: path)
-        }
-        gitManager.resetSelectedRepositoryState()
+        let result = repositorySelectionCoordinator.select(
+            path: path,
+            allowsNonGitSelection: !githubAuthManager.isAuthenticated
+        )
         refreshAppCommands()
 
-        if !gitManager.isGitRepository(at: path), githubAuthManager.isAuthenticated {
-            openMainWindowWithCreateRepo(path: path)
+        guard case .selected = result else {
+            if case let .requiresRepositoryCreation(candidatePath) = result {
+                openMainWindowWithCreateRepo(path: candidatePath)
+            }
             return
         }
 
@@ -988,7 +994,6 @@ final class StatusBarController: ObservableObject {
 
         let refreshGeneration = presentationModel.startRefresh()
         gitManager.refreshSelectedRepository(
-            path: path,
             includeReflogHistory: false,
             fastCompletion: { [weak self] in
                 self?.presentationModel.markFastPhaseReady(generation: refreshGeneration)

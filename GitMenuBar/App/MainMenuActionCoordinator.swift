@@ -66,9 +66,9 @@ final class MainMenuActionCoordinator: ObservableObject {
     @Published var showSyncOptions = false
     @Published var whitespaceCommitPrompt: MainMenuWhitespaceCommitPrompt?
     @Published private(set) var isExecutingPrimaryAction = false
-    @Published private(set) var operationStatus: MainMenuOperationStatus?
+    @Published var operationStatus: MainMenuOperationStatus?
 
-    private let gitManager: GitManager
+    let gitManager: GitManager
     private let aiCommitCoordinator: AICommitCoordinator
     private let onCommitCompleted: (@MainActor (String) -> Void)?
 
@@ -247,7 +247,25 @@ final class MainMenuActionCoordinator: ObservableObject {
         return await executeCommitOperation {
             clearAlert()
             showSyncOptions = false
-            return await executeAtomicCommitsAndPush(groups: groups)
+            return await executeAtomicCommits(groups: groups, shouldPush: true)
+        }
+    }
+
+    func performReviewedAtomicCommits(
+        plan: AtomicCommitExecutionPlan
+    ) async -> MainMenuCommitExecutionResult {
+        guard !plan.groups.isEmpty, !isBusy else {
+            return .skipped
+        }
+
+        return await executeCommitOperation {
+            clearAlert()
+            showSyncOptions = false
+            return await executeAtomicCommits(
+                groups: plan.groups,
+                snapshot: plan.snapshot,
+                shouldPush: false
+            )
         }
     }
 
@@ -263,7 +281,11 @@ final class MainMenuActionCoordinator: ObservableObject {
                 publishAlert(title: "Split Commits Failed", message: "No changes could be grouped into commits.")
                 return .failed
             }
-            return await executeAtomicCommitsAndPush(groups: plan.groups, snapshot: plan.snapshot)
+            return await executeAtomicCommits(
+                groups: plan.groups,
+                snapshot: plan.snapshot,
+                shouldPush: true
+            )
         }
     }
 
@@ -314,11 +336,11 @@ final class MainMenuActionCoordinator: ObservableObject {
         return .manual(trimmed: trimmed)
     }
 
-    private func publishAlert(title: String, message: String) {
+    func publishAlert(title: String, message: String) {
         alert = MainMenuActionAlert(title: title, message: message)
     }
 
-    private func publishSuccess(title: String, message: String) {
+    func publishSuccess(title: String, message: String) {
         success = MainMenuActionAlert(title: title, message: message)
     }
 
@@ -399,61 +421,6 @@ final class MainMenuActionCoordinator: ObservableObject {
         return .committed
     }
 
-    private func executeAtomicCommitsAndPush(groups: [AtomicCommitGroup]) async -> MainMenuCommitExecutionResult {
-        await executeAtomicCommitsAndPush(groups: groups, snapshot: nil)
-    }
-
-    private func executeAtomicCommitsAndPush(
-        groups: [AtomicCommitGroup],
-        snapshot: AtomicCommitSnapshot?
-    ) async -> MainMenuCommitExecutionResult {
-        operationStatus = .committingGroup(current: 0, total: groups.count)
-        let commitResult: Result<Void, Error> = if let snapshot {
-            await gitManager.performHunkCommitsAsync(groups: groups, snapshot: snapshot) { current, total in
-                self.operationStatus = .committingGroup(current: current, total: total)
-            }
-        } else {
-            await gitManager.performAtomicCommitsAsync(groups: groups) { current, total in
-                self.operationStatus = .committingGroup(current: current, total: total)
-            }
-        }
-        guard case .success = commitResult else {
-            if case let .failure(error) = commitResult {
-                publishAlert(title: "Split Commits Failed", message: error.localizedDescription)
-            }
-            return .failed
-        }
-
-        commitWasCreated = true
-
-        await refreshRemoteStatus()
-        if gitManager.isRemoteAhead {
-            showSyncOptions = true
-            return .committedAndNeedsSyncOptions
-        }
-
-        operationStatus = .pushingCommits(count: groups.count)
-        let pushResult = await pushToRemote()
-        guard case .success = pushResult else {
-            if case let .failure(error) = pushResult {
-                publishAlert(
-                    title: "Push Failed",
-                    message: "\(groups.count) commit\(groups.count == 1 ? " was" : "s were") created locally, "
-                        + "but the push failed. \(error.localizedDescription) Try pushing again."
-                )
-            }
-            return .failed
-        }
-
-        await refreshRepository()
-        await refreshRemoteStatus()
-        publishSuccess(
-            title: "Split commits & push complete",
-            message: "\(groups.count) commit\(groups.count == 1 ? " is" : "s are") now on the remote."
-        )
-        return .committed
-    }
-
     private func executePrimaryAction<T>(_ operation: () async -> T) async -> T {
         isExecutingPrimaryAction = true
         defer {
@@ -463,7 +430,7 @@ final class MainMenuActionCoordinator: ObservableObject {
         return await operation()
     }
 
-    private var commitWasCreated = false
+    var commitWasCreated = false
 
     private func executeCommitOperation(
         _ operation: () async -> MainMenuCommitExecutionResult
@@ -482,7 +449,7 @@ final class MainMenuActionCoordinator: ObservableObject {
         await gitManager.commitLocallyWithFallbackAsync(message)
     }
 
-    private func pushToRemote() async -> Result<Void, Error> {
+    func pushToRemote() async -> Result<Void, Error> {
         await gitManager.pushToRemoteAsync()
     }
 
@@ -490,11 +457,11 @@ final class MainMenuActionCoordinator: ObservableObject {
         await gitManager.pullFromRemoteAsync(rebase: rebase)
     }
 
-    private func refreshRepository(includeReflogHistory: Bool = false) async {
+    func refreshRepository(includeReflogHistory: Bool = false) async {
         await gitManager.refreshAsync(includeReflogHistory: includeReflogHistory)
     }
 
-    private func refreshRemoteStatus() async {
+    func refreshRemoteStatus() async {
         await gitManager.checkRemoteStatusAsync()
     }
 }
