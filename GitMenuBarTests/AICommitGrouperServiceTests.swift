@@ -229,4 +229,69 @@ final class AICommitGrouperServiceTests: XCTestCase {
         [{"hunks":["a.swift#hunk-9"],"message":"fix: a"}]
         """, snapshot: snapshot))
     }
+
+    func testHunkGroupingPromptIncludesDistinctPatchContentAndMetadata() {
+        let file = WorkingTreeFile(path: "a.swift", lineDiff: .zero, status: .modified)
+        let hunks = [
+            AtomicCommitHunk(id: "a.swift#hunk-1", path: "a.swift", ordinal: 1, header: "@@ -1 +1 @@", additions: 1, removals: 1, patch: "-oldOne\n+newOne"),
+            AtomicCommitHunk(id: "a.swift#hunk-2", path: "a.swift", ordinal: 2, header: "@@ -4 +4 @@", additions: 1, removals: 1, patch: "-oldTwo\n+newTwo")
+        ]
+        let snapshot = AtomicCommitSnapshot(fingerprint: "x", files: [file], hunks: hunks)
+        let prompt = AICommitGrouperService(aiService: StubGroupingAI(response: ""))
+            .buildHunkGroupingPrompt(snapshot: snapshot)
+
+        XCTAssertTrue(prompt.contains("a.swift#hunk-1"))
+        XCTAssertTrue(prompt.contains("@@ -1 +1 @@"))
+        XCTAssertTrue(prompt.contains("+newOne"))
+        XCTAssertTrue(prompt.contains("a.swift#hunk-2"))
+        XCTAssertTrue(prompt.contains("@@ -4 +4 @@"))
+        XCTAssertTrue(prompt.contains("+newTwo"))
+    }
+
+    func testHunkGroupingPromptIncludesCompleteSmallPatchAndEmptyPatchMetadata() {
+        let files = [
+            WorkingTreeFile(path: "a.swift", lineDiff: .zero, status: .modified),
+            WorkingTreeFile(path: "b.swift", lineDiff: .zero, status: .modified)
+        ]
+        let hunks = [
+            AtomicCommitHunk(id: "a.swift#hunk-1", path: "a.swift", ordinal: 1, header: "@@", additions: 1, removals: 0, patch: "+line"),
+            AtomicCommitHunk(id: "b.swift#hunk-1", path: "b.swift", ordinal: 1, header: "@@", additions: 0, removals: 0, patch: "")
+        ]
+        let snapshot = AtomicCommitSnapshot(fingerprint: "x", files: files, hunks: hunks)
+        let prompt = AICommitGrouperService(aiService: StubGroupingAI(response: ""))
+            .buildHunkGroupingPrompt(snapshot: snapshot)
+
+        XCTAssertTrue(prompt.contains("PATCH: (empty)"))
+        XCTAssertTrue(prompt.contains("PATCH \(hunks[0].id)"))
+        XCTAssertTrue(prompt.contains("+line"))
+        XCTAssertTrue(prompt.contains("b.swift#hunk-1: b.swift"))
+    }
+
+    func testHunkGroupingPromptBoundsOversizedPatchesAndMarksTruncation() {
+        let file = WorkingTreeFile(path: "a.swift", lineDiff: .zero, status: .modified)
+        let patch = String(repeating: "+distinct-line\n", count: 10000)
+        let hunk = AtomicCommitHunk(id: "a.swift#hunk-1", path: "a.swift", ordinal: 1, header: "@@", additions: 10000, removals: 0, patch: patch)
+        let snapshot = AtomicCommitSnapshot(fingerprint: "x", files: [file], hunks: [hunk])
+        let prompt = AICommitGrouperService(aiService: StubGroupingAI(response: ""))
+            .buildHunkGroupingPrompt(snapshot: snapshot)
+
+        XCTAssertLessThanOrEqual(prompt.count, 40000)
+        XCTAssertTrue(prompt.contains("truncated; omitted"))
+        XCTAssertTrue(prompt.contains("a.swift#hunk-1: a.swift"))
+    }
+
+    func testHunkGroupingPromptBoundsExtremeHunkMetadata() {
+        let file = WorkingTreeFile(path: "a.swift", lineDiff: .zero, status: .modified)
+        let hunks = (1 ... 10000).map { index in
+            AtomicCommitHunk(id: "a.swift#hunk-\(index)", path: "a.swift", ordinal: index, header: "@@", additions: 0, removals: 0, patch: "")
+        }
+        let snapshot = AtomicCommitSnapshot(fingerprint: "x", files: [file], hunks: hunks)
+        let prompt = AICommitGrouperService(aiService: StubGroupingAI(response: ""))
+            .buildHunkGroupingPrompt(snapshot: snapshot)
+
+        XCTAssertLessThanOrEqual(prompt.count, 40000, "prompt count: \(prompt.count)")
+        XCTAssertTrue(prompt.contains("HUNK METADATA OMITTED"), "metadata marker missing")
+        XCTAssertTrue(prompt.contains("hunks omitted"), "omission count missing")
+        XCTAssertTrue(prompt.contains("HUNK PATCH CONTENT OMITTED"), "patch omission marker missing")
+    }
 }
