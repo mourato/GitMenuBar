@@ -16,7 +16,13 @@ final class ProjectMonitorStore: ObservableObject {
     private nonisolated(unsafe) var refreshTimer: Timer?
     private var isRefreshing = false
     private var refreshGeneration = 0
+    private var fetchGeneration = 0
     private var pendingRefreshPaths = Set<String>()
+
+    #if DEBUG
+        var fetchOperation: ((ProjectReference, GitCommandRunner) -> ProjectStatusSnapshot)?
+        var refreshOperation: ((ProjectReference, GitCommandRunner) -> ProjectStatusSnapshot)?
+    #endif
 
     init(projectStore: MonitoredProjectsStore = MonitoredProjectsStore(), runner: GitCommandRunner = GitCommandRunner()) {
         self.projectStore = projectStore
@@ -37,6 +43,7 @@ final class ProjectMonitorStore: ObservableObject {
     }
 
     func seed(currentPath: String, recentProjects: [ProjectReference]) async {
+        fetchGeneration += 1
         refreshGeneration += 1
         let generation = refreshGeneration
         isRefreshing = true
@@ -82,6 +89,7 @@ final class ProjectMonitorStore: ObservableObject {
     }
 
     func add(path: String, name: String? = nil) {
+        fetchGeneration += 1
         projectStore.add(path, name: name)
         refresh(path: path)
     }
@@ -91,11 +99,13 @@ final class ProjectMonitorStore: ObservableObject {
     }
 
     func remove(path: String) {
+        fetchGeneration += 1
         projectStore.remove(path: path)
         snapshots.removeValue(forKey: RecentProjectsStore.normalize(path))
     }
 
     func rename(path: String, name: String) {
+        fetchGeneration += 1
         projectStore.rename(path: path, name: name)
         let normalizedPath = RecentProjectsStore.normalize(path)
         guard let snapshot = snapshots[normalizedPath] else { return }
@@ -130,13 +140,31 @@ final class ProjectMonitorStore: ObservableObject {
     }
 
     func fetchAll() {
+        guard !isRefreshing else { return }
         let projects = monitoredProjects
+        fetchGeneration += 1
+        let generation = fetchGeneration
+        let runner = runner
+        #if DEBUG
+            let fetchOperation = fetchOperation
+        #endif
         DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let self else { return }
             for project in projects {
-                _ = runner.runGitCommand(in: project.path, args: ["fetch"])
-                let snapshot = ProjectStatusReader(runner: runner).read(project: project, includeLineDiff: false)
-                Task { @MainActor [weak self] in self?.snapshots[project.path] = snapshot }
+                let snapshot: ProjectStatusSnapshot
+                #if DEBUG
+                    if let fetchOperation {
+                        snapshot = fetchOperation(project, runner)
+                    } else {
+                        _ = runner.runGitCommand(in: project.path, args: ["fetch"])
+                        snapshot = ProjectStatusReader(runner: runner).read(project: project, includeLineDiff: false)
+                    }
+                #else
+                    _ = runner.runGitCommand(in: project.path, args: ["fetch"])
+                    snapshot = ProjectStatusReader(runner: runner).read(project: project, includeLineDiff: false)
+                #endif
+                Task { @MainActor [weak self] in
+                    self?.publishFetched(snapshot, generation: generation)
+                }
             }
         }
     }
@@ -144,6 +172,7 @@ final class ProjectMonitorStore: ObservableObject {
     private func refresh(projects: [ProjectReference]) {
         guard !isRefreshing, !projects.isEmpty else { return }
         refreshGeneration += 1
+        fetchGeneration += 1
         let generation = refreshGeneration
         isRefreshing = true
         let runner = runner
@@ -154,7 +183,12 @@ final class ProjectMonitorStore: ObservableObject {
             var results: [ProjectStatusSnapshot] = []
             for project in projects {
                 queue.addOperation {
-                    let snapshot = ProjectStatusReader(runner: runner).read(project: project, includeLineDiff: false)
+                    #if DEBUG
+                        let snapshot = self?.refreshOperation?(project, runner)
+                            ?? ProjectStatusReader(runner: runner).read(project: project, includeLineDiff: false)
+                    #else
+                        let snapshot = ProjectStatusReader(runner: runner).read(project: project, includeLineDiff: false)
+                    #endif
                     lock.lock(); results.append(snapshot); lock.unlock()
                 }
             }
@@ -163,12 +197,20 @@ final class ProjectMonitorStore: ObservableObject {
                 guard let self else { return }
                 guard generation == refreshGeneration else { return }
                 for snapshot in results {
+                    guard projectStore.contains(path: snapshot.project.path) else { continue }
                     snapshots[snapshot.project.path] = snapshot
                 }
                 isRefreshing = false
                 refreshPendingPathsIfNeeded()
             }
         }
+    }
+
+    private func publishFetched(_ snapshot: ProjectStatusSnapshot, generation: Int) {
+        guard generation == fetchGeneration,
+              projectStore.contains(path: snapshot.project.path)
+        else { return }
+        snapshots[snapshot.project.path] = snapshot
     }
 
     private func refreshPendingPathsIfNeeded() {

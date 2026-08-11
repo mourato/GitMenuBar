@@ -100,4 +100,104 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         XCTAssertEqual(store.monitoredProjects().map(\.path), [validPath])
         XCTAssertEqual(monitor.snapshots[validPath]?.project.path, validPath)
     }
+
+    @MainActor
+    func testFetchDoesNotReinsertRemovedProject() async throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defaults.removePersistentDomain(forName: #function)
+        let projectStore = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
+        projectStore.add("/tmp/removed")
+        let monitor = ProjectMonitorStore(projectStore: projectStore)
+        let started = expectation(description: "fetch started")
+        let release = expectation(description: "release fetch")
+        let finished = expectation(description: "fetch finished")
+        monitor.fetchOperation = { project, _ in
+            started.fulfill()
+            _ = XCTWaiter.wait(for: [release], timeout: 5)
+            finished.fulfill()
+            return Self.snapshot(path: project.path, branch: "stale")
+        }
+
+        monitor.fetchAll()
+        await fulfillment(of: [started])
+        monitor.remove(path: "/tmp/removed")
+        release.fulfill()
+        await fulfillment(of: [finished])
+        await Task.yield()
+
+        XCTAssertTrue(monitor.monitoredProjects.isEmpty)
+        XCTAssertNil(monitor.snapshots[RecentProjectsStore.normalize("/tmp/removed")])
+    }
+
+    @MainActor
+    func testNewerLocalRefreshWinsOverFetch() async throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defaults.removePersistentDomain(forName: #function)
+        let projectStore = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
+        projectStore.add("/tmp/project")
+        let monitor = ProjectMonitorStore(projectStore: projectStore)
+        let started = expectation(description: "fetch started")
+        let release = expectation(description: "release fetch")
+        let finished = expectation(description: "fetch finished")
+        let refreshFinished = expectation(description: "refresh finished")
+        monitor.fetchOperation = { project, _ in
+            started.fulfill()
+            _ = XCTWaiter.wait(for: [release], timeout: 5)
+            finished.fulfill()
+            return Self.snapshot(path: project.path, branch: "stale")
+        }
+        monitor.refreshOperation = { project, _ in
+            refreshFinished.fulfill()
+            return Self.snapshot(path: project.path, branch: "newer")
+        }
+
+        monitor.fetchAll()
+        await fulfillment(of: [started])
+        monitor.refresh(path: "/tmp/project")
+        await fulfillment(of: [refreshFinished])
+        XCTAssertEqual(monitor.snapshots["/tmp/project"]?.branchName, "newer")
+
+        release.fulfill()
+        await fulfillment(of: [finished])
+        XCTAssertEqual(monitor.snapshots["/tmp/project"]?.branchName, "newer")
+    }
+
+    @MainActor
+    func testFetchSkipsWhileLocalRefreshIsActive() async throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defaults.removePersistentDomain(forName: #function)
+        let projectStore = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
+        projectStore.add("/tmp/project")
+        let monitor = ProjectMonitorStore(projectStore: projectStore)
+        let refreshStarted = expectation(description: "refresh started")
+        let releaseRefresh = expectation(description: "release refresh")
+        let refreshFinished = expectation(description: "refresh finished")
+        let fetchStarted = expectation(description: "fetch started")
+        monitor.refreshOperation = { project, _ in
+            refreshStarted.fulfill()
+            _ = XCTWaiter.wait(for: [releaseRefresh], timeout: 5)
+            refreshFinished.fulfill()
+            return Self.snapshot(path: project.path, branch: "newer")
+        }
+        monitor.fetchOperation = { project, _ in
+            fetchStarted.fulfill()
+            return Self.snapshot(path: project.path, branch: "fetch")
+        }
+
+        monitor.refresh(path: "/tmp/project")
+        await fulfillment(of: [refreshStarted])
+        monitor.fetchAll()
+        XCTAssertEqual(XCTWaiter.wait(for: [fetchStarted], timeout: 0), .timedOut)
+        releaseRefresh.fulfill()
+        await fulfillment(of: [refreshFinished])
+    }
+
+    private static func snapshot(path: String, branch: String) -> ProjectStatusSnapshot {
+        ProjectStatusSnapshot(
+            project: ProjectReference(path: path), branchName: branch, isDetachedHead: false,
+            stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero,
+            aheadCount: 0, behindCount: 0, hasUpstream: true, lastRefreshedAt: Date(),
+            lastErrorDescription: nil
+        )
+    }
 }
