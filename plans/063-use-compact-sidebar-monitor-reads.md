@@ -15,7 +15,7 @@
 - **Priority:** P1
 - **Effort:** M
 - **Risk:** MEDIUM
-- **Depends on:** Plan 061; Plan 057 (Swift 6.2 baseline); Plan 053 (DONE)
+- **Depends on:** Plan 061; Plan 057 (Swift 6.4 toolchain baseline); Plan 053 (DONE)
 - **Category:** perf / sidebar UX / Git reads
 - **Planned at:** commit `f2c84e5`, 2026-08-07
 

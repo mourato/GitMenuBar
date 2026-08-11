@@ -16,7 +16,7 @@
 - **Priority**: P1
 - **Effort**: M
 - **Risk**: HIGH
-- **Depends on**: Plans 050–053 and 059–063 are DONE; reconcile Plan 057's Swift 6.2 baseline before execution
+- **Depends on**: Plans 050–053 and 059–063 are DONE; reconcile Plan 057's Swift 6.4 toolchain baseline before execution
 - **Category**: tech-debt
 - **Planned at**: commit `b3c1bf2`, 2026-08-10
 

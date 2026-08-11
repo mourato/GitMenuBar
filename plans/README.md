@@ -789,20 +789,21 @@ CI, or whole-product UX audit.
 - `make test`: passed on the unchanged source baseline.
 - `make lint`: passed; existing warnings remain, with no source diff introduced.
 - `make guidance-check`: passed before and after plan authoring is required.
-- `make check-preview`: known baseline failure on a clean tree because
-  `scripts/check-preview.sh` expands an empty Bash 3.2 array under `set -u`;
-  Plan 055 uses an explicit-file preview gate and does not modify the script.
+- `make check-preview`: passed after Plan 057 made empty changed-file discovery
+  fail closed without masking script errors.
 
-## Swift 6.2 baseline batch
+## Swift 6.4 toolchain baseline batch
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |---|---|---:|---:|---|---|
-| [057](057-establish-swift-6-2-agent-baseline.md) | Establish the Swift 6.2 agent baseline | P0 | L | 015; reconcile current dirty worktree | TODO |
+| [057](057-establish-swift-6-4-agent-baseline.md) | Establish the Swift 6.4 toolchain baseline (Swift 6 language mode) | P0 | L | 015; reconcile current tree | DONE (d6910d0; review fix 0cff97e) |
 
 Plan 057 extends the completed delivery-gate work in plan 015. It is the
-canonical migration for all app, test, and CLI targets: Swift 6.2, complete
-strict concurrency, formatter/lint alignment, targeted agent checks, and the
-required behavior-preserving source rewrites.
+canonical migration for all app, test, and CLI targets: the Swift 6 language
+mode on the Swift 6.4 compiler, complete strict concurrency, formatter/lint
+alignment, truthful targeted agent checks, and the required behavior-preserving
+source rewrites. The plan must not set an unsupported `SWIFT_VERSION = 6.4`
+value merely because the compiler is Swift 6.4.
 
 ## Collapsible AI usage quota summary
 
@@ -905,7 +906,7 @@ debounce, renderer rewrite, or new dependency in this batch.
 
 ### Dependency notes
 
-- Plan 057 is an existing repository-wide Swift 6.2/concurrency baseline and
+- Plan 057 is an existing repository-wide Swift 6.4-toolchain/concurrency baseline and
   should be reconciled before these plans touch shared async APIs. It is a
   prerequisite, not an additional plan created by this performance scope.
 - Plan 061 should land first because it owns the opening controller and
@@ -1079,7 +1080,7 @@ contract change.
 - Plan 067 is source-independent from 066 and may be implemented in an
   isolated worktree, but integration and final validation should be serial
   because both plans alter main-window action ownership.
-- Plan 057 is a repository-wide Swift 6.2/concurrency baseline. Reconcile its
+- Plan 057 is a repository-wide Swift 6.4-toolchain/concurrency baseline. Reconcile its
   live status before either plan changes MainActor or async call boundaries.
 - Plan 066 preserves the existing non-Git create-candidate behavior: an
   authenticated non-Git folder is not selected until creation succeeds, while
@@ -1126,3 +1127,59 @@ contract change.
 - Implementation is delegated to one isolated `implementer` subagent at the
   GPT-5.6 Luna / Medium profile. The root session owns all code review and
   remediation decisions; do not delegate review to a child agent.
+
+## Next reliability wave — 2026-08-11
+
+The follow-up audit found five bounded opportunities after the repository
+selection and Atomic Commit ownership work: the Swift 6.4 toolchain baseline,
+incorrect Companion CLI atomic scope handling, missing hunk content in the AI
+grouping prompt, an ungated selected pull-to-refresh path, and stale monitor
+fetch publication. The hunk-aware Companion CLI itself remains a design spike
+until its versioned JSON and stale-plan contract is accepted.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|---|---|---:|---:|---|---|
+| [068](068-harden-companion-cli-atomic-scope-contract.md) | Honor the Companion CLI atomic scope contract | P1 | M | 057 | DONE (b90e7ea; root review and full gates passed) |
+| [069](069-include-hunk-content-in-ai-grouping-prompt.md) | Include bounded hunk content in AI grouping prompts | P1 | M | 057; 064 DONE | DONE (692e912; root review and full gates passed) |
+| [070](070-guard-selected-refresh-publication.md) | Guard pull-to-refresh publication against repository switches | P1 | M | 057; 066–067 DONE | DONE (de99b4c; root review and full gates passed) |
+| [071](071-guard-monitor-fetch-publication.md) | Guard monitor fetch publication against stale snapshots | P1 | M | 057; 060–063 DONE | DONE (966f35d; test fix 20a801e; root review and full gates passed) |
+| [072](072-design-hunk-aware-companion-cli-contract.md) | Design the hunk-aware Companion CLI contract | P2 | M spike | 057; 068 | DONE (f91e6fd; review fix 1024a57; ADR 0008 accepted) |
+
+### Dependency notes
+
+- Plan 057 runs first and establishes the Swift 6 language mode on the Swift
+  6.4 compiler, normalized concurrency, and truthful lint/agent gates.
+- Plan 068 owns CLI scope semantics and staged/index safety. Plan 072 consumes
+  its file-level contract; it must not be implemented as a speculative hunk
+  DTO change before the design spike.
+- Plans 069, 070, and 071 have disjoint source ownership after Plan 057 and may
+  be prepared independently, but integration and final validation remain
+  serial.
+- Every plan requires root-session code review when source is implemented;
+  child agents implement isolated work only.
+
+### Confirmed constraints
+
+- Swift 6.4 means the installed compiler/toolchain target. The project must use
+  the newest valid Swift 6 language-mode setting accepted by Xcode; do not put
+  `SWIFT_VERSION = 6.4` in the project unless Xcode explicitly supports it.
+- CLI `--staged` must never broaden into full-worktree content; safe refusal is
+  preferable to an unsafe file-level apply.
+- Hunk prompt patches are bounded and explicitly marked when truncated; hunk
+  IDs, snapshots, and temporary-index execution remain owned by existing code.
+- Pull-to-refresh and monitor fetch fixes use existing generation/admission
+  patterns; no event bus, cache, per-project `GitManager`, or fetch scheduler
+  is introduced.
+- Plan 072 is documentation-only and may change no production Swift or CLI
+  schema.
+
+### Findings considered and deferred
+
+- A broad `GitManager` decomposition was rejected: the validated issues are
+  admission/scope bugs with smaller ownership fixes.
+- New `Sendable` escapes, monitor parallelism, and a custom Git runner protocol
+  were rejected without a reproduced failure requiring them.
+- Hunk-aware CLI implementation was deferred to Plan 072 until versioning,
+  stale rejection, index safety, and partial-failure semantics are accepted.

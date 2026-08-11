@@ -14,7 +14,7 @@
 - **Priority:** P0
 - **Effort:** L
 - **Risk:** HIGH
-- **Depends on:** Plan 057 (Swift 6.2 baseline); Plans 050–053 (DONE)
+- **Depends on:** Plan 057 (Swift 6.4 toolchain baseline); Plans 050–053 (DONE)
 - **Category:** perf / app lifecycle / concurrency
 - **Planned at:** commit `f2c84e5`, 2026-08-07
 

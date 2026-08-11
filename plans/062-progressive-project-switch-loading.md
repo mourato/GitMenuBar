@@ -15,7 +15,7 @@
 - **Priority:** P0
 - **Effort:** L
 - **Risk:** HIGH
-- **Depends on:** Plan 061; Plan 057 (Swift 6.2 baseline); Plans 050–052 (DONE)
+- **Depends on:** Plan 061; Plan 057 (Swift 6.4 toolchain baseline); Plans 050–052 (DONE)
 - **Category:** perf / SwiftUI state / concurrency / UX
 - **Planned at:** commit `f2c84e5`, 2026-08-07
 
