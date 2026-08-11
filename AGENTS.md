@@ -12,7 +12,7 @@ before merge.
 
 ## UI design gate
 
-Before changing native UI, read [`.interface-design/system.md`](.interface-design/system.md).
+Before changing native UI, read [`docs/ui.md`](docs/ui.md).
 It is the canonical active design contract for visual hierarchy, Workbench
 tokens, scroll ownership, motion, accessibility, and surface exclusions. When
 an interface change intentionally changes a locked decision, update that
