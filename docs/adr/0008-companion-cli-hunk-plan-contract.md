@@ -85,7 +85,9 @@ in the proposal. Metadata is admission evidence, not an instruction to apply
 text. `completeFiles` is for whole-file selections and may not overlap a path
 selected by `hunks`. `messages` identifies the message-policy contract and
 bounded message rules; the message in each group remains the value subject to
-policy validation at apply time.
+policy validation at apply time. The `maxLength` bound is a v2 contract rule
+for the future implementation; it does not claim that the current
+`CommitMessagePolicy` already has this field.
 
 `statusIdentity` and `diffIdentity` are deterministic digests of the sorted
 status records and sorted diff snapshot respectively. `fingerprint` is the
@@ -219,13 +221,13 @@ edited plan can be checked without treating it as patch authority.
 ### Proposal
 
 ```json
-{"groups":[{"completeFiles":[],"hunks":[{"additions":2,"header":"@@ -10,2 +10,4 @@","id":"Sources/App.swift#hunk-1","ordinal":1,"path":"Sources/App.swift","removals":0}],"id":"group-1","message":"feat: add menu action"}],"messages":{"maxLength":120,"policy":"default"},"repository":{"identity":{"canonicalRoot":"/work/repo","gitDirectory":"/work/repo/.git"},"pathScope":"/work/repo"},"schema":"gitmenubar.atomic-hunk-plan","schemaVersion":2,"scope":"unstaged","snapshot":{"diffIdentity":"diff-sha256:2222","fingerprint":"sha256:3333","head":"1111111111111111111111111111111111111111","hunks":[{"additions":2,"header":"@@ -10,2 +10,4 @@","id":"Sources/App.swift#hunk-1","ordinal":1,"path":"Sources/App.swift","removals":0}],"statusIdentity":"status-sha256:4444","completeFiles":[{"path":"Sources/App.swift","status":"modified"}]}}
+{"groups":[{"completeFiles":[],"hunks":[{"additions":2,"header":"@@ -10,2 +10,4 @@","id":"Sources/App.swift#hunk-1","ordinal":1,"path":"Sources/App.swift","removals":0}],"id":"group-1","message":"feat: add menu action"}],"messages":{"maxLength":120,"policy":"default"},"repository":{"identity":{"canonicalRoot":"/work/repo","gitDirectory":"/work/repo/.git"},"pathScope":"/work/repo"},"schema":"gitmenubar.atomic-hunk-plan","schemaVersion":2,"scope":"unstaged","snapshot":{"completeFiles":[{"path":"Sources/App.swift","status":"modified"}],"diffIdentity":"diff-sha256:2222","fingerprint":"sha256:3333","head":"1111111111111111111111111111111111111111","hunks":[{"additions":2,"header":"@@ -10,2 +10,4 @@","id":"Sources/App.swift#hunk-1","ordinal":1,"path":"Sources/App.swift","removals":0}],"statusIdentity":"status-sha256:4444"}}
 ```
 
 ### Accepted apply input
 
 ```json
-{"groups":[{"completeFiles":[],"hunks":[{"additions":2,"header":"@@ -10,2 +10,4 @@","id":"Sources/App.swift#hunk-1","ordinal":1,"path":"Sources/App.swift","removals":0}],"id":"group-1","message":"feat: add menu action"}],"messages":{"maxLength":120,"policy":"default"},"repository":{"identity":{"canonicalRoot":"/work/repo","gitDirectory":"/work/repo/.git"},"pathScope":"/work/repo"},"schema":"gitmenubar.atomic-hunk-plan","schemaVersion":2,"scope":"unstaged","snapshot":{"diffIdentity":"diff-sha256:2222","fingerprint":"sha256:3333","head":"1111111111111111111111111111111111111111","hunks":[{"additions":2,"header":"@@ -10,2 +10,4 @@","id":"Sources/App.swift#hunk-1","ordinal":1,"path":"Sources/App.swift","removals":0}],"statusIdentity":"status-sha256:4444","completeFiles":[{"path":"Sources/App.swift","status":"modified"}]}}
+{"groups":[{"completeFiles":[],"hunks":[{"additions":2,"header":"@@ -10,2 +10,4 @@","id":"Sources/App.swift#hunk-1","ordinal":1,"path":"Sources/App.swift","removals":0}],"id":"group-1","message":"feat: add menu action"}],"messages":{"maxLength":120,"policy":"default"},"repository":{"identity":{"canonicalRoot":"/work/repo","gitDirectory":"/work/repo/.git"},"pathScope":"/work/repo"},"schema":"gitmenubar.atomic-hunk-plan","schemaVersion":2,"scope":"unstaged","snapshot":{"completeFiles":[{"path":"Sources/App.swift","status":"modified"}],"diffIdentity":"diff-sha256:2222","fingerprint":"sha256:3333","head":"1111111111111111111111111111111111111111","hunks":[{"additions":2,"header":"@@ -10,2 +10,4 @@","id":"Sources/App.swift#hunk-1","ordinal":1,"path":"Sources/App.swift","removals":0}],"statusIdentity":"status-sha256:4444"}}
 ```
 
 ### Stale rejection
