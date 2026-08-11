@@ -20,22 +20,21 @@ final class UsageQuotaParsingTests: XCTestCase {
     }
 
     func testCodexAPIWindow() {
-        let (used, reset, duration) = CodexUsageParsing.codexAPIWindow([
+        let window = CodexUsageParsing.codexAPIWindow([
             "used_percent": 42.0,
             "reset_at": 1_700_000_000.0,
             "limit_window_seconds": 604_800
         ])
-        XCTAssertEqual(used, 42.0)
-        XCTAssertEqual(reset, Date(timeIntervalSince1970: 1_700_000_000))
-        XCTAssertEqual(duration, 604_800)
+        XCTAssertEqual(window.usedPercent, 42.0)
+        XCTAssertEqual(window.resetAt, Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertEqual(window.durationSeconds, 604_800)
 
-        let (usedInt, _, _) = CodexUsageParsing.codexAPIWindow(["used_percent": 30])
-        XCTAssertEqual(usedInt, 30)
+        XCTAssertEqual(CodexUsageParsing.codexAPIWindow(["used_percent": 30]).usedPercent, 30)
 
-        let (none, noReset, noDuration) = CodexUsageParsing.codexAPIWindow(nil)
-        XCTAssertNil(none)
-        XCTAssertNil(noReset)
-        XCTAssertNil(noDuration)
+        let empty = CodexUsageParsing.codexAPIWindow(nil)
+        XCTAssertNil(empty.usedPercent)
+        XCTAssertNil(empty.resetAt)
+        XCTAssertNil(empty.durationSeconds)
     }
 
     func testSnapshotFromUsageAPI() {

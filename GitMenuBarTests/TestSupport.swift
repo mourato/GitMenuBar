@@ -39,6 +39,11 @@ func makeMockedURLSession() -> URLSession {
     return URLSession(configuration: configuration)
 }
 
+func makeMockHTTPResponse(for request: URLRequest) throws -> HTTPURLResponse {
+    let url = try XCTUnwrap(request.url)
+    return try XCTUnwrap(HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil))
+}
+
 let gitRepoPathLock = NSLock()
 
 /// Thread-safe box for capturing request payloads from `MockURLProtocol` handlers

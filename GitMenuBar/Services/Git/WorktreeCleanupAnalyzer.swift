@@ -157,6 +157,7 @@ struct WorktreeCleanupAnalyzer {
         return .notMerged
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func worktreeStatus(
         for worktree: GitWorktreeInfo,
         currentWorktreePath: String,

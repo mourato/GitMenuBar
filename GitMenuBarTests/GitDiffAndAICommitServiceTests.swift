@@ -76,7 +76,7 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"feat: generated\"}}]}"
             let data = response.data(using: .utf8) ?? Data()
-            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, data)
+            return try (makeMockHTTPResponse(for: request), data)
         }
 
         let provider = AIProviderConfig(
@@ -123,7 +123,7 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"fix: generated\"}}]}"
             let data = response.data(using: .utf8) ?? Data()
-            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, data)
+            return try (makeMockHTTPResponse(for: request), data)
         }
 
         let provider = AIProviderConfig(
@@ -170,7 +170,7 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"feat: generated\"}}]}"
             let data = response.data(using: .utf8) ?? Data()
-            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, data)
+            return try (makeMockHTTPResponse(for: request), data)
         }
 
         let provider = AIProviderConfig(
@@ -218,7 +218,7 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"feat: generated\"}}]}"
             let data = response.data(using: .utf8) ?? Data()
-            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, data)
+            return try (makeMockHTTPResponse(for: request), data)
         }
 
         let provider = AIProviderConfig(
@@ -275,7 +275,7 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"feat: generated\"}}]}"
             let data = response.data(using: .utf8) ?? Data()
-            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, data)
+            return try (makeMockHTTPResponse(for: request), data)
         }
 
         let provider = AIProviderConfig(
@@ -328,7 +328,7 @@ final class GitDiffAndAICommitServiceTests: XCTestCase {
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"feat: explicit diff\"}}]}"
             let data = response.data(using: .utf8) ?? Data()
-            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, data)
+            return try (makeMockHTTPResponse(for: request), data)
         }
 
         let provider = AIProviderConfig(

@@ -55,6 +55,11 @@ else
     )
 fi
 
+if [[ ${#files[@]} -eq 0 ]]; then
+    echo "check-preview: passed (no changed UI files)"
+    exit 0
+fi
+
 has_preview() {
     rg -q '#Preview|PreviewProvider' "$1"
 }

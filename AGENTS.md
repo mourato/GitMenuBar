@@ -10,6 +10,11 @@ GitMenuBar is a native macOS menu bar app for day-to-day Git workflows.
 implementation, `make check-preview` for UI work, and `make lint && make test`
 before merge.
 
+The Swift 6.4 toolchain and concurrency baseline is documented in
+[`docs/adr/0007-swift-6-4-agent-baseline.md`](docs/adr/0007-swift-6-4-agent-baseline.md).
+`make agent-check` is fast changed-scope feedback; full lint/build/test are the
+merge gate.
+
 ## UI design gate
 
 Before changing native UI, read [`docs/ui.md`](docs/ui.md).

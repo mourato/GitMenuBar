@@ -196,7 +196,10 @@ final class KeychainMigratorTests: XCTestCase {
     }
 
     private func isolatedDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "KeychainMigratorTests.\(UUID().uuidString)")!
+        guard let defaults = UserDefaults(suiteName: "KeychainMigratorTests.\(UUID().uuidString)") else {
+            preconditionFailure("Unable to create isolated test defaults")
+        }
+        return defaults
     }
 
     private func makeProvider() -> AIProviderConfig {

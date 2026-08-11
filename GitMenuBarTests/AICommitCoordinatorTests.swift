@@ -134,8 +134,8 @@ final class AICommitCoordinatorTests: XCTestCase {
 
             let response = "{\"choices\":[{\"message\":{\"content\":\"feat: rewritten\"}}]}"
             let data = response.data(using: .utf8) ?? Data()
-            return (
-                HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+            return try (
+                makeMockHTTPResponse(for: request),
                 data
             )
         }

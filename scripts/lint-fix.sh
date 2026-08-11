@@ -5,7 +5,7 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${PROJECT_ROOT}"
 
-SOURCES=(GitMenuBar GitMenuBarTests)
+SOURCES=(GitMenuBar GitMenuBarTests gitmenubar)
 
 if ! command -v swiftformat >/dev/null 2>&1; then
     echo "SwiftFormat not installed. Run: brew install swiftformat" >&2
@@ -21,6 +21,6 @@ echo "Applying SwiftFormat..."
 swiftformat --config .swiftformat "${SOURCES[@]}"
 
 echo "Applying SwiftLint fixes..."
-swiftlint lint --fix "${SOURCES[@]}" || true
+swiftlint lint --fix "${SOURCES[@]}"
 
 echo "Lint fix pass completed"

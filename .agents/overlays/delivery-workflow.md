@@ -14,6 +14,8 @@ precedence: project
   scripts; `make agent-check` combines changed-file lint and a Debug build.
 - `make guidance-check` runs `scripts/validate-agent-guidance.sh` for plans,
   routing, overlays, and skill metadata.
+- The Swift 6.4 baseline requires strict full lint (`make lint`) and changed
+  lint/build feedback (`make agent-check`); see ADR 0007.
 - Debug and release build logs are `/tmp/gitmenubar-build-debug.log` and
   `/tmp/gitmenubar-build-release.log`; test logs are `/tmp/gitmenubar-test.log`.
 - `make install-cli` symlinks the app bundle’s `gitmenubar` to `~/.local/bin`

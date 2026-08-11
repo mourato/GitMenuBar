@@ -2,6 +2,12 @@ import Foundation
 
 /// Parsing helpers adapted from Mimir (MIT, Eray Endes) — Codex usage ladder only.
 enum CodexUsageParsing {
+    struct APIWindow {
+        let usedPercent: Double?
+        let resetAt: Date?
+        let durationSeconds: Int?
+    }
+
     static func remainingPercent(fromUsed used: Double) -> Int {
         UsageQuotaFormatting.remainingPercent(fromUsed: used)
     }
@@ -22,16 +28,16 @@ enum CodexUsageParsing {
         return nil
     }
 
-    static func codexAPIWindow(_ raw: Any?) -> (usedPercent: Double?, resetAt: Date?, durationSeconds: Int?) {
+    static func codexAPIWindow(_ raw: Any?) -> APIWindow {
         guard let object = raw as? [String: Any] else {
-            return (nil, nil, nil)
+            return APIWindow(usedPercent: nil, resetAt: nil, durationSeconds: nil)
         }
 
         let used = doubleValue(object["used_percent"])
         let reset = doubleValue(object["reset_at"]).map { Date(timeIntervalSince1970: $0) }
         let duration = intValue(object["limit_window_seconds"])
             ?? intValue(object["window_minutes"]).map { $0 * 60 }
-        return (used, reset, duration)
+        return APIWindow(usedPercent: used, resetAt: reset, durationSeconds: duration)
     }
 
     static func intValue(_ raw: Any?) -> Int? {
@@ -245,6 +251,7 @@ enum CodexUsageParsing {
         return CodexWindowSummary(usedPercent: used, resetAt: reset)
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     static func snapshot(fromSessionsJSONL text: String, now: Date = Date()) -> UsageQuotaSnapshot? {
         let lines = text.split(separator: "\n").reversed()
         var sessionRemaining: Int?

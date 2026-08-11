@@ -40,13 +40,14 @@ final class GitHubRepositoryResponseValidationTests: XCTestCase {
         }
     }
 
-    private func response(statusCode: Int) -> HTTPURLResponse {
-        HTTPURLResponse(
-            url: URL(string: "https://api.github.com/repos/owner/repo")!,
+    private func response(statusCode: Int) throws -> HTTPURLResponse {
+        let url = try XCTUnwrap(URL(string: "https://api.github.com/repos/owner/repo"))
+        return try XCTUnwrap(HTTPURLResponse(
+            url: url,
             statusCode: statusCode,
             httpVersion: nil,
             headerFields: nil
-        )!
+        ))
     }
 
     private func assertGitHubError(

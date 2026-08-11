@@ -69,6 +69,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Handle file/folder URLs opened via "open -a GitMenuBar /path/to/folder"
 
+    // swiftlint:disable:next cyclomatic_complexity
     func application(_: NSApplication, open urls: [URL]) {
         // Handle folder paths passed via "open -a GitMenuBar /path/to/folder"
         guard let folderUrl = urls.first else {

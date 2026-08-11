@@ -165,6 +165,7 @@ extension GitBranchService {
         return infos.filter { !$0.isRemote || !localNames.contains($0.name) }
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func trackingStatus(upstream: String, track: String) -> BranchTrackingStatus {
         guard !upstream.isEmpty else { return .noRemote }
         guard !track.isEmpty else { return .upToDate }

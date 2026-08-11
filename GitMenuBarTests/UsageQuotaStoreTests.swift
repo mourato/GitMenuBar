@@ -10,7 +10,10 @@ final class UsageQuotaStoreTests: XCTestCase {
     override func setUp() {
         super.setUp()
         suiteName = "UsageQuotaStoreTests.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suiteName)!
+        guard let isolatedDefaults = UserDefaults(suiteName: suiteName) else {
+            preconditionFailure("Unable to create isolated test defaults")
+        }
+        defaults = isolatedDefaults
         snapshotStore = UsageQuotaSnapshotStore(defaults: defaults)
     }
 
