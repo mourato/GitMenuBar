@@ -39,14 +39,27 @@ struct ProjectCleanupPage: View {
                     ContentUnavailableView("No Monitored Projects", systemImage: "folder", description: Text("Add a project before reviewing cleanup."))
                 } else {
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: WorkbenchMetrics.compactSpacing) {
-                            ForEach(store.rows) { row in
-                                ProjectCleanupProjectRowView(row: row, isSelected: store.selectedPaths.contains(row.id), isRunning: store.isRunning, onToggle: { store.toggleSelection(path: row.id) }, onInspect: {
-                                    presentedSheet = .candidates(row)
-                                }, onClean: {
-                                    store.selectOnly(path: row.id)
-                                    presentReview(store.reviewSelected())
-                                })
+                        VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
+                            if !rowsWithCleanupCandidates.isEmpty {
+                                VStack(spacing: WorkbenchMetrics.compactSpacing) {
+                                    ForEach(rowsWithCleanupCandidates) { row in
+                                        ProjectCleanupProjectRowView(
+                                            row: row,
+                                            isSelected: store.selectedPaths.contains(row.id),
+                                            isRunning: store.isRunning,
+                                            onToggle: { store.toggleSelection(path: row.id) },
+                                            onInspect: { presentedSheet = .candidates(row) },
+                                            onClean: {
+                                                store.selectOnly(path: row.id)
+                                                presentReview(store.reviewSelected())
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            if !rowsWithoutCleanupCandidates.isEmpty {
+                                projectsWithoutCleanupSection
                             }
                         }
                         .workbenchHideNativeScrollers()
@@ -102,11 +115,48 @@ struct ProjectCleanupPage: View {
         presentedSheet = .review(review)
     }
 
+    private var rowsWithCleanupCandidates: [ProjectCleanupRow] {
+        store.rows.filter { $0.isCanonical && !$0.units.isEmpty }
+    }
+
+    private var rowsWithoutCleanupCandidates: [ProjectCleanupRow] {
+        store.rows.filter { !$0.isCanonical || $0.units.isEmpty }
+    }
+
+    private var projectsWithoutCleanupSection: some View {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+            Text("There are no branches or work trees to be cleaned.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .accessibilityAddTraits(.isHeader)
+
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                ForEach(rowsWithoutCleanupCandidates) { row in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(row.project.name)
+                            .font(.subheadline.weight(.medium))
+                        Text(row.project.path)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(row.project.name), \(row.project.path)")
+                }
+            }
+            .padding(WorkbenchMetrics.compactSpacing)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.16), in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Projects without cleanup candidates")
+    }
+
     private var summary: some View {
         HStack(spacing: WorkbenchMetrics.sectionSpacing) {
-            Label("\(store.rows.count) projects", systemImage: "folder")
-            Label("\(store.rows.reduce(0) { $0 + $1.branchCount }) branches", systemImage: "arrow.triangle.branch")
-            Label("\(store.rows.reduce(0) { $0 + $1.worktreeCount }) worktrees", systemImage: "square.stack.3d.up")
+            Label("\(rowsWithCleanupCandidates.count) projects", systemImage: "folder")
+            Label("\(rowsWithCleanupCandidates.reduce(0) { $0 + $1.branchCount }) branches", systemImage: "arrow.triangle.branch")
+            Label("\(rowsWithCleanupCandidates.reduce(0) { $0 + $1.worktreeCount }) worktrees", systemImage: "square.stack.3d.up")
         }
         .font(.callout.monospacedDigit())
         .foregroundStyle(.secondary)
@@ -130,5 +180,33 @@ private enum ProjectCleanupSheet: Identifiable {
 #Preview("Project Cleanup") {
     ProjectCleanupPage()
         .environmentObject(ProjectCleanupStore())
+        .frame(width: 700, height: 500)
+}
+
+#Preview("Project Cleanup Mixed") {
+    ProjectCleanupPage()
+        .environmentObject(
+            ProjectCleanupStore.preview(
+                rows: [
+                    .previewEligible,
+                    ProjectCleanupRow(
+                        project: ProjectReference(path: "/tmp/empty", name: "Empty Project"),
+                        repositoryIdentity: "/tmp/empty",
+                        isCanonical: true,
+                        isShared: false,
+                        snapshot: nil,
+                        unavailableReason: nil
+                    ),
+                    ProjectCleanupRow(
+                        project: ProjectReference(path: "/tmp/shared", name: "Shared Checkout"),
+                        repositoryIdentity: "/tmp/repository",
+                        isCanonical: false,
+                        isShared: true,
+                        snapshot: nil,
+                        unavailableReason: nil
+                    )
+                ]
+            )
+        )
         .frame(width: 700, height: 500)
 }
