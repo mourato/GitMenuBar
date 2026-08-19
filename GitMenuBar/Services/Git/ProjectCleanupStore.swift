@@ -175,12 +175,10 @@ final class ProjectCleanupStore: ObservableObject {
         }
     }
 
-    #if DEBUG
-        static func preview(rows: [ProjectCleanupRow], loadState: ProjectCleanupLoadState = .loaded) -> ProjectCleanupStore {
-            let store = ProjectCleanupStore()
-            store.rows = rows
-            store.loadState = loadState
-            return store
-        }
-    #endif
+    static func preview(rows: [ProjectCleanupRow], loadState: ProjectCleanupLoadState = .loaded) -> ProjectCleanupStore {
+        let store = ProjectCleanupStore()
+        store.rows = rows
+        store.loadState = loadState
+        return store
+    }
 }
