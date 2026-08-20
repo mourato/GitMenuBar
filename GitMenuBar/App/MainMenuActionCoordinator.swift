@@ -392,11 +392,13 @@ final class MainMenuActionCoordinator: ObservableObject {
         await refreshRemoteStatus()
 
         guard shouldPushAfterCommit else {
+            await refreshRepository()
             publishSuccess(title: "Commit complete", message: "Your changes were committed locally.")
             return .committed
         }
 
         if gitManager.isRemoteAhead {
+            await refreshRepository()
             showSyncOptions = true
             return .committedAndNeedsSyncOptions
         }
@@ -404,6 +406,7 @@ final class MainMenuActionCoordinator: ObservableObject {
         operationStatus = .pushing
         let pushResult = await pushToRemote()
         guard case .success = pushResult else {
+            await refreshRepository()
             if case let .failure(error) = pushResult {
                 publishAlert(
                     title: "Push Failed",
