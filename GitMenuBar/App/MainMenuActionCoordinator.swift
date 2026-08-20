@@ -379,7 +379,7 @@ final class MainMenuActionCoordinator: ObservableObject {
         aiCommitCoordinator.generationError = nil
         operationStatus = .committing
 
-        let commitResult = await commitLocally(message)
+        let commitResult = await commitLocally(message, skipUIUpdates: shouldPushAfterCommit)
         guard case .success = commitResult else {
             if case let .failure(error) = commitResult {
                 publishAlert(title: failureTitle, message: error.localizedDescription)
@@ -389,7 +389,6 @@ final class MainMenuActionCoordinator: ObservableObject {
 
         commitWasCreated = true
 
-        await refreshRepository()
         await refreshRemoteStatus()
 
         guard shouldPushAfterCommit else {
@@ -447,9 +446,12 @@ final class MainMenuActionCoordinator: ObservableObject {
         return result
     }
 
-    private func commitLocally(_ message: String) async -> Result<Void, Error> {
+    private func commitLocally(
+        _ message: String,
+        skipUIUpdates: Bool = false
+    ) async -> Result<Void, Error> {
         await tracePrimaryPhase("primary.commit") {
-            await gitManager.commitLocallyWithFallbackAsync(message)
+            await gitManager.commitLocallyWithFallbackAsync(message, skipUIUpdates: skipUIUpdates)
         }
     }
 
