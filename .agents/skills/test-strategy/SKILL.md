@@ -27,3 +27,19 @@ Use this skill when adding behavior, refactoring logic, or deciding how to verif
 - Coordinator/action logic: unit tests strongly preferred.
 - Lifecycle-sensitive menu/window behavior: manual verification plus targeted tests where seams exist.
 - Packaging and release flow: manual verification through `release-management`.
+
+## Path-switch concurrency regression
+
+For a Git action that may finish after project selection changes, follow
+[`ADR 0009`](../../docs/adr/0009-path-bound-git-operations.md):
+
+- use two distinct canonical repository paths, A and B;
+- block A's operation with `CheckedContinuation`, not a sleep;
+- switch through the same selection/reset transaction used by the app;
+- assert the command context, push path, completion callback, and visible
+  status all remain correct; and
+- keep a negative case proving an unbound or atomic flow still blocks B.
+
+Prefer observable outcomes over fake-manager state. A test that only mutates a
+double's selected path does not prove that the production selection transaction
+clears stale UI state.

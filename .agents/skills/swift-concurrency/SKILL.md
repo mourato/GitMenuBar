@@ -166,6 +166,27 @@ When changing concurrency code:
 6. Check `Task.isCancelled` in long-running operations.
 7. Never use semaphores or ad hoc locking in async contexts when actor isolation or `Mutex` would express ownership more safely.
 
+## GitMenuBar path-bound operations
+
+For a selected-project Git action that can overlap repository selection, read
+[`ADR 0009`](../../docs/adr/0009-path-bound-git-operations.md) and preserve its
+five boundaries: capture immutable identity, admit switching explicitly, run
+context-bound Git commands, gate late publication, and collect runtime
+evidence. In particular:
+
+- capture `RepositoryOperationContext` before the first `await`;
+- use `GitManager` context overloads instead of mutable selected state after a
+  suspension;
+- route refresh and coordinator status publication through the current-path
+  and generation gates;
+- keep same-project duplicates blocked, and relax cross-project switching only
+  after the entire flow is path-bound; and
+- treat the shared per-directory semaphore as command serialization, not a
+  transaction lease.
+
+When changing this flow, add or update the deterministic A/B regression before
+changing admission policy.
+
 ---
 
 **Note**: This skill is based on the comprehensive [Swift Concurrency Course](https://www.swiftconcurrencycourse.com?utm_source=github&utm_medium=agent-skill&utm_campaign=skill-footer) by Antoine van der Lee.

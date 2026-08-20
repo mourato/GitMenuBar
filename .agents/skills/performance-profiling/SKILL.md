@@ -54,6 +54,16 @@ Refine with measured hardware and repo sizes. Warn via `os_log` when a budget is
 - If a performance fix changes behavior, pair it with regression tests where possible.
 - Before merging performance-sensitive changes: `make test`, measure window open on a real repo, switch branches within budget, and exercise `git status` on a large working tree when relevant.
 
+## Path-bound commit/push evidence
+
+For commit, push, or project-switch changes, use the runtime scenarios and
+signpost names in [`ADR 0009`](../../docs/adr/0009-path-bound-git-operations.md#runtime-evidence).
+Separate implementation evidence from runtime evidence: builds and tests can
+prove path binding and publication guards, but only Instruments on a real
+repository can establish phase latency, Git process count, and main-actor
+cost. Keep trace files outside the repository and record only summarized
+measurements in the handoff.
+
 ## Related skills
 
 Reference-app study → global `benchmarking` + `.agents/overlays/benchmarking.md`.
