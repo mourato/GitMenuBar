@@ -1183,3 +1183,73 @@ until its versioned JSON and stale-plan contract is accepted.
   were rejected without a reproduced failure requiring them.
 - Hunk-aware CLI implementation was deferred to Plan 072 until versioning,
   stale rejection, index safety, and partial-failure semantics are accepted.
+
+## Commit/push and cross-project execution — 2026-08-19
+
+The selected-project audit found that Git subprocesses already run away from
+the main actor, but the primary action coordinator globally rejects repository
+switches until commit, refresh, remote fetch, push, refresh, and remote fetch
+all finish. The same flow also repeats local refresh work before pushing. A
+safe fix cannot remove the guard alone because the selected `GitManager` still
+reads a mutable repository path and unscoped post-action refreshes could target
+the newly selected project.
+
+This scope deliberately uses three serial plans. Plan 073 establishes runtime
+evidence without changing behavior. Plan 074 removes redundant local refresh
+work while retaining the existing selection guard and remote semantics. Plan
+075 makes the primary mutation path immutable and admits a different project
+without allowing same-worktree Git overlap. No per-project `GitManager`,
+persisted queue, cache, daemon, event bus, or visible queue UI is proposed.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|---|---|---:|---:|---|---|
+| [073](073-measure-commit-push-switch-latency.md) | Establish the commit/push and project-switch latency baseline | P1 | M | — | IMPLEMENTED — baseline pending |
+| [074](074-de-duplicate-commit-push-refresh-work.md) | De-duplicate the Commit & Push critical path | P1 | M | 073 | IMPLEMENTED — measurement pending |
+| [075](075-switch-projects-during-path-bound-git-actions.md) | Switch projects while path-bound Git actions finish safely | P0 | L | 073, 074 | IMPLEMENTED — manual/Instruments pending |
+
+### Dependency notes
+
+- Plan 073 must run first so process counts, remote-fetch cost, and main-actor
+  time are measured rather than guessed. Its runtime baseline is handoff data,
+  not a repository artifact.
+- Plan 074 is intentionally behavior-preserving with respect to selection. It
+  reduces duplicate local work and creates a smaller, clearer action boundary
+  for Plan 075.
+- Plan 075 is high-risk and serial. It changes selected-repository admission,
+  mutable path ownership, task lifetime, monitor completion, and concurrency
+  tests; do not delegate its implementation to multiple concurrent agents.
+- Root-session review owns every source diff and all remediation decisions.
+  Implementers use isolated worktrees and leave branches intact until review.
+
+### Confirmed constraints
+
+- Git commands remain off the main actor; a queue must improve interaction
+  latency without creating unbounded background Git processes.
+- Same-worktree commit, push, fetch, pull, branch mutation, and refresh work
+  must remain serialized unless a measured, tested boundary proves otherwise.
+- A commit/push operation must retain its original normalized path and branch
+  across every await. It must never retarget because the user selected another
+  project.
+- A late operation result may update the original project's compact monitor
+  snapshot, but may not overwrite the current project's selected UI state.
+- Commit/push is external state: a successful local commit plus failed push is
+  a partial success and must remain visible/retryable; no automatic rollback or
+  new force-push behavior is allowed.
+- Remote freshness remains explicit. Do not turn selected-project switching or
+  periodic monitoring into automatic network fetches.
+
+### Findings considered and rejected/deferred
+
+- Removing only `canSwitchRepository` is rejected: current unscoped post-action
+  calls can read or mutate the newly selected repository.
+- A global Git queue is rejected: it would keep project B waiting behind A and
+  solve neither path identity nor UI publication ownership.
+- One `GitManager` per project is rejected by ADR 0004 and the existing
+  selected/monitor split.
+- A persisted task queue, retry database, Git daemon, cache, polling loop, and
+  visible queue UI are deferred until actual multi-operation demand exists.
+- Unbounded cross-project parallelism is rejected; the initial contract allows
+  one background mutation plus one selected local refresh, with same-path work
+  serialized.
