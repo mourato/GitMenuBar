@@ -10,6 +10,12 @@ import Foundation
 // swiftlint:disable file_length
 @MainActor
 class GitManager: ObservableObject {
+    private struct OperationWorkingTreeStatus: Sendable {
+        let isValid: Bool
+        let stagedFiles: [String]
+        let changedFiles: [String]
+    }
+
     @Published var commitCount: Int = 0
     @Published var isCommitting: Bool = false
     @Published var uncommittedFiles: [String] = []
@@ -115,6 +121,18 @@ class GitManager: ObservableObject {
         storedRepoPath
     }
 
+    func makeRepositoryOperationContext() -> RepositoryOperationContext {
+        RepositoryOperationContext(
+            repositoryPath: GitRepositoryContext.normalizedPath(storedRepoPath),
+            branchName: currentBranch,
+            refreshGeneration: selectedRefreshGeneration
+        )
+    }
+
+    func isCurrent(_ context: RepositoryOperationContext) -> Bool {
+        GitRepositoryContext.normalizedPath(storedRepoPath) == context.repositoryPath
+    }
+
     private func runOnBackground<T: Sendable>(_ operation: @escaping @Sendable () -> T) async -> T {
         await GitExecution.runOnBackground(operation)
     }
@@ -160,6 +178,16 @@ class GitManager: ObservableObject {
 
     func refreshAsync(includeReflogHistory: Bool? = nil) async {
         await refreshAsync(includeReflogHistory: includeReflogHistory, session: nil)
+    }
+
+    func refreshAsync(
+        includeReflogHistory: Bool? = nil,
+        context: RepositoryOperationContext
+    ) async {
+        await refreshAsync(
+            includeReflogHistory: includeReflogHistory,
+            session: operationRefreshSession(for: context)
+        )
     }
 
     private func refreshAsync(
@@ -323,6 +351,20 @@ class GitManager: ObservableObject {
         )
     }
 
+    private func operationRefreshSession(for context: RepositoryOperationContext) -> GitRefreshSession {
+        GitRefreshSession(
+            repositoryPath: context.repositoryPath,
+            generation: context.refreshGeneration,
+            isCurrent: { [weak self] in
+                guard let self else { return false }
+                return selectedRefreshGeneration == context.refreshGeneration
+                    && selectedRefreshPath == context.repositoryPath
+                    && GitRepositoryContext.normalizedPath(storedRepoPath) == context.repositoryPath
+            },
+            fastCompletion: {}
+        )
+    }
+
     func commitLocallyAsync(
         _ message: String,
         skipUIUpdates: Bool = false
@@ -366,6 +408,66 @@ class GitManager: ObservableObject {
         }
 
         return result
+    }
+
+    func commitLocallyAsync(
+        _ message: String,
+        skipUIUpdates _: Bool = false,
+        context: RepositoryOperationContext
+    ) async -> Result<Void, Error> {
+        guard await branchMatches(context) else { return .failure(staleOperationError()) }
+        guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
+
+        return await runOnBackground {
+            let commitResult = self.executeGitCommand(
+                in: context.repositoryPath,
+                args: ["commit", "--no-gpg-sign", "--allow-empty-message", "--cleanup=verbatim", "-m", message]
+            )
+            guard !commitResult.failure else {
+                return .failure(NSError(
+                    domain: "GitManager",
+                    code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to create commit: \(commitResult.output)"]
+                ))
+            }
+            return .success(())
+        }
+    }
+
+    private func branchMatches(_ context: RepositoryOperationContext) async -> Bool {
+        guard !context.repositoryPath.isEmpty else { return false }
+        return await runOnBackground {
+            let result = self.executeGitCommand(
+                in: context.repositoryPath,
+                args: ["rev-parse", "--abbrev-ref", "HEAD"]
+            )
+            return !result.failure
+                && result.output.trimmingCharacters(in: .whitespacesAndNewlines) == context.branchName
+        }
+    }
+
+    private func staleOperationError() -> NSError {
+        NSError(
+            domain: "GitManager",
+            code: 4,
+            userInfo: [NSLocalizedDescriptionKey: "The repository branch changed before the action started."]
+        )
+    }
+
+    private func workingTreeStatus(at path: String) async -> OperationWorkingTreeStatus {
+        guard !path.isEmpty else { return OperationWorkingTreeStatus(isValid: false, stagedFiles: [], changedFiles: []) }
+        return await runOnBackground {
+            let result = self.executeGitCommand(in: path, args: ["status", "--porcelain", "-uall"])
+            guard !result.failure else {
+                return OperationWorkingTreeStatus(isValid: false, stagedFiles: [], changedFiles: [])
+            }
+            let status = self.workingTreeParser.parsePorcelainStatus(result.output)
+            return OperationWorkingTreeStatus(
+                isValid: true,
+                stagedFiles: Array(status.stagedStatuses.keys),
+                changedFiles: Array(status.changedStatuses.keys) + status.untrackedPaths
+            )
+        }
     }
 
     // MARK: - Atomic Commits
@@ -448,6 +550,26 @@ class GitManager: ObservableObject {
         }
 
         return await commitLocallyAsync(message, skipUIUpdates: skipUIUpdates)
+    }
+
+    func commitLocallyWithFallbackAsync(
+        _ message: String,
+        skipUIUpdates: Bool = false,
+        context: RepositoryOperationContext
+    ) async -> Result<Void, Error> {
+        let status = await workingTreeStatus(at: context.repositoryPath)
+        guard status.isValid else { return .failure(makeMissingRepositoryError()) }
+
+        if status.stagedFiles.isEmpty, !status.changedFiles.isEmpty {
+            let stageResult = await stageAllChangesAsync(context: context)
+            guard case .success = stageResult else { return stageResult }
+        }
+
+        return await commitLocallyAsync(
+            message,
+            skipUIUpdates: skipUIUpdates,
+            context: context
+        )
     }
 
     func commitLocallyWithFallback(
@@ -592,6 +714,16 @@ class GitManager: ObservableObject {
         await pushToBranchAsync(branchName: currentBranch, force: false)
     }
 
+    func pushToRemoteAsync(context: RepositoryOperationContext) async -> Result<Void, Error> {
+        guard await branchMatches(context) else { return .failure(staleOperationError()) }
+        return await pushToBranchAsync(
+            branchName: context.branchName,
+            force: false,
+            repositoryPath: context.repositoryPath,
+            currentBranchName: context.branchName
+        )
+    }
+
     func pushToBranch(branchName: String, force: Bool, completion: ((Result<Void, Error>) -> Void)? = nil) {
         Task { [weak self] in
             guard let self else { return }
@@ -606,6 +738,20 @@ class GitManager: ObservableObject {
         let repositoryPath = storedRepoPath
         let currentBranchName = currentBranch
 
+        return await pushToBranchAsync(
+            branchName: branchName,
+            force: force,
+            repositoryPath: repositoryPath,
+            currentBranchName: currentBranchName
+        )
+    }
+
+    private func pushToBranchAsync(
+        branchName: String,
+        force: Bool,
+        repositoryPath: String,
+        currentBranchName: String
+    ) async -> Result<Void, Error> {
         guard !repositoryPath.isEmpty else {
             let error = NSError(
                 domain: "GitManager",
@@ -889,6 +1035,21 @@ class GitManager: ObservableObject {
         }
 
         await updateUncommittedFilesAsync()
+        return .success(())
+    }
+
+    func stageAllChangesAsync(context: RepositoryOperationContext) async -> Result<Void, Error> {
+        guard await branchMatches(context) else { return .failure(staleOperationError()) }
+        let result = await runOnBackground {
+            self.executeGitCommand(in: context.repositoryPath, args: ["add", "-A"])
+        }
+        guard !result.failure else {
+            return .failure(NSError(
+                domain: "GitManager",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to stage all changes: \(result.output)"]
+            ))
+        }
         return .success(())
     }
 
@@ -1426,7 +1587,6 @@ class GitManager: ObservableObject {
         todo_file="$1"
         temp_file="${todo_file}.tmp"
         target="$TARGET_COMMIT_HASH"
-
         awk -v target="$target" '
         BEGIN { updated = 0 }
         {
@@ -1630,6 +1790,11 @@ class GitManager: ObservableObject {
         await branchService.checkRemoteStatusAsync()
     }
 
+    func checkRemoteStatusAsync(context: RepositoryOperationContext) async -> Bool {
+        guard await branchMatches(context) else { return false }
+        return await branchService.checkRemoteStatusAsync(session: operationRefreshSession(for: context))
+    }
+
     private func checkRemoteStatusAsync(session: GitRefreshSession?) async {
         await branchService.checkRemoteStatusAsync(session: session)
     }
@@ -1721,6 +1886,26 @@ class GitManager: ObservableObject {
             }
 
             print("Successfully pulled from remote")
+            return .success(())
+        }
+    }
+
+    func pullFromRemoteAsync(rebase: Bool, context: RepositoryOperationContext) async -> Result<Void, Error> {
+        guard await branchMatches(context) else { return .failure(staleOperationError()) }
+        guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
+        return await runOnBackground {
+            let result = self.executeGitCommand(
+                in: context.repositoryPath,
+                args: rebase ? ["pull", "--rebase"] : ["pull"],
+                useAuth: true
+            )
+            guard !result.failure else {
+                return .failure(NSError(
+                    domain: "GitManager",
+                    code: result.output.contains("conflict") || result.output.contains("CONFLICT") ? 2 : 3,
+                    userInfo: [NSLocalizedDescriptionKey: result.output]
+                ))
+            }
             return .success(())
         }
     }

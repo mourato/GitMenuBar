@@ -1,5 +1,7 @@
 import Foundation
 
+// swiftlint:disable file_length
+
 struct MainMenuActionAlert: Identifiable, Equatable {
     let id = UUID()
     let title: String
@@ -71,6 +73,7 @@ final class MainMenuActionCoordinator: ObservableObject {
     let gitManager: GitManager
     private let aiCommitCoordinator: AICommitCoordinator
     private let onCommitCompleted: (@MainActor (String) -> Void)?
+    private var activeOperationContext: RepositoryOperationContext?
 
     init(
         gitManager: GitManager,
@@ -98,8 +101,13 @@ final class MainMenuActionCoordinator: ObservableObject {
         gitManager.isCommitting || aiCommitCoordinator.isGenerating || isExecutingPrimaryAction
     }
 
-    var canSwitchRepository: Bool { // ponytail: serialize project switching; use an immutable context for concurrent projects.
-        !isBusy
+    var canSwitchRepository: Bool {
+        true
+    }
+
+    func canSwitchRepository(to path: String) -> Bool {
+        guard let activeOperationContext else { return true }
+        return GitRepositoryContext.normalizedPath(path) != activeOperationContext.repositoryPath
     }
 
     var canAutoCommit: Bool {
@@ -337,10 +345,12 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     func publishAlert(title: String, message: String) {
+        guard activeOperationContext.map({ gitManager.isCurrent($0) }) ?? true else { return }
         alert = MainMenuActionAlert(title: title, message: message)
     }
 
     func publishSuccess(title: String, message: String) {
+        guard activeOperationContext.map({ gitManager.isCurrent($0) }) ?? true else { return }
         success = MainMenuActionAlert(title: title, message: message)
     }
 
@@ -389,7 +399,7 @@ final class MainMenuActionCoordinator: ObservableObject {
 
         commitWasCreated = true
 
-        await refreshRemoteStatus()
+        let remoteAhead = await refreshRemoteStatus()
 
         guard shouldPushAfterCommit else {
             await refreshRepository()
@@ -397,9 +407,11 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .committed
         }
 
-        if gitManager.isRemoteAhead {
+        if remoteAhead {
             await refreshRepository()
-            showSyncOptions = true
+            if activeOperationContext.map({ gitManager.isCurrent($0) }) ?? true {
+                showSyncOptions = true
+            }
             return .committedAndNeedsSyncOptions
         }
 
@@ -418,15 +430,18 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
 
         await refreshRepository()
-        await refreshRemoteStatus()
+        _ = await refreshRemoteStatus()
         publishSuccess(title: "Commit & Push complete", message: "Your changes are now on the remote.")
         return .committed
     }
 
     private func executePrimaryAction<T>(_ operation: () async -> T) async -> T {
+        let context = gitManager.makeRepositoryOperationContext()
+        activeOperationContext = context
         let trace = GitPerformanceTrace.begin("primary.action")
         isExecutingPrimaryAction = true
         defer {
+            activeOperationContext = nil
             isExecutingPrimaryAction = false
             operationStatus = nil
             GitPerformanceTrace.end("primary.action", id: trace)
@@ -454,27 +469,43 @@ final class MainMenuActionCoordinator: ObservableObject {
         skipUIUpdates: Bool = false
     ) async -> Result<Void, Error> {
         await tracePrimaryPhase("primary.commit") {
-            await gitManager.commitLocallyWithFallbackAsync(message, skipUIUpdates: skipUIUpdates)
+            guard let context = activeOperationContext else { return .failure(GitExecution.missingRepositoryError()) }
+            return await gitManager.commitLocallyWithFallbackAsync(
+                message,
+                skipUIUpdates: skipUIUpdates,
+                context: context
+            )
         }
     }
 
     func pushToRemote() async -> Result<Void, Error> {
         await tracePrimaryPhase("primary.push") {
-            await gitManager.pushToRemoteAsync()
+            guard let context = activeOperationContext else { return .failure(GitExecution.missingRepositoryError()) }
+            return await gitManager.pushToRemoteAsync(context: context)
         }
     }
 
     private func pullFromRemote(rebase: Bool) async -> Result<Void, Error> {
-        await gitManager.pullFromRemoteAsync(rebase: rebase)
+        guard let context = activeOperationContext else { return .failure(GitExecution.missingRepositoryError()) }
+        return await gitManager.pullFromRemoteAsync(rebase: rebase, context: context)
     }
 
     func refreshRepository(includeReflogHistory: Bool = false) async {
-        await gitManager.refreshAsync(includeReflogHistory: includeReflogHistory)
+        if let context = activeOperationContext {
+            await gitManager.refreshAsync(includeReflogHistory: includeReflogHistory, context: context)
+        } else {
+            await gitManager.refreshAsync(includeReflogHistory: includeReflogHistory)
+        }
     }
 
-    func refreshRemoteStatus() async {
+    func refreshRemoteStatus() async -> Bool {
         await tracePrimaryPhase("primary.remote_status") {
-            await gitManager.checkRemoteStatusAsync()
+            if let context = activeOperationContext {
+                return await gitManager.checkRemoteStatusAsync(context: context)
+            } else {
+                await gitManager.checkRemoteStatusAsync()
+                return gitManager.isRemoteAhead
+            }
         }
     }
 

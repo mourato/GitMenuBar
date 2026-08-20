@@ -973,7 +973,7 @@ final class StatusBarController: ObservableObject {
     }
 
     private func selectRepository(_ path: String) {
-        guard actionCoordinator.canSwitchRepository else { return }
+        guard actionCoordinator.canSwitchRepository(to: path) else { return }
 
         let wasVisible = isMainWindowVisible
         let result = repositorySelectionCoordinator.select(

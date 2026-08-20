@@ -194,7 +194,7 @@ extension MainMenuView {
     func switchRepository(path: String) {
         let trace = GitPerformanceTrace.begin("selection.request")
         GitPerformanceTrace.event("selection.arrived", id: trace)
-        guard actionCoordinator.canSwitchRepository else {
+        guard actionCoordinator.canSwitchRepository(to: path) else {
             GitPerformanceTrace.event("selection.rejected_busy", id: trace)
             GitPerformanceTrace.end("selection.request", id: trace)
             return

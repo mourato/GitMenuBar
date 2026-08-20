@@ -218,10 +218,10 @@ extension GitBranchService {
     }
 
     func checkRemoteStatusAsync() async {
-        await checkRemoteStatusAsync(session: nil)
+        _ = await checkRemoteStatusAsync(session: nil)
     }
 
-    func checkRemoteStatusAsync(session: GitRefreshSession?) async {
+    func checkRemoteStatusAsync(session: GitRefreshSession?) async -> Bool {
         let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {
             await GitExecution.publishOnMainActor(ifCurrent: session) {
@@ -229,7 +229,7 @@ extension GitBranchService {
                 self.isBehindRemote = false
                 self.behindCount = 0
             }
-            return
+            return false
         }
 
         let snapshot = await runOnBackground {
@@ -254,5 +254,6 @@ extension GitBranchService {
             self.isRemoteAhead = snapshot.isRemoteAhead
             self.isBehindRemote = snapshot.isBehindRemote
         }
+        return snapshot.isRemoteAhead
     }
 }

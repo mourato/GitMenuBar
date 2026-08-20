@@ -1,5 +1,11 @@
 import Foundation
 
+struct RepositoryOperationContext: Sendable, Equatable {
+    let repositoryPath: String
+    let branchName: String
+    let refreshGeneration: Int
+}
+
 final class GitRepositoryContext: @unchecked Sendable {
     private let defaults: UserDefaults
     private let overridePath: String?

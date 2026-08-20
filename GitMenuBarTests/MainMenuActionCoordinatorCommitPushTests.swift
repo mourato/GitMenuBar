@@ -152,9 +152,24 @@ private final class RefreshTrackingGitManager: GitManager {
         }
     }
 
+    override func refreshAsync(
+        includeReflogHistory _: Bool? = nil,
+        context _: RepositoryOperationContext
+    ) async {
+        if isTrackingRefreshes {
+            refreshCount += 1
+        }
+    }
+
     override func checkRemoteStatusAsync() async {
         remoteStatusCount += 1
         isRemoteAhead = remoteAhead
+    }
+
+    override func checkRemoteStatusAsync(context _: RepositoryOperationContext) async -> Bool {
+        remoteStatusCount += 1
+        isRemoteAhead = remoteAhead
+        return remoteAhead
     }
 
     override func pushToRemoteAsync() async -> Result<Void, Error> {
@@ -163,5 +178,13 @@ private final class RefreshTrackingGitManager: GitManager {
             return forcedPushResult
         }
         return await super.pushToRemoteAsync()
+    }
+
+    override func pushToRemoteAsync(context: RepositoryOperationContext) async -> Result<Void, Error> {
+        pushCount += 1
+        if let forcedPushResult {
+            return forcedPushResult
+        }
+        return await super.pushToRemoteAsync(context: context)
     }
 }

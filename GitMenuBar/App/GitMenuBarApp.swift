@@ -90,14 +90,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Check if this is a git repository
         let gitPath = (path as NSString).appendingPathComponent(".git")
         let isGitRepo = FileManager.default.fileExists(atPath: gitPath)
-        guard canSwitchRepository else { return }
+        guard canSwitchRepository(to: path) else { return }
 
         if isGitRepo, githubAuthManager?.isAuthenticated == true {
             // Check if remote repo actually exists on GitHub
             statusBarController?.gitManager.remoteRepositoryExists(at: path) { [weak self] exists in
                 guard let self else { return }
 
-                guard canSwitchRepository else { return }
+                guard canSwitchRepository(to: path) else { return }
 
                 guard let selection = statusBarController?.repositorySelectionCoordinator.select(path: path) else {
                     return
@@ -133,7 +133,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private var canSwitchRepository: Bool {
-        statusBarController?.actionCoordinator.canSwitchRepository ?? true
+    private func canSwitchRepository(to path: String) -> Bool {
+        statusBarController?.actionCoordinator.canSwitchRepository(to: path) ?? true
     }
 }
