@@ -192,7 +192,13 @@ extension MainMenuView {
     }
 
     func switchRepository(path: String) {
-        guard actionCoordinator.canSwitchRepository else { return }
+        let trace = GitPerformanceTrace.begin("selection.request")
+        GitPerformanceTrace.event("selection.arrived", id: trace)
+        guard actionCoordinator.canSwitchRepository else {
+            GitPerformanceTrace.event("selection.rejected_busy", id: trace)
+            GitPerformanceTrace.end("selection.request", id: trace)
+            return
+        }
 
         let result = repositorySelectionCoordinator.select(
             path: path,
@@ -202,9 +208,12 @@ extension MainMenuView {
             if case let .requiresRepositoryCreation(candidatePath) = result {
                 presentationModel.showCreateRepo(path: candidatePath)
             }
+            GitPerformanceTrace.event("selection.rejected_invalid", id: trace)
+            GitPerformanceTrace.end("selection.request", id: trace)
             return
         }
 
+        GitPerformanceTrace.event("selection.accepted", id: trace)
         showProjectSelector = false
         dismissTransientPresentations()
         presentationModel.showMain()
@@ -214,10 +223,13 @@ extension MainMenuView {
         gitManager.refreshSelectedRepository(
             includeReflogHistory: false,
             fastCompletion: {
+                GitPerformanceTrace.event("selection.fast_refresh", id: trace)
                 self.presentationModel.markFastPhaseReady(generation: refreshGeneration)
             },
             completion: {
+                GitPerformanceTrace.event("selection.final_refresh", id: trace)
                 self.presentationModel.finishRefresh(generation: refreshGeneration)
+                GitPerformanceTrace.end("selection.request", id: trace)
             }
         )
     }

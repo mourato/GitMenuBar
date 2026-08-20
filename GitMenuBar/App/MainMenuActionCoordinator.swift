@@ -422,10 +422,12 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     private func executePrimaryAction<T>(_ operation: () async -> T) async -> T {
+        let trace = GitPerformanceTrace.begin("primary.action")
         isExecutingPrimaryAction = true
         defer {
             isExecutingPrimaryAction = false
             operationStatus = nil
+            GitPerformanceTrace.end("primary.action", id: trace)
         }
         return await operation()
     }
@@ -446,11 +448,15 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     private func commitLocally(_ message: String) async -> Result<Void, Error> {
-        await gitManager.commitLocallyWithFallbackAsync(message)
+        await tracePrimaryPhase("primary.commit") {
+            await gitManager.commitLocallyWithFallbackAsync(message)
+        }
     }
 
     func pushToRemote() async -> Result<Void, Error> {
-        await gitManager.pushToRemoteAsync()
+        await tracePrimaryPhase("primary.push") {
+            await gitManager.pushToRemoteAsync()
+        }
     }
 
     private func pullFromRemote(rebase: Bool) async -> Result<Void, Error> {
@@ -462,6 +468,17 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     func refreshRemoteStatus() async {
-        await gitManager.checkRemoteStatusAsync()
+        await tracePrimaryPhase("primary.remote_status") {
+            await gitManager.checkRemoteStatusAsync()
+        }
+    }
+
+    private func tracePrimaryPhase<T>(
+        _ name: StaticString,
+        operation: () async -> T
+    ) async -> T {
+        let trace = GitPerformanceTrace.begin(name)
+        defer { GitPerformanceTrace.end(name, id: trace) }
+        return await operation()
     }
 }

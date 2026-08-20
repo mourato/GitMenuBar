@@ -1,4 +1,50 @@
 import Foundation
+import os.log
+
+enum GitPerformanceTrace {
+    private static let log = OSLog(subsystem: "com.gitmenubar.app", category: "Performance")
+
+    static func begin(_ name: StaticString) -> OSSignpostID? {
+        guard log.signpostsEnabled else { return nil }
+        let id = OSSignpostID(log: log)
+        os_signpost(.begin, log: log, name: name, signpostID: id)
+        return id
+    }
+
+    static func end(_ name: StaticString, id: OSSignpostID?) {
+        guard let id else { return }
+        os_signpost(.end, log: log, name: name, signpostID: id)
+    }
+
+    static func event(_ name: StaticString, id: OSSignpostID?) {
+        guard let id else { return }
+        os_signpost(.event, log: log, name: name, signpostID: id)
+    }
+
+    static func commandResult(id: OSSignpostID?, family: String, succeeded: Bool) {
+        guard let id else { return }
+        os_signpost(
+            .event,
+            log: log,
+            name: "git.command.result",
+            signpostID: id,
+            "%{public}s %{public}d",
+            family,
+            succeeded ? 1 : 0
+        )
+    }
+
+    static func commandFamily(for args: [String]) -> String {
+        switch args.first {
+        case "add", "branch", "cat-file", "checkout", "clone", "commit", "config", "diff",
+             "fetch", "init", "log", "ls-files", "merge", "pull", "push", "reflog", "remote",
+             "reset", "rev-parse", "show", "stash", "status", "switch":
+            args[0]
+        default:
+            "other"
+        }
+    }
+}
 
 final class GitCommandRunner: @unchecked Sendable {
     private enum Askpass {
@@ -57,11 +103,15 @@ final class GitCommandRunner: @unchecked Sendable {
         let pipe = Pipe()
         task.standardOutput = pipe
         task.standardError = pipe
+        let commandTrace = GitPerformanceTrace.begin("git.command")
+        let commandFamily = GitPerformanceTrace.commandFamily(for: args)
 
         do {
             try task.run()
         } catch {
             cleanupAskpassScript(at: askpassScriptPath)
+            GitPerformanceTrace.commandResult(id: commandTrace, family: commandFamily, succeeded: false)
+            GitPerformanceTrace.end("git.command", id: commandTrace)
             return ("Failed to execute git command: \(error.localizedDescription)", true)
         }
 
@@ -72,6 +122,8 @@ final class GitCommandRunner: @unchecked Sendable {
         let status = task.terminationStatus
 
         cleanupAskpassScript(at: askpassScriptPath)
+        GitPerformanceTrace.commandResult(id: commandTrace, family: commandFamily, succeeded: status == 0)
+        GitPerformanceTrace.end("git.command", id: commandTrace)
 
         return (output, status != 0)
     }
