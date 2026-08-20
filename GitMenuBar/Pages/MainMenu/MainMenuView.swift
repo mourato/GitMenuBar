@@ -125,10 +125,12 @@ struct MainMenuView: View {
                         presentationModel.showMain(requestCommitFocus: true)
                     },
                     onSuccess: { path in
+                        guard actionCoordinator.canSwitchRepository(to: path) else { return }
                         if case let .selected(selectedPath) = repositorySelectionCoordinator.select(
                             path: path,
                             allowsNonGitSelection: true
                         ) {
+                            actionCoordinator.resetForRepositorySwitch()
                             currentRepositoryPath = selectedPath
                             recentProjectReferences = RecentProjectsStore().recentProjects()
                         }

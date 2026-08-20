@@ -1,6 +1,23 @@
 import Foundation
 import os.log
 
+private final class GitPathCommandLockRegistry: @unchecked Sendable {
+    private let registryLock = NSLock()
+    private var locks: [String: DispatchSemaphore] = [:]
+
+    func lock(for directory: String) -> DispatchSemaphore {
+        let path = directory.isEmpty ? "" : URL(fileURLWithPath: directory).standardizedFileURL.path
+        registryLock.lock()
+        defer { registryLock.unlock() }
+        if let lock = locks[path] {
+            return lock
+        }
+        let lock = DispatchSemaphore(value: 1)
+        locks[path] = lock
+        return lock
+    }
+}
+
 enum GitPerformanceTrace {
     private static let log = OSLog(subsystem: "com.gitmenubar.app", category: "Performance")
 
@@ -47,6 +64,9 @@ enum GitPerformanceTrace {
 }
 
 final class GitCommandRunner: @unchecked Sendable {
+    // ponytail: one semaphore per touched path; replace with a weak registry only if path churn is measurable.
+    private static let pathLockRegistry = GitPathCommandLockRegistry()
+
     private enum Askpass {
         static let tokenEnvironmentKey = "GITMENUBAR_GIT_ASKPASS_TOKEN"
     }
@@ -59,7 +79,11 @@ final class GitCommandRunner: @unchecked Sendable {
         useAuth: Bool = false,
         additionalEnvironment: [String: String] = [:]
     ) -> (output: String, failure: Bool) {
-        runCommand(
+        let pathLock = Self.pathLockRegistry.lock(for: directory)
+        pathLock.wait()
+        defer { pathLock.signal() }
+
+        return runCommand(
             in: directory,
             executable: "/usr/bin/git",
             args: args,

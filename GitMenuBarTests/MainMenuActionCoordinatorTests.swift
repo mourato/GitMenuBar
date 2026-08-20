@@ -8,7 +8,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         super.tearDown()
     }
 
-    func testRepositorySwitchRemainsAvailableWhileActionIsBusy() {
+    func testRepositorySwitchStaysBlockedForUnboundBusyAction() {
         let gitManager = GitManager(repositoryPathOverride: "")
         let actionCoordinator = makeActionCoordinator(
             gitManager: gitManager,
@@ -21,8 +21,8 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
 
         gitManager.isCommitting = true
 
-        XCTAssertTrue(actionCoordinator.canSwitchRepository)
-        XCTAssertTrue(actionCoordinator.canSwitchRepository(to: "/tmp/project-b"))
+        XCTAssertFalse(actionCoordinator.canSwitchRepository)
+        XCTAssertFalse(actionCoordinator.canSwitchRepository(to: "/tmp/project-b"))
     }
 
     func testPerformCommitUsesManualMessageWithoutInvokingAI() async throws {

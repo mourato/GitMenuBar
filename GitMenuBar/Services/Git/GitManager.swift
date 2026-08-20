@@ -154,6 +154,7 @@ class GitManager: ObservableObject {
     }
 
     func resetSelectedRepositoryState() {
+        isCommitting = false
         uncommittedFiles = []
         stagedFiles = []
         changedFiles = []
@@ -412,13 +413,18 @@ class GitManager: ObservableObject {
 
     func commitLocallyAsync(
         _ message: String,
-        skipUIUpdates _: Bool = false,
+        skipUIUpdates: Bool = false,
         context: RepositoryOperationContext
     ) async -> Result<Void, Error> {
-        guard await branchMatches(context) else { return .failure(staleOperationError()) }
         guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
+        guard await branchMatches(context) else { return .failure(staleOperationError()) }
+        let session = operationRefreshSession(for: context)
 
-        return await runOnBackground {
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
+            self.isCommitting = true
+        }
+
+        let result: Result<Void, Error> = await runOnBackground {
             let commitResult = self.executeGitCommand(
                 in: context.repositoryPath,
                 args: ["commit", "--no-gpg-sign", "--allow-empty-message", "--cleanup=verbatim", "-m", message]
@@ -432,6 +438,18 @@ class GitManager: ObservableObject {
             }
             return .success(())
         }
+
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
+            self.isCommitting = false
+        }
+
+        if case .success = result, !skipUIUpdates {
+            await updateLocalCommitCountAsync(session: session)
+            await updateUncommittedFilesAsync(session: session)
+            _ = await updateBranchInfoAsync(session: session)
+        }
+
+        return result
     }
 
     private func branchMatches(_ context: RepositoryOperationContext) async -> Bool {
@@ -715,6 +733,7 @@ class GitManager: ObservableObject {
     }
 
     func pushToRemoteAsync(context: RepositoryOperationContext) async -> Result<Void, Error> {
+        guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
         guard await branchMatches(context) else { return .failure(staleOperationError()) }
         return await pushToBranchAsync(
             branchName: context.branchName,
@@ -1039,6 +1058,7 @@ class GitManager: ObservableObject {
     }
 
     func stageAllChangesAsync(context: RepositoryOperationContext) async -> Result<Void, Error> {
+        guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
         guard await branchMatches(context) else { return .failure(staleOperationError()) }
         let result = await runOnBackground {
             self.executeGitCommand(in: context.repositoryPath, args: ["add", "-A"])
@@ -1587,6 +1607,7 @@ class GitManager: ObservableObject {
         todo_file="$1"
         temp_file="${todo_file}.tmp"
         target="$TARGET_COMMIT_HASH"
+
         awk -v target="$target" '
         BEGIN { updated = 0 }
         {
@@ -1791,6 +1812,7 @@ class GitManager: ObservableObject {
     }
 
     func checkRemoteStatusAsync(context: RepositoryOperationContext) async -> Bool {
+        guard !context.repositoryPath.isEmpty else { return false }
         guard await branchMatches(context) else { return false }
         return await branchService.checkRemoteStatusAsync(session: operationRefreshSession(for: context))
     }
@@ -1891,8 +1913,8 @@ class GitManager: ObservableObject {
     }
 
     func pullFromRemoteAsync(rebase: Bool, context: RepositoryOperationContext) async -> Result<Void, Error> {
-        guard await branchMatches(context) else { return .failure(staleOperationError()) }
         guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
+        guard await branchMatches(context) else { return .failure(staleOperationError()) }
         return await runOnBackground {
             let result = self.executeGitCommand(
                 in: context.repositoryPath,
@@ -1900,12 +1922,25 @@ class GitManager: ObservableObject {
                 useAuth: true
             )
             guard !result.failure else {
-                return .failure(NSError(
-                    domain: "GitManager",
-                    code: result.output.contains("conflict") || result.output.contains("CONFLICT") ? 2 : 3,
-                    userInfo: [NSLocalizedDescriptionKey: result.output]
-                ))
+                if result.output.contains("CONFLICT") || result.output.contains("conflict") {
+                    return .failure(
+                        NSError(
+                            domain: "GitManager",
+                            code: 2,
+                            userInfo: [NSLocalizedDescriptionKey: "Merge conflict - please resolve manually"]
+                        )
+                    )
+                }
+
+                return .failure(
+                    NSError(
+                        domain: "GitManager",
+                        code: 3,
+                        userInfo: [NSLocalizedDescriptionKey: "Pull failed: \(result.output)"]
+                    )
+                )
             }
+            print("Successfully pulled from remote")
             return .success(())
         }
     }

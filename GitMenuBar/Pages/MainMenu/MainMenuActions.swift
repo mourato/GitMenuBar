@@ -213,6 +213,7 @@ extension MainMenuView {
             return
         }
 
+        actionCoordinator.resetForRepositorySwitch()
         GitPerformanceTrace.event("selection.accepted", id: trace)
         showProjectSelector = false
         dismissTransientPresentations()

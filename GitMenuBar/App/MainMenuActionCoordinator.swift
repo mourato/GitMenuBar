@@ -74,6 +74,7 @@ final class MainMenuActionCoordinator: ObservableObject {
     private let aiCommitCoordinator: AICommitCoordinator
     private let onCommitCompleted: (@MainActor (String) -> Void)?
     private var activeOperationContext: RepositoryOperationContext?
+    private var activeOperationAllowsRepositorySwitch = false
 
     init(
         gitManager: GitManager,
@@ -102,11 +103,13 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     var canSwitchRepository: Bool {
-        true
+        guard activeOperationContext != nil else { return !isBusy }
+        return activeOperationAllowsRepositorySwitch
     }
 
     func canSwitchRepository(to path: String) -> Bool {
-        guard let activeOperationContext else { return true }
+        guard let activeOperationContext else { return !isBusy }
+        guard activeOperationAllowsRepositorySwitch else { return false }
         return GitRepositoryContext.normalizedPath(path) != activeOperationContext.repositoryPath
     }
 
@@ -121,6 +124,14 @@ final class MainMenuActionCoordinator: ObservableObject {
     func clearAlert() {
         alert = nil
         success = nil
+    }
+
+    func resetForRepositorySwitch() {
+        alert = nil
+        success = nil
+        showSyncOptions = false
+        whitespaceCommitPrompt = nil
+        operationStatus = nil
     }
 
     func dismissWhitespaceCommitPrompt() {
@@ -224,7 +235,7 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
 
-        return await executePrimaryAction {
+        return await executePrimaryAction(allowsRepositorySwitch: true) {
             clearAlert()
             showSyncOptions = false
 
@@ -284,7 +295,7 @@ final class MainMenuActionCoordinator: ObservableObject {
         return await executeCommitOperation {
             clearAlert()
             showSyncOptions = false
-            operationStatus = .groupingChanges
+            publishOperationStatus(.groupingChanges)
             guard let plan = await generatePlan(), !plan.groups.isEmpty else {
                 publishAlert(title: "Split Commits Failed", message: "No changes could be grouped into commits.")
                 return .failed
@@ -302,7 +313,7 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
 
-        return await executePrimaryAction {
+        return await executePrimaryAction(allowsRepositorySwitch: true) {
             clearAlert()
             showSyncOptions = false
 
@@ -354,11 +365,16 @@ final class MainMenuActionCoordinator: ObservableObject {
         success = MainMenuActionAlert(title: title, message: message)
     }
 
+    func publishOperationStatus(_ status: MainMenuOperationStatus?) {
+        guard activeOperationContext.map({ gitManager.isCurrent($0) }) ?? true else { return }
+        operationStatus = status
+    }
+
     private func commitUsingGeneratedMessage(
         failureTitle: String,
         shouldPushAfterCommit: Bool
     ) async -> MainMenuCommitExecutionResult {
-        operationStatus = .generatingCommitMessage
+        publishOperationStatus(.generatingCommitMessage)
 
         do {
             guard aiCommitCoordinator.isReadyForGeneration else {
@@ -386,8 +402,9 @@ final class MainMenuActionCoordinator: ObservableObject {
         failureTitle: String,
         shouldPushAfterCommit: Bool
     ) async -> MainMenuCommitExecutionResult {
+        activeOperationAllowsRepositorySwitch = true
         aiCommitCoordinator.generationError = nil
-        operationStatus = .committing
+        publishOperationStatus(.committing)
 
         let commitResult = await commitLocally(message, skipUIUpdates: shouldPushAfterCommit)
         guard case .success = commitResult else {
@@ -415,7 +432,7 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .committedAndNeedsSyncOptions
         }
 
-        operationStatus = .pushing
+        publishOperationStatus(.pushing)
         let pushResult = await pushToRemote()
         guard case .success = pushResult else {
             await refreshRepository()
@@ -435,15 +452,20 @@ final class MainMenuActionCoordinator: ObservableObject {
         return .committed
     }
 
-    private func executePrimaryAction<T>(_ operation: () async -> T) async -> T {
+    private func executePrimaryAction<T>(
+        allowsRepositorySwitch: Bool = false,
+        _ operation: () async -> T
+    ) async -> T {
         let context = gitManager.makeRepositoryOperationContext()
         activeOperationContext = context
+        activeOperationAllowsRepositorySwitch = allowsRepositorySwitch
         let trace = GitPerformanceTrace.begin("primary.action")
         isExecutingPrimaryAction = true
         defer {
+            publishOperationStatus(nil)
+            activeOperationAllowsRepositorySwitch = false
             activeOperationContext = nil
             isExecutingPrimaryAction = false
-            operationStatus = nil
             GitPerformanceTrace.end("primary.action", id: trace)
         }
         return await operation()
@@ -452,11 +474,12 @@ final class MainMenuActionCoordinator: ObservableObject {
     var commitWasCreated = false
 
     private func executeCommitOperation(
+        allowsRepositorySwitch: Bool = false,
         _ operation: () async -> MainMenuCommitExecutionResult
     ) async -> MainMenuCommitExecutionResult {
         commitWasCreated = false
         let repositoryPath = gitManager.repositoryPath
-        let result = await executePrimaryAction(operation)
+        let result = await executePrimaryAction(allowsRepositorySwitch: allowsRepositorySwitch, operation)
         if commitWasCreated {
             onCommitCompleted?(repositoryPath)
         }

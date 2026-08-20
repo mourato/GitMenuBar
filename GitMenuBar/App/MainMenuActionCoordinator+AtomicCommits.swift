@@ -5,14 +5,14 @@ extension MainMenuActionCoordinator {
         snapshot: AtomicCommitSnapshot? = nil,
         shouldPush: Bool
     ) async -> MainMenuCommitExecutionResult {
-        operationStatus = .committingGroup(current: 0, total: groups.count)
+        publishOperationStatus(.committingGroup(current: 0, total: groups.count))
         let commitResult: Result<Void, Error> = if let snapshot {
             await gitManager.performHunkCommitsAsync(groups: groups, snapshot: snapshot) { current, total in
-                self.operationStatus = .committingGroup(current: current, total: total)
+                self.publishOperationStatus(.committingGroup(current: current, total: total))
             }
         } else {
             await gitManager.performAtomicCommitsAsync(groups: groups) { current, total in
-                self.operationStatus = .committingGroup(current: current, total: total)
+                self.publishOperationStatus(.committingGroup(current: current, total: total))
             }
         }
         guard case .success = commitResult else {
@@ -36,7 +36,7 @@ extension MainMenuActionCoordinator {
             return .committedAndNeedsSyncOptions
         }
 
-        operationStatus = .pushingCommits(count: groups.count)
+        publishOperationStatus(.pushingCommits(count: groups.count))
         let pushResult = await pushToRemote()
         guard case .success = pushResult else {
             if case let .failure(error) = pushResult {

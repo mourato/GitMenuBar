@@ -989,6 +989,7 @@ final class StatusBarController: ObservableObject {
             return
         }
 
+        actionCoordinator.resetForRepositorySwitch()
         openMainWindow()
         guard wasVisible else { return }
 

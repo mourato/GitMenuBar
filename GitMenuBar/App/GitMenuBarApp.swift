@@ -103,6 +103,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     return
                 }
                 guard case let .selected(selectedPath) = selection else { return }
+                statusBarController?.actionCoordinator.resetForRepositorySwitch()
 
                 if exists {
                     DispatchQueue.main.async {
@@ -121,6 +122,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 allowsNonGitSelection: githubAuthManager?.isAuthenticated != true
             ) else { return }
 
+            if case .selected = selection {
+                statusBarController?.actionCoordinator.resetForRepositorySwitch()
+            }
             if case let .requiresRepositoryCreation(candidatePath) = selection {
                 DispatchQueue.main.async {
                     self.statusBarController?.openMainWindowWithCreateRepo(path: candidatePath)
