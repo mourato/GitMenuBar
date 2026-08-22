@@ -3,39 +3,53 @@
   <img src="Images/icon.png" width="80" align="right" />
 </h1>
 
-**A native macOS menu bar app for simple, fast Git workflows**
+**A native macOS workbench for everyday Git workflows**
 
-GitMenuBar brings essential Git operations to your Mac the way they should be. Simple, efficient, and living right in your menu bar. No complex setup, no terminal wrestling, just manage your code and keep moving.
+GitMenuBar is a local-first Git companion that lives in the macOS menu bar and
+opens a focused workbench when you need it. Inspect repository state, review
+changes, create commits, sync with remotes, manage branches and worktrees, and
+keep an eye on several projects without switching to a full-size Git client.
 
 <p align="center">
   <img src="Images/Screenshots/main-1.png" width="700" alt="GitMenuBar Main View" />
 </p>
 
+## About this fork
+
+GitMenuBar started as a fork of [saihgupr/GitMenuBar](https://github.com/saihgupr/GitMenuBar). Since then, its codebase, interface, and product direction have diverged substantially. This repository is now an independent app with its own workflow, architecture, and feature set—not a drop-in continuation of the original project.
+
 ## Why GitMenuBar?
 
-### Lightweight and Efficient
-GitMenuBar operates entirely from the macOS menu bar, staying out of the dock and avoiding full-window clutter. It is highly efficient, using minimal system resources and occupying only about 5.2 MB of storage.
+### Local-first
 
-### Speed Over Complexity
-Actions that usually require navigating GitHub settings, like creating new repositories, toggling between public and private visibility, or deleting repositories entirely, are now instantaneous button presses.
+The main workflow is built around the local repository: inspect the working
+tree, review diffs, prepare a commit, and decide when to publish it. GitHub and
+AI features are optional integrations rather than requirements for everyday use.
 
-### Built for Focus
-Designed for developers who want to stay focused on their work without managing terminal commands or navigating large Git client interfaces. It removes unnecessary interface complexity and surfaces only the actions most developers need during active work.
+### Focused and native
 
-### Safety First
-The application emphasizes safe workflows by clearly explaining actions and providing protective prompts when changes could lead to data loss.
+GitMenuBar is a Swift macOS app designed for quick access from the menu bar. It
+keeps Git work close at hand without requiring a terminal or a heavyweight
+repository window.
 
+### Safe by default
 
+Operations that can rewrite history, discard changes, delete branches, or
+remove worktrees are explicit and reviewed before they run. The app keeps
+full Git control available while making the consequences visible.
 
 ## Features
 
-- **Instant Repository Management**: Create, delete, and toggle visibility of GitHub repositories with a single click - no web browser required.
-- **Streamlined Workflow**: View modified, staged, and untracked files and commit directly from your menu bar.
-- **One-Step Sync**: Commit and push in a single action using `⌘Enter`.
-- **Flexible Pulling & Rebasing**: When your local branch is behind, syncing gives you the choice to merge, rebase, or pull changes to a fresh branch.
-- **Smart Branching**: Switch, create, and merge branches with automatic handling of uncommitted changes.
-- **History & Recovery**: Browse full commit history and reset to any previous state easily.
-- **Native Experience**: A lightweight (5.2 MB) Swift app that lives in your menu bar and stays out of your way.
+- **Project workbench**: Add, switch, rename, and monitor multiple local repositories from one window.
+- **Working tree review**: Inspect staged, unstaged, and untracked files with status-aware diffs and file actions.
+- **Commit workflow**: Commit locally or commit and push, with configurable button behavior and keyboard shortcuts.
+- **AI-assisted commits**: Generate or rewrite commit messages and optionally split changes into reviewable atomic commits using a configured AI provider.
+- **Branches and worktrees**: Create, switch, rename, merge, push, and delete branches; inspect linked worktrees and clean up safely merged local work.
+- **Remote sync**: Push and pull changes, choose merge or rebase when syncing, or pull changes into a new branch.
+- **History and recovery**: Browse grouped commit history, inspect changed files, edit commit messages, and reset to a selected commit when needed.
+- **GitHub integration**: Authenticate with GitHub to create repositories, change visibility, delete repositories, and work with remote operations without leaving the app.
+- **Command palette**: Search and run project, Git, branch, history, and settings actions from the keyboard.
+- **Companion CLI**: Install `gitmenubar` on your `PATH` for non-interactive AI-assisted commit proposals and controlled commit application.
 
 <p align="center">
   <img src="Images/Screenshots/ss-v3-6.png" width="31%" />
@@ -49,21 +63,26 @@ The application emphasizes safe workflows by clearly explaining actions and prov
   <img src="Images/Screenshots/ss-v3-3.png" width="31%" />
 </p>
 
-## Requirements 
+## Requirements
 
 - macOS 15.5 or later
 - Git installed on your system
-- GitHub account (optional, for remote features)
+- A GitHub account, only if you want GitHub features
+- An AI provider and API key, only if you want AI-assisted commit features
+
+To build from source, use Xcode 27 or later.
 
 ## Installation
 
-### Option 1: Download (Recommended)
-Grab the latest version from the [Releases page](https://github.com/saihgupr/GitMenuBar/releases). Just download, drag to Applications, and launch.
+### Option 1: Download
 
-### Option 2: Build from Source
-1. Clone this repo
-2. Open `GitMenuBar.xcodeproj` in Xcode
-3. Hit `⌘R` to build and run
+Download the latest release from the [Releases page](https://github.com/mourato/GitMenuBar/releases), move GitMenuBar to `/Applications`, and launch it.
+
+### Option 2: Build from source
+
+1. Clone this repository.
+2. Open `GitMenuBar.xcodeproj` in Xcode.
+3. Press `⌘R` to build and run.
 
 For the CLI-first workflow:
 
@@ -71,61 +90,53 @@ For the CLI-first workflow:
 make build
 ```
 
-To build a Release app and replace the installed `/Applications/GitMenuBar.app`
-with the new version, run:
+To build and install a Release app interactively:
 
 ```bash
 make install-app
 ```
 
-`make install-app` launches an interactive runner with Release as the default.
-It builds through the repository's canonical build script, validates the app
-bundle, stages the replacement, backs up the existing installed app, rolls back
-on failure, and relaunches GitMenuBar when installation succeeds.
-
-For non-interactive automation or disposable install targets:
-
-```bash
-./scripts/build-and-run.sh --configuration Release --no-interactive --skip-launch
-./scripts/build-and-run.sh --configuration Release --no-interactive --applications-dir /tmp/apps --skip-launch
-```
-
-Debug iteration is also available without replacing the installed app:
-
-```bash
-./scripts/build-and-run.sh --configuration Debug
-```
+The repository also provides `make build-release`, `make test`, `make lint`,
+and `make install-cli` for local development and verification.
 
 ## Getting Started
 
-### 1. Select a Repository
-Click the icon in your menu bar, open **Settings** → **Choose Repository**. GitMenuBar automatically detects existing repositories or offers to initialize non-Git folders.
-
-### 2. Connect GitHub (Optional)
-To enable push/pull and repository management, go to **Settings** → **Connect GitHub** and follow the simple authorization flow.
+1. **Add a project**: Open GitMenuBar and choose a local repository folder. Add other repositories from the Projects sidebar when you want to monitor them too.
+2. **Review the workbench**: Select a project to inspect its branch, working tree, history, and remote status.
+3. **Choose your integrations**: Connect GitHub in Settings for remote repository features. Configure an AI provider in Settings → AI when you want generated commit messages or atomic commits.
 
 ## Using GitMenuBar
 
-**Committing**: Type your message in the main view. Press `Enter` to commit locally, or `⌘Enter` to commit and push immediately.
+**Committing**: Enter a message in the commit composer, or let a configured AI
+provider generate one. Settings lets you choose between committing locally and
+committing with an immediate push.
 
-**Branching**: Click the branch name to open the Branch Menu. From here you can switch, create, or right-click branches to rename, merge, or delete them.
+**Branching and worktrees**: Use the branch controls to switch, create, rename,
+merge, push, or delete branches. The worktree view shows linked checkouts and
+offers safe cleanup for eligible merged branches.
 
-**Navigation**: Click the repository name at the top to open it on GitHub, or `⌘Click` to reveal the local folder in Finder.
+**Syncing**: Use Sync to pull or push remote changes. When the local and remote
+branches have diverged, GitMenuBar lets you choose the appropriate strategy.
 
-**Maintenance**: Long-press the repository name at the top of the menu to toggle Public/Private visibility or delete the repository from GitHub.
+**Navigation**: Open the command palette to search available actions, or use
+the repository controls to reveal the local folder in Finder and open the
+remote repository when one is configured.
 
-**Resetting**: Use the **Reset** button in the main view to discard local changes.
+**Discarding and resetting**: File-level discard, discard-all, branch cleanup,
+and history reset are destructive operations and require explicit confirmation.
 
-**Command Line Tip**: You can quickly open any folder in GitMenuBar from your terminal using:
+**Command line**: Open any folder in GitMenuBar from Terminal with:
+
 ```bash
 open -a "GitMenuBar" "/path/to/your/folder"
 ```
 
-## Support & Feedback
+## Support and feedback
 
-If you run into trouble or have an idea, please [open an issue](https://github.com/saihgupr/GitMenuBar/issues) on GitHub.
+If you find a bug or have an idea, [open an issue](https://github.com/mourato/GitMenuBar/issues). Contributions and focused feedback are welcome.
 
-GitMenuBar is **open-source** and **free**. If you find it useful, consider giving it a star ⭐ or making a [donation](https://ko-fi.com/saihgupr) to support development.
+GitMenuBar is open-source and free to use. If it helps your workflow, consider
+giving this repository a star.
 
 ## Credits and third-party notices
 
