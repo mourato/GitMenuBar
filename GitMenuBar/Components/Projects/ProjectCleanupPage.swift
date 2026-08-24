@@ -25,6 +25,10 @@ struct ProjectCleanupPage: View {
 
             summary
 
+            if let cleanupProgress = store.cleanupProgress {
+                CleanupProgressView(progress: cleanupProgress)
+            }
+
             switch store.loadState {
             case let .loading(completed, total):
                 ProgressView("Analyzing \(completed) of \(total) projects…")

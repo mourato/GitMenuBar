@@ -70,29 +70,56 @@ struct GitCleanupRepository {
     func cleanup(
         units: [GitCleanupUnit],
         snapshot: GitWorktreeSnapshot,
-        repositoryPath: String
+        repositoryPath: String,
+        projectName: String? = nil,
+        progress: (@Sendable (GitCleanupProgress) -> Void)? = nil
     ) -> GitCleanupBatchResult {
+        progress?(.init(completed: 0, total: units.count, projectName: projectName, detail: "Checking repository state"))
         guard repositoryIdentity(repositoryPath) == snapshot.repositoryIdentity else {
+            progress?(.init(completed: units.count, total: units.count, projectName: projectName, detail: "Cleanup skipped because the repository changed"))
             return GitCleanupBatchResult(items: units.map {
                 GitCleanupItemResult(unit: $0, status: .skipped(reason: "The shared repository identity changed; cleanup was skipped."))
             })
         }
-        return GitCleanupBatchResult(items: units.map { unit in
-            GitCleanupItemResult(unit: unit, status: cleanup(unit, snapshot: snapshot, repositoryPath: repositoryPath))
+        return GitCleanupBatchResult(items: units.enumerated().map { index, unit in
+            progress?(.init(
+                completed: index,
+                total: units.count,
+                projectName: projectName,
+                detail: cleanupDetail(for: unit)
+            ))
+            let item = GitCleanupItemResult(unit: unit, status: cleanup(unit, snapshot: snapshot, repositoryPath: repositoryPath))
+            progress?(.init(
+                completed: index + 1,
+                total: units.count,
+                projectName: projectName,
+                detail: "Finished \(unit.title)"
+            ))
+            return item
         })
     }
 
     func cleanup(
         targets: [GitCleanupTarget],
         snapshot: GitWorktreeSnapshot,
-        repositoryPath: String
+        repositoryPath: String,
+        projectName: String? = nil,
+        progress: (@Sendable (GitCleanupProgress) -> Void)? = nil
     ) -> GitCleanupBatchResult {
+        progress?(.init(completed: 0, total: targets.count, projectName: projectName, detail: "Checking repository state"))
         guard repositoryIdentity(repositoryPath) == snapshot.repositoryIdentity else {
+            progress?(.init(completed: targets.count, total: targets.count, projectName: projectName, detail: "Cleanup skipped because the repository changed"))
             return GitCleanupBatchResult(items: targets.map {
                 GitCleanupItemResult(target: $0, status: .skipped(reason: "The shared repository identity changed; cleanup was skipped."))
             })
         }
-        return GitCleanupBatchResult(items: targets.map { target in
+        return GitCleanupBatchResult(items: targets.enumerated().map { index, target in
+            progress?(.init(
+                completed: index,
+                total: targets.count,
+                projectName: projectName,
+                detail: "Cleaning \(target.title)"
+            ))
             let status: GitCleanupItemResultStatus = switch target {
             case let .localBranch(info):
                 cleanupBranch(info, snapshot: snapshot, repositoryPath: repositoryPath, requireDetached: true)
@@ -101,6 +128,12 @@ struct GitCleanupRepository {
             case let .remoteBranch(info):
                 cleanupRemote(info, snapshot: snapshot, repositoryPath: repositoryPath)
             }
+            progress?(.init(
+                completed: index + 1,
+                total: targets.count,
+                projectName: projectName,
+                detail: "Finished \(target.title)"
+            ))
             return GitCleanupItemResult(target: target, status: status)
         })
     }
@@ -120,7 +153,8 @@ struct GitCleanupRepository {
             guard !removed.failure else {
                 return .failed(reason: "Failed to remove '\(worktree.worktree.path)': \(removed.output)")
             }
-            let branchStatus = cleanupBranchValidation(unit.branch, snapshot: snapshot, repositoryPath: repositoryPath)
+            // `git branch --delete` is the final detached-worktree guard after a successful removal.
+            let branchStatus = cleanupBranchValidation(unit.branch, snapshot: snapshot, repositoryPath: repositoryPath, requireDetached: false)
             if let branchStatus {
                 return .partiallySucceeded(reason: "Worktree removed, but the branch was kept: \(branchStatus)")
             }
@@ -186,6 +220,13 @@ struct GitCleanupRepository {
         guard refHash(ref, in: repositoryPath) == info.reference.headHash else { return .skipped(reason: "The remote-tracking branch changed since analysis; it was skipped.") }
         let result = execute(repositoryPath, ["push", "origin", "--delete", info.reference.name], useAuth: true)
         return result.failure ? .failed(reason: "Failed to delete remote branch 'origin/\(info.reference.name)': \(result.output)") : .succeeded
+    }
+
+    private func cleanupDetail(for unit: GitCleanupUnit) -> String {
+        if let worktree = unit.worktree {
+            return "Removing worktree \(worktree.worktree.path)"
+        }
+        return "Deleting branch \(unit.branch.reference.name)"
     }
 
     private func repositoryIdentity(_ path: String) -> String? {

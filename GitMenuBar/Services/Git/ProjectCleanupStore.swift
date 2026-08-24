@@ -7,6 +7,7 @@ final class ProjectCleanupStore: ObservableObject {
     @Published private(set) var loadState: ProjectCleanupLoadState = .idle
     @Published private(set) var selectedPaths = Set<String>()
     @Published private(set) var isRunning = false
+    @Published private(set) var cleanupProgress: GitCleanupProgress?
     @Published private(set) var result: ProjectCleanupRunResult?
 
     private let projectMonitor: ProjectMonitorStore
@@ -14,6 +15,7 @@ final class ProjectCleanupStore: ObservableObject {
     private let analyzer: @Sendable (ProjectReference, Set<String>) -> ProjectCleanupAnalysisResult
     private let onAffectedPaths: @MainActor ([String]) -> Void
     private var generation = 0
+    private var cleanupRunID = UUID()
 
     init(
         projectMonitor: ProjectMonitorStore = ProjectMonitorStore(),
@@ -34,6 +36,7 @@ final class ProjectCleanupStore: ObservableObject {
         let projects = projectMonitor.monitoredProjects
         rows = []
         selectedPaths.removeAll()
+        cleanupProgress = nil
         result = nil
         guard !projects.isEmpty else {
             loadState = .loaded
@@ -123,23 +126,56 @@ final class ProjectCleanupStore: ObservableObject {
             guard let snapshot = row.snapshot else { return nil }
             return CleanupWork(project: row.project, snapshot: snapshot, units: row.units)
         }
+        let total = work.reduce(0) { $0 + $1.units.count }
+        let runID = UUID()
+        cleanupRunID = runID
+        cleanupProgress = .init(
+            completed: 0,
+            total: total,
+            projectName: work.first?.project.name,
+            detail: "Preparing cleanup"
+        )
+        let publishProgress: @Sendable (GitCleanupProgress) -> Void = { [weak self] progress in
+            Task { @MainActor [weak self] in
+                guard let self, isRunning, cleanupRunID == runID else { return }
+                cleanupProgress = progress
+            }
+        }
         let runner = runner
         Task { [weak self] in
             let run = await GitExecution.runOnBackground {
                 var projectResults = review.excludedProjects
                 var affected = Set<String>()
+                var completedOffset = 0
                 for item in work {
-                    let batch = GitCleanupRepository(runner: runner).cleanup(units: item.units, snapshot: item.snapshot, repositoryPath: item.project.path)
+                    let projectOffset = completedOffset
+                    let projectProgress: @Sendable (GitCleanupProgress) -> Void = { progress in
+                        publishProgress(.init(
+                            completed: projectOffset + progress.completed,
+                            total: total,
+                            projectName: progress.projectName,
+                            detail: progress.detail
+                        ))
+                    }
+                    let batch = GitCleanupRepository(runner: runner).cleanup(
+                        units: item.units,
+                        snapshot: item.snapshot,
+                        repositoryPath: item.project.path,
+                        projectName: item.project.name,
+                        progress: projectProgress
+                    )
                     projectResults.append(ProjectCleanupProjectResult(project: item.project, items: batch.items, exclusionReason: nil))
                     if batch.items.contains(where: Self.changedStatus) {
                         affected.insert(item.project.path)
                         affected.formUnion(item.snapshot.worktrees.map(\.worktree.path))
                     }
+                    completedOffset += item.units.count
                 }
                 return ProjectCleanupRunResult(projects: projectResults, affectedPaths: affected)
             }
             guard let self else { return }
             isRunning = false
+            cleanupProgress = nil
             result = run
             projectMonitor.refreshAll()
             onAffectedPaths(Array(run.affectedPaths))

@@ -41,6 +41,12 @@ struct BranchManagementSheet: View {
 
             Divider()
 
+            if isCleanupRunning, let cleanupProgress = gitManager.cleanupProgress {
+                CleanupProgressView(progress: cleanupProgress)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+            }
+
             if isLoading {
                 Spacer()
                 ProgressView()

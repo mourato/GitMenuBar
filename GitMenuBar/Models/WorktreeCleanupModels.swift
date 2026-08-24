@@ -5,6 +5,18 @@
 
 import Foundation
 
+struct GitCleanupProgress: Equatable, Sendable {
+    let completed: Int
+    let total: Int
+    let projectName: String?
+    let detail: String
+
+    var fractionCompleted: Double {
+        guard total > 0 else { return 0 }
+        return min(Double(completed) / Double(total), 1)
+    }
+}
+
 struct GitBranchReference: Identifiable, Hashable {
     let name: String
     let headHash: String

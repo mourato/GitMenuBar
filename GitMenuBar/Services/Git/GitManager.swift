@@ -29,6 +29,7 @@ class GitManager: ObservableObject {
     @Published var currentHash: String = ""
     @Published var lastActiveBranch: String = ""
     @Published var worktreeSnapshot: GitWorktreeSnapshot?
+    @Published var cleanupProgress: GitCleanupProgress?
     @Published var availableBranches: [String] = []
     @Published var branchInfos: [BranchInfo] = []
     @Published var defaultBranchName: String = "main"
@@ -105,6 +106,7 @@ class GitManager: ObservableObject {
         branchService.$isDetachedHead.assign(to: &$isDetachedHead)
         branchService.$lastActiveBranch.assign(to: &$lastActiveBranch)
         branchService.$worktreeSnapshot.assign(to: &$worktreeSnapshot)
+        branchService.$cleanupProgress.assign(to: &$cleanupProgress)
     }
 
     private func pipeCommitHistoryServiceState() {
@@ -166,6 +168,7 @@ class GitManager: ObservableObject {
         currentHash = ""
         lastActiveBranch = ""
         worktreeSnapshot = nil
+        cleanupProgress = nil
         availableBranches = []
         branchInfos = []
         defaultBranchName = ""

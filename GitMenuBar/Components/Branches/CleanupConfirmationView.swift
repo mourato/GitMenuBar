@@ -73,6 +73,35 @@ struct CleanupConfirmationView: View {
     }
 }
 
+struct CleanupProgressView: View {
+    let progress: GitCleanupProgress
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+            HStack {
+                Text("Cleaning \(progress.projectName ?? "project")")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text("\(progress.completed) of \(progress.total)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            Text(progress.detail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            ProgressView(value: progress.fractionCompleted)
+                .progressViewStyle(.linear)
+        }
+        .padding(WorkbenchMetrics.compactSpacing)
+        .background(.quaternary.opacity(0.22), in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Cleanup progress")
+        .accessibilityValue("\(progress.completed) of \(progress.total). \(progress.projectName ?? "Project"). \(progress.detail)")
+        .accessibilityAddTraits(.updatesFrequently)
+    }
+}
+
 #Preview("Cleanup Confirmation") {
     let branch = GitBranchCleanupInfo(
         reference: GitBranchReference(name: "feature/merged", headHash: "1234", isRemote: false),
@@ -84,4 +113,14 @@ struct CleanupConfirmationView: View {
         onCancel: {},
         onConfirm: {}
     )
+}
+
+#Preview("Cleanup Progress") {
+    CleanupProgressView(progress: GitCleanupProgress(
+        completed: 12,
+        total: 40,
+        projectName: "Example Project",
+        detail: "Removing worktree /tmp/example-feature"
+    ))
+    .frame(width: 460)
 }

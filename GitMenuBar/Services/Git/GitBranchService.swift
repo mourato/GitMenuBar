@@ -28,7 +28,9 @@ final class GitBranchService: ObservableObject {
     @Published var isDetachedHead: Bool = false
     @Published var lastActiveBranch: String = ""
     @Published var worktreeSnapshot: GitWorktreeSnapshot?
+    @Published var cleanupProgress: GitCleanupProgress?
 
+    var cleanupProgressGeneration = 0
     private nonisolated(unsafe) let repositoryContext: GitRepositoryContext
     nonisolated(unsafe) let commandRunner: GitCommandRunner
 
