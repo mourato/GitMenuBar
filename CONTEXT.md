@@ -65,10 +65,6 @@ _Avoid_: watched repo, tracked repo, workspace, recent project (when monitoring 
 The compact project-level Git state that tells whether a Monitored Project needs developer action, is clean, is unavailable, or is still refreshing. It summarizes Git facts for scanning; it is not a replacement for the selected project's full working-tree view.
 _Avoid_: health status, repo score, notification state
 
-**Soft dependency**:
-Optional use of the Companion CLI from global delivery skills when the binary is on `PATH` and AI generation is ready; otherwise fall back to plain `git` without failing the harness setup.
-_Avoid_: hard requirement, mandatory gitmenubar, CLI gate
-
 **Repository path scope**:
 The git work tree resolved from the process current working directory or an explicit `--path`, independent of which repository is selected in the menu bar UI.
 
