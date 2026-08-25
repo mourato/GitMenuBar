@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		A1B2C3D42F11111100ABC001 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D42F11111100ABC003 /* KeyboardShortcuts */; };
 		C4D5E6F72F22222200ABC001 /* Settings in Frameworks */ = {isa = PBXBuildFile; productRef = C4D5E6F72F22222200ABC003 /* Settings */; };
-		D5E6F7082F33333300ABC001 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = D5E6F7082F33333300ABC003 /* ArgumentParser */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,7 +24,6 @@
 /* Begin PBXFileReference section */
 		1F8681CC2EBCB5B600C300C7 /* GitMenuBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GitMenuBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A0000012F00000100000001 /* GitMenuBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GitMenuBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		D5E6F7082F33333300ABC011 /* gitmenubar */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = gitmenubar; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -33,18 +31,8 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				Services,
-				Models,
-				Utils,
 			);
 			target = 1F8681CB2EBCB5B600C300C7 /* GitMenuBar */;
-		};
-		F7A8093F33333300ABC023 /* Exceptions for CoreServices in gitmenubar */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Platform/KeyboardShortcutsNames.swift,
-			);
-			target = D5E6F7082F33333300ABC010 /* gitmenubar */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -60,29 +48,6 @@
 		2A0000012F00000100000002 /* GitMenuBarTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = GitMenuBarTests;
-			sourceTree = "<group>";
-		};
-		D5E6F7082F33333300ABC015 /* GitMenuBarCLI */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = GitMenuBarCLI;
-			sourceTree = "<group>";
-		};
-		F7A8093F33333300ABC016 /* CoreServices */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				F7A8093F33333300ABC023 /* Exceptions for CoreServices in gitmenubar */,
-			);
-			path = GitMenuBar/Services;
-			sourceTree = "<group>";
-		};
-		F7A8093F33333300ABC017 /* CoreModels */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = GitMenuBar/Models;
-			sourceTree = "<group>";
-		};
-		F7A8093F33333300ABC018 /* CoreUtils */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = GitMenuBar/Utils;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -104,14 +69,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		D5E6F7082F33333300ABC014 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				D5E6F7082F33333300ABC001 /* ArgumentParser in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -119,7 +76,6 @@
 			isa = PBXGroup;
 			children = (
 				1F8681CE2EBCB5B600C300C7 /* GitMenuBar */,
-				D5E6F7082F33333300ABC015 /* GitMenuBarCLI */,
 				2A0000012F00000100000002 /* GitMenuBarTests */,
 				1F8681CD2EBCB5B600C300C7 /* Products */,
 			);
@@ -129,7 +85,6 @@
 			isa = PBXGroup;
 			children = (
 				1F8681CC2EBCB5B600C300C7 /* GitMenuBar.app */,
-				D5E6F7082F33333300ABC011 /* gitmenubar */,
 				2A0000012F00000100000001 /* GitMenuBarTests.xctest */,
 			);
 			name = Products;
@@ -145,7 +100,6 @@
 				1F8681C82EBCB5B600C300C7 /* Sources */,
 				1F8681C92EBCB5B600C300C7 /* Frameworks */,
 				1F8681CA2EBCB5B600C300C7 /* Resources */,
-				D5E6F7082F33333300ABC012 /* Bundle gitmenubar */,
 			);
 			buildRules = (
 			);
@@ -153,9 +107,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				1F8681CE2EBCB5B600C300C7 /* GitMenuBar */,
-				F7A8093F33333300ABC016 /* CoreServices */,
-				F7A8093F33333300ABC017 /* CoreModels */,
-				F7A8093F33333300ABC018 /* CoreUtils */,
 			);
 			name = GitMenuBar;
 			packageProductDependencies = (
@@ -189,31 +140,6 @@
 			productReference = 2A0000012F00000100000001 /* GitMenuBarTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		D5E6F7082F33333300ABC010 /* gitmenubar */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = D5E6F7082F33333300ABC01C /* Build configuration list for PBXNativeTarget "gitmenubar" */;
-			buildPhases = (
-				D5E6F7082F33333300ABC013 /* Sources */,
-				D5E6F7082F33333300ABC014 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				D5E6F7082F33333300ABC015 /* GitMenuBarCLI */,
-				F7A8093F33333300ABC016 /* CoreServices */,
-				F7A8093F33333300ABC017 /* CoreModels */,
-				F7A8093F33333300ABC018 /* CoreUtils */,
-			);
-			name = gitmenubar;
-			packageProductDependencies = (
-				D5E6F7082F33333300ABC003 /* ArgumentParser */,
-			);
-			productName = gitmenubar;
-			productReference = D5E6F7082F33333300ABC011 /* gitmenubar */;
-			productType = "com.apple.product-type.tool";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -230,9 +156,6 @@
 					2A0000012F00000100000006 = {
 						CreatedOnToolsVersion = 16.4;
 					};
-					D5E6F7082F33333300ABC010 = {
-						CreatedOnToolsVersion = 16.4;
-					};
 				};
 			};
 			buildConfigurationList = 1F8681C72EBCB5B600C300C7 /* Build configuration list for PBXProject "GitMenuBar" */;
@@ -247,7 +170,6 @@
 			packageReferences = (
 				A1B2C3D42F11111100ABC002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
 				C4D5E6F72F22222200ABC002 /* XCRemoteSwiftPackageReference "Settings" */,
-				D5E6F7082F33333300ABC002 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1F8681CD2EBCB5B600C300C7 /* Products */;
@@ -255,7 +177,6 @@
 			projectRoot = "";
 			targets = (
 				1F8681CB2EBCB5B600C300C7 /* GitMenuBar */,
-				D5E6F7082F33333300ABC010 /* gitmenubar */,
 				2A0000012F00000100000006 /* GitMenuBarTests */,
 			);
 		};
@@ -278,24 +199,6 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		D5E6F7082F33333300ABC012 /* Bundle gitmenubar */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Bundle gitmenubar";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\nif [ \"${GITMENUBAR_BUNDLE_CLI:-YES}\" != YES ]; then\n  exit 0\nfi\n# Bundle under Contents/Helpers — never Contents/MacOS/gitmenubar.\n# On case-insensitive APFS, MacOS/gitmenubar collides with MacOS/GitMenuBar and overwrites the GUI.\nCLI=\"${BUILT_PRODUCTS_DIR}/gitmenubar\"\nDEST=\"${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/Helpers/gitmenubar\"\nAPP_EXEC=\"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_PATH}\"\nif [ ! -f \"${CLI}\" ]; then\n  echo \"error: gitmenubar not built at ${CLI}\" >&2\n  exit 1\nfi\nif [ \"${DEST}\" = \"${APP_EXEC}\" ]; then\n  echo \"error: refusing to overwrite app executable at ${APP_EXEC}\" >&2\n  exit 1\nfi\nmkdir -p \"$(dirname \"${DEST}\")\"\ncp \"${CLI}\" \"${DEST}\"\nchmod +x \"${DEST}\"\nif cmp -s \"${CLI}\" \"${APP_EXEC}\"; then\n  echo \"error: app executable matches CLI after bundle copy; GUI binary was overwritten\" >&2\n  exit 1\nfi\n";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
 		1F8681C82EBCB5B600C300C7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -305,13 +208,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		2A0000012F00000100000004 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		D5E6F7082F33333300ABC013 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -459,7 +355,6 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
-				GITMENUBAR_BUNDLE_CLI = YES;
 				INFOPLIST_FILE = GitMenuBar/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -489,7 +384,6 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
-				GITMENUBAR_BUNDLE_CLI = YES;
 				INFOPLIST_FILE = GitMenuBar/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -541,38 +435,6 @@
 			};
 			name = Release;
 		};
-		D5E6F7082F33333300ABC01D /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				ENABLE_HARDENED_RUNTIME = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.5;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mourato.GitMenuBar.gitmenubar;
-				PRODUCT_NAME = gitmenubar;
-				SKIP_INSTALL = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Debug;
-		};
-		D5E6F7082F33333300ABC01E /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				ENABLE_HARDENED_RUNTIME = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.5;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mourato.GitMenuBar.gitmenubar;
-				PRODUCT_NAME = gitmenubar;
-				SKIP_INSTALL = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -603,15 +465,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D5E6F7082F33333300ABC01C /* Build configuration list for PBXNativeTarget "gitmenubar" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				D5E6F7082F33333300ABC01D /* Debug */,
-				D5E6F7082F33333300ABC01E /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -631,14 +484,6 @@
 				minimumVersion = 3.1.2;
 			};
 		};
-		D5E6F7082F33333300ABC002 /* XCRemoteSwiftPackageReference "swift-argument-parser" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/apple/swift-argument-parser";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.3.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -651,11 +496,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C4D5E6F72F22222200ABC002 /* XCRemoteSwiftPackageReference "Settings" */;
 			productName = Settings;
-		};
-		D5E6F7082F33333300ABC003 /* ArgumentParser */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = D5E6F7082F33333300ABC002 /* XCRemoteSwiftPackageReference "swift-argument-parser" */;
-			productName = ArgumentParser;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

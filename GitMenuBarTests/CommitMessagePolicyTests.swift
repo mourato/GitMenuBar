@@ -173,60 +173,6 @@ final class CommitMessagePolicyTests: XCTestCase {
     }
 }
 
-@MainActor
-final class GitMenuBarCommitSessionTests: XCTestCase {
-    func testReadinessIsFalseWithoutProviderKeyAndModel() async {
-        let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
-        let session = await GitMenuBarCommitSession(
-            repositoryPath: "/tmp",
-            providerStore: providerStore,
-            keychainStore: InMemoryAIAPIKeyStore(),
-            messageService: AICommitMessageService()
-        )
-
-        XCTAssertFalse(session.isReadyForGeneration)
-        XCTAssertEqual(
-            session.generationDisabledReason,
-            "Configure at least one AI provider in Settings to enable commit generation."
-        )
-    }
-
-    func testReadinessIsTrueWithProviderKeyAndModel() async {
-        let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
-        let provider = AIProviderConfig(
-            name: "OpenAI",
-            type: .openAI,
-            endpointURL: "https://api.openai.com",
-            selectedModel: "gpt-4.1",
-            availableModels: ["gpt-4.1"],
-            hasStoredAPIKey: true
-        )
-        providerStore.upsertProvider(provider)
-
-        let session = await GitMenuBarCommitSession(
-            repositoryPath: "/tmp",
-            providerStore: providerStore,
-            keychainStore: InMemoryAIAPIKeyStore(storage: [.openai: "secret-key"]),
-            messageService: AICommitMessageService()
-        )
-
-        XCTAssertTrue(session.isReadyForGeneration)
-        XCTAssertEqual(session.generationDisabledReason, "")
-    }
-
-    func testResolveGitRootFromRepositoryPathScope() throws {
-        let repoURL = try createTemporaryGitRepository(testName: #function)
-        let resolved = try GitMenuBarCommitSession.resolveGitRoot(
-            from: repoURL.path,
-            using: GitCommandRunner()
-        )
-        XCTAssertEqual(
-            URL(fileURLWithPath: resolved, isDirectory: true).standardizedFileURL.path,
-            repoURL.standardizedFileURL.path
-        )
-    }
-}
-
 private func makeProvider() -> AIProviderConfig {
     AIProviderConfig(
         name: "OpenAI",

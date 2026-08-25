@@ -33,7 +33,7 @@ if [[ $# -gt 0 ]]; then
     TARGETS=("$@")
 else
     echo "Linting full Swift targets..."
-    TARGETS=(GitMenuBar GitMenuBarTests gitmenubar)
+    TARGETS=(GitMenuBar GitMenuBarTests)
 fi
 
 echo "Running SwiftFormat (lint mode)..."

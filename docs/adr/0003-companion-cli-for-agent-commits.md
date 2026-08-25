@@ -1,8 +1,10 @@
 # Companion CLI for agent commits
 
+**Status:** superseded (2026-08-24). The Companion CLI product surface was removed from GitMenuBar; agents use plain `git` and the in-app AI commit flow remains app-owned. See ADR 0008 (also superseded).
+
 Agents in the global delivery workflow commit via plain `git` and often cannot use the menu bar AI commit / atomic-commit surface. We add a **Companion CLI** (`gitmenubar`) in the **same product** (same Xcode project, Keychain service, AI prefs, and Message policy) so agents get controlled commit messages and atomic grouping without a second tool or skill-side message invention when the CLI is ready.
 
-**Status:** accepted (2026-07-26)
+**Status (historical):** accepted (2026-07-26)
 
 ## Considered options
 

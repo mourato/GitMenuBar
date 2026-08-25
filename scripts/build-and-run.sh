@@ -91,7 +91,6 @@ validate_bundle() {
     identifier="$(bundle_identifier "$bundle")"
     [ "$identifier" = "$APP_BUNDLE_IDENTIFIER" ] || return 1
     [ -x "$bundle/Contents/MacOS/${APP_PRODUCT_NAME}" ] || return 1
-    [ -x "$bundle/Contents/Helpers/gitmenubar" ] || return 1
     codesign --verify --deep --strict "$bundle" >/dev/null 2>&1 || return 1
 }
 

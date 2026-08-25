@@ -1,7 +1,6 @@
 included:
   - GitMenuBar
   - GitMenuBarTests
-  - gitmenubar
 
 excluded:
   - build
