@@ -29,22 +29,10 @@ purchased credits plus a `$` balance. Unlike Codex/Cursor it has no reset
 window, so the card shows no reset countdown.
 _Avoid_: window, reset (for OpenRouter), token budget
 
-**Companion CLI**:
-The shell-facing product binary `gitmenubar`, shipped with the macOS app and intended primarily for agents. It is the same product as the menu bar app, not a separate tool.
-_Avoid_: GitMenuBar CLI tool (as a different product), agent git helper, standalone commit CLI
-
-**Propose mode**:
-The default CLI mode that prints a versioned structured plan (groups, files, messages) without mutating the repository.
-_Avoid_: dry-run (unless as a synonym in flags), preview-only, plan mode
-
-**Apply mode**:
-The explicit CLI mode that stages and creates new commits from a propose result or equivalent inputs.
-_Avoid_: execute, commit-now, write mode
-
 ### Commit authorship
 
 **Message policy**:
-Product-owned rules that generate, sanitize, and accept or reject commit message text (including harness authorship pollution), shared by app and Companion CLI.
+Product-owned rules that generate, sanitize, and accept or reject commit message text (including harness authorship pollution) in the macOS app.
 _Avoid_: skill-side strip, harness scrubber (as a skill concern), commit linter (generic)
 
 **Harness authorship pollution**:

@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted (2026-08-11).
+**Status:** superseded (2026-08-24). The Companion CLI product was withdrawn; hunk-aware atomic commits remain in the macOS app only. See ADR 0003 (also superseded).
+
+The sections below are a historical record of the withdrawn CLI plan contract. They are not current product requirements.
+
+**Status (historical):** accepted (2026-08-11)
 
 ## Context
 

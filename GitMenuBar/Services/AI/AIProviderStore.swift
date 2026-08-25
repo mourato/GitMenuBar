@@ -34,7 +34,7 @@ final class InMemoryAIProviderStoreDataStore: AIProviderStoreDataStore {
 }
 
 final class AIProviderStore: ObservableObject {
-    /// App and Companion CLI share AI prefs via the app suite (same plist as `.standard` in the app).
+    /// App AI prefs use the app suite (same plist as `.standard` in the app).
     nonisolated(unsafe) static let sharedDefaults = UserDefaults(suiteName: "com.mourato.GitMenuBar") ?? .standard
 
     @Published private(set) var providers: [AIProviderConfig] = []

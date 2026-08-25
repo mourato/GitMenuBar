@@ -49,7 +49,6 @@ full Git control available while making the consequences visible.
 - **History and recovery**: Browse grouped commit history, inspect changed files, edit commit messages, and reset to a selected commit when needed.
 - **GitHub integration**: Authenticate with GitHub to create repositories, change visibility, delete repositories, and work with remote operations without leaving the app.
 - **Command palette**: Search and run project, Git, branch, history, and settings actions from the keyboard.
-- **Companion CLI**: Install `gitmenubar` on your `PATH` for non-interactive AI-assisted commit proposals and controlled commit application.
 
 <p align="center">
   <img src="Images/Screenshots/ss-v3-6.png" width="31%" />
@@ -84,7 +83,7 @@ Download the latest release from the [Releases page](https://github.com/mourato/
 2. Open `GitMenuBar.xcodeproj` in Xcode.
 3. Press `⌘R` to build and run.
 
-For the CLI-first workflow:
+For the Makefile workflow:
 
 ```bash
 make build
@@ -96,8 +95,8 @@ To build and install a Release app interactively:
 make install-app
 ```
 
-The repository also provides `make build-release`, `make test`, `make lint`,
-and `make install-cli` for local development and verification.
+The repository also provides `make build-release`, `make test`, and `make lint`
+for local development and verification.
 
 ## Getting Started
 

@@ -140,12 +140,6 @@ struct AISettingsPaneView: View {
             }
 
             Section {
-                CompanionCLIInstallSectionView()
-            } header: {
-                SettingsFormSectionHeader(title: "Companion CLI", icon: "terminal")
-            }
-
-            Section {
                 UsageQuotaSettingsSection()
             } header: {
                 SettingsFormSectionHeader(
