@@ -28,6 +28,8 @@ Options:
   --clean                        Remove this repository's .xcode-build first.
   --no-interactive               Never read stdin; requires --configuration.
   --force-terminate              Allow exact-process TERM fallback after graceful timeout.
+  --shutdown-timeout SECONDS     Graceful shutdown wait (default: 15).
+  --startup-timeout SECONDS      Launch verification wait (default: 15).
   --skip-launch                  Verify Release installation without relaunching it.
   --yes                          In interactive Release mode, accept the install default.
   --applications-dir PATH        Test-only applications root; defaults to /Applications.
@@ -109,51 +111,65 @@ sign_candidate_if_needed() {
     fi
 }
 
-running_pids_for_bundle() {
-    local bundle="$1" executable pid command_path
-    executable="${bundle}/Contents/MacOS/${APP_PRODUCT_NAME}"
+app_process_pids() {
+    pgrep -x "$APP_PRODUCT_NAME" 2>/dev/null || true
+}
 
-    while IFS= read -r pid; do
-        [ -n "$pid" ] || continue
-        command_path="$(ps -p "$pid" -o comm= 2>/dev/null || true)"
-        [ "$command_path" = "$executable" ] && printf '%s\n' "$pid"
-    done < <(pgrep -x "$APP_PRODUCT_NAME" 2>/dev/null || true)
-    return 0
+process_uses_binary() {
+    local pid="$1" expected_binary="$2"
+    /usr/sbin/lsof -a -p "$pid" -d txt -Fn 2>/dev/null \
+        | awk -v expected="n$expected_binary" '$0 == expected { found = 1 } END { exit !found }'
 }
 
 wait_for_exit() {
-    local bundle="$1"
     local deadline=$((SECONDS + SHUTDOWN_TIMEOUT))
     while [ "$SECONDS" -lt "$deadline" ]; do
-        [ -z "$(running_pids_for_bundle "$bundle")" ] && return 0
+        [ -z "$(app_process_pids)" ] && return 0
         sleep 1
     done
     return 1
 }
 
-stop_running_app() {
-    local target="$1" pids
-    pids="$(running_pids_for_bundle "$target")"
+wait_for_app_binary() {
+    local expected_binary="$1" deadline pid
+    deadline=$((SECONDS + STARTUP_TIMEOUT))
+    while [ "$SECONDS" -lt "$deadline" ]; do
+        while IFS= read -r pid; do
+            [ -n "$pid" ] || continue
+            if process_uses_binary "$pid" "$expected_binary"; then
+                printf '%s\n' "$pid"
+                return 0
+            fi
+        done < <(app_process_pids)
+        sleep 1
+    done
+    echo "Error: ${APP_PRODUCT_NAME} did not start the expected executable within ${STARTUP_TIMEOUT}s: $expected_binary" >&2
+    return 1
+}
+
+stop_running_apps() {
+    local pids pid
+    pids="$(app_process_pids)"
     [ -z "$pids" ] && return 0
 
-    echo "Requesting graceful shutdown for running ${target}..."
+    echo "Requesting graceful shutdown for existing ${APP_PRODUCT_NAME} process(es)..."
     osascript -e "tell application id \"${APP_BUNDLE_IDENTIFIER}\" to quit" >/dev/null 2>&1 || true
-    wait_for_exit "$target" && return 0
+    wait_for_exit && return 0
 
     if [ "$FORCE_TERMINATE" -ne 1 ] && [ "$NO_INTERACTIVE" -eq 0 ]; then
-        if confirm_default_yes "Graceful shutdown timed out. Stop exact ${target} process now?"; then
+        if confirm_default_yes "Graceful shutdown timed out. Stop process(es) now?"; then
             FORCE_TERMINATE=1
         fi
     fi
 
     if [ "$FORCE_TERMINATE" -ne 1 ]; then
-        fail "${APP_PRODUCT_NAME} did not terminate within ${SHUTDOWN_TIMEOUT}s; rerun with --force-terminate only if intended"
+        fail "${APP_PRODUCT_NAME} did not terminate within ${SHUTDOWN_TIMEOUT}s; rerun with --force-terminate"
     fi
     echo "Graceful shutdown timed out; sending TERM to PID(s): ${pids}" >&2
     while IFS= read -r pid; do
         [ -n "$pid" ] && kill -TERM "$pid" 2>/dev/null || true
     done <<< "$pids"
-    wait_for_exit "$target" || fail "${APP_PRODUCT_NAME} remained running after explicit TERM fallback"
+    wait_for_exit || fail "${APP_PRODUCT_NAME} remained running after explicit TERM fallback"
 }
 
 rollback() {
@@ -186,7 +202,7 @@ install_release() {
         confirm_default_yes "Replace ${target} with the new Release build?" || exit 0
     fi
 
-    stop_running_app "$target"
+    stop_running_apps
     rm -rf "$stage"
     ditto "$candidate" "$stage" || { rm -rf "$stage"; fail "could not stage Release candidate"; }
 
@@ -201,13 +217,14 @@ install_release() {
         fail "Release installation failed; rollback was attempted"
     fi
 
+    if ! "${PROJECT_ROOT}/scripts/clean-launch-services.sh" "$target"; then
+        rollback "$target" "$backup"
+        fail "Could not clean stale LaunchServices registrations; rollback attempted"
+    fi
+
     if [ "$SKIP_LAUNCH" -eq 0 ]; then
-        open "$target" >/dev/null 2>&1 || { rollback "$target" "$backup"; fail "Release app failed to launch"; }
-        local deadline=$((SECONDS + STARTUP_TIMEOUT))
-        while [ "$SECONDS" -lt "$deadline" ] && [ -z "$(running_pids_for_bundle "$target")" ]; do
-            sleep 1
-        done
-        if [ -z "$(running_pids_for_bundle "$target")" ]; then
+        open -n "$target" >/dev/null 2>&1 || { rollback "$target" "$backup"; fail "Release app failed to launch"; }
+        if ! wait_for_app_binary "$target/Contents/MacOS/${APP_PRODUCT_NAME}" >/dev/null; then
             rollback "$target" "$backup"
             fail "Release app did not remain alive after launch"
         fi
@@ -219,9 +236,18 @@ install_release() {
 
 run_selected() {
     [ "$CLEAN" -eq 1 ] && rm -rf "$PROJECT_ROOT/.xcode-build"
+    stop_running_apps
     if [ "$CONFIGURATION" = "Debug" ]; then
         "$PROJECT_ROOT/scripts/run-build.sh" --configuration Debug
-        open "$PROJECT_ROOT/.xcode-build/Build/Products/Debug/${APP_PRODUCT_NAME}.app"
+        local app_bundle="$PROJECT_ROOT/.xcode-build/Build/Products/Debug/${APP_PRODUCT_NAME}.app"
+        validate_bundle "$app_bundle" || fail "Debug app bundle failed validation: $app_bundle"
+        stop_running_apps
+        open -n "$app_bundle"
+        local pid
+        if ! pid="$(wait_for_app_binary "$app_bundle/Contents/MacOS/${APP_PRODUCT_NAME}")"; then
+            fail "${APP_PRODUCT_NAME} did not remain running from the expected executable."
+        fi
+        echo "Launched ${app_bundle} (pid ${pid})"
     else
         APPLICATIONS_DIR="$(validate_applications_dir "$APPLICATIONS_DIR")"
         "$PROJECT_ROOT/scripts/run-build.sh" --configuration Release
@@ -248,6 +274,16 @@ while [[ $# -gt 0 ]]; do
         --force-terminate)
             FORCE_TERMINATE=1
             shift
+            ;;
+        --shutdown-timeout)
+            [ $# -ge 2 ] || fail "--shutdown-timeout requires a value"
+            SHUTDOWN_TIMEOUT="$2"
+            shift 2
+            ;;
+        --startup-timeout)
+            [ $# -ge 2 ] || fail "--startup-timeout requires a value"
+            STARTUP_TIMEOUT="$2"
+            shift 2
             ;;
         --skip-launch)
             SKIP_LAUNCH=1
@@ -279,6 +315,8 @@ done
 
 require_positive_integer "$SHUTDOWN_TIMEOUT"
 require_positive_integer "$STARTUP_TIMEOUT"
+[ -x /usr/sbin/lsof ] || fail "Missing required command: /usr/sbin/lsof"
+command -v osascript >/dev/null 2>&1 || fail "Missing required command: osascript"
 
 if [ "$NO_INTERACTIVE" -eq 1 ]; then
     [ -n "$CONFIGURATION" ] || fail "--no-interactive requires --configuration Debug|Release"
