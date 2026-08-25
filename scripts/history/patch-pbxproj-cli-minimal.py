@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# DO NOT RE-RUN — one-shot migration script; GitMenuBar.xcodeproj is the source of truth.
+# DO NOT RE-RUN — one-shot migration script; archival after Companion CLI removal (2026-08-24).
+# GitMenuBar.xcodeproj is the source of truth.
 """Minimal CLI target patch: GitMenuBarCLI folder only (no shared Services yet)."""
 from pathlib import Path
 

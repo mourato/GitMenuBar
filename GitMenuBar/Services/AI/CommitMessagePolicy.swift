@@ -1,10 +1,5 @@
 import Foundation
 
-/// Product-owned **Message policy** shared by the menu bar app and Companion CLI.
-///
-/// Sanitizes commit message text and rejects **harness authorship pollution**
-/// (forced attribution injected by agent harnesses) while preserving intentional
-/// trailers such as `Signed-off-by:`.
 enum CommitMessagePolicyError: Error, Equatable, LocalizedError {
     case emptyAfterSanitization
 
@@ -16,6 +11,11 @@ enum CommitMessagePolicyError: Error, Equatable, LocalizedError {
     }
 }
 
+/// Product-owned **Message policy** for the macOS app.
+///
+/// Sanitizes commit message text and rejects **harness authorship pollution**
+/// (forced attribution injected by agent harnesses) while preserving intentional
+/// trailers such as `Signed-off-by:`.
 struct CommitMessagePolicy: Sendable {
     static let shared = CommitMessagePolicy()
 

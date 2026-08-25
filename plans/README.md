@@ -23,7 +23,8 @@ copy layout. The current routing above supersedes that layout.
 
 > **Note (2026-08-24):** The Companion CLI wave (plans 036–038, 068, 072) is
 > withdrawn; the `gitmenubar` binary, install path, and agent soft-dependency
-> were removed from the product. Historical DONE plans are unchanged.
+> were removed from the product. Sections and DONE rows below that still mention
+> the CLI are archival only and are not current product guidance.
 
 ## 2026-07-10 Agent Skill Consolidation Scope
 
