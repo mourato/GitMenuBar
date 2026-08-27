@@ -77,6 +77,11 @@ silently adopting another location or naming scheme.
 - Choose one primary skill from the user's intent and load only the narrowest
   complementary skills. Use `core/policies/routing.md` for the workflow matrix
   and boundaries; do not make every applicable skill an orchestrator.
+- Before planning or implementation, apply the **plan-readiness gate** in
+  `core/policies/routing.md`. If a material gap remains, pause and invoke
+  `grill-with-docs` through the Skill tool; resume the selected workflow only
+  after the gap is resolved or the user explicitly accepts a named assumption
+  and its risk.
 - Third-party skills remain immutable. When their generic instructions conflict
   with this file, the global contract, worktree, validation, and authorization
   rules win; adapt their use through routing, profiles, or first-party skills.
