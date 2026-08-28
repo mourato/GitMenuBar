@@ -6,9 +6,9 @@ GitMenuBar is a native macOS menu bar app for day-to-day Git workflows.
 
 ## Command Surface
 
-`Makefile` is the command authority. Use `make agent-check` during
-implementation, `make check-preview` for UI work, and `make lint && make test`
-before merge.
+`Makefile` is the command authority. Use `make validate` as the canonical
+changed-surface entry (it delegates to `agent-check`), `make check-preview` for
+UI work, and `make lint && make test` before merge.
 
 The Swift 6.4 toolchain and concurrency baseline is documented in
 [`docs/adr/0007-swift-6-4-agent-baseline.md`](docs/adr/0007-swift-6-4-agent-baseline.md).
@@ -51,7 +51,7 @@ runtime path is demonstrably gone.
 A task is complete when:
 
 - The changed surface, risk/lane, and `reuse → extend → create` decision are recorded.
-- Behavior changes pass `make test` and `make agent-check`; UI changes also pass `make check-preview`.
+- Behavior changes pass `make test` and `make validate`; UI changes also pass `make check-preview`.
 - Before merge, `make lint && make test` passes.
 - The handoff records commands and results, assumptions, screenshots for UI changes, and known baseline failures.
 

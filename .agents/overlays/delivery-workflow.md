@@ -12,6 +12,8 @@ precedence: project
 - `make test` runs `scripts/run-tests-xcode.sh`; `make lint` runs
   `scripts/lint.sh`; `make lint-changed` and `make lint-fix` use their matching
   scripts; `make agent-check` combines changed-file lint and a Debug build.
+- `make validate` is the canonical changed-surface entry and delegates to
+  `make agent-check`.
 - `make guidance-check` runs `scripts/validate-agent-guidance.sh` for plans,
   routing, overlays, and skill metadata.
 - The Swift 6.4 baseline requires strict full lint (`make lint`) and changed

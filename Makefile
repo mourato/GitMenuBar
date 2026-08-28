@@ -1,4 +1,4 @@
-.PHONY: help build build-release test lint lint-changed lint-fix check-preview agent-check guidance-check install-app dmg clean setup
+.PHONY: help build build-release test lint lint-changed lint-fix check-preview agent-check validate guidance-check install-app dmg clean setup
 
 PROJECT_DIR := $(shell pwd)
 
@@ -13,6 +13,7 @@ help:
 	@echo "make lint-fix      Auto-fix format/lint issues"
 	@echo "make check-preview Check changed UI files for SwiftUI preview coverage"
 	@echo "make agent-check   Lint changed Swift files and build Debug app"
+	@echo "make validate      Canonical changed-surface validation"
 	@echo "make guidance-check Validate agent guidance, plans, and skill references"
 	@echo "make install-app   Build Release and replace the installed app interactively"
 	@echo "make dmg           Build and package DMG"
@@ -43,6 +44,8 @@ check-preview:
 	@./scripts/check-preview.sh
 
 agent-check: lint-changed build
+
+validate: agent-check
 
 guidance-check:
 	@./scripts/validate-agent-guidance.sh
