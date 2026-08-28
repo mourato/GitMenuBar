@@ -24,5 +24,7 @@ precedence: project
   `make lint`, and `make test`.
 - Preserve unrelated changes and never delete `main`, unmerged branches, or
   worktrees containing other work. Use one isolated writer worktree.
-- Delivery is isolated branch → review → commit → push/PR → approved merge;
-  branch and worktree cleanup waits until the PR is merged.
+- Follow the global `core/policies/worktrees.md` lifecycle:
+  `create → work → commit → review → remediation → merge → validate → push →
+  cleanup`. This overlay supplies commands only; cleanup waits until a
+  successful push and remains separately authorized.

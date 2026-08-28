@@ -36,6 +36,14 @@ When behavior changes, run focused tests; the full test gate belongs before
 merge. Remove orphaned UI, logic, and assets in the same change when their
 runtime path is demonstrably gone.
 
+## Delivery lifecycle
+
+The global `core/policies/worktrees.md` is authoritative for isolation and
+delivery order. Follow `create → work → commit → review → remediation → merge
+→ validate → push → cleanup`; this file and the project overlay supply
+GitMenuBar facts and commands only. Never merge, push, or clean up from an
+implementation worktree without explicit authorization.
+
 ## SwiftUI Preview Policy
 
 - Any new Swift file that renders interface (`View`, `NSViewRepresentable`, `NSViewControllerRepresentable`) must include at least one `#Preview`.
