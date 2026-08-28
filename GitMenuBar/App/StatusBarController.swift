@@ -526,7 +526,12 @@ final class StatusBarController: ObservableObject {
         }
 
         if isMainWindowVisible {
-            hideMainWindow()
+            if NSApp.isActive, mainWindow?.isKeyWindow == true {
+                hideMainWindow()
+            } else {
+                NSApp.activate(ignoringOtherApps: true)
+                mainWindow?.makeKeyAndOrderFront(nil)
+            }
             return
         }
 
