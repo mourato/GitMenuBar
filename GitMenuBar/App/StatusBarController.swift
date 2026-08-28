@@ -15,8 +15,6 @@ final class StatusBarController: ObservableObject {
         static let statusIconPointSize = NSSize(width: 16, height: 16)
         static let windowInitialSize = NSSize(width: 700, height: 720)
         static let windowMinimumSize = NSSize(width: 550, height: 640)
-        static let windowPresentationDuration: TimeInterval = 0.20
-        static let windowPresentationReducedMotionDuration: TimeInterval = 0.01
         static let autoHideBlurEvaluationDelay: TimeInterval = 0.08
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
         static let screenCaptureUIBundleIdentifier = "com.apple.screencaptureui"
@@ -36,13 +34,6 @@ final class StatusBarController: ObservableObject {
         case mousePointerMonitor
     }
 
-    private enum MainWindowPresentationState {
-        case hidden
-        case presenting
-        case visible
-        case dismissing
-    }
-
     var statusItem: NSStatusItem?
     private var mainWindow: NSWindow?
     var contextMenu: NSMenu?
@@ -52,8 +43,6 @@ final class StatusBarController: ObservableObject {
     private var nextWindowOpenTraceID = 0
     private var hasPositionedWindowInitially = false
     private var isAutoHideSuspended = false
-    private var mainWindowPresentationState: MainWindowPresentationState = .hidden
-    private var mainWindowTransitionID = 0
     private var shortcutQueue = MainWindowShortcutQueue()
 
     private let windowDelegate = MainWindowLifecycleDelegate()
@@ -415,8 +404,7 @@ final class StatusBarController: ObservableObject {
     }
 
     private var isMainWindowVisible: Bool {
-        guard mainWindow?.isVisible == true else { return false }
-        return mainWindowPresentationState != .dismissing
+        mainWindow?.isVisible == true
     }
 
     private func handleActionShortcut(_ action: MainMenuShortcutAction) {
@@ -519,12 +507,6 @@ final class StatusBarController: ObservableObject {
     }
 
     private func toggleMainWindow(placementStrategy: WindowPlacementStrategy) {
-        if mainWindowPresentationState == .presenting {
-            NSApp.activate(ignoringOtherApps: true)
-            mainWindow?.makeKeyAndOrderFront(nil)
-            return
-        }
-
         if isMainWindowVisible {
             if NSApp.isActive, mainWindow?.isKeyWindow == true {
                 hideMainWindow()
@@ -579,13 +561,7 @@ final class StatusBarController: ObservableObject {
     private func presentMainWindow(trace: WindowOpenTrace, placementStrategy: WindowPlacementStrategy) {
         guard let mainWindow else { return }
 
-        if mainWindowPresentationState == .dismissing {
-            activateAndShowMainWindow(mainWindow, trace: trace)
-            refreshUsageQuotaOnWindowPresented()
-            return
-        }
-
-        if mainWindowPresentationState == .presenting || mainWindowPresentationState == .visible {
+        if mainWindow.isVisible {
             NSApp.activate(ignoringOtherApps: true)
             mainWindow.makeKeyAndOrderFront(nil)
             refreshUsageQuotaOnWindowPresented()
@@ -616,76 +592,12 @@ final class StatusBarController: ObservableObject {
         mainWindow.alphaValue = 1
         NSApp.activate(ignoringOtherApps: true)
         mainWindow.makeKeyAndOrderFront(nil)
-        mainWindowPresentationState = .visible
         logWindowOpen(trace, message: "window visible")
         refreshUsageQuotaOnWindowPresented()
     }
 
     private func refreshUsageQuotaOnWindowPresented() {
         usageQuotaStore.refresh(reason: .windowPresented)
-    }
-
-    private func activateAndShowMainWindow(_ window: NSWindow, trace: WindowOpenTrace) {
-        beginMainWindowTransition()
-        mainWindowPresentationState = .presenting
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        window.alphaValue = 1
-        mainWindowPresentationState = .visible
-        logWindowOpen(trace, message: "window visible")
-    }
-
-    private func animateMainWindowAlpha(
-        to alpha: CGFloat,
-        trace: WindowOpenTrace? = nil,
-        transitionID: Int? = nil
-    ) {
-        guard let mainWindow else { return }
-
-        let transitionID = transitionID ?? beginMainWindowTransition()
-        let duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-            ? Constants.windowPresentationReducedMotionDuration
-            : Constants.windowPresentationDuration
-
-        guard duration > 0 else {
-            mainWindow.alphaValue = alpha
-            completeMainWindowPresentation(to: alpha, trace: trace, transitionID: transitionID)
-            return
-        }
-
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = duration
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            mainWindow.animator().alphaValue = alpha
-        } completionHandler: { [weak self, weak mainWindow] in
-            guard let self, mainWindow != nil else { return }
-            Task { @MainActor in
-                self.completeMainWindowPresentation(to: alpha, trace: trace, transitionID: transitionID)
-            }
-        }
-    }
-
-    private func completeMainWindowPresentation(to alpha: CGFloat, trace: WindowOpenTrace?, transitionID: Int) {
-        guard transitionID == mainWindowTransitionID, let mainWindow else { return }
-
-        if alpha == 0 {
-            mainWindow.orderOut(nil)
-            mainWindow.alphaValue = 0
-            mainWindowPresentationState = .hidden
-            if let trace {
-                logWindowOpen(trace, message: "window hidden")
-            }
-        } else {
-            mainWindowPresentationState = .visible
-            if let trace {
-                logWindowOpen(trace, message: "window presentation completed")
-            }
-        }
-    }
-
-    private func beginMainWindowTransition() -> Int {
-        mainWindowTransitionID += 1
-        return mainWindowTransitionID
     }
 
     private func positionMainWindowRelativeToStatusItem(_ window: NSWindow) {
@@ -747,16 +659,10 @@ final class StatusBarController: ObservableObject {
     }
 
     private func hideMainWindow() {
-        guard let mainWindow, mainWindow.isVisible else {
-            mainWindowPresentationState = .hidden
-            return
-        }
-
-        guard mainWindowPresentationState != .dismissing else { return }
+        guard let mainWindow, mainWindow.isVisible else { return }
 
         persistMainWindowFrame(mainWindow)
-        mainWindowPresentationState = .dismissing
-        animateMainWindowAlpha(to: 0)
+        mainWindow.orderOut(nil)
     }
 
     private func persistMainWindowFrame(_ window: NSWindow) {

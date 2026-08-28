@@ -66,7 +66,10 @@ Affected surfaces must cover idle, hover, pressed, focused, selected, disabled,
 loading, empty, and error states as applicable. Expose labels, values,
 selection, keyboard behavior, and VoiceOver semantics. Verify Light/Dark,
 increased contrast, Reduce Transparency, and Reduce Motion. Reduced motion
-removes morph/fade animation without removing scrolling or state feedback.
+removes morph/fade animation without removing scrolling or state feedback. The
+main workbench window appears and disappears immediately; do not animate its
+alpha, so status-item toggles feel responsive. Secondary panels may use the
+shared motion defaults.
 
 ## Review checklist and lifecycle
 
