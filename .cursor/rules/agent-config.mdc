@@ -12,6 +12,8 @@ skill, and preserve unrelated changes.
 
 - Analysis and review are read-only. Implementation writes happen only in the
   canonical isolated worktree from `core/policies/worktrees.md`.
+- Paths under `core/policies/` resolve from the canonical agent-config root
+  containing this file, not from the product repository checkout.
 - Choose one primary skill and only the complementary skills that add a
   concrete discipline. Use `core/policies/routing.md` for the workflow matrix
   and project overlays for local facts.
