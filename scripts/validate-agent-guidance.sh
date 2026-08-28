@@ -27,8 +27,7 @@ require_file AGENTS.md
 require_file .agents/review-profiles/thermo-gitmenubar.md
 require_text AGENTS.md '## Execution Policy'
 require_text AGENTS.md 'Every implementation plan must contain an `## Execution profile` section'
-require_text AGENTS.md 'global:improve'
-require_text AGENTS.md 'global:thermo-nuclear-code-quality-review'
+global_routing_marker='Global skill routing is defined by the global agent configuration.'
 
 overlay_names=(
   apple-design
@@ -54,11 +53,17 @@ profile_route_present() {
   rg -Fq -- "\`$global_skill\` to \`$overlay\`" "$file"
 }
 
-for name in "${overlay_names[@]}"; do
-  if ! route_pair_present "$ROOT/AGENTS.md" "global:$name" ".agents/overlays/$name.md"; then
-    error "AGENTS.md is missing route pair: global:$name -> .agents/overlays/$name.md"
-  fi
-done
+if rg -Fq -- "$global_routing_marker" "$ROOT/AGENTS.md"; then
+  : # Global routes are intentionally delegated to the shared configuration.
+else
+  require_text AGENTS.md 'global:improve'
+  require_text AGENTS.md 'global:thermo-nuclear-code-quality-review'
+  for name in "${overlay_names[@]}"; do
+    if ! route_pair_present "$ROOT/AGENTS.md" "global:$name" ".agents/overlays/$name.md"; then
+      error "AGENTS.md is missing route pair: global:$name -> .agents/overlays/$name.md"
+    fi
+  done
+fi
 
 profile="$ROOT/.agents/review-profiles/thermo-gitmenubar.md"
 for pair in \
@@ -70,12 +75,14 @@ for pair in \
   fi
 done
 
-route_fixture="$(mktemp)"
-trap 'rm -f "$route_fixture"' EXIT
-sed 's#`global:macos-app-engineering` + `.agents/overlays/macos-app-engineering.md`#`global:macos-app-engineering` + `.agents/overlays/apple-design.md`#' \
-  "$ROOT/AGENTS.md" > "$route_fixture"
-if route_pair_present "$route_fixture" 'global:macos-app-engineering' '.agents/overlays/macos-app-engineering.md'; then
-  error "route-pair negative check accepted a swapped overlay"
+if ! rg -Fq -- "$global_routing_marker" "$ROOT/AGENTS.md"; then
+  route_fixture="$(mktemp)"
+  trap 'rm -f "$route_fixture"' EXIT
+  sed 's#`global:macos-app-engineering` + `.agents/overlays/macos-app-engineering.md`#`global:macos-app-engineering` + `.agents/overlays/apple-design.md`#' \
+    "$ROOT/AGENTS.md" > "$route_fixture"
+  if route_pair_present "$route_fixture" 'global:macos-app-engineering' '.agents/overlays/macos-app-engineering.md'; then
+    error "route-pair negative check accepted a swapped overlay"
+  fi
 fi
 
 for name in "${overlay_names[@]}"; do
