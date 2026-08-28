@@ -5,193 +5,60 @@ alwaysApply: true
 
 # Global agent instructions
 
-Be concise. Classify each request before acting. Use the narrowest relevant
-skill and the lowest safe reasoning effort. Keep one objective per task.
+Classify the request first. Keep one objective, use the narrowest primary
+skill, and preserve unrelated changes.
 
-Before implementation or delivery, load the global `delivery-contract` skill.
-Use its external-state addendum when the work can persist, synchronize, delete,
-or overwrite state outside the current process.
+## Workflow
 
-Before running any build, test, lint, validation, or release command, load the
-repository's delivery-workflow overlay when one exists.
+- Analysis and review are read-only. Implementation writes happen only in the
+  canonical isolated worktree from `core/policies/worktrees.md`.
+- Choose one primary skill and only the complementary skills that add a
+  concrete discipline. Use `core/policies/routing.md` for the workflow matrix
+  and project overlays for local facts.
+- Before planning or implementation, apply the plan-readiness gate in the
+  routing policy. Resolve material gaps with `grill-with-docs`; do not guess.
+- Before implementation or delivery, load `delivery-contract`. Before a
+  build, test, lint, validation, or release command, load `delivery-workflow`
+  and its project overlay when present.
+- Direct mode is the default. Delegate only broad, independent work with one
+  owner, one absolute worktree, and a compact evidence handoff.
+- Backlog, plan migration, and durable issue publication follow their named
+  policies; never silently replace provider state with repository documents.
+- Before changing a skill, consult `core/policies/skill-provenance.md`.
+- Personal desktop/mobile work is local by default; use current platform APIs
+  unless the project documents older support, and do not add CI/CD without a
+  request.
 
-Analysis and review agents do not modify product source or configuration. An
-advisor may write only the requested planning artifacts under `plans/` or
-`advisor-plans/` when local persistence is explicitly selected; otherwise
-planning artifacts are transient or published through the configured issue
-provider. Implementation writes happen only in an explicitly isolated
-worktree. Preserve unrelated changes, inspect the concrete artifact first, and
-validate the smallest surface that proves the result.
+## Routes
 
-Never persist prompts, transcripts, secrets, credentials, or machine state in
-this repository. Keep provider-specific behavior in adapters.
+- Native macOS/AppKit/SwiftUI: use `apple-design` and the relevant SwiftUI
+  skills; use native accessibility guidance for native controls.
+- Chrome extension, Manifest V3, `chrome.*`, content scripts, service workers,
+  or side panels: use `chrome-extensions`; add web UI skills only when needed.
+- Product web UI: use the focused `better-*` skills; use `interface-review` for
+  a holistic review and `ux-writing` for standalone interface copy.
+- Code review: choose `code-review` for standards/spec or
+  `thermo-nuclear-code-quality-review` for maintainability risk.
+- Audits and improvement plans use `improve`; end-to-end delivery uses
+  `ship-ship`; architecture improvement uses `codebase-design` vocabulary.
 
-Durable issue publication is external state. A skill may create or update
-issues only under its explicit publication contract and a resolved provider
-adapter; a project overlay supplies repository exceptions, authorization scope,
-idempotency, or failure behavior when the adapter cannot determine them. Keep
-issue-provider commands out of portable skills; never silently fall back from
-failed publication to repository documents.
+## Safety and integrity
 
-## Code work defaults
+- Never persist prompts, transcripts, credentials, secrets, or machine state.
+  Never print secret values. Keep provider behavior in adapters.
+- Third-party skills remain unchanged; put local behavior in overlays or a
+  first-party skill. Durable issue publication follows its provider contract;
+  never fall back silently to repository documents.
+- Preserve unrelated work. Do not merge, push, amend, or run destructive Git
+  operations without explicit authorization. Keep implementation, review,
+  merge, push, and main-validation states separate.
 
-Make correct behavior obvious through the smallest realistic model. Understand
-the real constraint before changing code, fight scope creep, reuse before
-inventing, and do not add machinery for architectural appearance. When a
-refactor is necessary but outside the initial scope, explain it and wait for
-explicit confirmation before starting it.
+## Validation
 
-Implementation worktrees follow the exact contract in
-`core/policies/worktrees.md`: `<repo>/.worktrees/<slug>` on branch `<slug>`,
-with a lowercase-kebab-case slug. Report a harness limitation instead of
-silently adopting another location or naming scheme.
-
-### Personal desktop and mobile projects
-
-- Treat desktop and mobile applications as personal and local by default, with no
-  distribution intent. Do not introduce CI/CD initiatives unless the task
-  explicitly requests and documents an exception. When cleanup is in scope, a
-  project-wide cleanup may remove existing CI/CD automation.
-- Use the latest stable stack and support current operating-system versions by
-  default. Use current APIs and dependencies in new or modified code; broad
-  dependency or toolchain upgrades still require a request or a task
-  requirement.
-- When modifying code in these projects, remove legacy OS compatibility
-  adaptations encountered in the touched area, including availability checks,
-  conditional branches, polyfills, wrappers, and configuration. If removal
-  causes errors, make the minimum changes needed for the current stack; report
-  external blockers.
-- Preserve distribution requirements or older OS support only when the project
-  explicitly documents them. Project-local documentation may override these
-  defaults for that project's declared scope.
-
-## Hard rules
-
-### Skills and routing
-
-- Prefer an existing skill over inventing a parallel workflow. Load a project
-  overlay (`.agents/overlays/<skill>.md`) after the global skill when present;
-  overlays may specialize facts, never weaken safety or integrity rules.
-- Skills own repeatable tool workflows. Keep this file to hard constraints and
-  routing only.
-- Choose one primary skill from the user's intent and load only the narrowest
-  complementary skills. Use `core/policies/routing.md` for the workflow matrix
-  and boundaries; do not make every applicable skill an orchestrator.
-- Before planning or implementation, apply the **plan-readiness gate** in
-  `core/policies/routing.md`. If a material gap remains, pause and invoke
-  `grill-with-docs` through the Skill tool. Use its recommendation-led
-  interview: turn each gap into one concrete decision question, give a
-  recommended answer, and wait for the user's response before treating it as
-  settled or resuming the selected workflow.
-- Third-party skills remain immutable. When their generic instructions conflict
-  with this file, the global contract, worktree, validation, and authorization
-  rules win; adapt their use through routing, profiles, or first-party skills.
-- `improve` discovers and prioritizes codebase opportunities; `to-spec`
-  formalizes an already-understood request; `ship-ship` owns end-to-end
-  delivery and uses `implement` for execution.
-- `improve --publish` creates or updates durable execution units through the
-  resolved issue-provider adapter, using a project overlay only for exceptions;
-  `ship-ship` consumes those issue IDs or URLs and records delivery-state
-  comments. Published improve issues are already vetted execution units and do
-  not need a second generic triage pass.
-- When continuing an existing implementation backlog without a plan path or
-  issue ID/URL, follow `core/policies/issue-discovery.md`; do not assume
-  `plans/README.md` is the only backlog.
-- When migrating legacy plan files, load `core/policies/plan-migration.md`.
-  Inventory and publication are separate from the destructive purge; never
-  delete local plans merely because an issue was created.
-- `implement` executes only inside the delivery contract and an isolated
-  worktree. Its generic third-party guidance does not authorize the shared
-  branch, a full suite by default, or a second review; `ship-ship` owns review,
-  remediation, integration, and delivery.
-- Use `triage` for uncertain external issues or PRs, `codebase-design` as the
-  architecture vocabulary for architecture improvement, `handoff` only for
-  real context transfer, and `wizard` only for procedures the agent cannot
-  perform itself.
-- Classify platform and task before loading specialist skills:
-  - Native macOS/AppKit/SwiftUI work: use `apple-design` and the SwiftUI
-    skills; use `swiftui-accessibility-audit` for native accessibility. Do not
-    apply web-only rules to native controls.
-  - Product web UI creation or refinement: use the relevant `better-*` domain
-    skills for focused guidance; use `better-interface` for holistic review.
-  - UI decision documentation: use `ui-documentation` when a UI change may
-    alter a reusable rule or require creating or updating `docs/ui.md`.
-  - Holistic interface review: use `interface-review`, which hands the
-    findings to `better-interface` and its domain skills.
-  - Interface copy: use `ux-writing` for standalone copy work. In a holistic
-    interface review, use `better-writing` as the copy domain and do not run a
-    second independent copy review.
-- General code review: choose one primary lane by intent — `code-review` for
-  standards/spec, `thermo-nuclear-code-quality-review` for risk/maintainability.
-  Add `interface-review` only when the changed surface is an interface, and
-  add other specialist lanes only for a concrete risk. Consolidate overlapping
-  findings instead of producing duplicate reports. Reviews happen before
-  protected-branch integration.
-- `better-accessibility` is web-only: invoke it only for browser-facing
-  HTML/CSS/JavaScript/TypeScript interfaces or an explicitly web accessibility
-  task. For SwiftUI/AppKit, use the native accessibility skills instead.
-- Keep third-party skills unchanged. Consult
-  `core/policies/skill-provenance.md` before touching `core/skills/<name>`;
-  `.skill-lock.json` and `make validate` protect recorded trees from local
-  customization. Put routing, precedence, and update policy here;
-  put project-specific facts in overlays. Upstream updates use
-  `npx skills update`, which refreshes the lock; local behavior uses an
-  overlay or a new first-party skill.
-
-### Secrets and disclosure
-
-- Never print secret values, tokens, cookies, or private keys. Query exact
-  names only; redact values in output.
-- Do not dump broad env (`env`, `set`, `export -p`) or run secret-fishing
-  regexes across the filesystem.
-- Treat session transcripts, auth files, and provider caches as runtime state:
-  read only when the task requires it; never commit them.
-
-### Git and GitHub
-
-- Use direct local branch integration by default. Do not create or propose pull
-  requests unless the user explicitly requests one.
-- Keep `done` and `merged` as separate states. An implementation can be done
-  before integration, but user-testing readiness requires its changes to be
-  merged into the local `main` branch and validated there. Report implementation
-  completion, merge status, and `main` validation separately.
-- Use the delivery status tuple `IMPLEMENTED`, `REVIEWED`, `MERGED_LOCAL`,
-  `PUSHED`, and `MAIN_VALIDATED` as applicable; do not infer one state from
-  another.
-- Merge into `main` only after review/remediation and explicit user
-  authorization. Preserve unrelated changes when integrating the implementation
-  branch.
-- Push, force-push, amend, and destructive git ops (`reset --hard`, `clean`,
-  broad `restore`) need an explicit user request or an explicitly authorized
-  user-invoked workflow. A request to implement alone does not authorize merge
-  or push. Repo-local rules may define mechanics, not authority.
-- In an explicitly authorized delivery workflow, the orchestrator may remove
-  only the recorded worktree and source branch after merge and push succeed.
-  Implementers leave both intact for review.
-- Before mutating a GitHub issue/PR from a pasted URL, run `git status -sb`.
-  If the tree is dirty with unrelated work, report it before changing remotes
-  or history.
-- Prefer scoped commits of named paths over staging `.` or the whole tree.
-  Use Conventional Commits (`feat|fix|refactor|build|ci|chore|docs|style|perf|test`)
-  unless the repository documents another style.
-- Unknown or unexpected local changes may belong to another agent. Stay in
-  your scope; stop and ask on conflict.
-
-### Validation and closeout
-
-- Prefer the smallest check that proves the change. When editing the shared
-  agent-config checkout, run that checkout's `make validate` (or
-  `./tests/validate.sh`) before claiming done. Prefer `make doctor` when you
-  also need route-reference and projection checks (`./sync.sh --check`).
-- After every upstream skill update or removal, run `make doctor` from this
-  checkout. It validates that every skill named by the global routing policy
-  still has a canonical `core/skills/<name>/SKILL.md`, then checks provider
-  projections. Treat a missing route reference or projection drift as a
-  failed update; repair the source or routing policy before handoff.
-- Checkout Make aliases (`make help`): `sync`, `validate`, `bootstrap`,
-  `ponytail`, `doctor`. Use interactive menus when `ARGS` is omitted; pass
-  `ARGS=` for non-interactive runs. Prefer these over one-off script paths.
-- When a change is lossy across providers, say exactly what does not project
-  rather than pretending parity.
+- Select the smallest deterministic changed-surface gate and report its exact
+  result, manual checks, unavailable checks, baseline failures, and next action.
+- In this checkout, run `make validate` after changing instructions, policies,
+  skills, scripts, or projections. Run `make doctor` when routing or projection
+  behavior changes; report projection drift separately.
 
 <!-- Generated by agent-config; edit the canonical source. -->
