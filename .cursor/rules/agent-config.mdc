@@ -25,6 +25,9 @@ skill, and preserve unrelated changes.
 - Before implementation or delivery, load `delivery-contract`. Before a
   build, test, lint, validation, or release command, load `delivery-workflow`
   and its project overlay when present.
+- When creating, changing, reviewing, or running tests, load `test-hygiene`;
+  its checklist governs user-visible windows, browser tabs, previews,
+  simulators, and other UI artifacts.
 - Direct mode is the default, but it does not bypass the delivery contract,
   worktree gate, scope check, review, or validation. Delegate only broad,
   independent work with one owner, one absolute worktree, and a compact
@@ -44,6 +47,8 @@ skill, and preserve unrelated changes.
   or side panels: use `chrome-extensions`; add web UI skills only when needed.
 - Product web UI: use the focused `better-*` skills; use `interface-review` for
   a holistic review and `ux-writing` for standalone interface copy.
+- Tests: use `test-hygiene` for test creation, changes, review, and execution;
+  add `tdd` when test-first development or test design is in scope.
 - Code review: choose `code-review` for standards/spec or
   `thermo-nuclear-code-quality-review` for maintainability risk.
 - Audits and improvement plans use `improve`; end-to-end delivery uses
