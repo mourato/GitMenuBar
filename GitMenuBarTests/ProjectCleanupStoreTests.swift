@@ -48,7 +48,7 @@ final class ProjectCleanupStoreTests: XCTestCase {
     }
 
     func testSelectOnlyReplacesSelectionAndReview() async throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "ProjectCleanupStoreTests-\(UUID().uuidString)"))
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let persisted = MonitoredProjectsStore(defaults: defaults)
         persisted.add("/tmp/project-a", name: "A")
         persisted.add("/tmp/project-b", name: "B")

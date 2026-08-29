@@ -9,6 +9,7 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
         let linkedURL = repositoryURL.deletingLastPathComponent()
             .appendingPathComponent("\(repositoryURL.lastPathComponent)-linked")
         try runGit(["worktree", "add", linkedURL.path, "feature/worktree"], in: repositoryURL)
+        addTemporaryGitWorktreeCleanup(linkedURL, repositoryURL: repositoryURL)
 
         let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
         let snapshot = try await resolvedSnapshot(from: gitManager)
@@ -69,6 +70,7 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
         let linkedURL = repositoryURL.deletingLastPathComponent()
             .appendingPathComponent("\(repositoryURL.lastPathComponent)-dirty")
         try runGit(["worktree", "add", linkedURL.path, "feature/dirty"], in: repositoryURL)
+        addTemporaryGitWorktreeCleanup(linkedURL, repositoryURL: repositoryURL)
         try "uncommitted\n".write(
             to: linkedURL.appendingPathComponent("dirty.txt"),
             atomically: true,
@@ -98,6 +100,7 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
         let linkedURL = repositoryURL.deletingLastPathComponent()
             .appendingPathComponent("\(repositoryURL.lastPathComponent)-same-head")
         try runGit(["worktree", "add", linkedURL.path, "feature/worktree"], in: repositoryURL)
+        addTemporaryGitWorktreeCleanup(linkedURL, repositoryURL: repositoryURL)
 
         let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
         let snapshot = try await resolvedSnapshot(from: gitManager)
@@ -184,6 +187,7 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
         let linkedURL = repositoryURL.deletingLastPathComponent()
             .appendingPathComponent("\(repositoryURL.lastPathComponent)-locked")
         try runGit(["worktree", "add", linkedURL.path, "feature/locked"], in: repositoryURL)
+        addTemporaryGitWorktreeCleanup(linkedURL, repositoryURL: repositoryURL)
         try runGit(["worktree", "lock", "--reason", "build", linkedURL.path], in: repositoryURL)
 
         let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
@@ -204,8 +208,7 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
 
     func testExplicitRemoteCleanupDeletesOnlySelectedRemoteBranch() async throws {
         let repositoryURL = try createTemporaryGitRepository(testName: #function)
-        let remoteURL = repositoryURL.deletingLastPathComponent()
-            .appendingPathComponent("\(repositoryURL.lastPathComponent)-remote.git")
+        let remoteURL = temporaryTestPath(testName: #function + "-remote")
         try runGit(["clone", "--bare", repositoryURL.path, remoteURL.path], in: repositoryURL.deletingLastPathComponent())
         try runGit(["remote", "add", "origin", remoteURL.path], in: repositoryURL)
         try runGit(["push", "-u", "origin", "main"], in: repositoryURL)

@@ -137,8 +137,7 @@ final class GitManagerMergeTests: XCTestCase {
         try runGit(["commit", "-m", "chore: base"], in: repoURL)
         try runGit(["branch", "feature/remote"], in: repoURL)
 
-        let remote = repoURL.deletingLastPathComponent()
-            .appendingPathComponent(#function + "-remote-" + UUID().uuidString + ".git")
+        let remote = temporaryTestPath(testName: #function + "-remote")
         try runGit(["clone", "--bare", repoURL.path, remote.path], in: repoURL.deletingLastPathComponent())
         try runGit(["remote", "add", "origin", remote.path], in: repoURL)
 

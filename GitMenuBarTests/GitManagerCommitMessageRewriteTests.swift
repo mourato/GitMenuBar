@@ -82,10 +82,7 @@ final class GitManagerCommitMessageRewriteTests: XCTestCase {
     }
 
     func testIsCommitPublishedToUpstreamDetectsRemoteCommit() throws {
-        let remoteDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("GitMenuBarTests")
-            .appendingPathComponent(#function + "-" + UUID().uuidString)
-        try FileManager.default.createDirectory(at: remoteDirectory, withIntermediateDirectories: true)
+        let remoteDirectory = try makeTemporaryTestDirectory(testName: #function)
 
         let remoteURL = remoteDirectory.appendingPathComponent("origin.git")
         try runGit(["init", "--bare", remoteURL.path], in: remoteDirectory)

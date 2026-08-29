@@ -4,8 +4,7 @@ import XCTest
 
 final class MonitoredProjectsStoreTests: XCTestCase {
     func testAddsDeduplicatesAndRespectsLimit() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded", maxCount: 2)
 
         store.add("/tmp/a")
@@ -17,8 +16,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
     }
 
     func testSeedsCurrentAndRecentsOnlyOnce() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
         let recents = [ProjectReference(path: "/tmp/recent")]
 
@@ -29,8 +27,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
     }
 
     func testRemoveNormalizesPath() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
         store.add("/tmp/project")
 
@@ -40,8 +37,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
     }
 
     func testRenamePreservesProjectOrder() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
         store.add("/tmp/first")
         store.add("/tmp/second")
@@ -88,8 +84,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         try FileManager.default.createDirectory(atPath: invalidPath, withIntermediateDirectories: true)
         _ = try runGit(["init", "-q"], in: URL(fileURLWithPath: validPath))
 
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
         let monitor = ProjectMonitorStore(projectStore: store)
 
@@ -104,8 +99,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
 
     @MainActor
     func testFetchDoesNotReinsertRemovedProject() async throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let projectStore = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
         projectStore.add("/tmp/removed")
         let monitor = ProjectMonitorStore(projectStore: projectStore)
@@ -132,8 +126,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
 
     @MainActor
     func testNewerLocalRefreshWinsOverFetch() async throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let projectStore = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
         projectStore.add("/tmp/project")
         let monitor = ProjectMonitorStore(projectStore: projectStore)
@@ -170,8 +163,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
 
     @MainActor
     func testFetchSkipsWhileLocalRefreshIsActive() async throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let projectStore = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
         projectStore.add("/tmp/project")
         let monitor = ProjectMonitorStore(projectStore: projectStore)

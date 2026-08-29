@@ -63,6 +63,7 @@ final class RepositorySelectionCoordinatorTests: XCTestCase {
         let path: String
         let normalizedPath: String
         let defaults: UserDefaults
+        let suiteName: String
         let recentStore: RecentProjectsStore
         let monitorStore: MonitoredProjectsStore
         let monitor: ProjectMonitorStore
@@ -79,7 +80,8 @@ final class RepositorySelectionCoordinatorTests: XCTestCase {
                 _ = try runGit(["init", "-q"], in: URL(fileURLWithPath: path))
             }
             normalizedPath = RecentProjectsStore.normalize(path)
-            defaults = try XCTUnwrap(UserDefaults(suiteName: "RepositorySelectionCoordinatorTests-\(UUID().uuidString)"))
+            suiteName = "RepositorySelectionCoordinatorTests-\(UUID().uuidString)"
+            defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
             recentStore = RecentProjectsStore(defaults: defaults)
             monitorStore = MonitoredProjectsStore(defaults: defaults, key: "monitored", seededKey: "seeded")
             monitor = ProjectMonitorStore(projectStore: monitorStore)
@@ -93,6 +95,7 @@ final class RepositorySelectionCoordinatorTests: XCTestCase {
         }
 
         func remove() {
+            defaults.removePersistentDomain(forName: suiteName)
             try? FileManager.default.removeItem(at: root)
         }
     }

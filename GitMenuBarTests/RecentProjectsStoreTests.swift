@@ -3,8 +3,7 @@ import XCTest
 
 final class RecentProjectsStoreTests: XCTestCase {
     func testAddsProjectToTopAndDeduplicates() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = RecentProjectsStore(defaults: defaults, key: "recents", maxCount: 5)
 
         store.add("/tmp/a")
@@ -22,8 +21,7 @@ final class RecentProjectsStoreTests: XCTestCase {
     }
 
     func testRespectsMaxCount() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = RecentProjectsStore(defaults: defaults, key: "recents", maxCount: 3)
 
         store.add("/tmp/a")
@@ -35,8 +33,7 @@ final class RecentProjectsStoreTests: XCTestCase {
     }
 
     func testMigratesLegacyPathArrayToNamedProjects() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let legacyPaths = ["/tmp/client-a", "/tmp/client-b"]
         let data = try JSONEncoder().encode(legacyPaths)
         defaults.set(data, forKey: "recents")
@@ -54,8 +51,7 @@ final class RecentProjectsStoreTests: XCTestCase {
     }
 
     func testReaddingExistingProjectPreservesCustomName() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = RecentProjectsStore(defaults: defaults, key: "recents", maxCount: 5)
 
         store.upsert(path: "/tmp/a", name: "Client A")
@@ -66,8 +62,7 @@ final class RecentProjectsStoreTests: XCTestCase {
     }
 
     func testUpsertExistingProjectUpdatesCustomName() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = RecentProjectsStore(defaults: defaults, key: "recents", maxCount: 5)
 
         store.upsert(path: "/tmp/a", name: "Client A")
@@ -77,8 +72,7 @@ final class RecentProjectsStoreTests: XCTestCase {
     }
 
     func testRenameTrimsWhitespaceAndResetsEmptyNameToDefault() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = RecentProjectsStore(defaults: defaults, key: "recents", maxCount: 5)
 
         store.rename(path: "/tmp/client-a", name: "  Client A  ")
@@ -89,8 +83,7 @@ final class RecentProjectsStoreTests: XCTestCase {
     }
 
     func testRemoveDeletesOnlyMatchingProject() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = RecentProjectsStore(defaults: defaults, key: "recents")
         store.add("/tmp/a"); store.add("/tmp/b"); store.add("/tmp/c")
         store.remove(path: "/tmp/b")
@@ -98,8 +91,7 @@ final class RecentProjectsStoreTests: XCTestCase {
     }
 
     func testRemoveNormalizesPathBeforeMatching() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = RecentProjectsStore(defaults: defaults, key: "recents")
         store.add("/tmp/a")
         store.remove(path: "/tmp/./a")
@@ -107,8 +99,7 @@ final class RecentProjectsStoreTests: XCTestCase {
     }
 
     func testRemoveMissingProjectIsNoOp() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = RecentProjectsStore(defaults: defaults, key: "recents")
         store.add("/tmp/a")
         store.remove(path: "/tmp/missing")
@@ -116,8 +107,7 @@ final class RecentProjectsStoreTests: XCTestCase {
     }
 
     func testRemovePreservesCustomNamesOnRemainingProjects() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
-        defaults.removePersistentDomain(forName: #function)
+        let defaults = try makeIsolatedTestDefaults(name: #function)
         let store = RecentProjectsStore(defaults: defaults, key: "recents")
         store.upsert(path: "/tmp/a", name: "Alpha")
         store.upsert(path: "/tmp/b", name: "Beta")

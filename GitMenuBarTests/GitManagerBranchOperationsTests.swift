@@ -34,8 +34,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         try runGit(["commit", "-m", "feat: change"], in: repoURL)
         try runGit(["branch", "feature/to-push"], in: repoURL)
 
-        let remote = repoURL.deletingLastPathComponent()
-            .appendingPathComponent(testName + "-remote-" + UUID().uuidString + ".git")
+        let remote = temporaryTestPath(testName: testName + "-remote")
         try runGit(["clone", "--bare", repoURL.path, remote.path], in: repoURL.deletingLastPathComponent())
         try runGit(["remote", "add", "origin", remote.path], in: repoURL)
         return repoURL

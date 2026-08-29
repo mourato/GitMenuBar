@@ -70,6 +70,16 @@ private final class FakeAIKeychainItemClient: AIKeychainItemClient, @unchecked S
 }
 
 final class KeychainMigratorTests: XCTestCase {
+    private var isolatedDefaultsSuiteNames: [String] = []
+
+    override func tearDown() {
+        for suiteName in isolatedDefaultsSuiteNames {
+            UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        }
+        isolatedDefaultsSuiteNames.removeAll()
+        super.tearDown()
+    }
+
     func testMalformedLegacyItemThrowsAndLeavesMarkerAndOriginsPending() throws {
         let defaults = isolatedDefaults()
         let client = FakeMigrationClient(items: [
@@ -196,9 +206,11 @@ final class KeychainMigratorTests: XCTestCase {
     }
 
     private func isolatedDefaults() -> UserDefaults {
-        guard let defaults = UserDefaults(suiteName: "KeychainMigratorTests.\(UUID().uuidString)") else {
+        let suiteName = "KeychainMigratorTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
             preconditionFailure("Unable to create isolated test defaults")
         }
+        isolatedDefaultsSuiteNames.append(suiteName)
         return defaults
     }
 

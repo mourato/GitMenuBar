@@ -3,7 +3,20 @@ import Foundation
 import XCTest
 
 final class MockURLProtocol: URLProtocol {
-    nonisolated(unsafe) static var requestHandler: (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))?
+    private static let requestHandlerLock = NSLock()
+    private nonisolated(unsafe) static var storedRequestHandler: (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))?
+    nonisolated(unsafe) static var requestHandler: (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))? {
+        get {
+            requestHandlerLock.lock()
+            defer { requestHandlerLock.unlock() }
+            return storedRequestHandler
+        }
+        set {
+            requestHandlerLock.lock()
+            storedRequestHandler = newValue
+            requestHandlerLock.unlock()
+        }
+    }
 
     override static func canInit(with _: URLRequest) -> Bool {
         true
@@ -73,21 +86,41 @@ let gitRepoPathLock = NSLock()
 /// Thread-safe box for capturing request payloads from `MockURLProtocol` handlers
 /// that run on background `URLSession` threads.
 final class PromptCapture: @unchecked Sendable {
-    var value = ""
+    private let lock = NSLock()
+    private var storedValue = ""
+
+    var value: String {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedValue
+    }
+
     func set(_ text: String) {
-        value = text
+        lock.lock()
+        storedValue = text
+        lock.unlock()
     }
 
     func clear() {
-        value = ""
+        set("")
     }
 }
 
 /// Thread-safe list capture for handlers that record multiple request payloads.
 final class PromptListCapture: @unchecked Sendable {
-    var values: [String] = []
+    private let lock = NSLock()
+    private var storedValues: [String] = []
+
+    var values: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedValues
+    }
+
     func append(_ text: String) {
-        values.append(text)
+        lock.lock()
+        storedValues.append(text)
+        lock.unlock()
     }
 }
 
@@ -151,22 +184,54 @@ func withGitRepoPath<T>(_ path: String, execute: () async throws -> T) async ret
     return try await execute()
 }
 
-func createTemporaryGitRepository(testName: String) throws -> URL {
-    let tempRoot = FileManager.default.temporaryDirectory
-        .appendingPathComponent("GitMenuBarTests")
-        .appendingPathComponent(testName + "-" + UUID().uuidString)
+extension XCTestCase {
+    func temporaryTestPath(testName: String) -> URL {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("GitMenuBarTests", isDirectory: true)
+            .appendingPathComponent(testName + "-" + UUID().uuidString, isDirectory: true)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: path)
+        }
+        return path
+    }
 
-    try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+    func makeTemporaryTestDirectory(testName: String) throws -> URL {
+        let path = temporaryTestPath(testName: testName)
+        try FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
+        return path
+    }
 
-    try runGit(["init"], in: tempRoot)
-    try runGit(["config", "user.email", "test@example.com"], in: tempRoot)
-    try runGit(["config", "user.name", "GitMenuBar Tests"], in: tempRoot)
+    func makeIsolatedTestDefaults(name: String) throws -> UserDefaults {
+        let suiteName = name + "-" + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        addTeardownBlock {
+            UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        }
+        return defaults
+    }
 
-    let baseFile = tempRoot.appendingPathComponent("README.md")
-    try "base\n".write(to: baseFile, atomically: true, encoding: .utf8)
+    func addTemporaryGitWorktreeCleanup(_ path: URL, repositoryURL: URL) {
+        addTeardownBlock {
+            if FileManager.default.fileExists(atPath: repositoryURL.path) {
+                try? runGit(["worktree", "remove", "--force", path.path], in: repositoryURL)
+            }
+            try? FileManager.default.removeItem(at: path)
+        }
+    }
 
-    try runGit(["add", "."], in: tempRoot)
-    try runGit(["commit", "-m", "chore: initial"], in: tempRoot)
+    func createTemporaryGitRepository(testName: String) throws -> URL {
+        let tempRoot = try makeTemporaryTestDirectory(testName: testName)
 
-    return tempRoot
+        try runGit(["init"], in: tempRoot)
+        try runGit(["config", "user.email", "test@example.com"], in: tempRoot)
+        try runGit(["config", "user.name", "GitMenuBar Tests"], in: tempRoot)
+
+        let baseFile = tempRoot.appendingPathComponent("README.md")
+        try "base\n".write(to: baseFile, atomically: true, encoding: .utf8)
+
+        try runGit(["add", "."], in: tempRoot)
+        try runGit(["commit", "-m", "chore: initial"], in: tempRoot)
+
+        return tempRoot
+    }
 }
