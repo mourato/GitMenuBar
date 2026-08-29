@@ -12,6 +12,9 @@ skill, and preserve unrelated changes.
 
 - Analysis and review are read-only. Implementation writes happen only in the
   canonical isolated worktree from `core/policies/worktrees.md`.
+- Every write task is an implementation unit, including direct-mode work. Bind
+  `delivery-contract` before the first patch or autofix with a base SHA,
+  absolute worktree and branch, exact scope, and integration authority.
 - Paths under `core/policies/` resolve from the canonical agent-config root
   containing this file, not from the product repository checkout.
 - Choose one primary skill and only the complementary skills that add a
@@ -22,8 +25,10 @@ skill, and preserve unrelated changes.
 - Before implementation or delivery, load `delivery-contract`. Before a
   build, test, lint, validation, or release command, load `delivery-workflow`
   and its project overlay when present.
-- Direct mode is the default. Delegate only broad, independent work with one
-  owner, one absolute worktree, and a compact evidence handoff.
+- Direct mode is the default, but it does not bypass the delivery contract,
+  worktree gate, scope check, review, or validation. Delegate only broad,
+  independent work with one owner, one absolute worktree, and a compact
+  evidence handoff.
 - Backlog, plan migration, and durable issue publication follow their named
   policies; never silently replace provider state with repository documents.
 - Before changing a skill, consult `core/policies/skill-provenance.md`.
@@ -54,6 +59,8 @@ skill, and preserve unrelated changes.
 - Preserve unrelated work. Do not merge, push, amend, or run destructive Git
   operations without explicit authorization. Keep implementation, review,
   merge, push, and main-validation states separate.
+- An unexpected changed path is a STOP condition. Report it and preserve it;
+  do not restore, delete, or absorb it into the current unit.
 
 ## Validation
 

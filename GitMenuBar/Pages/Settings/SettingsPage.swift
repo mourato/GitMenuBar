@@ -137,6 +137,8 @@ struct AISettingsPaneView: View {
                 AISettingsSectionView()
             } header: {
                 SettingsFormSectionHeader(title: "AI Commit Generation", icon: "sparkles")
+            } footer: {
+                Text("The fallback model is used when retrying after the selected model fails.")
             }
 
             Section {
