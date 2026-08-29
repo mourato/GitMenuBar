@@ -68,7 +68,10 @@ final class AICommitCoordinator: ObservableObject {
 
         let dependencies: GenerationDependencies
         do {
-            dependencies = try resolvedGenerationDependencies(modelOverride: providerStore.effectiveFallbackModel())
+            dependencies = try resolvedGenerationDependencies(
+                providerOverride: providerStore.fallbackProvider,
+                modelOverride: providerStore.effectiveFallbackModel()
+            )
         } catch {
             recordMessageGenerationFailure(error, allowsAutomaticRetry: false)
             throw error
@@ -260,7 +263,7 @@ final class AICommitCoordinator: ObservableObject {
     }
 
     var isReadyForFallbackGeneration: Bool {
-        guard let provider = providerStore.defaultProvider else {
+        guard let provider = providerStore.fallbackProvider else {
             return false
         }
 
@@ -285,8 +288,11 @@ final class AICommitCoordinator: ObservableObject {
         return apiKey
     }
 
-    private func resolvedGenerationDependencies(modelOverride: String? = nil) throws -> GenerationDependencies {
-        guard let provider = providerStore.defaultProvider else {
+    private func resolvedGenerationDependencies(
+        providerOverride: AIProviderConfig? = nil,
+        modelOverride: String? = nil
+    ) throws -> GenerationDependencies {
+        guard let provider = providerOverride ?? providerStore.defaultProvider else {
             throw AIError.providerNotConfigured
         }
 

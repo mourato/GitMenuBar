@@ -24,19 +24,23 @@ final class AIProviderStoreTests: XCTestCase {
     func testPersistsProvidersAndPreferencesAcrossStoreInstances() {
         let store = AIProviderStore(dataStore: dataStore)
         let provider = makeProvider(name: "OpenAI Team", hasStoredAPIKey: true)
+        let fallbackProvider = makeProvider(name: "Anthropic Team", type: .anthropic)
 
         store.upsertProvider(provider)
+        store.upsertProvider(fallbackProvider)
         store.updateDefaultProvider(provider.id)
         store.updateDefaultModel("model-2")
+        store.updateFallbackProvider(fallbackProvider.id)
         store.updateFallbackModel("model-1")
 
         let reloadedStore = AIProviderStore(dataStore: dataStore)
 
-        XCTAssertEqual(reloadedStore.providers.count, 1)
+        XCTAssertEqual(reloadedStore.providers.count, 2)
         XCTAssertEqual(reloadedStore.providers.first?.name, "OpenAI Team")
         XCTAssertEqual(reloadedStore.providers.first?.hasStoredAPIKey, true)
         XCTAssertEqual(reloadedStore.preferences.defaultProviderId, provider.id)
         XCTAssertEqual(reloadedStore.preferences.defaultModel, "model-2")
+        XCTAssertEqual(reloadedStore.preferences.fallbackProviderId, fallbackProvider.id)
         XCTAssertEqual(reloadedStore.preferences.fallbackModel, "model-1")
     }
 
@@ -136,7 +140,60 @@ final class AIProviderStoreTests: XCTestCase {
         XCTAssertEqual(store.preferences.defaultModel, "gpt-4.1")
     }
 
-    func testClearsFallbackModelWhenDefaultProviderChanges() {
+    func testSwitchingDefaultProviderKeepsExplicitFallbackProviderAndModel() {
+        let store = AIProviderStore(dataStore: dataStore)
+        let firstProvider = makeProvider(name: "First")
+        let secondProvider = AIProviderConfig(
+            name: "Second",
+            type: .anthropic,
+            endpointURL: AIProviderType.anthropic.defaultEndpoint,
+            selectedModel: "claude-sonnet",
+            availableModels: ["claude-sonnet"]
+        )
+        store.upsertProvider(firstProvider)
+        store.upsertProvider(secondProvider)
+        store.updateFallbackProvider(secondProvider.id)
+        store.updateFallbackModel("claude-sonnet")
+
+        store.updateDefaultProvider(firstProvider.id)
+
+        XCTAssertEqual(store.preferences.fallbackProviderId, secondProvider.id)
+        XCTAssertEqual(store.preferences.fallbackModel, "claude-sonnet")
+    }
+
+    func testDeletingExplicitFallbackProviderFallsBackToDefaultProviderAndClearsUnsupportedModel() {
+        let store = AIProviderStore(dataStore: dataStore)
+        let firstProvider = makeProvider(name: "First")
+        let secondProvider = AIProviderConfig(
+            name: "Second",
+            type: .anthropic,
+            endpointURL: AIProviderType.anthropic.defaultEndpoint,
+            selectedModel: "claude-sonnet",
+            availableModels: ["claude-sonnet"]
+        )
+        store.upsertProvider(firstProvider)
+        store.upsertProvider(secondProvider)
+        store.updateDefaultProvider(firstProvider.id)
+        store.updateFallbackProvider(secondProvider.id)
+        store.updateFallbackModel("claude-sonnet")
+
+        store.deleteProvider(id: secondProvider.id)
+
+        XCTAssertNil(store.preferences.fallbackProviderId)
+        XCTAssertEqual(store.preferences.fallbackModel, "")
+    }
+
+    func testSelectingDefaultProviderAsFallbackProviderNormalizesToImplicitDefault() {
+        let store = AIProviderStore(dataStore: dataStore)
+        let firstProvider = makeProvider(name: "First")
+        store.upsertProvider(firstProvider)
+
+        store.updateFallbackProvider(firstProvider.id)
+
+        XCTAssertNil(store.preferences.fallbackProviderId)
+    }
+
+    func testSwitchingDefaultProviderClearsImplicitFallbackModelWhenUnsupported() {
         let store = AIProviderStore(dataStore: dataStore)
         let firstProvider = makeProvider(name: "First")
         let secondProvider = AIProviderConfig(
