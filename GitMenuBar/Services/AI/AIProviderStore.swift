@@ -90,23 +90,15 @@ final class AIProviderStore: ObservableObject {
     }
 
     func deleteProvider(id: UUID) {
-        let previousDefaultProviderID = preferences.defaultProviderId
         providers.removeAll { $0.id == id }
         normalizeDefaults()
-        if previousDefaultProviderID != preferences.defaultProviderId {
-            preferences.fallbackModel = ""
-        }
         persistProviders()
         persistPreferences()
     }
 
     func updateDefaultProvider(_ providerId: UUID?) {
-        let previousDefaultProviderID = preferences.defaultProviderId
         preferences.defaultProviderId = providerId
         normalizeDefaults()
-        if previousDefaultProviderID != preferences.defaultProviderId {
-            preferences.fallbackModel = ""
-        }
         persistPreferences()
     }
 
@@ -117,6 +109,12 @@ final class AIProviderStore: ObservableObject {
 
     func updateFallbackModel(_ model: String) {
         preferences.fallbackModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
+        persistPreferences()
+    }
+
+    func updateFallbackProvider(_ providerId: UUID?) {
+        preferences.fallbackProviderId = providerId
+        normalizeDefaults()
         persistPreferences()
     }
 
@@ -143,6 +141,14 @@ final class AIProviderStore: ObservableObject {
         return providers.first { $0.id == id }
     }
 
+    var fallbackProvider: AIProviderConfig? {
+        guard let fallbackProviderId = preferences.fallbackProviderId else {
+            return defaultProvider
+        }
+
+        return providers.first { $0.id == fallbackProviderId }
+    }
+
     func effectiveDefaultModel() -> String {
         let explicitModel = preferences.defaultModel.trimmingCharacters(in: .whitespacesAndNewlines)
         if !explicitModel.isEmpty {
@@ -160,6 +166,7 @@ final class AIProviderStore: ObservableObject {
         if providers.isEmpty {
             preferences.defaultProviderId = nil
             preferences.defaultModel = ""
+            preferences.fallbackProviderId = nil
             preferences.fallbackModel = ""
             return
         }
@@ -180,6 +187,16 @@ final class AIProviderStore: ObservableObject {
             return
         }
 
+        let hasValidFallbackProvider = preferences.fallbackProviderId.map { selectedId in
+            providers.contains(where: { $0.id == selectedId })
+        } ?? true
+        if !hasValidFallbackProvider {
+            preferences.fallbackProviderId = nil
+        }
+        if preferences.fallbackProviderId == provider.id {
+            preferences.fallbackProviderId = nil
+        }
+
         let currentModel = preferences.defaultModel.trimmingCharacters(in: .whitespacesAndNewlines)
         let availableModels = provider.availableModels.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         if currentModel.isEmpty || (!availableModels.isEmpty && !availableModels.contains(currentModel)) {
@@ -189,8 +206,17 @@ final class AIProviderStore: ObservableObject {
             }
         }
 
+        guard let fallbackProvider else {
+            preferences.fallbackModel = ""
+            return
+        }
+
+        let fallbackAvailableModels = fallbackProvider.availableModels.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         let fallbackModel = preferences.fallbackModel.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !fallbackModel.isEmpty, !availableModels.isEmpty, !availableModels.contains(fallbackModel) {
+        if !fallbackModel.isEmpty,
+           !fallbackAvailableModels.isEmpty,
+           !fallbackAvailableModels.contains(fallbackModel)
+        {
             preferences.fallbackModel = ""
         }
     }

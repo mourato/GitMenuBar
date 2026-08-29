@@ -10,6 +10,7 @@ struct AISettingsSectionView: View {
         Group {
             defaultProviderPicker
             defaultModelPicker
+            fallbackProviderPicker
             fallbackModelPicker
             Button("Add Provider") {
                 showingProviderManagement = true
@@ -52,16 +53,33 @@ struct AISettingsSectionView: View {
             )
         ) {
             Text("Not configured").tag("")
-            ForEach(modelsForDefaultProvider, id: \.self) { model in
+            ForEach(modelsForFallbackProvider, id: \.self) { model in
                 Text(model).tag(model)
             }
         }
         .pickerStyle(.menu)
-        .disabled(modelsForDefaultProvider.isEmpty)
+        .disabled(modelsForFallbackProvider.isEmpty)
     }
 
-    private var modelsForDefaultProvider: [String] {
-        let provider = aiProviderStore.defaultProvider
+    private var fallbackProviderPicker: some View {
+        Picker(
+            "Fallback Provider",
+            selection: Binding<UUID?>(
+                get: { aiProviderStore.preferences.fallbackProviderId },
+                set: { aiProviderStore.updateFallbackProvider($0) }
+            )
+        ) {
+            Text("Default provider").tag(UUID?.none)
+            ForEach(aiProviderStore.providers) { provider in
+                Text(provider.name).tag(Optional(provider.id))
+            }
+        }
+        .pickerStyle(.menu)
+        .disabled(aiProviderStore.providers.isEmpty)
+    }
+
+    private var modelsForFallbackProvider: [String] {
+        let provider = aiProviderStore.fallbackProvider
         if provider?.availableModels.isEmpty == false {
             return provider?.availableModels ?? []
         }

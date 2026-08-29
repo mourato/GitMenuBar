@@ -178,12 +178,14 @@ struct AIProviderConfig: Identifiable, Codable, Equatable {
 struct AICommitPreferences: Codable, Equatable {
     var defaultProviderId: UUID?
     var defaultModel: String
+    var fallbackProviderId: UUID?
     var fallbackModel: String
     var defaultScopeMode: AICommitDefaultScopeMode
 
     private enum CodingKeys: String, CodingKey {
         case defaultProviderId
         case defaultModel
+        case fallbackProviderId
         case fallbackModel
         case defaultScopeMode
     }
@@ -191,11 +193,13 @@ struct AICommitPreferences: Codable, Equatable {
     init(
         defaultProviderId: UUID?,
         defaultModel: String,
+        fallbackProviderId: UUID? = nil,
         fallbackModel: String = "",
         defaultScopeMode: AICommitDefaultScopeMode
     ) {
         self.defaultProviderId = defaultProviderId
         self.defaultModel = defaultModel
+        self.fallbackProviderId = fallbackProviderId
         self.fallbackModel = fallbackModel
         self.defaultScopeMode = defaultScopeMode
     }
@@ -204,6 +208,7 @@ struct AICommitPreferences: Codable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         defaultProviderId = try container.decodeIfPresent(UUID.self, forKey: .defaultProviderId)
         defaultModel = try container.decode(String.self, forKey: .defaultModel)
+        fallbackProviderId = try container.decodeIfPresent(UUID.self, forKey: .fallbackProviderId)
         fallbackModel = try container.decodeIfPresent(String.self, forKey: .fallbackModel) ?? ""
         defaultScopeMode = try container.decode(AICommitDefaultScopeMode.self, forKey: .defaultScopeMode)
     }
@@ -211,6 +216,7 @@ struct AICommitPreferences: Codable, Equatable {
     static let `default` = AICommitPreferences(
         defaultProviderId: nil,
         defaultModel: "",
+        fallbackProviderId: nil,
         fallbackModel: "",
         defaultScopeMode: .stagedWithFallbackAll
     )
@@ -237,7 +243,7 @@ enum AIError: LocalizedError, Equatable {
         case .modelNotConfigured:
             "Select a model for the selected AI provider in Settings."
         case .fallbackModelNotConfigured:
-            "Select a fallback model for the selected AI provider in Settings."
+            "Select a fallback model for the selected fallback provider in Settings."
         case .noDiffAvailable:
             "No diff found for the selected scope."
         case .invalidEndpoint:

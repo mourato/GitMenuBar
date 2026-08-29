@@ -63,27 +63,42 @@ final class AICommitRecoveryTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
         await waitForWorkingTreeUpdate(gitManager)
-        let providerStore = configuredProviderStore(models: ["primary", "fallback"])
+        let primaryProvider = AIProviderConfig(
+            name: "OpenAI",
+            type: .openAI,
+            endpointURL: "https://mock.openai.local",
+            selectedModel: "primary",
+            availableModels: ["primary"]
+        )
+        let fallbackProvider = AIProviderConfig(
+            name: "Anthropic",
+            type: .anthropic,
+            endpointURL: "https://mock.anthropic.local",
+            selectedModel: "fallback",
+            availableModels: ["fallback"]
+        )
+        let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
+        providerStore.upsertProvider(primaryProvider)
+        providerStore.upsertProvider(fallbackProvider)
+        providerStore.updateDefaultProvider(primaryProvider.id)
+        providerStore.updateFallbackProvider(fallbackProvider.id)
         providerStore.updateFallbackModel("fallback")
-        let provider = try XCTUnwrap(providerStore.defaultProvider)
         let apiKeyStore = InMemoryAIAPIKeyStore()
-        try apiKeyStore.saveAPIKey("test-key", for: AIProviderCredentialID(provider: provider))
-        let requestedModels = PromptListCapture()
-        let requestCount = PromptListCapture()
+        try apiKeyStore.saveAPIKey("primary-key", for: AIProviderCredentialID(provider: primaryProvider))
+        try apiKeyStore.saveAPIKey("fallback-key", for: AIProviderCredentialID(provider: fallbackProvider))
+        let requestedRequests = PromptListCapture()
 
         MockURLProtocol.requestHandler = { request in
-            requestCount.append("request")
             let body = requestBodyData(from: request)
-            if let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
-               let model = json["model"] as? String
-            {
-                requestedModels.append(model)
-            }
+            let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any]
+            let model = json?["model"] as? String ?? "unknown"
+            let authHeader = request.value(forHTTPHeaderField: "Authorization") ?? request.value(forHTTPHeaderField: "x-api-key") ?? ""
+            requestedRequests.append("\(request.url?.absoluteString ?? "")|\(model)|\(authHeader)")
 
             guard let url = request.url else {
                 throw NSError(domain: "Test", code: 1)
             }
-            if requestCount.values.count == 1 {
+            if requestedRequests.values.count == 1 {
                 guard let response = HTTPURLResponse(url: url, statusCode: 503, httpVersion: nil, headerFields: nil) else {
                     throw NSError(domain: "Test", code: 1)
                 }
@@ -93,7 +108,7 @@ final class AICommitRecoveryTests: XCTestCase {
             guard let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil) else {
                 throw NSError(domain: "Test", code: 1)
             }
-            return (response, Data("{\"choices\":[{\"message\":{\"content\":\"feat: fallback works\"}}]}".utf8))
+            return (response, Data("{\"content\":[{\"type\":\"text\",\"text\":\"feat: fallback works\"}]}".utf8))
         }
 
         let aiCoordinator = AICommitCoordinator(
@@ -111,7 +126,13 @@ final class AICommitRecoveryTests: XCTestCase {
         XCTAssertEqual(firstResult, .failed)
         let fallbackResult = await actionCoordinator.commitUsingFallbackModel()
         XCTAssertEqual(fallbackResult, .committed)
-        XCTAssertEqual(requestedModels.values, ["primary", "fallback"])
+        XCTAssertEqual(
+            requestedRequests.values,
+            [
+                "https://mock.openai.local/v1/chat/completions|primary|Bearer primary-key",
+                "https://mock.anthropic.local/v1/messages|fallback|fallback-key"
+            ]
+        )
         XCTAssertNil(actionCoordinator.alert)
         XCTAssertEqual(
             try runGit(["log", "-1", "--pretty=%B"], in: repoURL).trimmingCharacters(in: .whitespacesAndNewlines),
