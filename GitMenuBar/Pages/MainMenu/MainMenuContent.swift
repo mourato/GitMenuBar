@@ -128,6 +128,8 @@ extension MainMenuView {
                 automaticMessageHint: automaticMessageHint,
                 generationDisabledReason: shouldShowGenerationHint ? aiCommitCoordinator.generationDisabledReason : nil,
                 generationError: displayedGenerationError,
+                automaticRetryAvailable: aiCommitCoordinator.automaticRetryAvailable,
+                isFallbackModelAvailable: aiCommitCoordinator.isReadyForFallbackGeneration,
                 primaryButtonTitle: primaryButtonTitle,
                 isPrimaryButtonDisabled: isPrimaryButtonDisabled,
                 canShowSplitCommits: canShowAtomicCommits,
@@ -137,6 +139,8 @@ extension MainMenuView {
                     }
                 },
                 onSplitCommits: startAtomicCommitFlow,
+                onRetryGeneration: retryAutomaticGeneration,
+                onUseFallbackModel: commitUsingFallbackModel,
                 onDidCommit: {
                     if hideCommitMessageField {
                         isCommitFieldTemporarilyVisible = false

@@ -178,11 +178,40 @@ struct AIProviderConfig: Identifiable, Codable, Equatable {
 struct AICommitPreferences: Codable, Equatable {
     var defaultProviderId: UUID?
     var defaultModel: String
+    var fallbackModel: String
     var defaultScopeMode: AICommitDefaultScopeMode
+
+    private enum CodingKeys: String, CodingKey {
+        case defaultProviderId
+        case defaultModel
+        case fallbackModel
+        case defaultScopeMode
+    }
+
+    init(
+        defaultProviderId: UUID?,
+        defaultModel: String,
+        fallbackModel: String = "",
+        defaultScopeMode: AICommitDefaultScopeMode
+    ) {
+        self.defaultProviderId = defaultProviderId
+        self.defaultModel = defaultModel
+        self.fallbackModel = fallbackModel
+        self.defaultScopeMode = defaultScopeMode
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        defaultProviderId = try container.decodeIfPresent(UUID.self, forKey: .defaultProviderId)
+        defaultModel = try container.decode(String.self, forKey: .defaultModel)
+        fallbackModel = try container.decodeIfPresent(String.self, forKey: .fallbackModel) ?? ""
+        defaultScopeMode = try container.decode(AICommitDefaultScopeMode.self, forKey: .defaultScopeMode)
+    }
 
     static let `default` = AICommitPreferences(
         defaultProviderId: nil,
         defaultModel: "",
+        fallbackModel: "",
         defaultScopeMode: .stagedWithFallbackAll
     )
 }
@@ -191,6 +220,7 @@ enum AIError: LocalizedError, Equatable {
     case providerNotConfigured
     case apiKeyMissing
     case modelNotConfigured
+    case fallbackModelNotConfigured
     case noDiffAvailable
     case invalidEndpoint
     case invalidResponse
@@ -206,6 +236,8 @@ enum AIError: LocalizedError, Equatable {
             "Missing API key for the selected AI provider."
         case .modelNotConfigured:
             "Select a model for the selected AI provider in Settings."
+        case .fallbackModelNotConfigured:
+            "Select a fallback model for the selected AI provider in Settings."
         case .noDiffAvailable:
             "No diff found for the selected scope."
         case .invalidEndpoint:

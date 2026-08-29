@@ -10,12 +10,14 @@ final class AICommitCoordinator: ObservableObject {
 
     @Published private(set) var isGenerating: Bool = false
     @Published var generationError: String?
+    @Published private(set) var automaticRetryAvailable = false
 
     private let providerStore: AIProviderStore
     private let keychainStore: any AIAPIKeyStore
     private let messageService: AICommitMessageService
     private let gitManager: GitManager
     private let grouper: AICommitGrouperService
+    private var messageGenerationFailureCount = 0
 
     init(
         providerStore: AIProviderStore,
@@ -31,9 +33,15 @@ final class AICommitCoordinator: ObservableObject {
     }
 
     func generateMessage(scopeOverride: DiffScope?) async throws -> String {
-        generationError = nil
+        beginMessageGeneration()
 
-        let dependencies = try resolvedGenerationDependencies()
+        let dependencies: GenerationDependencies
+        do {
+            dependencies = try resolvedGenerationDependencies()
+        } catch {
+            recordMessageGenerationFailure(error, allowsAutomaticRetry: true)
+            throw error
+        }
 
         isGenerating = true
         defer { isGenerating = false }
@@ -50,7 +58,38 @@ final class AICommitCoordinator: ObservableObject {
                 )
             )
         } catch {
-            generationError = error.localizedDescription
+            recordMessageGenerationFailure(error, allowsAutomaticRetry: true)
+            throw error
+        }
+    }
+
+    func generateMessageUsingFallback(scopeOverride: DiffScope?) async throws -> String {
+        beginMessageGeneration()
+
+        let dependencies: GenerationDependencies
+        do {
+            dependencies = try resolvedGenerationDependencies(modelOverride: providerStore.effectiveFallbackModel())
+        } catch {
+            recordMessageGenerationFailure(error, allowsAutomaticRetry: false)
+            throw error
+        }
+
+        isGenerating = true
+        defer { isGenerating = false }
+
+        do {
+            return try await messageService.generateCommitMessage(
+                request: AICommitMessageService.GenerationRequest(
+                    provider: dependencies.provider,
+                    apiKey: dependencies.apiKey,
+                    model: dependencies.model,
+                    preferredScopeMode: providerStore.preferences.defaultScopeMode,
+                    overrideScope: scopeOverride,
+                    gitManager: gitManager
+                )
+            )
+        } catch {
+            recordMessageGenerationFailure(error, allowsAutomaticRetry: false)
             throw error
         }
     }
@@ -59,7 +98,7 @@ final class AICommitCoordinator: ObservableObject {
         forRawDiff rawDiff: String,
         scopeDescription: String = "Selected commit"
     ) async throws -> String {
-        generationError = nil
+        resetGenerationState()
 
         let dependencies = try resolvedGenerationDependencies()
 
@@ -96,7 +135,7 @@ final class AICommitCoordinator: ObservableObject {
         changedFiles: [WorkingTreeFile],
         diffPerFile: [String: String]
     ) async throws -> [AtomicCommitGroup] {
-        generationError = nil
+        resetGenerationState()
         let dependencies = try resolvedGenerationDependencies()
 
         isGenerating = true
@@ -117,7 +156,7 @@ final class AICommitCoordinator: ObservableObject {
     }
 
     func generateAtomicHunkGroups(snapshot: AtomicCommitSnapshot) async throws -> [AtomicCommitGroup] {
-        generationError = nil
+        resetGenerationState()
         let dependencies = try resolvedGenerationDependencies()
         isGenerating = true
         defer { isGenerating = false }
@@ -146,6 +185,16 @@ final class AICommitCoordinator: ObservableObject {
             providerStore.updateStoredAPIKeyPresence(false, for: providerId)
         }
         return apiKey
+    }
+
+    func consumeAutomaticRetry() {
+        automaticRetryAvailable = false
+    }
+
+    func resetGenerationState() {
+        generationError = nil
+        automaticRetryAvailable = false
+        messageGenerationFailureCount = 0
     }
 
     @discardableResult
@@ -210,6 +259,15 @@ final class AICommitCoordinator: ObservableObject {
         return ""
     }
 
+    var isReadyForFallbackGeneration: Bool {
+        guard let provider = providerStore.defaultProvider else {
+            return false
+        }
+
+        return !resolvedAPIKey(for: provider).isEmpty
+            && !providerStore.effectiveFallbackModel().isEmpty
+    }
+
     private func resolvedAPIKey(for provider: AIProviderConfig) -> String {
         let apiKey: String
         do {
@@ -227,7 +285,7 @@ final class AICommitCoordinator: ObservableObject {
         return apiKey
     }
 
-    private func resolvedGenerationDependencies() throws -> GenerationDependencies {
+    private func resolvedGenerationDependencies(modelOverride: String? = nil) throws -> GenerationDependencies {
         guard let provider = providerStore.defaultProvider else {
             throw AIError.providerNotConfigured
         }
@@ -237,11 +295,25 @@ final class AICommitCoordinator: ObservableObject {
             throw AIError.apiKeyMissing
         }
 
-        let model = providerStore.effectiveDefaultModel()
+        let model = modelOverride ?? providerStore.effectiveDefaultModel()
         guard !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw AIError.modelNotConfigured
+            throw modelOverride == nil ? AIError.modelNotConfigured : AIError.fallbackModelNotConfigured
         }
 
         return GenerationDependencies(provider: provider, apiKey: apiKey, model: model)
+    }
+
+    private func beginMessageGeneration() {
+        if generationError == nil {
+            messageGenerationFailureCount = 0
+        }
+        generationError = nil
+        automaticRetryAvailable = false
+    }
+
+    private func recordMessageGenerationFailure(_ error: Error, allowsAutomaticRetry: Bool) {
+        messageGenerationFailureCount += 1
+        generationError = error.localizedDescription
+        automaticRetryAvailable = allowsAutomaticRetry && messageGenerationFailureCount == 1
     }
 }

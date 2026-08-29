@@ -28,6 +28,7 @@ final class AIProviderStoreTests: XCTestCase {
         store.upsertProvider(provider)
         store.updateDefaultProvider(provider.id)
         store.updateDefaultModel("model-2")
+        store.updateFallbackModel("model-1")
 
         let reloadedStore = AIProviderStore(dataStore: dataStore)
 
@@ -36,6 +37,7 @@ final class AIProviderStoreTests: XCTestCase {
         XCTAssertEqual(reloadedStore.providers.first?.hasStoredAPIKey, true)
         XCTAssertEqual(reloadedStore.preferences.defaultProviderId, provider.id)
         XCTAssertEqual(reloadedStore.preferences.defaultModel, "model-2")
+        XCTAssertEqual(reloadedStore.preferences.fallbackModel, "model-1")
     }
 
     func testReassignsDefaultProviderWhenCurrentDefaultIsDeleted() {
@@ -132,6 +134,25 @@ final class AIProviderStoreTests: XCTestCase {
 
         XCTAssertEqual(store.preferences.defaultProviderId, firstProvider.id)
         XCTAssertEqual(store.preferences.defaultModel, "gpt-4.1")
+    }
+
+    func testClearsFallbackModelWhenDefaultProviderChanges() {
+        let store = AIProviderStore(dataStore: dataStore)
+        let firstProvider = makeProvider(name: "First")
+        let secondProvider = AIProviderConfig(
+            name: "Second",
+            type: .anthropic,
+            endpointURL: AIProviderType.anthropic.defaultEndpoint,
+            selectedModel: "claude-sonnet",
+            availableModels: ["claude-sonnet"]
+        )
+        store.upsertProvider(firstProvider)
+        store.upsertProvider(secondProvider)
+        store.updateFallbackModel("model-2")
+
+        store.updateDefaultProvider(secondProvider.id)
+
+        XCTAssertEqual(store.preferences.fallbackModel, "")
     }
 
     func testLegacyProviderPayloadDefaultsStoredKeyFlagToFalse() {

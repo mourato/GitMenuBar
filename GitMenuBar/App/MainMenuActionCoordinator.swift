@@ -132,6 +132,34 @@ final class MainMenuActionCoordinator: ObservableObject {
         showSyncOptions = false
         whitespaceCommitPrompt = nil
         operationStatus = nil
+        aiCommitCoordinator.resetGenerationState()
+    }
+
+    func retryAutomaticCommit(shouldPushAfterCommit: Bool = false) async -> MainMenuCommitExecutionResult {
+        await performCommit(
+            commentText: "",
+            forceAutomaticMessage: true,
+            shouldPushAfterCommit: shouldPushAfterCommit
+        )
+    }
+
+    func commitUsingFallbackModel(shouldPushAfterCommit: Bool = false) async -> MainMenuCommitExecutionResult {
+        guard hasWorkingTreeChanges, !isBusy else {
+            return .skipped
+        }
+
+        return await executeCommitOperation {
+            clearAlert()
+            showSyncOptions = false
+            whitespaceCommitPrompt = nil
+
+            let failureTitle = shouldPushAfterCommit ? "Commit & Push Failed" : "Commit Failed"
+            return await commitUsingGeneratedMessage(
+                failureTitle: failureTitle,
+                shouldPushAfterCommit: shouldPushAfterCommit,
+                usingFallbackModel: true
+            )
+        }
     }
 
     func dismissWhitespaceCommitPrompt() {
@@ -372,7 +400,8 @@ final class MainMenuActionCoordinator: ObservableObject {
 
     private func commitUsingGeneratedMessage(
         failureTitle: String,
-        shouldPushAfterCommit: Bool
+        shouldPushAfterCommit: Bool,
+        usingFallbackModel: Bool = false
     ) async -> MainMenuCommitExecutionResult {
         publishOperationStatus(.generatingCommitMessage)
 
@@ -385,7 +414,15 @@ final class MainMenuActionCoordinator: ObservableObject {
                 )
             }
 
-            let message = try await aiCommitCoordinator.generateMessage(scopeOverride: preferredCommitScope)
+            let message: String
+            if usingFallbackModel {
+                guard aiCommitCoordinator.isReadyForFallbackGeneration else {
+                    throw AIError.fallbackModelNotConfigured
+                }
+                message = try await aiCommitCoordinator.generateMessageUsingFallback(scopeOverride: preferredCommitScope)
+            } else {
+                message = try await aiCommitCoordinator.generateMessage(scopeOverride: preferredCommitScope)
+            }
             return await executeCommitFlow(
                 message: message,
                 failureTitle: failureTitle,

@@ -9,12 +9,18 @@ struct CommitComposerSectionView: View {
     let automaticMessageHint: String?
     let generationDisabledReason: String?
     let generationError: String?
+    let automaticRetryAvailable: Bool
+    let isFallbackModelAvailable: Bool
     let primaryButtonTitle: String
     let isPrimaryButtonDisabled: Bool
     let canShowSplitCommits: Bool
     let onPrimaryAction: () -> Void
     let onSplitCommits: () -> Void
+    let onRetryGeneration: () -> Void
+    let onUseFallbackModel: () -> Void
     let operationStatus: MainMenuOperationStatus?
+
+    @State private var retryCountdown = 10
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -78,12 +84,50 @@ struct CommitComposerSectionView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             } else if let generationError {
-                Text(generationError)
-                    .font(.caption)
-                    .foregroundColor(.red)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(generationError)
+                        .font(.caption)
+                        .foregroundColor(.red)
+
+                    HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                        Button(automaticRetryAvailable ? "Retry (\(retryCountdown)s)" : "Retry", action: onRetryGeneration)
+                            .workbenchSecondary()
+                            .controlSize(.large)
+
+                        Button("Use Fallback Model", action: onUseFallbackModel)
+                            .workbenchSecondary()
+                            .controlSize(.large)
+                            .disabled(!isFallbackModelAvailable)
+                    }
+
+                    if !isFallbackModelAvailable {
+                        Text("Configure a fallback model in Settings.")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
         }
         .padding(.bottom, 8)
+        .task(id: retryTaskID) {
+            guard automaticRetryAvailable, generationError != nil else { return }
+
+            for countdown in stride(from: 10, through: 1, by: -1) {
+                retryCountdown = countdown
+                do {
+                    try await Task.sleep(for: .seconds(1))
+                } catch {
+                    return
+                }
+            }
+
+            guard !Task.isCancelled else { return }
+            onRetryGeneration()
+        }
+    }
+
+    private var retryTaskID: String {
+        "\(generationError ?? "")-\(automaticRetryAvailable)"
     }
 }
 
@@ -137,11 +181,15 @@ private struct CommitComposerSectionPreviewContainer: View {
             automaticMessageHint: automaticMessageHint,
             generationDisabledReason: nil,
             generationError: nil,
+            automaticRetryAvailable: false,
+            isFallbackModelAvailable: false,
             primaryButtonTitle: "Commit",
             isPrimaryButtonDisabled: false,
             canShowSplitCommits: canShowSplitCommits,
             onPrimaryAction: {},
             onSplitCommits: {},
+            onRetryGeneration: {},
+            onUseFallbackModel: {},
             operationStatus: nil
         )
         .padding()

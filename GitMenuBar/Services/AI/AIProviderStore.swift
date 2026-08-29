@@ -90,20 +90,33 @@ final class AIProviderStore: ObservableObject {
     }
 
     func deleteProvider(id: UUID) {
+        let previousDefaultProviderID = preferences.defaultProviderId
         providers.removeAll { $0.id == id }
         normalizeDefaults()
+        if previousDefaultProviderID != preferences.defaultProviderId {
+            preferences.fallbackModel = ""
+        }
         persistProviders()
         persistPreferences()
     }
 
     func updateDefaultProvider(_ providerId: UUID?) {
+        let previousDefaultProviderID = preferences.defaultProviderId
         preferences.defaultProviderId = providerId
         normalizeDefaults()
+        if previousDefaultProviderID != preferences.defaultProviderId {
+            preferences.fallbackModel = ""
+        }
         persistPreferences()
     }
 
     func updateDefaultModel(_ model: String) {
         preferences.defaultModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
+        persistPreferences()
+    }
+
+    func updateFallbackModel(_ model: String) {
+        preferences.fallbackModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
         persistPreferences()
     }
 
@@ -139,10 +152,15 @@ final class AIProviderStore: ObservableObject {
         return defaultProvider?.selectedModel.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
+    func effectiveFallbackModel() -> String {
+        preferences.fallbackModel.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private func normalizeDefaults() {
         if providers.isEmpty {
             preferences.defaultProviderId = nil
             preferences.defaultModel = ""
+            preferences.fallbackModel = ""
             return
         }
 
@@ -169,6 +187,11 @@ final class AIProviderStore: ObservableObject {
             if preferences.defaultModel.isEmpty || (!availableModels.isEmpty && !availableModels.contains(preferences.defaultModel)) {
                 preferences.defaultModel = availableModels.first ?? ""
             }
+        }
+
+        let fallbackModel = preferences.fallbackModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !fallbackModel.isEmpty, !availableModels.isEmpty, !availableModels.contains(fallbackModel) {
+            preferences.fallbackModel = ""
         }
     }
 

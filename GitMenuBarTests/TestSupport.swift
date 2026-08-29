@@ -44,6 +44,30 @@ func makeMockHTTPResponse(for request: URLRequest) throws -> HTTPURLResponse {
     return try XCTUnwrap(HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil))
 }
 
+func requestBodyData(from request: URLRequest) -> Data {
+    if let body = request.httpBody {
+        return body
+    }
+
+    guard let bodyStream = request.httpBodyStream else {
+        return Data()
+    }
+
+    bodyStream.open()
+    defer { bodyStream.close() }
+
+    var data = Data()
+    var buffer = [UInt8](repeating: 0, count: 1024)
+    while bodyStream.hasBytesAvailable {
+        let bytesRead = bodyStream.read(&buffer, maxLength: buffer.count)
+        if bytesRead <= 0 {
+            break
+        }
+        data.append(buffer, count: bytesRead)
+    }
+    return data
+}
+
 let gitRepoPathLock = NSLock()
 
 /// Thread-safe box for capturing request payloads from `MockURLProtocol` handlers

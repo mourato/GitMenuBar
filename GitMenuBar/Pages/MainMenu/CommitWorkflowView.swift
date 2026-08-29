@@ -9,11 +9,15 @@ struct CommitWorkflowView: View {
     let automaticMessageHint: String?
     let generationDisabledReason: String?
     let generationError: String?
+    let automaticRetryAvailable: Bool
+    let isFallbackModelAvailable: Bool
     let primaryButtonTitle: String
     let isPrimaryButtonDisabled: Bool
     let canShowSplitCommits: Bool
     let onPrimaryAction: () -> Void
     let onSplitCommits: () -> Void
+    let onRetryGeneration: () -> Void
+    let onUseFallbackModel: () -> Void
     let onDidCommit: () -> Void
     let onRequestFocus: () -> Void
     let focusCommitFieldToken: Int
@@ -31,11 +35,15 @@ struct CommitWorkflowView: View {
             automaticMessageHint: automaticMessageHint,
             generationDisabledReason: generationDisabledReason,
             generationError: generationError,
+            automaticRetryAvailable: automaticRetryAvailable,
+            isFallbackModelAvailable: isFallbackModelAvailable,
             primaryButtonTitle: primaryButtonTitle,
             isPrimaryButtonDisabled: isPrimaryButtonDisabled,
             canShowSplitCommits: canShowSplitCommits,
             onPrimaryAction: onPrimaryAction,
             onSplitCommits: onSplitCommits,
+            onRetryGeneration: onRetryGeneration,
+            onUseFallbackModel: onUseFallbackModel,
             operationStatus: actionCoordinator.operationStatus
         )
         .onAppear {
@@ -154,11 +162,15 @@ private struct CommitWorkflowPreviewContent: View {
             automaticMessageHint: nil,
             generationDisabledReason: nil,
             generationError: nil,
+            automaticRetryAvailable: false,
+            isFallbackModelAvailable: false,
             primaryButtonTitle: "Commit",
             isPrimaryButtonDisabled: false,
             canShowSplitCommits: true,
             onPrimaryAction: {},
             onSplitCommits: {},
+            onRetryGeneration: {},
+            onUseFallbackModel: {},
             onDidCommit: {},
             onRequestFocus: {},
             focusCommitFieldToken: 0,
