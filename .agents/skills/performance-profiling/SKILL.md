@@ -66,5 +66,5 @@ measurements in the handoff.
 
 ## Related skills
 
-Reference-app study → global `benchmarking` + `.agents/overlays/benchmarking.md`.
+Reference-app study → global `reference-apps` + `.agents/overlays/reference-apps.md`.
 Deep Instruments sessions stay here; delivery/CI gates → `delivery-workflow`.

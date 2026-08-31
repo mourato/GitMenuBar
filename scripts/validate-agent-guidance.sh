@@ -31,7 +31,7 @@ global_routing_marker='Global skill routing is defined by the global agent confi
 
 overlay_names=(
   apple-design
-  benchmarking
+  reference-apps
   code-quality
   delivery-workflow
   macos-app-engineering

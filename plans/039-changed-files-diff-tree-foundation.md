@@ -7,7 +7,7 @@
 > in `plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
-> **Drift check (run first)**: `git diff --stat 42cde45..HEAD -- GitMenuBar/Models/GitModels.swift GitMenuBar/Utils/ GitMenuBarTests/ plans/039-changed-files-diff-tree-foundation.md plans/README.md CONTEXT.md .agents/overlays/benchmarking.md`
+> **Drift check (run first)**: `git diff --stat 42cde45..HEAD -- GitMenuBar/Models/GitModels.swift GitMenuBar/Utils/ GitMenuBarTests/ plans/039-changed-files-diff-tree-foundation.md plans/README.md CONTEXT.md .agents/overlays/reference-apps.md`
 > If any in-scope file changed since this plan was written, compare the
 > "Current state" excerpts against the live code before proceeding; on a
 > mismatch, treat it as a STOP condition.
@@ -88,7 +88,7 @@ struct LineDiffStats: Hashable {
 ## Suggested executor toolkit
 
 - `global:swift-conventions` (+ overlay) for naming/layout.
-- `global:benchmarking` (+ `.agents/overlays/benchmarking.md`) if you need to
+- `global:reference-apps` (+ `.agents/overlays/reference-apps.md`) if you need to
   re-open the T3Code Diff Tree reference.
 - Local `swift-testing-expert` only if converting style; prefer XCTest to match
   existing `GitHubRemoteURLParserTests.swift` / `WorkingTreeParserTests.swift`.

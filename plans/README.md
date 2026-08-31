@@ -401,8 +401,8 @@ Planned against commit `42cde45`.
 
 Locked via grill against T3 Code Nightly
 `v0.0.29-nightly.20260725.899` (`~/Documents/Projects/References/T3Code`).
-Vocabulary: root `CONTEXT.md`. Benchmark catalog:
-`.agents/overlays/benchmarking.md` (**T3Code**). Planned against commit
+Vocabulary: root `CONTEXT.md`. Reference-apps catalog:
+`.agents/overlays/reference-apps.md` (**T3Code**). Planned against commit
 `42cde45` on worktree branch `feat/t3code-changed-files-summary`.
 
 Product locks: keep Staged/Unstaged separate; Commit Details first; Workbench
