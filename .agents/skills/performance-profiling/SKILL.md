@@ -56,5 +56,5 @@ Refine with measured hardware and repo sizes. Warn via `os_log` when a budget is
 
 ## Related skills
 
-Reference-app study → global `benchmarking` + `.agents/overlays/benchmarking.md`.
+Reference-app study → global `reference-apps` + `.agents/overlays/reference-apps.md`.
 Deep Instruments sessions stay here; delivery/CI gates → `delivery-workflow`.

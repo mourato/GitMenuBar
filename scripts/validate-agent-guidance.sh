@@ -33,7 +33,7 @@ require_text AGENTS.md 'global:thermo-nuclear-code-quality-review'
 overlay_names=(
   accessibility-audit
   apple-design
-  benchmarking
+  reference-apps
   code-quality
   delivery-workflow
   macos-app-engineering

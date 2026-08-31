@@ -49,7 +49,7 @@ skill implementation.
 - The repository exposes the merge gates `make guidance-check`, then
   `make lint && make test`.
 - Seven local skill directories duplicate the proposed global macOS cores.
-- Keep local specialist skills such as `benchmarking`,
+- Keep local specialist skills such as `reference-apps`,
   `performance-profiling`, `release-management`, `security-credentials`,
   `swift-concurrency`, `swift-testing-expert`, `swiftui-performance-audit`,
   and `test-strategy`.

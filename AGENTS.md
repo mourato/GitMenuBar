@@ -75,7 +75,7 @@ copied into `.agents/skills/`. The canonical global routes are:
 - `global:thermo-nuclear-code-quality-review` for strict reviews
 - `global:accessibility-audit`
 - `global:apple-design`
-- `global:benchmarking`
+- `global:reference-apps`
 - `global:code-quality`
 - `global:delivery-workflow`
 - `global:macos-app-engineering`
@@ -102,7 +102,7 @@ Primary skills in this repo:
 
 - `global:accessibility-audit` + `.agents/overlays/accessibility-audit.md`
 - `global:apple-design` + `.agents/overlays/apple-design.md`
-- `global:benchmarking` + `.agents/overlays/benchmarking.md`
+- `global:reference-apps` + `.agents/overlays/reference-apps.md`
 - `global:code-quality` + `.agents/overlays/code-quality.md`
 - `global:delivery-workflow` + `.agents/overlays/delivery-workflow.md`
 - `global:macos-app-engineering` + `.agents/overlays/macos-app-engineering.md`

@@ -116,7 +116,7 @@ bordered card.
 - `global:macos-app-engineering`, `global:apple-design`, `global:accessibility-audit`
   (+ overlays).
 - `global:swift-conventions`.
-- Benchmarking overlay entry **T3Code** for visual parity checks.
+- Reference-apps overlay entry **T3Code** for visual parity checks.
 
 ## Scope
 

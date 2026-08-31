@@ -7,7 +7,7 @@
 > in `plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
-> **Drift check (run first)**: `git diff --stat 42cde45..HEAD -- GitMenuBar/Components/History/FileTypeSymbol.swift GitMenuBar/Components/History/ChangedFilesSummaryView.swift GitMenuBar/Components/WorkingTree/ GitMenuBar/Resources/ plans/040-commit-details-changed-files-summary.md plans/041-working-tree-diff-tree.md plans/042-colored-file-type-icons.md plans/README.md CONTEXT.md .agents/overlays/benchmarking.md`
+> **Drift check (run first)**: `git diff --stat 42cde45..HEAD -- GitMenuBar/Components/History/FileTypeSymbol.swift GitMenuBar/Components/History/ChangedFilesSummaryView.swift GitMenuBar/Components/WorkingTree/ GitMenuBar/Resources/ plans/040-commit-details-changed-files-summary.md plans/041-working-tree-diff-tree.md plans/042-colored-file-type-icons.md plans/README.md CONTEXT.md .agents/overlays/reference-apps.md`
 > If any in-scope file changed since this plan was written, compare the
 > "Current state" excerpts against the live code before proceeding; on a
 > mismatch, treat it as a STOP condition.
@@ -47,7 +47,7 @@ call sites without changing navigation or staging behavior.
   Dependency: `@pierre/trees@1.0.0-beta.4` (verify license **before** copying
   any SVG/path data).
 - T3 Code itself is MIT; that does **not** automatically clear `@pierre/trees`.
-- Benchmarking overlay documents this under **T3Code**.
+- Reference-apps overlay documents this under **T3Code**.
 
 ## Commands you will need
 
@@ -61,7 +61,7 @@ call sites without changing navigation or staging behavior.
 ## Suggested executor toolkit
 
 - `global:apple-design`, `global:accessibility-audit` (+ overlays) for contrast.
-- `global:benchmarking` for T3 color token comparison.
+- `global:reference-apps` for T3 color token comparison.
 - Local `security-credentials` only if bundling unfamiliar binary assets
   (unlikely).
 
@@ -78,7 +78,7 @@ call sites without changing navigation or staging behavior.
   Markdown, JSON, YAML, shell, images, generic)
 - Unit test for extension → icon identity mapping (no pixel tests required)
 - `plans/README.md` status row
-- Optional one-line touchpoint update in `.agents/overlays/benchmarking.md`
+- Optional one-line touchpoint update in `.agents/overlays/reference-apps.md`
 
 **Out of scope**:
 - Re-layout of Diff Tree / Compact Preview
