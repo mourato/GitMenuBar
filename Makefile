@@ -1,6 +1,11 @@
-.PHONY: help build build-release test lint lint-changed lint-fix check-preview agent-check validate guidance-check install-app dmg clean setup
+.PHONY: help build build-release test lint lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command guidance-check install-app dmg clean setup
 
 PROJECT_DIR := $(shell pwd)
+AGENT_CONFIG_HOME ?= $(HOME)/.agents
+VALIDATE_LANE ?= $(AGENT_CONFIG_HOME)/scripts/validate-lane
+VALIDATE_BASE ?= $(shell git merge-base origin/main HEAD 2>/dev/null || git rev-parse HEAD^)
+VALIDATE_ARTIFACT_ROOTS := .xcode-build
+VALIDATE_ARTIFACT_ARGS := $(foreach root,$(VALIDATE_ARTIFACT_ROOTS),--artifacts "$(PROJECT_DIR)/$(root)")
 
 help:
 	@echo "GitMenuBar Development Commands"
@@ -14,6 +19,7 @@ help:
 	@echo "make check-preview Check changed UI files for SwiftUI preview coverage"
 	@echo "make agent-check   Lint changed Swift files and build Debug app"
 	@echo "make validate      Canonical changed-surface validation"
+	@echo "make validate-lane Run validate through the global baseline/artifact gate"
 	@echo "make guidance-check Validate agent guidance, plans, and skill references"
 	@echo "make install-app   Build Release and replace the installed app interactively"
 	@echo "make dmg           Build and package DMG"
@@ -46,6 +52,19 @@ check-preview:
 agent-check: lint-changed build
 
 validate: agent-check
+
+validate-lane:
+	@$(VALIDATE_LANE) --repo "$(PROJECT_DIR)" --base "$(VALIDATE_BASE)" $(VALIDATE_ARTIFACT_ARGS) -- $(MAKE) validate-lane-command
+
+validate-lane-command:
+	@set -eu; \
+		build_existed=0; \
+		if [ -e "$(PROJECT_DIR)/.xcode-build" ] || [ -L "$(PROJECT_DIR)/.xcode-build" ]; then build_existed=1; fi; \
+		cleanup() { \
+			if [ "$$build_existed" -eq 0 ]; then rm -rf "$(PROJECT_DIR)/.xcode-build"; fi; \
+		}; \
+		trap cleanup EXIT; \
+		$(MAKE) validate
 
 guidance-check:
 	@./scripts/validate-agent-guidance.sh
