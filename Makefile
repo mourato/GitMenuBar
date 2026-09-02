@@ -4,8 +4,6 @@ PROJECT_DIR := $(shell pwd)
 AGENT_CONFIG_HOME ?= $(HOME)/.agents
 VALIDATE_LANE ?= $(AGENT_CONFIG_HOME)/scripts/validate-lane
 VALIDATE_BASE ?= $(shell git merge-base origin/main HEAD 2>/dev/null || git rev-parse HEAD^)
-VALIDATE_ARTIFACT_ROOTS := .xcode-build/Build
-VALIDATE_ARTIFACT_ARGS := $(foreach root,$(VALIDATE_ARTIFACT_ROOTS),--artifacts "$(PROJECT_DIR)/$(root)")
 
 help:
 	@echo "GitMenuBar Development Commands"
@@ -54,17 +52,26 @@ agent-check: lint-changed build
 validate: agent-check
 
 validate-lane:
-	@$(VALIDATE_LANE) --repo "$(PROJECT_DIR)" --base "$(VALIDATE_BASE)" $(VALIDATE_ARTIFACT_ARGS) -- $(MAKE) validate-lane-command
+	@set -eu; \
+		artifact_parent="$(PROJECT_DIR)/.xcode-build"; \
+		parent_existed=0; \
+		if [ -e "$$artifact_parent" ] || [ -L "$$artifact_parent" ]; then parent_existed=1; fi; \
+		mkdir -p "$$artifact_parent"; \
+		derived_data="$$(mktemp -d "$$artifact_parent/validate-lane.XXXXXX")"; \
+		cleanup() { \
+			rm -rf "$$derived_data"; \
+			if [ "$$parent_existed" -eq 0 ]; then rmdir "$$artifact_parent" 2>/dev/null || true; fi; \
+		}; \
+		trap cleanup EXIT; \
+		$(VALIDATE_LANE) --repo "$(PROJECT_DIR)" --base "$(VALIDATE_BASE)" --artifacts "$$derived_data/Build" -- $(MAKE) validate-lane-command VALIDATE_DERIVED_DATA_PATH="$$derived_data"
 
 validate-lane-command:
 	@set -eu; \
-		build_existed=0; \
-		if [ -e "$(PROJECT_DIR)/.xcode-build" ] || [ -L "$(PROJECT_DIR)/.xcode-build" ]; then build_existed=1; fi; \
-		cleanup() { \
-			if [ "$$build_existed" -eq 0 ]; then rm -rf "$(PROJECT_DIR)/.xcode-build"; fi; \
-		}; \
+		derived_data="$(VALIDATE_DERIVED_DATA_PATH)"; \
+		[ -n "$$derived_data" ] || { echo "VALIDATE_DERIVED_DATA_PATH is required" >&2; exit 2; }; \
+		cleanup() { rm -rf "$$derived_data"; }; \
 		trap cleanup EXIT; \
-		$(MAKE) validate
+		VALIDATE_DERIVED_DATA_PATH="$$derived_data" $(MAKE) validate
 
 guidance-check:
 	@./scripts/validate-agent-guidance.sh

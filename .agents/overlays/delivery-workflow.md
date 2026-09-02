@@ -14,9 +14,10 @@ precedence: project
   scripts; `make agent-check` combines changed-file lint and a Debug build.
 - `make validate` is the native changed-surface entry and delegates to
   `make agent-check`. `make validate-lane` wraps it with the global explicit
-  baseline and artifact gate, watching the ignored `.xcode-build/Build/`
-  output; a root created only for the run is cleaned before the wrapper
-  returns. The separate `make test` gate uses `.xcode-build-tests/`.
+  baseline and artifact gate, running the build in a unique ignored
+  `.xcode-build/validate-lane.*` DerivedData root and watching its `Build/`
+  output; the run root is cleaned before the wrapper returns. The separate
+  `make test` gate uses `.xcode-build-tests/`.
 - `make guidance-check` runs `scripts/validate-agent-guidance.sh` for plans,
   routing, overlays, and skill metadata.
 - The Swift 6.4 baseline requires strict full lint (`make lint`) and changed

@@ -10,9 +10,9 @@ GitMenuBar is a native macOS menu bar app for day-to-day Git workflows.
 changed-surface entry (it delegates to `agent-check`), and
 `make validate-lane` for the global baseline/artifact wrapper. The wrapper
 defaults to `git merge-base origin/main HEAD`, accepts `VALIDATE_BASE=...`,
-watches the ignored `.xcode-build/Build/` output, and removes its parent root
-when created by that run. The separate `make test` gate uses
-`.xcode-build-tests/`. Use `make check-preview`
+runs the build in a unique ignored `.xcode-build/validate-lane.*` DerivedData
+root, watches its `Build/` output, and removes the run root before returning.
+The separate `make test` gate uses `.xcode-build-tests/`. Use `make check-preview`
 for UI work, and `make lint && make test` before merge.
 
 The Swift 6.4 toolchain and concurrency baseline is documented in

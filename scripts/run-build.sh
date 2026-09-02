@@ -7,7 +7,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/config/app_identity.sh"
 
 CONFIGURATION="Debug"
-DERIVED_DATA="${PROJECT_ROOT}/.xcode-build"
+DERIVED_DATA="${VALIDATE_DERIVED_DATA_PATH:-${PROJECT_ROOT}/.xcode-build}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
