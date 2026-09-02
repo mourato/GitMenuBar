@@ -115,7 +115,8 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             lastActivityAt: Date(timeIntervalSinceNow: -ProjectStatusSnapshot.staleThreshold - 1)
         )
 
-        XCTAssertTrue(snapshot.isStale)
+        let now = Date()
+        XCTAssertTrue(snapshot.isStale(at: now))
         XCTAssertEqual(snapshot.classification, .needsAttention)
         XCTAssertEqual(snapshot.attentionPriority, .requiresAction)
         XCTAssertTrue(snapshot.reasons.contains(.stale))

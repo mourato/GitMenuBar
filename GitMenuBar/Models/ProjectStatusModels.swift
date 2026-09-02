@@ -71,8 +71,12 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
 
     // ponytail: stale uses commit age; add working-tree mtimes only if this proxy proves insufficient.
     var isStale: Bool {
+        isStale(at: Date())
+    }
+
+    func isStale(at now: Date) -> Bool {
         guard let lastActivityAt else { return false }
-        return hasAttentionState && Date().timeIntervalSince(lastActivityAt) >= Self.staleThreshold
+        return hasAttentionState && now.timeIntervalSince(lastActivityAt) >= Self.staleThreshold
     }
 
     private var hasAttentionState: Bool {
@@ -85,7 +89,7 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         if lastErrorDescription != nil {
             return .unavailable
         }
-        if hasAttentionState || isStale {
+        if hasAttentionState {
             return .needsAttention
         }
         return .clean
@@ -102,9 +106,6 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         }
         if behindCount > 0 {
             return .updateAvailable
-        }
-        if isStale {
-            return .review
         }
         return .clean
     }
@@ -255,10 +256,11 @@ struct ProjectStatusReader {
         var lastActivityAt: Date?
     }
 
-    static func parseBranchTracking(_ output: String) -> BranchTrackingHealth {
+    static func parseBranchTracking(_ output: String, currentBranch: String? = nil) -> BranchTrackingHealth {
         var withoutUpstream = 0
         var unpushed = 0
         var latestCommitTimestamp: Int?
+        var currentCommitTimestamp: Int?
 
         for line in output.split(whereSeparator: \.isNewline) {
             let fields = line.split(separator: "\0", omittingEmptySubsequences: false)
@@ -270,13 +272,18 @@ struct ProjectStatusReader {
             }
             if fields.count >= 4, let timestamp = Int(fields[3]) {
                 latestCommitTimestamp = max(latestCommitTimestamp ?? timestamp, timestamp)
+                if let currentBranch, String(fields[0]) == currentBranch {
+                    currentCommitTimestamp = timestamp
+                }
             }
         }
 
         return BranchTrackingHealth(
             branchesWithoutUpstreamCount: withoutUpstream,
             unpushedBranchCount: unpushed,
-            lastActivityAt: latestCommitTimestamp.map { Date(timeIntervalSince1970: TimeInterval($0)) }
+            lastActivityAt: (currentCommitTimestamp ?? latestCommitTimestamp).map {
+                Date(timeIntervalSince1970: TimeInterval($0))
+            }
         )
     }
 
@@ -349,7 +356,7 @@ struct ProjectStatusReader {
             ]
         )
         let stashes = runner.runGitCommand(in: projectPath, args: ["stash", "list", "--format=%H"])
-        let trackingCounts = Self.parseBranchTracking(tracking.output)
+        let trackingCounts = Self.parseBranchTracking(tracking.output, currentBranch: currentBranch)
         return BranchHealth(
             branchesWithoutUpstreamCount: tracking.failure ? 0 : trackingCounts.branchesWithoutUpstreamCount,
             unpushedBranchCount: tracking.failure ? 0 : trackingCounts.unpushedBranchCount,
