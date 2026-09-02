@@ -1,6 +1,9 @@
-.PHONY: help build build-release test lint lint-changed lint-fix check-preview agent-check validate guidance-check install-app dmg clean setup
+.PHONY: help build build-release test lint lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command guidance-check install-app dmg clean setup
 
 PROJECT_DIR := $(shell pwd)
+AGENT_CONFIG_HOME ?= $(HOME)/.agents
+VALIDATE_LANE ?= $(AGENT_CONFIG_HOME)/scripts/validate-lane
+VALIDATE_BASE ?= $(shell git merge-base origin/main HEAD 2>/dev/null || git rev-parse HEAD^)
 
 help:
 	@echo "GitMenuBar Development Commands"
@@ -14,6 +17,7 @@ help:
 	@echo "make check-preview Check changed UI files for SwiftUI preview coverage"
 	@echo "make agent-check   Lint changed Swift files and build Debug app"
 	@echo "make validate      Canonical changed-surface validation"
+	@echo "make validate-lane Run validate through the global baseline/artifact gate"
 	@echo "make guidance-check Validate agent guidance, plans, and skill references"
 	@echo "make install-app   Build Release and replace the installed app interactively"
 	@echo "make dmg           Build and package DMG"
@@ -46,6 +50,28 @@ check-preview:
 agent-check: lint-changed build
 
 validate: agent-check
+
+validate-lane:
+	@set -eu; \
+		artifact_parent="$(PROJECT_DIR)/.xcode-build"; \
+		parent_existed=0; \
+		if [ -e "$$artifact_parent" ] || [ -L "$$artifact_parent" ]; then parent_existed=1; fi; \
+		mkdir -p "$$artifact_parent"; \
+		derived_data="$$(mktemp -d "$$artifact_parent/validate-lane.XXXXXX")"; \
+		cleanup() { \
+			rm -rf "$$derived_data"; \
+			if [ "$$parent_existed" -eq 0 ]; then rmdir "$$artifact_parent" 2>/dev/null || true; fi; \
+		}; \
+		trap cleanup EXIT; \
+		$(VALIDATE_LANE) --repo "$(PROJECT_DIR)" --base "$(VALIDATE_BASE)" --artifacts "$$derived_data/Build" -- $(MAKE) validate-lane-command VALIDATE_DERIVED_DATA_PATH="$$derived_data"
+
+validate-lane-command:
+	@set -eu; \
+		derived_data="$(VALIDATE_DERIVED_DATA_PATH)"; \
+		[ -n "$$derived_data" ] || { echo "VALIDATE_DERIVED_DATA_PATH is required" >&2; exit 2; }; \
+		cleanup() { rm -rf "$$derived_data"; }; \
+		trap cleanup EXIT; \
+		VALIDATE_DERIVED_DATA_PATH="$$derived_data" $(MAKE) validate
 
 guidance-check:
 	@./scripts/validate-agent-guidance.sh
