@@ -121,7 +121,11 @@ final class ProjectMonitorStore: ObservableObject {
             behindCount: snapshot.behindCount,
             hasUpstream: snapshot.hasUpstream,
             lastRefreshedAt: snapshot.lastRefreshedAt,
-            lastErrorDescription: snapshot.lastErrorDescription
+            lastErrorDescription: snapshot.lastErrorDescription,
+            branchesWithoutUpstreamCount: snapshot.branchesWithoutUpstreamCount,
+            unpushedBranchCount: snapshot.unpushedBranchCount,
+            unmergedBranchCount: snapshot.unmergedBranchCount,
+            stashCount: snapshot.stashCount
         )
     }
 

@@ -7,12 +7,32 @@ enum ProjectAttentionClassification: Equatable {
     case refreshing
 }
 
+enum ProjectAttentionPriority: Equatable {
+    case requiresAction
+    case review
+    case updateAvailable
+    case clean
+
+    var sortOrder: Int {
+        switch self {
+        case .requiresAction: 0
+        case .review: 1
+        case .updateAvailable: 2
+        case .clean: 3
+        }
+    }
+}
+
 enum ProjectAttentionReason: Equatable {
     case dirty
     case ahead
     case behind
     case diverged
     case noUpstream
+    case branchesWithoutUpstream
+    case unpushedBranches
+    case unmergedBranches
+    case stashes
     case detached
     case missing
     case invalidRepository
@@ -32,6 +52,10 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
     let hasUpstream: Bool
     let lastRefreshedAt: Date?
     let lastErrorDescription: String?
+    let branchesWithoutUpstreamCount: Int
+    let unpushedBranchCount: Int
+    let unmergedBranchCount: Int
+    let stashCount: Int
 
     var id: String {
         project.path
@@ -45,8 +69,26 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         if lastErrorDescription != nil {
             return .unavailable
         }
-        if hasWorkingTreeChanges || aheadCount > 0 || behindCount > 0 || isDetachedHead || !hasUpstream {
+        if hasWorkingTreeChanges || aheadCount > 0 || behindCount > 0 || isDetachedHead || !hasUpstream
+            || branchesWithoutUpstreamCount > 0 || unpushedBranchCount > 0 || unmergedBranchCount > 0
+            || stashCount > 0
+        {
             return .needsAttention
+        }
+        return .clean
+    }
+
+    var attentionPriority: ProjectAttentionPriority {
+        if hasWorkingTreeChanges || aheadCount > 0 || unpushedBranchCount > 0 {
+            return .requiresAction
+        }
+        if unmergedBranchCount > 0 || branchesWithoutUpstreamCount > 0 || stashCount > 0
+            || isDetachedHead || !hasUpstream
+        {
+            return .review
+        }
+        if behindCount > 0 {
+            return .updateAvailable
         }
         return .clean
     }
@@ -65,6 +107,18 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         }
         if !hasUpstream {
             result.insert(.noUpstream)
+        }
+        if branchesWithoutUpstreamCount > 0 {
+            result.insert(.branchesWithoutUpstream)
+        }
+        if unpushedBranchCount > 0 {
+            result.insert(.unpushedBranches)
+        }
+        if unmergedBranchCount > 0 {
+            result.insert(.unmergedBranches)
+        }
+        if stashCount > 0 {
+            result.insert(.stashes)
         }
         if isDetachedHead {
             result.insert(.detached)
@@ -168,6 +222,36 @@ struct ProjectStatusReader {
     private static let emptyTreeHash = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
     let runner: GitCommandRunner
 
+    struct BranchHealth: Equatable {
+        var branchesWithoutUpstreamCount = 0
+        var unpushedBranchCount = 0
+        var unmergedBranchCount = 0
+        var stashCount = 0
+    }
+
+    static func parseBranchTracking(_ output: String) -> (branchesWithoutUpstreamCount: Int, unpushedBranchCount: Int) {
+        var withoutUpstream = 0
+        var unpushed = 0
+
+        for line in output.split(whereSeparator: \.isNewline) {
+            let fields = line.split(separator: "\0", omittingEmptySubsequences: false)
+            guard fields.count >= 3 else { continue }
+            if fields[1].isEmpty {
+                withoutUpstream += 1
+            } else if fields[2].contains("ahead") {
+                unpushed += 1
+            }
+        }
+
+        return (withoutUpstream, unpushed)
+    }
+
+    static func countBranchLines(_ output: String) -> Int {
+        output.split(whereSeparator: \.isNewline)
+            .filter { !String($0).trimmingCharacters(in: .whitespaces).isEmpty }
+            .count
+    }
+
     func read(
         project: ProjectReference,
         now: Date = Date(),
@@ -190,11 +274,14 @@ struct ProjectStatusReader {
                 project: project, branchName: "", isDetachedHead: false, stagedCount: 0,
                 unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
                 hasUpstream: false, lastRefreshedAt: nil,
-                lastErrorDescription: errorDescription
+                lastErrorDescription: errorDescription,
+                branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0,
+                unmergedBranchCount: 0, stashCount: 0
             )
         }
 
         let parsed = ProjectStatusPorcelainParser.parse(status.output)
+        let branchHealth = readBranchHealth(projectPath: project.path)
         let lineDiff = includeLineDiff && parsed.hasWorkingTreeChanges
             ? readLineDiff(project: project, untrackedPaths: parsed.untrackedPaths)
             : .zero
@@ -204,8 +291,52 @@ struct ProjectStatusReader {
             lineDiff: lineDiff,
             aheadCount: parsed.aheadCount, behindCount: parsed.behindCount, hasUpstream: parsed.hasUpstream,
             lastRefreshedAt: now,
-            lastErrorDescription: nil
+            lastErrorDescription: nil,
+            branchesWithoutUpstreamCount: branchHealth.branchesWithoutUpstreamCount,
+            unpushedBranchCount: branchHealth.unpushedBranchCount,
+            unmergedBranchCount: branchHealth.unmergedBranchCount,
+            stashCount: branchHealth.stashCount
         )
+    }
+
+    private func readBranchHealth(projectPath: String) -> BranchHealth {
+        let defaultBranch = defaultBranchName(projectPath: projectPath)
+        let unmerged = runner.runGitCommand(
+            in: projectPath,
+            args: ["branch", "--format=%(refname:short)", "--no-merged", defaultBranch]
+        )
+        let tracking = runner.runGitCommand(
+            in: projectPath,
+            args: [
+                "for-each-ref",
+                "--format=%(refname:short)%00%(upstream:short)%00%(upstream:track,nobracket)",
+                "refs/heads"
+            ]
+        )
+        let stashes = runner.runGitCommand(in: projectPath, args: ["stash", "list", "--format=%H"])
+        let trackingCounts = Self.parseBranchTracking(tracking.output)
+        return BranchHealth(
+            branchesWithoutUpstreamCount: tracking.failure ? 0 : trackingCounts.branchesWithoutUpstreamCount,
+            unpushedBranchCount: tracking.failure ? 0 : trackingCounts.unpushedBranchCount,
+            unmergedBranchCount: unmerged.failure ? 0 : Self.countBranchLines(unmerged.output),
+            stashCount: stashes.failure ? 0 : Self.countBranchLines(stashes.output)
+        )
+    }
+
+    private func defaultBranchName(projectPath: String) -> String {
+        let symbolic = runner.runGitCommand(in: projectPath, args: ["symbolic-ref", "refs/remotes/origin/HEAD"])
+        if !symbolic.failure,
+           let branch = symbolic.output.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "/").last,
+           !branch.isEmpty
+        {
+            return String(branch)
+        }
+
+        let branches = runner.runGitCommand(in: projectPath, args: ["branch", "--format=%(refname:short)"])
+            .output
+            .split(whereSeparator: \.isNewline)
+            .map(String.init)
+        return branches.contains("main") ? "main" : branches.contains("master") ? "master" : "main"
     }
 
     private func readLineDiff(project: ProjectReference, untrackedPaths: Set<String>) -> LineDiffStats {
