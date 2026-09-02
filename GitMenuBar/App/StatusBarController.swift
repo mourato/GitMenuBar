@@ -10,7 +10,7 @@ import SwiftUI
 
 // swiftlint:disable file_length
 @MainActor
-final class StatusBarController: ObservableObject {
+final class StatusBarController: NSObject, ObservableObject {
     private enum Constants {
         static let statusIconPointSize = NSSize(width: 16, height: 16)
         static let windowInitialSize = NSSize(width: 700, height: 720)
@@ -36,6 +36,7 @@ final class StatusBarController: ObservableObject {
 
     var statusItem: NSStatusItem?
     private var mainWindow: NSWindow?
+    private var mainWindowToolbarDelegate: MainWindowToolbarDelegate?
     var contextMenu: NSMenu?
     private var cancellables = Set<AnyCancellable>()
     private var baseStatusImage: NSImage?
@@ -113,6 +114,8 @@ final class StatusBarController: ObservableObject {
             gitManager: gitManager,
             projectMonitor: projectMonitor
         )
+
+        super.init()
 
         // Wire up token provider for git push operations
         gitManager.tokenProvider = { [weak githubAuthManager] in
@@ -288,6 +291,7 @@ final class StatusBarController: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] in
                 self?.refreshAppCommands()
+                self?.updateMainWindowToolbar()
             }
             .store(in: &cancellables)
     }
@@ -308,6 +312,7 @@ final class StatusBarController: ObservableObject {
 
         configureMainWindowAppearance(window)
         window.title = "GitMenuBar"
+        configureMainWindowToolbar(window)
         window.isReleasedWhenClosed = false
         window.setContentSize(Constants.windowInitialSize)
         window.contentMinSize = Constants.windowMinimumSize
@@ -333,6 +338,7 @@ final class StatusBarController: ObservableObject {
         window.delegate = windowDelegate
 
         mainWindow = window
+        updateMainWindowToolbar()
     }
 
     private func configureMainWindowAppearance(_ window: NSWindow) {
@@ -340,8 +346,150 @@ final class StatusBarController: ObservableObject {
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.titlebarSeparatorStyle = .none
+        window.toolbarStyle = .unifiedCompact
         window.hasShadow = true
         window.isMovableByWindowBackground = false
+    }
+
+    private func configureMainWindowToolbar(_ window: NSWindow) {
+        let toolbar = NSToolbar(identifier: "GitMenuBar.MainWindowToolbar")
+        let toolbarDelegate = MainWindowToolbarDelegate(target: self)
+        toolbar.delegate = toolbarDelegate
+        toolbar.displayMode = .iconOnly
+        toolbar.sizeMode = .small
+        toolbar.allowsUserCustomization = false
+        window.toolbar = toolbar
+        mainWindowToolbarDelegate = toolbarDelegate
+    }
+
+    fileprivate func makeMainWindowToolbarItem(
+        identifier: NSToolbarItem.Identifier
+    ) -> NSToolbarItem? {
+        let item = NSToolbarItem(itemIdentifier: identifier)
+        item.target = self
+
+        switch identifier {
+        case MainWindowToolbarItemIdentifier.sidebarToggle:
+            item.label = "Projects"
+            item.paletteLabel = "Projects"
+            item.toolTip = "Show or hide Projects sidebar"
+            item.action = #selector(toggleProjectsSidebarFromToolbar(_:))
+            item.image = toolbarSidebarImage()
+        case MainWindowToolbarItemIdentifier.back:
+            item.label = "Back"
+            item.paletteLabel = "Back"
+            item.toolTip = "Return to the main repository view"
+            item.action = #selector(goBackFromToolbar(_:))
+            item.image = NSImage(systemSymbolName: "chevron.backward", accessibilityDescription: "Back")
+        case MainWindowToolbarItemIdentifier.settings:
+            item.label = "Settings"
+            item.paletteLabel = "Settings"
+            item.toolTip = "Open GitMenuBar settings"
+            item.action = #selector(openSettingsFromToolbar(_:))
+            item.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings")
+        case MainWindowToolbarItemIdentifier.title:
+            let titleField = NSTextField(labelWithString: mainWindowTitle)
+            titleField.alignment = .center
+            titleField.font = .systemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
+            titleField.lineBreakMode = .byTruncatingTail
+            titleField.maximumNumberOfLines = 1
+            titleField.translatesAutoresizingMaskIntoConstraints = false
+            item.view = titleField
+            item.minSize = NSSize(width: 120, height: 22)
+            item.maxSize = NSSize(width: 240, height: 22)
+        default:
+            return nil
+        }
+
+        return item
+    }
+
+    private func updateMainWindowToolbar() {
+        guard let window = mainWindow, let toolbar = window.toolbar else { return }
+
+        window.title = mainWindowTitle
+
+        let titleField = toolbar.items
+            .first(where: { $0.itemIdentifier == MainWindowToolbarItemIdentifier.title })?.view as? NSTextField
+        if let titleField {
+            titleField.stringValue = mainWindowTitle
+        }
+
+        let shouldShowSidebarItem = if case .createRepo = presentationModel.route {
+            false
+        } else {
+            true
+        }
+        let hasSidebarItem = toolbar.items.contains { $0.itemIdentifier == MainWindowToolbarItemIdentifier.sidebarToggle }
+        if shouldShowSidebarItem, !hasSidebarItem {
+            toolbar.insertItem(withItemIdentifier: MainWindowToolbarItemIdentifier.sidebarToggle, at: 0)
+        } else if !shouldShowSidebarItem, let sidebarIndex = toolbar.items.firstIndex(where: { $0.itemIdentifier == MainWindowToolbarItemIdentifier.sidebarToggle }) {
+            toolbar.removeItem(at: sidebarIndex)
+        }
+
+        if let sidebarItem = toolbar.items.first(where: { $0.itemIdentifier == MainWindowToolbarItemIdentifier.sidebarToggle }) {
+            sidebarItem.image = toolbarSidebarImage()
+            sidebarItem.toolTip = isProjectsSidebarCollapsed ? "Show Projects sidebar" : "Hide Projects sidebar"
+        }
+
+        let needsBackItem = switch presentationModel.route {
+        case .historyDetail, .projectCleanup:
+            true
+        case .main, .createRepo:
+            false
+        }
+        let hasBackItem = toolbar.items.contains { $0.itemIdentifier == MainWindowToolbarItemIdentifier.back }
+        if needsBackItem, !hasBackItem {
+            toolbar.insertItem(withItemIdentifier: MainWindowToolbarItemIdentifier.back, at: 1)
+        } else if !needsBackItem, let backIndex = toolbar.items.firstIndex(where: { $0.itemIdentifier == MainWindowToolbarItemIdentifier.back }) {
+            toolbar.removeItem(at: backIndex)
+        }
+    }
+
+    private var mainWindowTitle: String {
+        switch presentationModel.route {
+        case .main:
+            guard let path = currentRepositoryPath() else { return "GitMenuBar" }
+            let normalizedPath = RecentProjectsStore.normalize(path)
+            return RecentProjectsStore().recentProjects().first { $0.path == normalizedPath }?.name
+                ?? PathDisplayFormatter.defaultProjectName(for: path)
+        case .createRepo:
+            return "Create Repository"
+        case .historyDetail:
+            return "Commit Details"
+        case .projectCleanup:
+            return "Project Cleanup"
+        }
+    }
+
+    private var isProjectsSidebarCollapsed: Bool {
+        UserDefaults.standard.bool(forKey: AppPreferences.Keys.isProjectsSidebarCollapsed)
+    }
+
+    private func toolbarSidebarImage() -> NSImage? {
+        NSImage(
+            systemSymbolName: isProjectsSidebarCollapsed ? "sidebar.right" : "sidebar.left",
+            accessibilityDescription: isProjectsSidebarCollapsed ? "Show Projects sidebar" : "Hide Projects sidebar"
+        )
+    }
+
+    @objc
+    private func toggleProjectsSidebarFromToolbar(_: NSToolbarItem) {
+        if case .createRepo = presentationModel.route {
+            return
+        }
+        let key = AppPreferences.Keys.isProjectsSidebarCollapsed
+        UserDefaults.standard.set(!UserDefaults.standard.bool(forKey: key), forKey: key)
+    }
+
+    @objc
+    private func goBackFromToolbar(_: NSToolbarItem) {
+        presentationModel.showMain()
+    }
+
+    @objc
+    private func openSettingsFromToolbar(_: NSToolbarItem) {
+        openSettingsWindow()
     }
 
     private func makeRootView() -> AnyView {
@@ -1074,6 +1222,50 @@ final class StatusBarController: ObservableObject {
         case .atomicCommits:
             "atomicCommits"
         }
+    }
+}
+
+private enum MainWindowToolbarItemIdentifier {
+    static let sidebarToggle = NSToolbarItem.Identifier("GitMenuBar.sidebarToggle")
+    static let back = NSToolbarItem.Identifier("GitMenuBar.back")
+    static let title = NSToolbarItem.Identifier("GitMenuBar.title")
+    static let settings = NSToolbarItem.Identifier("GitMenuBar.settings")
+}
+
+@MainActor
+private final class MainWindowToolbarDelegate: NSObject, NSToolbarDelegate {
+    private weak var target: StatusBarController?
+
+    init(target: StatusBarController) {
+        self.target = target
+    }
+
+    func toolbarAllowedItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [
+            MainWindowToolbarItemIdentifier.sidebarToggle,
+            MainWindowToolbarItemIdentifier.back,
+            .flexibleSpace,
+            MainWindowToolbarItemIdentifier.title,
+            MainWindowToolbarItemIdentifier.settings
+        ]
+    }
+
+    func toolbarDefaultItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [
+            MainWindowToolbarItemIdentifier.sidebarToggle,
+            .flexibleSpace,
+            MainWindowToolbarItemIdentifier.title,
+            .flexibleSpace,
+            MainWindowToolbarItemIdentifier.settings
+        ]
+    }
+
+    func toolbar(
+        _: NSToolbar,
+        itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
+        willBeInsertedIntoToolbar _: Bool
+    ) -> NSToolbarItem? {
+        target?.makeMainWindowToolbarItem(identifier: itemIdentifier)
     }
 }
 

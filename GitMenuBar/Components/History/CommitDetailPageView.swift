@@ -34,7 +34,7 @@ struct CommitDetailPageView: View {
     var body: some View {
         VStack(spacing: WorkbenchMetrics.panelPadding) {
             if let commit {
-                ScrollView(.vertical, showsIndicators: false) {
+                ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
                         metadataSection(commit: commit)
                         titleSection(commit: commit)
@@ -44,18 +44,13 @@ struct CommitDetailPageView: View {
 
                         changedFilesSection(commit: commit)
                     }
-                    .workbenchHideNativeScrollers()
                 }
-                .workbenchEdgeDissolve()
-                .workbenchThinScrollbar()
                 .frame(maxHeight: 520)
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 missingCommitSection
             }
         }
-        // Horizontal inset from MainMenuView; top matches main under the shared titlebar toolbar.
-        .padding(.top, WorkbenchMetrics.sectionSpacing)
         .task(id: avatarTaskID) {
             await loadAuthorAvatarIfNeeded(for: commit)
         }

@@ -28,8 +28,10 @@ they drift, and use an ADR for a durable decision rather than a task log.
 
 - Use one depth strategy: window-level material/vibrancy for the shell, quiet
   borders/tints for structure, and shadows only for floating overlays.
-- The header uses native title-bar chrome; do not add a material plate above
-  the content. Inputs are slightly inset from their surrounding surface.
+- The header uses native toolbar chrome; the main window title stays hidden and
+  the underlying titled `NSWindow` is retained only for AppKit traffic lights
+  and toolbar ownership. Do not add a material plate above the content.
+  Inputs are slightly inset from their surrounding surface.
 - Spacing is based on 8 points: compact 8, section 12, group 20, panel inset
   16, and window inset 12. Micro values 4 and 6 must be named metrics.
 - Radius scale is 6, 8, 10, 14, and 16 for chips, rows, inline panels, main
@@ -37,36 +39,38 @@ they drift, and use an ADR for a durable decision rather than a task log.
 - Use one interactive accent (`Color.accentColor`) plus semantic diff,
   warning, error, success, and quota colors. Hover and selection use the
   shared palette rather than local opacity guesses.
-- Use shared button variants: Primary, Secondary, Ghost, Icon, Destructive,
-  and Row. Prefer 32-point hit areas; never ship a tiny visible icon with an
-  undersized hit target.
+- Prefer native SwiftUI/AppKit button styles. Keep shared wrappers only for
+  semantic variants (Primary, Secondary, Ghost, Icon, Destructive, Row), not
+  for custom hover, press scaling, pointer, or scrollbar behavior. Prefer
+  32-point hit areas; never ship a tiny visible icon with an undersized hit
+  target.
 
 ## Composition and interaction
 
-The main route remains header → commit composer → scroll content → branch
-footer, with optional quota cards secondary to Git work. Stage/Unstage section
-actions stay visible; per-file actions remain hover-revealed where the product
-policy permits. Preserve keyboard actions, context menus, and confirmation for
-destructive work.
+The main route remains native toolbar → commit composer → scroll content →
+branch footer, with optional quota cards secondary to Git work. `NavigationSplitView`
+owns the Projects sidebar's width, selection, and collapse behavior. Stage/
+Unstage section actions stay visible; per-file actions remain hover-revealed
+where the product policy permits. Preserve keyboard actions, context menus, and
+confirmation for destructive work.
 
-Each opted-in scroll surface has exactly one vertical `ScrollView` owner. Keep
-the composer and footer outside the main owner. Apply
-`workbenchEdgeDissolve()` before `workbenchThinScrollbar()`; the custom thumb is
-an affordance, not a replacement for semantic scrolling, keyboard focus, or
-VoiceOver. Do not add a parallel native/custom scrollbar or scroll owner.
+Each scroll surface has exactly one native vertical `ScrollView` or `List`
+owner. Keep the composer and footer outside the main owner. Do not hide and
+redraw native indicators, add edge masks, or add a parallel custom scrollbar.
 
 Settings uses the native grouped Form hierarchy, one scroll owner per pane,
-and no nested workbench panel plates. The multi-project window keeps one shared
-header height and a collapsible Projects sidebar beside the selected-project
-detail column.
+and no nested workbench panel plates. The multi-project window keeps a
+collapsible Projects sidebar beside the selected-project detail column; the
+system owns its divider and width.
 
 ## States, accessibility, and motion
 
 Affected surfaces must cover idle, hover, pressed, focused, selected, disabled,
 loading, empty, and error states as applicable. Expose labels, values,
 selection, keyboard behavior, and VoiceOver semantics. Verify Light/Dark,
-increased contrast, Reduce Transparency, and Reduce Motion. Reduced motion
-removes morph/fade animation without removing scrolling or state feedback. The
+increased contrast, Reduce Transparency, and Reduce Motion. Native controls
+own hover, press, focus, and pointer feedback. Reduced motion removes
+nonessential custom motion without removing scrolling or state feedback. The
 main workbench window appears and disappears immediately; do not animate its
 alpha, so status-item toggles feel responsive. Secondary panels may use the
 shared motion defaults.

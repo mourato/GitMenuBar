@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct UsageQuotaStripView: View {
@@ -44,14 +43,6 @@ struct UsageQuotaStripView: View {
                 WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
                 value: isCollapsed
             )
-            // Quota cards are informational only — never imply clickability via the pointer.
-            .onHover { hovering in
-                if hovering {
-                    NSCursor.arrow.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
             .task {
                 usageQuotaStore.refresh(reason: .contentAppeared)
             }

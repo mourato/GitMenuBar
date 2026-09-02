@@ -1,15 +1,11 @@
-import AppKit
 import SwiftUI
 
 struct ProjectsSidebarView: View {
     @EnvironmentObject private var monitor: ProjectMonitorStore
-    @AppStorage(AppPreferences.Keys.isProjectsSidebarCollapsed) private var isCollapsed = false
     @AppStorage(AppPreferences.Keys.isCleanProjectsGroupCollapsed) private var isCleanGroupCollapsed = false
-    @AppStorage(AppPreferences.Keys.projectsSidebarWidth) private var expandedWidth = ProjectsSidebarMetrics.defaultWidth
     @State private var renameProject: ProjectReference?
     @State private var renameDraft = ""
-    @State private var resizeDragStartWidth: Double?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var selection: String?
 
     let currentPath: String
     let onSelect: (String) -> Void
@@ -23,32 +19,30 @@ struct ProjectsSidebarView: View {
     let onFetchAll: () -> Void
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            if !isCollapsed {
-                VStack(alignment: .leading, spacing: 8) {
-                    sidebarControls
+        VStack(spacing: 0) {
+            sidebarControls
 
-                    ScrollView(.vertical, showsIndicators: true) {
-                        projectGroups
-                    }
-                    .frame(maxHeight: .infinity, alignment: .topLeading)
-                    .layoutPriority(1)
-
-                    sidebarFooter
+            List(selection: $selection) {
+                ForEach(groupedProjects, id: \.0) { title, snapshots in
+                    groupSection(title: title, snapshots: snapshots)
                 }
-                .padding(.top, ProjectsSidebarMetrics.headerHeight + WorkbenchMetrics.sectionSpacing)
-                .padding(.bottom, WorkbenchMetrics.windowPadding)
-                .frame(width: sidebarWidth, alignment: .topLeading)
-                .frame(maxHeight: .infinity, alignment: .topLeading)
             }
-
-            if !isCollapsed {
-                resizeHandle
+            .listStyle(.sidebar)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                UsageQuotaStripView()
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 4)
             }
         }
-        .frame(width: sidebarWidth, alignment: .topLeading)
-        .frame(maxHeight: .infinity, alignment: .topLeading)
-        .background(sidebarBackground)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .onAppear(perform: synchronizeSelection)
+        .onChange(of: currentPath) { _ in
+            synchronizeSelection()
+        }
+        .onChange(of: selection) { path in
+            guard let path, path != normalizedCurrentPath else { return }
+            onSelect(path)
+        }
         .alert("Rename Project", isPresented: Binding(
             get: { renameProject != nil },
             set: {
@@ -68,180 +62,117 @@ struct ProjectsSidebarView: View {
         }
     }
 
-    @ViewBuilder
-    private var sidebarBackground: some View {
-        if isCollapsed {
-            Color.clear
-        } else {
-            Rectangle()
-                .fill(.quaternary.opacity(0.35))
-        }
-    }
-
-    @ViewBuilder
     private var sidebarControls: some View {
-        if !isCollapsed {
-            HStack(spacing: WorkbenchMetrics.microSpacing) {
-                Text("Projects")
-                    .font(.headline)
-                Spacer(minLength: 0)
-                MainMenuHeaderIconButton(
-                    systemImage: "wand.and.stars",
-                    accessibilityLabel: "Project Cleanup",
-                    accessibilityHint: "Review safe branch and worktree cleanup across monitored projects.",
-                    action: onProjectCleanup
-                )
-                MainMenuHeaderIconButton(
-                    systemImage: "plus",
-                    accessibilityLabel: "Add Project",
-                    accessibilityHint: "Choose a local Git repository to monitor.",
-                    action: onAddProject
-                )
-                MainMenuHeaderIconButton(
-                    systemImage: "arrow.clockwise",
-                    accessibilityLabel: "Refresh All Projects",
-                    accessibilityHint: "Refreshes the Git status for every monitored project.",
-                    action: onRefreshAll
-                )
-                MainMenuHeaderIconButton(
-                    systemImage: "arrow.down.circle",
-                    accessibilityLabel: "Fetch All Projects",
-                    accessibilityHint: "Fetches remotes for every monitored project.",
-                    action: onFetchAll
-                )
-            }
-            .padding(.horizontal, 10)
-        }
-    }
+        HStack(spacing: 4) {
+            Text("Projects")
+                .font(.headline)
 
-    private var projectGroups: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(groupedProjects, id: \.0) { title, snapshots in
-                VStack(alignment: .leading, spacing: ProjectsSidebarMetrics.rowSpacing) {
-                    if !isCollapsed {
-                        groupHeader(title: title, count: snapshots.count)
-                    }
-                    if title != "Clean" || !isCleanGroupCollapsed {
-                        ForEach(snapshots) { snapshot in
-                            row(snapshot)
-                        }
-                        .transition(
-                            reduceMotion
-                                ? .opacity
-                                : .opacity.combined(with: .move(edge: .top))
-                        )
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-    }
+            Spacer(minLength: 0)
 
-    @ViewBuilder
-    private var sidebarFooter: some View {
-        if !isCollapsed {
-            VStack(spacing: WorkbenchMetrics.compactSpacing) {
-                Divider()
-                UsageQuotaStripView()
-                    .padding(.horizontal, 10)
-            }
-        }
-    }
-
-    private var resizeHandle: some View {
-        ZStack {
-            Rectangle()
-                .fill(Color.clear)
-                .frame(width: ProjectsSidebarMetrics.resizeHitWidth)
-            Rectangle()
-                .fill(Color.secondary.opacity(0.16))
-                .frame(width: 1)
-        }
-        .frame(maxHeight: .infinity)
-        .contentShape(Rectangle())
-        .gesture(resizeGesture)
-        .onHover { isHovering in
-            (isHovering ? NSCursor.resizeLeftRight : NSCursor.arrow).set()
-        }
-        .accessibilityElement()
-        .accessibilityLabel("Resize Projects sidebar")
-        .accessibilityValue("\(Int(expandedWidth)) pixels")
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .increment:
-                expandedWidth = clampedWidth(expandedWidth + ProjectsSidebarMetrics.keyboardResizeStep)
-            case .decrement:
-                expandedWidth = clampedWidth(expandedWidth - ProjectsSidebarMetrics.keyboardResizeStep)
-            default:
-                break
-            }
-        }
-    }
-
-    private var resizeGesture: some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                if resizeDragStartWidth == nil {
-                    resizeDragStartWidth = expandedWidth
-                }
-                let startWidth = resizeDragStartWidth ?? expandedWidth
-                expandedWidth = clampedWidth(startWidth + value.translation.width)
-            }
-            .onEnded { _ in
-                resizeDragStartWidth = nil
-            }
-    }
-
-    private var sidebarWidth: CGFloat {
-        CGFloat(isCollapsed ? ProjectsSidebarMetrics.collapsedWidth : clampedWidth(expandedWidth))
-    }
-
-    private var groupedProjects: [(String, [ProjectStatusSnapshot])] {
-        let values = monitor.monitoredProjects.compactMap { monitor.snapshots[$0.path] }
-        return [
-            ("Needs Attention", values.filter { $0.classification == .needsAttention }),
-            ("Clean", values.filter { $0.classification == .clean }),
-            ("Unavailable", values.filter { $0.classification == .unavailable })
-        ].filter { !$0.1.isEmpty }
-    }
-
-    private func row(_ snapshot: ProjectStatusSnapshot) -> some View {
-        Button { onSelect(snapshot.project.path) } label: {
-            HStack(spacing: 7) {
-                Circle()
-                    .fill(snapshot.classification == .clean ? .green : .orange)
-                    .frame(width: 7, height: 7)
-                if !isCollapsed {
-                    HStack(spacing: 7) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(snapshot.project.name)
-                                .lineLimit(1)
-                            Text(statusSummary(for: snapshot))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                        Spacer(minLength: 0)
-                        if snapshot.hasWorkingTreeChanges {
-                            Text(changeCountSummary(for: snapshot))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: ProjectsSidebarMetrics.rowHeight)
-            .contentShape(Rectangle())
-            .background(
-                snapshot.project.path == RecentProjectsStore.normalize(currentPath)
-                    ? Color.accentColor.opacity(0.18)
-                    : Color.clear
+            sidebarButton(
+                systemImage: "wand.and.stars",
+                accessibilityLabel: "Project Cleanup",
+                accessibilityHint: "Review safe branch and worktree cleanup across monitored projects.",
+                action: onProjectCleanup
+            )
+            sidebarButton(
+                systemImage: "plus",
+                accessibilityLabel: "Add Project",
+                accessibilityHint: "Choose a local Git repository to monitor.",
+                action: onAddProject
+            )
+            sidebarButton(
+                systemImage: "arrow.clockwise",
+                accessibilityLabel: "Refresh All Projects",
+                accessibilityHint: "Refreshes the Git status for every monitored project.",
+                action: onRefreshAll
+            )
+            sidebarButton(
+                systemImage: "arrow.down.circle",
+                accessibilityLabel: "Fetch All Projects",
+                accessibilityHint: "Fetches remotes for every monitored project.",
+                action: onFetchAll
             )
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+    }
+
+    private func sidebarButton(
+        systemImage: String,
+        accessibilityLabel: String,
+        accessibilityHint: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+        }
+        .buttonStyle(.borderless)
+        .controlSize(.small)
+        .frame(minWidth: WorkbenchMetrics.iconHitTarget, minHeight: WorkbenchMetrics.iconHitTarget)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(accessibilityHint)
+    }
+
+    @ViewBuilder
+    private func groupSection(title: String, snapshots: [ProjectStatusSnapshot]) -> some View {
+        if title == "Clean" {
+            Section(isExpanded: cleanGroupExpanded) {
+                projectRows(snapshots)
+            } header: {
+                groupHeader(title: title, count: snapshots.count)
+            }
+        } else {
+            Section {
+                projectRows(snapshots)
+            } header: {
+                groupHeader(title: title, count: snapshots.count)
+            }
+        }
+    }
+
+    private func projectRows(_ snapshots: [ProjectStatusSnapshot]) -> some View {
+        ForEach(snapshots) { snapshot in
+            projectRow(snapshot)
+                .tag(snapshot.project.path as String?)
+        }
+    }
+
+    private func groupHeader(title: String, count: Int) -> some View {
+        HStack {
+            Text(title)
+                .textCase(.uppercase)
+            Spacer(minLength: 0)
+            Text("\(count)")
+                .monospacedDigit()
+        }
+    }
+
+    private func projectRow(_ snapshot: ProjectStatusSnapshot) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(snapshot.classification == .clean ? .green : .orange)
+                .frame(width: 7, height: 7)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(snapshot.project.name)
+                    .lineLimit(1)
+                Text(statusSummary(for: snapshot))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+
+            if snapshot.hasWorkingTreeChanges {
+                Text(changeCountSummary(for: snapshot))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
         .contextMenu {
             Button("Rename Project") {
                 renameDraft = snapshot.project.name
@@ -251,7 +182,32 @@ struct ProjectsSidebarView: View {
             Button("Stop Monitoring") { onStopMonitoring(snapshot.project.path) }
             Button("Remove Project", role: .destructive) { onRemove(snapshot.project.path) }
         }
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(for: snapshot))
+    }
+
+    private var cleanGroupExpanded: Binding<Bool> {
+        Binding(
+            get: { !isCleanGroupCollapsed },
+            set: { isCleanGroupCollapsed = !$0 }
+        )
+    }
+
+    private var normalizedCurrentPath: String {
+        RecentProjectsStore.normalize(currentPath)
+    }
+
+    private func synchronizeSelection() {
+        selection = normalizedCurrentPath.isEmpty ? nil : normalizedCurrentPath
+    }
+
+    private var groupedProjects: [(String, [ProjectStatusSnapshot])] {
+        let values = monitor.monitoredProjects.compactMap { monitor.snapshots[$0.path] }
+        return [
+            ("Needs Attention", values.filter { $0.classification == .needsAttention }),
+            ("Clean", values.filter { $0.classification == .clean }),
+            ("Unavailable", values.filter { $0.classification == .unavailable })
+        ].filter { !$0.1.isEmpty }
     }
 
     private func accessibilityLabel(for snapshot: ProjectStatusSnapshot) -> String {
@@ -298,67 +254,6 @@ struct ProjectsSidebarView: View {
         }
         return parts.joined(separator: " ")
     }
-
-    @ViewBuilder
-    private func groupHeader(title: String, count: Int) -> some View {
-        if title == "Clean" {
-            Button {
-                withAnimation(
-                    WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion)
-                ) {
-                    isCleanGroupCollapsed.toggle()
-                }
-            } label: {
-                groupHeaderLabel(title: title, count: count, showsDisclosure: true)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Clean projects, \(count)")
-            .accessibilityValue(isCleanGroupCollapsed ? "Collapsed" : "Expanded")
-            .accessibilityHint(
-                isCleanGroupCollapsed ? "Expands clean projects." : "Collapses clean projects."
-            )
-        } else {
-            groupHeaderLabel(title: title, count: count, showsDisclosure: false)
-        }
-    }
-
-    private func groupHeaderLabel(title: String, count: Int, showsDisclosure: Bool) -> some View {
-        HStack(spacing: 4) {
-            if showsDisclosure {
-                Image(systemName: isCleanGroupCollapsed ? "chevron.right" : "chevron.down")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
-            }
-            Text(title.uppercased())
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Text("\(count)")
-                .font(.caption2.monospacedDigit())
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-    }
-
-    private func clampedWidth(_ width: Double) -> Double {
-        min(max(width, ProjectsSidebarMetrics.minWidth), ProjectsSidebarMetrics.maxWidth)
-    }
-}
-
-enum ProjectsSidebarMetrics {
-    static let collapsedWidth: Double = 0
-    static let defaultWidth: Double = 240
-    static let minWidth: Double = 220
-    static let maxWidth: Double = 360
-    static let rowHeight: CGFloat = 44
-    static let rowSpacing: CGFloat = 4
-    static let keyboardResizeStep: Double = 16
-    static let resizeHitWidth: CGFloat = 8
-    static let headerHeight: CGFloat = 28
-    static let sidebarToggleLeadingPadding: CGFloat = 88
 }
 
 #Preview {
@@ -376,5 +271,4 @@ enum ProjectsSidebarMetrics {
     )
     .environmentObject(ProjectMonitorStore())
     .environmentObject(UsageQuotaStore())
-    .environmentObject(MainMenuPresentationModel())
 }

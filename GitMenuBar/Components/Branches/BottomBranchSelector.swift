@@ -10,8 +10,6 @@ struct BottomBranchSelectorView: View {
     let isPresented: Bool
     let onTap: () -> Void
 
-    @State private var isHovered = false
-
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -62,25 +60,13 @@ struct BottomBranchSelectorView: View {
             )
             .animation(
                 WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
-                value: isHovered
-            )
-            .animation(
-                WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
                 value: isPresented
             )
         }
-        .buttonStyle(PressableButtonStyle())
+        .buttonStyle(.borderless)
         .accessibilityLabel("Current branch \(currentBranch)")
         .accessibilityValue(isPresented ? "Branch selector open" : "Branch selector closed")
         .accessibilityHint("Shows branch selection and sync actions.")
-        .onHover { inside in
-            isHovered = inside
-            if inside {
-                NSCursor.pointingHand.push()
-            } else {
-                NSCursor.pop()
-            }
-        }
     }
 
     private var backgroundColor: Color {
@@ -92,10 +78,6 @@ struct BottomBranchSelectorView: View {
             return WorkbenchPalette.selectedFill()
         }
 
-        if isHovered {
-            return WorkbenchPalette.hoverFill()
-        }
-
         return .clear
     }
 
@@ -104,7 +86,7 @@ struct BottomBranchSelectorView: View {
             return WorkbenchPalette.errorBorder(contrast: colorSchemeContrast)
         }
 
-        if isPresented || isHovered {
+        if isPresented {
             return WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast).opacity(0.55)
         }
 

@@ -1,45 +1,6 @@
 import CoreGraphics
 import SwiftUI
 
-// MARK: - Press feedback
-
-struct PressableButtonStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(
-                WorkbenchMotion.adaptive(WorkbenchMotion.press, usesReducedMotion: reduceMotion),
-                value: configuration.isPressed
-            )
-    }
-}
-
-extension View {
-    func pressable() -> some View {
-        modifier(PressableModifier())
-    }
-}
-
-private struct PressableModifier: ViewModifier {
-    @GestureState private var isPressed = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(isPressed ? 0.98 : 1.0)
-            .animation(
-                WorkbenchMotion.adaptive(WorkbenchMotion.press, usesReducedMotion: reduceMotion),
-                value: isPressed
-            )
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .updating($isPressed) { _, state, _ in state = true }
-            )
-    }
-}
-
 // MARK: - Adaptive motion
 
 struct AdaptiveMotionModifier: ViewModifier {
@@ -76,13 +37,6 @@ enum WorkbenchMetrics {
     static let largeCornerRadius: CGFloat = 14
     static let overlayCornerRadius: CGFloat = 16
     static let iconHitTarget: CGFloat = 28
-    static let scrollEdgeTopBand: CGFloat = 32
-    static let scrollEdgeBottomBand: CGFloat = 28
-    static let scrollbarInset: CGFloat = 8
-    static let scrollbarWidth: CGFloat = 6
-    static let scrollbarExpandedWidth: CGFloat = 10
-    static let scrollbarMinimumThumbHeight: CGFloat = 28
-    static let scrollbarHoverZone: CGFloat = 16
 }
 
 enum WorkbenchTypography {

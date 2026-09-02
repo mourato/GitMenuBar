@@ -103,6 +103,9 @@ extension MainMenuView {
                 showBranchManagement = true
             }
         )
+        .popover(isPresented: $showBranchSelector, arrowEdge: .bottom) {
+            branchSelectorOverlay
+        }
     }
 
     @ViewBuilder
@@ -152,12 +155,9 @@ extension MainMenuView {
                 commitHistoryEditCoordinator: commitHistoryEditCoordinator
             )
 
-            ScrollView(.vertical, showsIndicators: false) {
+            ScrollView(.vertical) {
                 mainScrollContent
-                    .workbenchHideNativeScrollers()
             }
-            .workbenchEdgeDissolve()
-            .workbenchThinScrollbar()
             .scrollDisabled(isCommandPalettePresented)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .layoutPriority(1)
@@ -206,50 +206,46 @@ extension MainMenuView {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
+    private var projectsSidebarVisibility: Binding<NavigationSplitViewVisibility> {
+        Binding(
+            get: { isProjectsSidebarCollapsed ? .detailOnly : .all },
+            set: { isProjectsSidebarCollapsed = $0 == .detailOnly }
+        )
+    }
+
     var mainView: some View {
         applyMainViewOverlays(
-            to: ZStack(alignment: .topLeading) {
-                HStack(spacing: 0) {
-                    ProjectsSidebarView(
-                        currentPath: currentRepositoryPath,
-                        onSelect: switchRepository,
-                        onReveal: revealProjectInFinder,
-                        onStopMonitoring: { projectMonitor.remove(path: $0) },
-                        onRemove: removeProject,
-                        onRename: renameProject,
-                        onProjectCleanup: presentationModel.showProjectCleanup,
-                        onAddProject: selectDirectory,
-                        onRefreshAll: projectMonitor.refreshAll,
-                        onFetchAll: projectMonitor.fetchAll
-                    )
-
-                    VStack(spacing: 0) {
-                        routeHeaderContent
-                            .padding(.leading, WorkbenchMetrics.windowPadding)
-                            .padding(.trailing, WorkbenchMetrics.windowPadding)
-                            .frame(height: ProjectsSidebarMetrics.headerHeight)
-                            .frame(maxWidth: .infinity, alignment: .center)
-
-                        routeContent
-                            .padding(.top, WorkbenchMetrics.sectionSpacing)
-                            .padding(.leading, WorkbenchMetrics.windowPadding)
-                            .padding(.trailing, WorkbenchMetrics.windowPadding)
-                            .padding(.bottom, WorkbenchMetrics.windowPadding)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    }
+            to: NavigationSplitView(columnVisibility: projectsSidebarVisibility) {
+                ProjectsSidebarView(
+                    currentPath: currentRepositoryPath,
+                    onSelect: switchRepository,
+                    onReveal: revealProjectInFinder,
+                    onStopMonitoring: { projectMonitor.remove(path: $0) },
+                    onRemove: removeProject,
+                    onRename: renameProject,
+                    onProjectCleanup: presentationModel.showProjectCleanup,
+                    onAddProject: selectDirectory,
+                    onRefreshAll: projectMonitor.refreshAll,
+                    onFetchAll: projectMonitor.fetchAll
+                )
+                .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 360)
+            } detail: {
+                routeContent
+                    .padding(.top, WorkbenchMetrics.sectionSpacing)
+                    .padding(.leading, WorkbenchMetrics.windowPadding)
+                    .padding(.trailing, WorkbenchMetrics.windowPadding)
+                    .padding(.bottom, WorkbenchMetrics.windowPadding)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-
-                windowHeaderLeadingControls
-                    .frame(height: ProjectsSidebarMetrics.headerHeight, alignment: .center)
             }
+            .navigationSplitViewStyle(.balanced)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .ignoresSafeArea(.container, edges: .top)
-            .workbenchScrollbarStyle()
             .onExitCommand {
                 if isCommandPalettePresented {
                     closeCommandPalette()
+                    return
+                }
+                if showBranchSelector {
+                    dismissTransientPresentations()
                     return
                 }
                 if showRepositoryOptionsPopover {

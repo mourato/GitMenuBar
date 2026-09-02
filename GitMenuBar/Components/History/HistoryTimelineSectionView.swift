@@ -212,15 +212,6 @@ private struct HistoryTimelineRowView: View {
             }
             .disabled(isCurrentCommit)
         }
-        .onHover { hovered in
-            isHovered = hovered
-
-            if hovered {
-                NSCursor.pointingHand.push()
-            } else {
-                NSCursor.pop()
-            }
-        }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if let commitURL {
                 Button {
@@ -239,7 +230,6 @@ private struct HistoryTimelineRowView: View {
             }
             .tint(.orange)
         }
-        .pressable()
     }
 
     private func copyToPasteboard(_ value: String) {

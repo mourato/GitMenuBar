@@ -139,7 +139,7 @@ struct MainMenuCommandPaletteView: View {
                 emptyState
             } else {
                 ScrollViewReader { proxy in
-                    ScrollView(.vertical, showsIndicators: false) {
+                    ScrollView(.vertical) {
                         LazyVStack(alignment: .leading, spacing: 8) {
                             ForEach(MainMenuCommandPaletteSection.allCases, id: \.self) { section in
                                 let sectionItems = items.filter { $0.section == section }
@@ -149,11 +149,7 @@ struct MainMenuCommandPaletteView: View {
                             }
                         }
                         .padding(.bottom, 2)
-                        .workbenchHideNativeScrollers()
                     }
-                    .workbenchEdgeDissolve()
-                    .workbenchThinScrollbar()
-                    .scrollIndicators(.hidden)
                     .frame(maxHeight: 330)
                     .onAppear {
                         scrollSelectionIntoView(using: proxy, animated: false)
