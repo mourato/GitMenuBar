@@ -54,7 +54,8 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             project: ProjectReference(path: "/tmp/project"), branchName: "main", isDetachedHead: false,
             stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
             hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil,
-            branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0, unmergedBranchCount: 0, stashCount: 0
+            branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0, unmergedBranchCount: 0, stashCount: 0,
+            lastActivityAt: nil
         )
 
         XCTAssertEqual(snapshot.classification, .clean)
@@ -66,7 +67,8 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             stagedCount: 1, unstagedCount: 0, untrackedCount: 0,
             lineDiff: LineDiffStats(added: 3, removed: 1), aheadCount: 2, behindCount: 1,
             hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil,
-            branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0, unmergedBranchCount: 0, stashCount: 0
+            branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0, unmergedBranchCount: 0, stashCount: 0,
+            lastActivityAt: nil
         )
 
         XCTAssertEqual(snapshot.classification, .needsAttention)
@@ -79,7 +81,8 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             project: ProjectReference(path: "/tmp/project"), branchName: "main", isDetachedHead: false,
             stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
             hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil,
-            branchesWithoutUpstreamCount: 1, unpushedBranchCount: 0, unmergedBranchCount: 2, stashCount: 1
+            branchesWithoutUpstreamCount: 1, unpushedBranchCount: 0, unmergedBranchCount: 2, stashCount: 1,
+            lastActivityAt: nil
         )
 
         XCTAssertEqual(snapshot.classification, .needsAttention)
@@ -94,12 +97,28 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             project: ProjectReference(path: "/tmp/project"), branchName: "main", isDetachedHead: false,
             stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
             hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil,
-            branchesWithoutUpstreamCount: 0, unpushedBranchCount: 1, unmergedBranchCount: 0, stashCount: 0
+            branchesWithoutUpstreamCount: 0, unpushedBranchCount: 1, unmergedBranchCount: 0, stashCount: 0,
+            lastActivityAt: nil
         )
 
         XCTAssertEqual(snapshot.classification, .needsAttention)
         XCTAssertEqual(snapshot.attentionPriority, .requiresAction)
         XCTAssertTrue(snapshot.reasons.contains(.unpushedBranches))
+    }
+
+    func testStaleAttentionStateIsVisible() {
+        let snapshot = ProjectStatusSnapshot(
+            project: ProjectReference(path: "/tmp/project"), branchName: "feature/old", isDetachedHead: false,
+            stagedCount: 1, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
+            hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil,
+            branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0, unmergedBranchCount: 0, stashCount: 0,
+            lastActivityAt: Date(timeIntervalSinceNow: -ProjectStatusSnapshot.staleThreshold - 1)
+        )
+
+        XCTAssertTrue(snapshot.isStale)
+        XCTAssertEqual(snapshot.classification, .needsAttention)
+        XCTAssertEqual(snapshot.attentionPriority, .requiresAction)
+        XCTAssertTrue(snapshot.reasons.contains(.stale))
     }
 
     @MainActor
@@ -226,7 +245,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero,
             aheadCount: 0, behindCount: 0, hasUpstream: true, lastRefreshedAt: Date(),
             lastErrorDescription: nil, branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0,
-            unmergedBranchCount: 0, stashCount: 0
+            unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil
         )
     }
 }

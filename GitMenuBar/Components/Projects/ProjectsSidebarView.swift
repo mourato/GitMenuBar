@@ -218,6 +218,12 @@ struct ProjectsSidebarView: View {
         if lhs.attentionPriority.sortOrder != rhs.attentionPriority.sortOrder {
             return lhs.attentionPriority.sortOrder < rhs.attentionPriority.sortOrder
         }
+        if lhs.isStale != rhs.isStale {
+            return lhs.isStale
+        }
+        if lhs.isStale, lhs.lastActivityAt != rhs.lastActivityAt {
+            return (lhs.lastActivityAt ?? .distantPast) < (rhs.lastActivityAt ?? .distantPast)
+        }
         return projectNameSort(lhs, rhs)
     }
 
@@ -259,7 +265,7 @@ struct ProjectsSidebarView: View {
 
     private func changeCountSummary(for snapshot: ProjectStatusSnapshot) -> String {
         let count = snapshot.stagedCount + snapshot.unstagedCount + snapshot.untrackedCount
-        return count == 1 ? "1 changed" : "\(count) changed"
+        return count == 1 ? "1 to commit" : "\(count) to commit"
     }
 
     private func statusSummary(for snapshot: ProjectStatusSnapshot) -> String {
@@ -290,6 +296,9 @@ struct ProjectsSidebarView: View {
         }
         if snapshot.stashCount > 0 {
             parts.append("\(snapshot.stashCount) stash\(snapshot.stashCount == 1 ? "" : "es")")
+        }
+        if snapshot.isStale {
+            parts.append("Stale work")
         }
         return parts.joined(separator: " ")
     }

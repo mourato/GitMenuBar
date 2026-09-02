@@ -33,6 +33,7 @@ enum ProjectAttentionReason: Equatable {
     case unpushedBranches
     case unmergedBranches
     case stashes
+    case stale
     case detached
     case missing
     case invalidRepository
@@ -56,6 +57,9 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
     let unpushedBranchCount: Int
     let unmergedBranchCount: Int
     let stashCount: Int
+    let lastActivityAt: Date?
+
+    static let staleThreshold: TimeInterval = 14 * 24 * 60 * 60
 
     var id: String {
         project.path
@@ -65,14 +69,23 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         stagedCount + unstagedCount + untrackedCount > 0
     }
 
+    // ponytail: stale uses commit age; add working-tree mtimes only if this proxy proves insufficient.
+    var isStale: Bool {
+        guard let lastActivityAt else { return false }
+        return hasAttentionState && Date().timeIntervalSince(lastActivityAt) >= Self.staleThreshold
+    }
+
+    private var hasAttentionState: Bool {
+        hasWorkingTreeChanges || aheadCount > 0 || behindCount > 0 || isDetachedHead || !hasUpstream
+            || branchesWithoutUpstreamCount > 0 || unpushedBranchCount > 0 || unmergedBranchCount > 0
+            || stashCount > 0
+    }
+
     var classification: ProjectAttentionClassification {
         if lastErrorDescription != nil {
             return .unavailable
         }
-        if hasWorkingTreeChanges || aheadCount > 0 || behindCount > 0 || isDetachedHead || !hasUpstream
-            || branchesWithoutUpstreamCount > 0 || unpushedBranchCount > 0 || unmergedBranchCount > 0
-            || stashCount > 0
-        {
+        if hasAttentionState || isStale {
             return .needsAttention
         }
         return .clean
@@ -89,6 +102,9 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         }
         if behindCount > 0 {
             return .updateAvailable
+        }
+        if isStale {
+            return .review
         }
         return .clean
     }
@@ -119,6 +135,9 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         }
         if stashCount > 0 {
             result.insert(.stashes)
+        }
+        if isStale {
+            result.insert(.stale)
         }
         if isDetachedHead {
             result.insert(.detached)
@@ -227,11 +246,19 @@ struct ProjectStatusReader {
         var unpushedBranchCount = 0
         var unmergedBranchCount = 0
         var stashCount = 0
+        var lastActivityAt: Date?
     }
 
-    static func parseBranchTracking(_ output: String) -> (branchesWithoutUpstreamCount: Int, unpushedBranchCount: Int) {
+    struct BranchTrackingHealth: Equatable {
+        var branchesWithoutUpstreamCount = 0
+        var unpushedBranchCount = 0
+        var lastActivityAt: Date?
+    }
+
+    static func parseBranchTracking(_ output: String) -> BranchTrackingHealth {
         var withoutUpstream = 0
         var unpushed = 0
+        var latestCommitTimestamp: Int?
 
         for line in output.split(whereSeparator: \.isNewline) {
             let fields = line.split(separator: "\0", omittingEmptySubsequences: false)
@@ -241,9 +268,16 @@ struct ProjectStatusReader {
             } else if fields[2].contains("ahead") {
                 unpushed += 1
             }
+            if fields.count >= 4, let timestamp = Int(fields[3]) {
+                latestCommitTimestamp = max(latestCommitTimestamp ?? timestamp, timestamp)
+            }
         }
 
-        return (withoutUpstream, unpushed)
+        return BranchTrackingHealth(
+            branchesWithoutUpstreamCount: withoutUpstream,
+            unpushedBranchCount: unpushed,
+            lastActivityAt: latestCommitTimestamp.map { Date(timeIntervalSince1970: TimeInterval($0)) }
+        )
     }
 
     static func countBranchLines(_ output: String) -> Int {
@@ -276,7 +310,7 @@ struct ProjectStatusReader {
                 hasUpstream: false, lastRefreshedAt: nil,
                 lastErrorDescription: errorDescription,
                 branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0,
-                unmergedBranchCount: 0, stashCount: 0
+                unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil
             )
         }
 
@@ -295,7 +329,8 @@ struct ProjectStatusReader {
             branchesWithoutUpstreamCount: branchHealth.branchesWithoutUpstreamCount,
             unpushedBranchCount: branchHealth.unpushedBranchCount,
             unmergedBranchCount: branchHealth.unmergedBranchCount,
-            stashCount: branchHealth.stashCount
+            stashCount: branchHealth.stashCount,
+            lastActivityAt: branchHealth.lastActivityAt
         )
     }
 
@@ -309,7 +344,7 @@ struct ProjectStatusReader {
             in: projectPath,
             args: [
                 "for-each-ref",
-                "--format=%(refname:short)%00%(upstream:short)%00%(upstream:track,nobracket)",
+                "--format=%(refname:short)%00%(upstream:short)%00%(upstream:track,nobracket)%00%(committerdate:unix)",
                 "refs/heads"
             ]
         )
@@ -319,7 +354,8 @@ struct ProjectStatusReader {
             branchesWithoutUpstreamCount: tracking.failure ? 0 : trackingCounts.branchesWithoutUpstreamCount,
             unpushedBranchCount: tracking.failure ? 0 : trackingCounts.unpushedBranchCount,
             unmergedBranchCount: unmerged.failure ? 0 : Self.countBranchLines(unmerged.output),
-            stashCount: stashes.failure ? 0 : Self.countBranchLines(stashes.output)
+            stashCount: stashes.failure ? 0 : Self.countBranchLines(stashes.output),
+            lastActivityAt: tracking.failure ? nil : trackingCounts.lastActivityAt
         )
     }
 

@@ -55,13 +55,14 @@ final class ProjectStatusReaderTests: XCTestCase {
     }
 
     func testParsesBranchTrackingHealth() {
-        let output = "main\0origin/main\0ahead 2\n"
-            + "feature/local\0\0\n"
-            + "feature/clean\0origin/feature/clean\0up to date\n"
+        let output = "main\0origin/main\0ahead 2\01705000000\n"
+            + "feature/local\0\0\01700000000\n"
+            + "feature/clean\0origin/feature/clean\0up to date\01710000000\n"
 
         let result = ProjectStatusReader.parseBranchTracking(output)
         XCTAssertEqual(result.branchesWithoutUpstreamCount, 1)
         XCTAssertEqual(result.unpushedBranchCount, 1)
+        XCTAssertEqual(result.lastActivityAt, Date(timeIntervalSince1970: 1_710_000_000))
     }
 
     func testCountsNonEmptyBranchAndStashLines() {

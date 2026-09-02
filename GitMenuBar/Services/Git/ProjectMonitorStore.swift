@@ -125,7 +125,8 @@ final class ProjectMonitorStore: ObservableObject {
             branchesWithoutUpstreamCount: snapshot.branchesWithoutUpstreamCount,
             unpushedBranchCount: snapshot.unpushedBranchCount,
             unmergedBranchCount: snapshot.unmergedBranchCount,
-            stashCount: snapshot.stashCount
+            stashCount: snapshot.stashCount,
+            lastActivityAt: snapshot.lastActivityAt
         )
     }
 
