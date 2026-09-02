@@ -71,11 +71,18 @@ final class ProjectStatusReaderTests: XCTestCase {
 
     func testReaderCountsBranchHealthAndStashes() throws {
         let root = try createTemporaryGitRepository(testName: #function)
+        let remote = root.deletingLastPathComponent().appendingPathComponent("GitMenuBarStatusRemote-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: root) }
+        defer { try? FileManager.default.removeItem(at: remote) }
         try runGit(["branch", "-M", "main"], in: root)
         try "feature\n".write(to: root.appendingPathComponent("feature.txt"), atomically: true, encoding: .utf8)
         try runGit(["add", "feature.txt"], in: root)
         try runGit(["commit", "-m", "feature"], in: root)
+        try runGit(["init", "--bare", "-q", remote.path], in: root)
+        try runGit(["remote", "add", "origin", remote.path], in: root)
+        try runGit(["push", "-q", "origin", "main"], in: root)
+        try runGit(["fetch", "-q", "origin"], in: root)
+        try runGit(["remote", "set-head", "origin", "main"], in: root)
         try runGit(["checkout", "-qb", "feature/unmerged"], in: root)
         try "unmerged\n".write(to: root.appendingPathComponent("unmerged.txt"), atomically: true, encoding: .utf8)
         try runGit(["add", "unmerged.txt"], in: root)

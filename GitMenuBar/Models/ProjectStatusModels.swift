@@ -281,7 +281,7 @@ struct ProjectStatusReader {
         }
 
         let parsed = ProjectStatusPorcelainParser.parse(status.output)
-        let branchHealth = readBranchHealth(projectPath: project.path)
+        let branchHealth = readBranchHealth(projectPath: project.path, currentBranch: parsed.branchName)
         let lineDiff = includeLineDiff && parsed.hasWorkingTreeChanges
             ? readLineDiff(project: project, untrackedPaths: parsed.untrackedPaths)
             : .zero
@@ -299,8 +299,8 @@ struct ProjectStatusReader {
         )
     }
 
-    private func readBranchHealth(projectPath: String) -> BranchHealth {
-        let defaultBranch = defaultBranchName(projectPath: projectPath)
+    private func readBranchHealth(projectPath: String, currentBranch: String) -> BranchHealth {
+        let defaultBranch = defaultBranchName(projectPath: projectPath, currentBranch: currentBranch)
         let unmerged = runner.runGitCommand(
             in: projectPath,
             args: ["branch", "--format=%(refname:short)", "--no-merged", defaultBranch]
@@ -323,20 +323,16 @@ struct ProjectStatusReader {
         )
     }
 
-    private func defaultBranchName(projectPath: String) -> String {
+    private func defaultBranchName(projectPath: String, currentBranch: String) -> String {
         let symbolic = runner.runGitCommand(in: projectPath, args: ["symbolic-ref", "refs/remotes/origin/HEAD"])
-        if !symbolic.failure,
-           let branch = symbolic.output.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "/").last,
-           !branch.isEmpty
-        {
-            return String(branch)
+        if !symbolic.failure {
+            let reference = symbolic.output.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !reference.isEmpty {
+                return reference
+            }
         }
 
-        let branches = runner.runGitCommand(in: projectPath, args: ["branch", "--format=%(refname:short)"])
-            .output
-            .split(whereSeparator: \.isNewline)
-            .map(String.init)
-        return branches.contains("main") ? "main" : branches.contains("master") ? "master" : "main"
+        return currentBranch == "master" ? "master" : "main"
     }
 
     private func readLineDiff(project: ProjectReference, untrackedPaths: Set<String>) -> LineDiffStats {

@@ -234,16 +234,22 @@ struct ProjectsSidebarView: View {
             )
         }
         if snapshot.branchesWithoutUpstreamCount > 0 {
-            parts.append("\(snapshot.branchesWithoutUpstreamCount) branch without upstream")
+            parts.append(
+                "\(snapshot.branchesWithoutUpstreamCount) branch\(snapshot.branchesWithoutUpstreamCount == 1 ? "" : "es") without upstream"
+            )
         }
         if snapshot.unpushedBranchCount > 0 {
-            parts.append("\(snapshot.unpushedBranchCount) branch with unpushed commits")
+            parts.append(
+                "\(snapshot.unpushedBranchCount) branch\(snapshot.unpushedBranchCount == 1 ? "" : "es") with unpushed commits"
+            )
         }
         if snapshot.unmergedBranchCount > 0 {
-            parts.append("\(snapshot.unmergedBranchCount) branch not merged")
+            parts.append(
+                "\(snapshot.unmergedBranchCount) branch\(snapshot.unmergedBranchCount == 1 ? "" : "es") not merged"
+            )
         }
         if snapshot.stashCount > 0 {
-            parts.append("\(snapshot.stashCount) stash")
+            parts.append("\(snapshot.stashCount) stash\(snapshot.stashCount == 1 ? "" : "es")")
         }
         if let error = snapshot.lastErrorDescription {
             parts.append(error)
