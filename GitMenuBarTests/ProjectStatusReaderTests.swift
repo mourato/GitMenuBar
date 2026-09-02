@@ -54,6 +54,51 @@ final class ProjectStatusReaderTests: XCTestCase {
         XCTAssertEqual(result.behindCount, 0)
     }
 
+    func testParsesBranchTrackingHealth() {
+        let output = "main\0origin/main\0ahead 2\n"
+            + "feature/local\0\0\n"
+            + "feature/clean\0origin/feature/clean\0up to date\n"
+
+        let result = ProjectStatusReader.parseBranchTracking(output)
+        XCTAssertEqual(result.branchesWithoutUpstreamCount, 1)
+        XCTAssertEqual(result.unpushedBranchCount, 1)
+    }
+
+    func testCountsNonEmptyBranchAndStashLines() {
+        XCTAssertEqual(ProjectStatusReader.countBranchLines("feature/a\n\nfeature/b\n"), 2)
+        XCTAssertEqual(ProjectStatusReader.countBranchLines(""), 0)
+    }
+
+    func testReaderCountsBranchHealthAndStashes() throws {
+        let root = try createTemporaryGitRepository(testName: #function)
+        let remote = root.deletingLastPathComponent().appendingPathComponent("GitMenuBarStatusRemote-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        defer { try? FileManager.default.removeItem(at: remote) }
+        try runGit(["branch", "-M", "main"], in: root)
+        try "feature\n".write(to: root.appendingPathComponent("feature.txt"), atomically: true, encoding: .utf8)
+        try runGit(["add", "feature.txt"], in: root)
+        try runGit(["commit", "-m", "feature"], in: root)
+        try runGit(["init", "--bare", "-q", remote.path], in: root)
+        try runGit(["remote", "add", "origin", remote.path], in: root)
+        try runGit(["push", "-q", "origin", "main"], in: root)
+        try runGit(["fetch", "-q", "origin"], in: root)
+        try runGit(["remote", "set-head", "origin", "main"], in: root)
+        try runGit(["checkout", "-qb", "feature/unmerged"], in: root)
+        try "unmerged\n".write(to: root.appendingPathComponent("unmerged.txt"), atomically: true, encoding: .utf8)
+        try runGit(["add", "unmerged.txt"], in: root)
+        try runGit(["commit", "-m", "unmerged"], in: root)
+        try "saved\n".write(to: root.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+        try runGit(["stash", "push", "-qm", "saved work"], in: root)
+
+        let snapshot = ProjectStatusReader(runner: GitCommandRunner()).read(
+            project: ProjectReference(path: root.path), includeLineDiff: false
+        )
+
+        XCTAssertEqual(snapshot.unmergedBranchCount, 1)
+        XCTAssertEqual(snapshot.stashCount, 1)
+        XCTAssertEqual(snapshot.branchesWithoutUpstreamCount, 2)
+    }
+
     func testReaderPreservesUnavailableAndNonGitErrors() {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("GitMenuBarStatusReader-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

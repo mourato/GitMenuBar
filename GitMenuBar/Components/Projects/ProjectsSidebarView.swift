@@ -208,10 +208,21 @@ struct ProjectsSidebarView: View {
     private var groupedProjects: [(String, [ProjectStatusSnapshot])] {
         let values = monitor.monitoredProjects.compactMap { monitor.snapshots[$0.path] }
         return [
-            ("Needs Attention", values.filter { $0.classification == .needsAttention }),
-            ("Clean", values.filter { $0.classification == .clean }),
-            ("Unavailable", values.filter { $0.classification == .unavailable })
+            ("Needs Attention", values.filter { $0.classification == .needsAttention }.sorted(by: attentionSort)),
+            ("Clean", values.filter { $0.classification == .clean }.sorted(by: projectNameSort)),
+            ("Unavailable", values.filter { $0.classification == .unavailable }.sorted(by: projectNameSort))
         ].filter { !$0.1.isEmpty }
+    }
+
+    private func attentionSort(_ lhs: ProjectStatusSnapshot, _ rhs: ProjectStatusSnapshot) -> Bool {
+        if lhs.attentionPriority.sortOrder != rhs.attentionPriority.sortOrder {
+            return lhs.attentionPriority.sortOrder < rhs.attentionPriority.sortOrder
+        }
+        return projectNameSort(lhs, rhs)
+    }
+
+    private func projectNameSort(_ lhs: ProjectStatusSnapshot, _ rhs: ProjectStatusSnapshot) -> Bool {
+        lhs.project.name.localizedCaseInsensitiveCompare(rhs.project.name) == .orderedAscending
     }
 
     private func accessibilityLabel(for snapshot: ProjectStatusSnapshot) -> String {
@@ -221,6 +232,24 @@ struct ProjectsSidebarView: View {
                 "\(snapshot.stagedCount) staged, \(snapshot.unstagedCount) unstaged, "
                     + "\(snapshot.untrackedCount) untracked"
             )
+        }
+        if snapshot.branchesWithoutUpstreamCount > 0 {
+            parts.append(
+                "\(snapshot.branchesWithoutUpstreamCount) branch\(snapshot.branchesWithoutUpstreamCount == 1 ? "" : "es") without upstream"
+            )
+        }
+        if snapshot.unpushedBranchCount > 0 {
+            parts.append(
+                "\(snapshot.unpushedBranchCount) branch\(snapshot.unpushedBranchCount == 1 ? "" : "es") with unpushed commits"
+            )
+        }
+        if snapshot.unmergedBranchCount > 0 {
+            parts.append(
+                "\(snapshot.unmergedBranchCount) branch\(snapshot.unmergedBranchCount == 1 ? "" : "es") not merged"
+            )
+        }
+        if snapshot.stashCount > 0 {
+            parts.append("\(snapshot.stashCount) stash\(snapshot.stashCount == 1 ? "" : "es")")
         }
         if let error = snapshot.lastErrorDescription {
             parts.append(error)
@@ -248,13 +277,19 @@ struct ProjectsSidebarView: View {
         var parts = [branch]
         if snapshot.hasUpstream {
             if snapshot.aheadCount > 0 {
-                parts.append("↑\(snapshot.aheadCount)")
+                parts.append("\(snapshot.aheadCount) commit\(snapshot.aheadCount == 1 ? "" : "s") to push")
             }
             if snapshot.behindCount > 0 {
-                parts.append("↓\(snapshot.behindCount)")
+                parts.append("\(snapshot.behindCount) commit\(snapshot.behindCount == 1 ? "" : "s") behind")
             }
         } else {
             parts.append("No upstream")
+        }
+        if snapshot.unmergedBranchCount > 0 {
+            parts.append("\(snapshot.unmergedBranchCount) branch\(snapshot.unmergedBranchCount == 1 ? "" : "es") not merged")
+        }
+        if snapshot.stashCount > 0 {
+            parts.append("\(snapshot.stashCount) stash\(snapshot.stashCount == 1 ? "" : "es")")
         }
         return parts.joined(separator: " ")
     }
