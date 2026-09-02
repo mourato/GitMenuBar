@@ -263,6 +263,27 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         await fulfillment(of: [refreshFinished])
     }
 
+    @MainActor
+    func testRefreshPathOnlyRefreshesTheRequestedProject() async throws {
+        let defaults = try makeIsolatedTestDefaults(name: #function)
+        let projectStore = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
+        projectStore.add("/tmp/project-a")
+        projectStore.add("/tmp/project-b")
+        let monitor = ProjectMonitorStore(projectStore: projectStore)
+        let refreshed = expectation(description: "project refreshed")
+        let paths = PromptListCapture()
+        monitor.refreshOperation = { project, _ in
+            paths.append(project.path)
+            refreshed.fulfill()
+            return Self.snapshot(path: project.path, branch: "main")
+        }
+
+        monitor.refresh(path: "/tmp/project-a")
+        await fulfillment(of: [refreshed])
+
+        XCTAssertEqual(paths.values, ["/tmp/project-a"])
+    }
+
     private static func snapshot(path: String, branch: String) -> ProjectStatusSnapshot {
         ProjectStatusSnapshot(
             project: ProjectReference(path: path), branchName: branch, isDetachedHead: false,

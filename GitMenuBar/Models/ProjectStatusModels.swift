@@ -253,6 +253,18 @@ enum ProjectStatusPorcelainParser {
     }
 }
 
+enum ProjectStatusReadMode {
+    case local(pullRequests: [GitHubPullRequestSummary])
+    case remote
+
+    var localPullRequests: [GitHubPullRequestSummary]? {
+        if case let .local(pullRequests) = self {
+            return pullRequests
+        }
+        return nil
+    }
+}
+
 struct ProjectStatusReader {
     private static let emptyTreeHash = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
     let runner: GitCommandRunner
@@ -311,7 +323,8 @@ struct ProjectStatusReader {
     func read(
         project: ProjectReference,
         now: Date = Date(),
-        includeLineDiff: Bool = true
+        includeLineDiff: Bool = true,
+        mode: ProjectStatusReadMode = .remote
     ) -> ProjectStatusSnapshot {
         let status = runner.runGitCommand(
             in: project.path,
@@ -332,13 +345,15 @@ struct ProjectStatusReader {
                 hasUpstream: false, lastRefreshedAt: nil,
                 lastErrorDescription: errorDescription,
                 branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0,
-                unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil, pullRequests: []
+                unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil,
+                pullRequests: mode.localPullRequests ?? []
             )
         }
 
         let parsed = ProjectStatusPorcelainParser.parse(status.output)
         let branchHealth = readBranchHealth(projectPath: project.path, currentBranch: parsed.branchName)
-        let pullRequests = GitHubPullRequestStatusReader(runner: runner).read(projectPath: project.path)
+        let pullRequests = mode.localPullRequests
+            ?? GitHubPullRequestStatusReader(runner: runner).read(projectPath: project.path)
         let lineDiff = includeLineDiff && parsed.hasWorkingTreeChanges
             ? readLineDiff(project: project, untrackedPaths: parsed.untrackedPaths)
             : .zero

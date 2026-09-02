@@ -208,6 +208,28 @@ final class ProjectStatusReaderTests: XCTestCase {
         XCTAssertNil(snapshot.lastErrorDescription)
     }
 
+    func testLocalReaderPreservesKnownPullRequests() throws {
+        let root = try createTemporaryGitRepository(testName: #function)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let pullRequest = GitHubPullRequestSummary(
+            number: 7,
+            title: "Keep this snapshot",
+            headBranch: "feature/local",
+            isDraft: false,
+            reviewState: .approved,
+            checksState: .passed,
+            url: "https://github.com/example/project/pull/7"
+        )
+
+        let snapshot = ProjectStatusReader(runner: GitCommandRunner()).read(
+            project: ProjectReference(path: root.path),
+            includeLineDiff: false,
+            mode: .local(pullRequests: [pullRequest])
+        )
+
+        XCTAssertEqual(snapshot.pullRequests, [pullRequest])
+    }
+
     func testReaderCountsStagedLinesBeforeFirstCommit() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("GitMenuBarStatusReaderNoHead-\(UUID().uuidString)")
