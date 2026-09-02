@@ -257,6 +257,9 @@ struct ProjectsSidebarView: View {
         if snapshot.stashCount > 0 {
             parts.append("\(snapshot.stashCount) stash\(snapshot.stashCount == 1 ? "" : "es")")
         }
+        if let pullRequestSummary = pullRequestSummary(for: snapshot) {
+            parts.append(pullRequestSummary)
+        }
         if let error = snapshot.lastErrorDescription {
             parts.append(error)
         }
@@ -266,6 +269,15 @@ struct ProjectsSidebarView: View {
     private func changeCountSummary(for snapshot: ProjectStatusSnapshot) -> String {
         let count = snapshot.stagedCount + snapshot.unstagedCount + snapshot.untrackedCount
         return count == 1 ? "1 to commit" : "\(count) to commit"
+    }
+
+    private func pullRequestSummary(for snapshot: ProjectStatusSnapshot) -> String? {
+        if let pullRequest = snapshot.pullRequests.first(where: { $0.headBranch == snapshot.branchName }) {
+            return "PR #\(pullRequest.number) \(pullRequest.statusSummary)"
+        }
+        guard !snapshot.pullRequests.isEmpty else { return nil }
+        let count = snapshot.pullRequests.count
+        return "\(count) open pull request\(count == 1 ? "" : "s")"
     }
 
     private func statusSummary(for snapshot: ProjectStatusSnapshot) -> String {
@@ -296,6 +308,9 @@ struct ProjectsSidebarView: View {
         }
         if snapshot.stashCount > 0 {
             parts.append("\(snapshot.stashCount) stash\(snapshot.stashCount == 1 ? "" : "es")")
+        }
+        if let pullRequestSummary = pullRequestSummary(for: snapshot) {
+            parts.append(pullRequestSummary)
         }
         if snapshot.isStale {
             parts.append("Stale work")

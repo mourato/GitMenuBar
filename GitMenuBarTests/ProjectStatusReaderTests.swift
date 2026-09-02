@@ -65,6 +65,41 @@ final class ProjectStatusReaderTests: XCTestCase {
         XCTAssertEqual(result.lastActivityAt, Date(timeIntervalSince1970: 1_700_000_000))
     }
 
+    func testParsesGitHubPullRequestsAndCheckStates() {
+        let data = Data(
+            """
+            [
+              {
+                "number": 28,
+                "title": "Video export",
+                "headRefName": "feature/video-export",
+                "isDraft": false,
+                "reviewDecision": "REVIEW_REQUIRED",
+                "statusCheckRollup": [{"state": "SUCCESS"}],
+                "url": "https://github.com/example/project/pull/28"
+              },
+              {
+                "number": 31,
+                "title": "Editor update",
+                "headRefName": "feature/editor",
+                "isDraft": true,
+                "reviewDecision": "CHANGES_REQUESTED",
+                "statusCheckRollup": [{"state": "FAILURE"}],
+                "url": "https://github.com/example/project/pull/31"
+              }
+            ]
+            """.utf8
+        )
+
+        let result = GitHubPullRequestStatusReader.parse(data)
+
+        XCTAssertEqual(result.count, 2)
+        XCTAssertEqual(result[0].checksState, .passed)
+        XCTAssertEqual(result[0].statusSummary, "Review required · CI passed")
+        XCTAssertTrue(result[1].needsAction)
+        XCTAssertEqual(result[1].statusSummary, "Draft · Changes requested · CI failing")
+    }
+
     func testCountsNonEmptyBranchAndStashLines() {
         XCTAssertEqual(ProjectStatusReader.countBranchLines("feature/a\n\nfeature/b\n"), 2)
         XCTAssertEqual(ProjectStatusReader.countBranchLines(""), 0)

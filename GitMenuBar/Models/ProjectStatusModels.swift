@@ -33,6 +33,8 @@ enum ProjectAttentionReason: Equatable {
     case unpushedBranches
     case unmergedBranches
     case stashes
+    case openPullRequests
+    case failingChecks
     case stale
     case detached
     case missing
@@ -58,6 +60,7 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
     let unmergedBranchCount: Int
     let stashCount: Int
     let lastActivityAt: Date?
+    let pullRequests: [GitHubPullRequestSummary]
 
     static let staleThreshold: TimeInterval = 14 * 24 * 60 * 60
 
@@ -82,7 +85,7 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
     private var hasAttentionState: Bool {
         hasWorkingTreeChanges || aheadCount > 0 || behindCount > 0 || isDetachedHead || !hasUpstream
             || branchesWithoutUpstreamCount > 0 || unpushedBranchCount > 0 || unmergedBranchCount > 0
-            || stashCount > 0
+            || stashCount > 0 || !pullRequests.isEmpty
     }
 
     var classification: ProjectAttentionClassification {
@@ -99,9 +102,15 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         if hasWorkingTreeChanges || aheadCount > 0 || unpushedBranchCount > 0 {
             return .requiresAction
         }
+        if pullRequests.contains(where: \.needsAction) {
+            return .requiresAction
+        }
         if unmergedBranchCount > 0 || branchesWithoutUpstreamCount > 0 || stashCount > 0
             || isDetachedHead || !hasUpstream
         {
+            return .review
+        }
+        if !pullRequests.isEmpty {
             return .review
         }
         if behindCount > 0 {
@@ -136,6 +145,12 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         }
         if stashCount > 0 {
             result.insert(.stashes)
+        }
+        if !pullRequests.isEmpty {
+            result.insert(.openPullRequests)
+        }
+        if pullRequests.contains(where: { $0.checksState == .failing }) {
+            result.insert(.failingChecks)
         }
         if isStale {
             result.insert(.stale)
@@ -317,12 +332,13 @@ struct ProjectStatusReader {
                 hasUpstream: false, lastRefreshedAt: nil,
                 lastErrorDescription: errorDescription,
                 branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0,
-                unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil
+                unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil, pullRequests: []
             )
         }
 
         let parsed = ProjectStatusPorcelainParser.parse(status.output)
         let branchHealth = readBranchHealth(projectPath: project.path, currentBranch: parsed.branchName)
+        let pullRequests = GitHubPullRequestStatusReader(runner: runner).read(projectPath: project.path)
         let lineDiff = includeLineDiff && parsed.hasWorkingTreeChanges
             ? readLineDiff(project: project, untrackedPaths: parsed.untrackedPaths)
             : .zero
@@ -337,7 +353,8 @@ struct ProjectStatusReader {
             unpushedBranchCount: branchHealth.unpushedBranchCount,
             unmergedBranchCount: branchHealth.unmergedBranchCount,
             stashCount: branchHealth.stashCount,
-            lastActivityAt: branchHealth.lastActivityAt
+            lastActivityAt: branchHealth.lastActivityAt,
+            pullRequests: pullRequests
         )
     }
 

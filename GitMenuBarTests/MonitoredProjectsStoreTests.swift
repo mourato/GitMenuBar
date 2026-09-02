@@ -55,7 +55,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
             hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil,
             branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0, unmergedBranchCount: 0, stashCount: 0,
-            lastActivityAt: nil
+            lastActivityAt: nil, pullRequests: []
         )
 
         XCTAssertEqual(snapshot.classification, .clean)
@@ -68,7 +68,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             lineDiff: LineDiffStats(added: 3, removed: 1), aheadCount: 2, behindCount: 1,
             hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil,
             branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0, unmergedBranchCount: 0, stashCount: 0,
-            lastActivityAt: nil
+            lastActivityAt: nil, pullRequests: []
         )
 
         XCTAssertEqual(snapshot.classification, .needsAttention)
@@ -82,7 +82,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
             hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil,
             branchesWithoutUpstreamCount: 1, unpushedBranchCount: 0, unmergedBranchCount: 2, stashCount: 1,
-            lastActivityAt: nil
+            lastActivityAt: nil, pullRequests: []
         )
 
         XCTAssertEqual(snapshot.classification, .needsAttention)
@@ -98,7 +98,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
             hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil,
             branchesWithoutUpstreamCount: 0, unpushedBranchCount: 1, unmergedBranchCount: 0, stashCount: 0,
-            lastActivityAt: nil
+            lastActivityAt: nil, pullRequests: []
         )
 
         XCTAssertEqual(snapshot.classification, .needsAttention)
@@ -112,7 +112,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             stagedCount: 1, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
             hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil,
             branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0, unmergedBranchCount: 0, stashCount: 0,
-            lastActivityAt: Date(timeIntervalSinceNow: -ProjectStatusSnapshot.staleThreshold - 1)
+            lastActivityAt: Date(timeIntervalSinceNow: -ProjectStatusSnapshot.staleThreshold - 1), pullRequests: []
         )
 
         let now = Date()
@@ -120,6 +120,29 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         XCTAssertEqual(snapshot.classification, .needsAttention)
         XCTAssertEqual(snapshot.attentionPriority, .requiresAction)
         XCTAssertTrue(snapshot.reasons.contains(.stale))
+    }
+
+    func testOpenPullRequestNeedsReview() {
+        let pullRequest = GitHubPullRequestSummary(
+            number: 28,
+            title: "Video export",
+            headBranch: "feature/video-export",
+            isDraft: false,
+            reviewState: .reviewRequired,
+            checksState: .passed,
+            url: "https://github.com/example/project/pull/28"
+        )
+        let snapshot = ProjectStatusSnapshot(
+            project: ProjectReference(path: "/tmp/project"), branchName: "main", isDetachedHead: false,
+            stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
+            hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil,
+            branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0, unmergedBranchCount: 0, stashCount: 0,
+            lastActivityAt: nil, pullRequests: [pullRequest]
+        )
+
+        XCTAssertEqual(snapshot.classification, .needsAttention)
+        XCTAssertEqual(snapshot.attentionPriority, .review)
+        XCTAssertTrue(snapshot.reasons.contains(.openPullRequests))
     }
 
     @MainActor
@@ -246,7 +269,7 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero,
             aheadCount: 0, behindCount: 0, hasUpstream: true, lastRefreshedAt: Date(),
             lastErrorDescription: nil, branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0,
-            unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil
+            unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil, pullRequests: []
         )
     }
 }
