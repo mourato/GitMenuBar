@@ -41,7 +41,11 @@ struct ProjectsSidebarView: View {
         }
         .onChange(of: selection) { path in
             guard let path, path != normalizedCurrentPath else { return }
-            onSelect(path)
+            Task { @MainActor in
+                await Task.yield()
+                guard selection == path, path != normalizedCurrentPath else { return }
+                onSelect(path)
+            }
         }
         .alert("Rename Project", isPresented: Binding(
             get: { renameProject != nil },
