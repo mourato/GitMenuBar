@@ -75,7 +75,7 @@ final class ProjectStatusReaderTests: XCTestCase {
                 "headRefName": "feature/video-export",
                 "isDraft": false,
                 "reviewDecision": "REVIEW_REQUIRED",
-                "statusCheckRollup": [{"state": "SUCCESS"}],
+                "statusCheckRollup": [{"status": "COMPLETED", "conclusion": "SUCCESS"}],
                 "url": "https://github.com/example/project/pull/28"
               },
               {
@@ -84,7 +84,7 @@ final class ProjectStatusReaderTests: XCTestCase {
                 "headRefName": "feature/editor",
                 "isDraft": true,
                 "reviewDecision": "CHANGES_REQUESTED",
-                "statusCheckRollup": [{"state": "FAILURE"}],
+                "statusCheckRollup": [{"status": "COMPLETED", "conclusion": "FAILURE"}],
                 "url": "https://github.com/example/project/pull/31"
               }
             ]

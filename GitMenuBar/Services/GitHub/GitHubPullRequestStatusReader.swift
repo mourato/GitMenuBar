@@ -13,6 +13,8 @@ struct GitHubPullRequestStatusReader {
 
     private struct RawCheck: Decodable {
         let state: String?
+        let status: String?
+        let conclusion: String?
     }
 
     let runner: GitCommandRunner
@@ -70,14 +72,18 @@ struct GitHubPullRequestStatusReader {
 
     private static func checksState(for checks: [RawCheck]?) -> GitHubChecksState {
         guard let checks, !checks.isEmpty else { return .notRun }
-        let states = Set(checks.compactMap { $0.state?.uppercased() })
+        let states = Set(checks.compactMap { check in
+            (check.state ?? check.conclusion ?? check.status)?.uppercased()
+        })
         if states.isEmpty {
             return .unknown
         }
-        if states.contains(where: { ["FAILURE", "ERROR", "STARTUP_FAILURE", "CANCELLED", "TIMED_OUT"].contains($0) }) {
+        if states.contains(where: {
+            ["FAILURE", "ERROR", "STARTUP_FAILURE", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED", "STALE"].contains($0)
+        }) {
             return .failing
         }
-        if states.contains(where: { ["PENDING", "QUEUED", "IN_PROGRESS", "WAITING"].contains($0) }) {
+        if states.contains(where: { ["PENDING", "QUEUED", "IN_PROGRESS", "WAITING", "REQUESTED"].contains($0) }) {
             return .pending
         }
         if states.allSatisfy({ ["SUCCESS", "SKIPPED", "NEUTRAL", "EXPECTED"].contains($0) }) {
@@ -87,7 +93,11 @@ struct GitHubPullRequestStatusReader {
     }
 
     private static var githubCLIPath: String? {
-        ["/opt/homebrew/bin/gh", "/usr/local/bin/gh", "/usr/bin/gh"]
+        let pathEntries = (ProcessInfo.processInfo.environment["PATH"] ?? "")
+            .split(separator: ":", omittingEmptySubsequences: true)
+            .map { "\($0)/gh" }
+        let candidates = ["/opt/homebrew/bin/gh", "/usr/local/bin/gh", "/usr/bin/gh"] + pathEntries
+        return candidates
             .first(where: FileManager.default.isExecutableFile(atPath:))
     }
 }
