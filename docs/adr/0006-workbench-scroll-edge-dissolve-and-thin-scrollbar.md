@@ -1,14 +1,12 @@
-# Workbench scroll surfaces use shared edge dissolve and thin scrollbar
+# Workbench scroll surfaces use native scrolling
 
-Status: accepted (2026-08-10). GitMenuBar will use one shared scroll treatment
-for the main project content, Commit Details, Project Cleanup, and Command
-Palette: a scroll-driven edge dissolve followed by a custom thin scrollbar.
-The sidebar, sheets, and unrelated popovers remain outside this contract.
+Status: retired (2026-09-02). GitMenuBar uses the platform `ScrollView`/
+`List` behavior for the main project content, Commit Details, Project Cleanup,
+Command Palette, and the Projects sidebar. Native indicators remain available
+and the system owns their interaction.
 
-This ports Gordon's established behavior while adapting it to GitMenuBar's
-fixed composer/footer layout and Workbench tokens. Native visible scrollers are
-hidden on opted-in surfaces so the scrollbar remains above the dissolve; the
-underlying `ScrollView` stays responsible for keyboard, VoiceOver, and
-programmatic scrolling. The tradeoff is a small AppKit interaction bridge that
-must be kept reusable, reduced-motion aware, and manually verified across the
-four scroll owners.
+The former scroll-driven edge mask and custom AppKit thumb were removed because
+they duplicated native affordances, added interaction state, and made the
+surface harder to reason about with keyboard navigation, VoiceOver, and newer
+system appearances. The original implementation is retained in repository
+history for reference.

@@ -97,12 +97,13 @@ private struct TransparentTitlebarPreviewChrome: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .padding(.top, isVisible ? WorkbenchMetrics.iconHitTarget : 0)
             .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous))
             .overlay(alignment: .topLeading) {
                 if isVisible {
                     previewTrafficLights
                         .padding(.leading, 20)
-                        .frame(height: ProjectsSidebarMetrics.headerHeight, alignment: .center)
+                        .frame(height: WorkbenchMetrics.iconHitTarget, alignment: .center)
                         .allowsHitTesting(false)
                 }
             }

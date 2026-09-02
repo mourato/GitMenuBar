@@ -1,10 +1,8 @@
-import AppKit
 import SwiftUI
 
 // MARK: - Primary
 
 extension View {
-    /// Focal panel action — `.borderedProminent` at large control size.
     func workbenchPrimary(isMuted: Bool = false) -> some View {
         controlSize(.large)
             .buttonStyle(.borderedProminent)
@@ -15,167 +13,54 @@ extension View {
 // MARK: - Secondary
 
 extension View {
-    /// Alternate confirm / bordered action — quieter than Primary on the same surface.
     func workbenchSecondary() -> some View {
         buttonStyle(.bordered)
-            .pressable()
     }
 }
 
 // MARK: - Ghost
 
 extension View {
-    /// Low-emphasis chrome — borderless detail text with shared press feedback.
     func workbenchGhost() -> some View {
         buttonStyle(.borderless)
             .font(WorkbenchTypography.detail)
-            .pressable()
     }
 }
 
 // MARK: - Icon
 
-struct WorkbenchIconButtonStyle: ButtonStyle {
-    @State private var isHovered = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .frame(
-                minWidth: WorkbenchMetrics.iconHitTarget,
-                minHeight: WorkbenchMetrics.iconHitTarget
-            )
-            .background(
-                RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
-                    .fill(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
-            )
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(
-                WorkbenchMotion.adaptive(WorkbenchMotion.press, usesReducedMotion: reduceMotion),
-                value: configuration.isPressed
-            )
-            .onHover { inside in
-                isHovered = inside
-            }
-    }
-}
-
-extension ButtonStyle where Self == WorkbenchIconButtonStyle {
-    static var workbenchIcon: WorkbenchIconButtonStyle {
-        WorkbenchIconButtonStyle()
-    }
-}
-
 extension View {
     func workbenchIcon() -> some View {
-        buttonStyle(.workbenchIcon)
+        buttonStyle(.borderless)
+            .controlSize(.small)
+            .frame(minWidth: WorkbenchMetrics.iconHitTarget, minHeight: WorkbenchMetrics.iconHitTarget)
     }
 }
 
 // MARK: - Row
 
-struct WorkbenchRowButtonStyle: ButtonStyle {
-    let isSelected: Bool
-    @State private var isHovered = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+extension View {
+    func workbenchRow(isSelected: Bool = false) -> some View {
+        buttonStyle(.borderless)
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
-                    .fill(rowFill)
+                    .fill(isSelected ? WorkbenchPalette.selectedFill() : Color.clear)
             )
             .contentShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(
-                WorkbenchMotion.adaptive(WorkbenchMotion.press, usesReducedMotion: reduceMotion),
-                value: configuration.isPressed
-            )
-            .animation(
-                WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
-                value: isHovered
-            )
-            .onHover { inside in
-                isHovered = inside
-                if inside {
-                    NSCursor.pointingHand.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
-    }
-
-    private var rowFill: Color {
-        if isSelected {
-            return WorkbenchPalette.selectedFill()
-        }
-        if isHovered {
-            return WorkbenchPalette.hoverFill()
-        }
-        return .clear
-    }
-}
-
-extension ButtonStyle where Self == WorkbenchRowButtonStyle {
-    static func workbenchRow(isSelected: Bool = false) -> WorkbenchRowButtonStyle {
-        WorkbenchRowButtonStyle(isSelected: isSelected)
-    }
-}
-
-extension View {
-    func workbenchRow(isSelected: Bool = false) -> some View {
-        buttonStyle(.workbenchRow(isSelected: isSelected))
     }
 }
 
 // MARK: - Destructive row
 
-struct WorkbenchDestructiveRowButtonStyle: ButtonStyle {
-    @State private var isHovered = false
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+extension View {
+    func workbenchDestructiveRow() -> some View {
+        buttonStyle(.borderless)
             .foregroundStyle(.red)
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
-                    .fill(isHovered ? WorkbenchPalette.errorFill(contrast: colorSchemeContrast) : Color.clear)
-            )
             .contentShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(
-                WorkbenchMotion.adaptive(WorkbenchMotion.press, usesReducedMotion: reduceMotion),
-                value: configuration.isPressed
-            )
-            .animation(
-                WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
-                value: isHovered
-            )
-            .onHover { inside in
-                isHovered = inside
-                if inside {
-                    NSCursor.pointingHand.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
-    }
-}
-
-extension ButtonStyle where Self == WorkbenchDestructiveRowButtonStyle {
-    static var workbenchDestructiveRow: WorkbenchDestructiveRowButtonStyle {
-        WorkbenchDestructiveRowButtonStyle()
-    }
-}
-
-extension View {
-    func workbenchDestructiveRow() -> some View {
-        buttonStyle(.workbenchDestructiveRow)
     }
 }
 

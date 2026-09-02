@@ -34,7 +34,6 @@ struct MainMenuView: View {
     @AppStorage(AppPreferences.Keys.isUnstagedSectionCollapsed) var isUnstagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isHistorySectionCollapsed) var isHistorySectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isProjectsSidebarCollapsed) var isProjectsSidebarCollapsed = false
-    @AppStorage(AppPreferences.Keys.projectsSidebarWidth) var projectsSidebarWidth = ProjectsSidebarMetrics.defaultWidth
     @AppStorage(AppPreferences.Keys.hideCommitMessageField) var hideCommitMessageField = false
     @AppStorage(AppPreferences.Keys.commitButtonAction)
     var commitButtonAction = AppPreferences.CommitButtonAction.defaultAction.rawValue
@@ -150,7 +149,6 @@ struct MainMenuView: View {
             }
         }
         .adaptiveMotion()
-        .workbenchScrollbarStyle()
         .animation(
             WorkbenchMotion.adaptive(WorkbenchMotion.route, usesReducedMotion: reduceMotion),
             value: presentationModel.route

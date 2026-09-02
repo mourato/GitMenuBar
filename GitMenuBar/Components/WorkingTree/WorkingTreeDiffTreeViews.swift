@@ -265,7 +265,6 @@ struct WorkingTreeDiffTreeFileRowView: View {
                 }
             }
         }
-        .pressable()
     }
 
     private var rowContent: some View {

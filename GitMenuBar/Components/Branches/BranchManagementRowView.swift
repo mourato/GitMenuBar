@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct BranchManagementRowView: View {
@@ -97,11 +96,6 @@ struct BranchManagementRowView: View {
         .accessibilityLabel(accessibilityLabel)
         .onHover { inside in
             isHovered = inside
-            if inside {
-                NSCursor.pointingHand.push()
-            } else {
-                NSCursor.pop()
-            }
         }
     }
 

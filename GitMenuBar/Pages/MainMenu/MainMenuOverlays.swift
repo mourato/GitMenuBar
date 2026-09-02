@@ -35,8 +35,6 @@ extension MainMenuView {
     private var transientPanelContent: some View {
         if showRepositoryOptionsPopover {
             topCenteredOverlay(repositoryOptionsOverlay)
-        } else if showBranchSelector {
-            branchSelectorOverlayLayout
         } else if let snapshot = presentationModel.quotaInfoSnapshot {
             quotaInfoOverlay(snapshot)
         }
@@ -51,25 +49,6 @@ extension MainMenuView {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(.top, WorkbenchMetrics.sectionSpacing)
         .padding(.horizontal, WorkbenchMetrics.windowPadding)
-    }
-
-    private var branchSelectorOverlayLayout: some View {
-        HStack {
-            branchSelectorOverlay
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-        .padding(.leading, mainContentLeadingPadding)
-        .padding(.trailing, WorkbenchMetrics.windowPadding)
-        .padding(.bottom, WorkbenchMetrics.windowPadding * 2)
-    }
-
-    private var mainContentLeadingPadding: CGFloat {
-        CGFloat(
-            isProjectsSidebarCollapsed
-                ? ProjectsSidebarMetrics.collapsedWidth
-                : clampedProjectsSidebarWidth
-        ) + WorkbenchMetrics.windowPadding
     }
 
     private func quotaInfoOverlay(_ snapshot: UsageQuotaSnapshot) -> some View {
@@ -90,13 +69,6 @@ extension MainMenuView {
         .modifier(TransientPanelChrome(origin: .bottomLeading, reduceMotion: reduceMotion))
     }
 
-    private var clampedProjectsSidebarWidth: Double {
-        min(
-            max(projectsSidebarWidth, ProjectsSidebarMetrics.minWidth),
-            ProjectsSidebarMetrics.maxWidth
-        )
-    }
-
     private var repositoryOptionsOverlay: some View {
         RepositoryOptionsPopoverView(
             visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
@@ -107,7 +79,7 @@ extension MainMenuView {
         .modifier(TransientPanelChrome(origin: .topCenter, reduceMotion: reduceMotion))
     }
 
-    private var branchSelectorOverlay: some View {
+    var branchSelectorOverlay: some View {
         BranchSelectorPopoverView(
             isDetachedHead: gitManager.isDetachedHead,
             isRemoteAhead: gitManager.isRemoteAhead,
@@ -177,7 +149,6 @@ extension MainMenuView {
                 showCreateBranch = true
             }
         )
-        .modifier(TransientPanelChrome(origin: .bottomLeading, reduceMotion: reduceMotion))
     }
 
     @ViewBuilder

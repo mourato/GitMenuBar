@@ -105,8 +105,6 @@ struct BranchSelectorPopoverView: View {
             }
         }
         .listStyle(.inset)
-        .scrollContentBackground(.hidden)
-        .workbenchPanelSurface(material: .thin)
         .frame(width: 300, height: 360)
     }
 }

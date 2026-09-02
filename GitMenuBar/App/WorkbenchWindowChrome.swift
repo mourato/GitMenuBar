@@ -28,7 +28,6 @@ enum WorkbenchWindowChrome {
 
         contentView.wantsLayer = true
         shell.updateAppearance()
-        WorkbenchScrollViewStyle.configureScrollViews(in: contentView)
     }
 
     @MainActor
@@ -155,10 +154,5 @@ private final class WorkbenchHostedContentViewController: NSViewController {
         if !(hostingController.view is NSHostingView<AnyView>) {
             assertionFailure("Expected NSHostingView<AnyView> for hosted window content")
         }
-    }
-
-    override func viewDidLayout() {
-        super.viewDidLayout()
-        WorkbenchScrollViewStyle.configureScrollViews(in: view)
     }
 }

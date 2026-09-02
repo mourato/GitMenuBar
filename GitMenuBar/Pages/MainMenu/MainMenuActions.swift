@@ -60,7 +60,7 @@ extension MainMenuView {
     }
 
     var hasTransientPresentation: Bool {
-        showRepositoryOptionsPopover || showBranchSelector || presentationModel.quotaInfoSnapshot != nil
+        showRepositoryOptionsPopover || presentationModel.quotaInfoSnapshot != nil
     }
 
     func dismissTransientPresentations() {
@@ -83,12 +83,6 @@ extension MainMenuView {
         }
         dismissTransientPresentations()
         showProjectSelector = shouldPresent
-    }
-
-    func toggleProjectsSidebar() {
-        withAnimation(WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion)) {
-            isProjectsSidebarCollapsed.toggle()
-        }
     }
 
     func toggleBranchSelectorPresentation() {

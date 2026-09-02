@@ -75,14 +75,14 @@ struct WorkbenchSectionHeaderChrome<Trailing: View>: View {
                 .padding(.vertical, WorkbenchMetrics.compactSpacing)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(PressableButtonStyle())
+            .buttonStyle(.borderless)
             .accessibilityLabel(accessibilityLabel)
             .accessibilityHint(isCollapsed ? accessibilityHintExpanded : accessibilityHintCollapsed)
         } else {
             Button(action: toggleSection) {
                 sectionTitle
             }
-            .buttonStyle(PressableButtonStyle())
+            .buttonStyle(.borderless)
             .accessibilityLabel(accessibilityLabel)
             .accessibilityHint(isCollapsed ? accessibilityHintExpanded : accessibilityHintCollapsed)
         }

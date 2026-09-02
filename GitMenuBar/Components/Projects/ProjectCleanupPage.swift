@@ -42,7 +42,7 @@ struct ProjectCleanupPage: View {
                 if store.rows.isEmpty {
                     ContentUnavailableView("No Monitored Projects", systemImage: "folder", description: Text("Add a project before reviewing cleanup."))
                 } else {
-                    ScrollView(.vertical, showsIndicators: false) {
+                    ScrollView(.vertical) {
                         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
                             if !rowsWithCleanupCandidates.isEmpty {
                                 VStack(spacing: WorkbenchMetrics.compactSpacing) {
@@ -66,10 +66,7 @@ struct ProjectCleanupPage: View {
                                 projectsWithoutCleanupSection
                             }
                         }
-                        .workbenchHideNativeScrollers()
                     }
-                    .workbenchEdgeDissolve()
-                    .workbenchThinScrollbar()
                 }
             }
         }

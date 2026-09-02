@@ -4,8 +4,6 @@
 <dict>
 	<key>LSUIElement</key>
 	<true/>
-	<key>UIDesignRequiresCompatibility</key>
-	<true/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
