@@ -8,12 +8,13 @@ GitMenuBar is a native macOS menu bar app for day-to-day Git workflows.
 
 `Makefile` is the command authority. Use `make validate` as the native
 changed-surface entry (it delegates to `agent-check`), and
-`make validate-lane` for the global baseline/artifact wrapper. The wrapper
-defaults to `git merge-base origin/main HEAD`, accepts `VALIDATE_BASE=...`,
-runs the build in a unique ignored `.xcode-build/validate-lane.*` DerivedData
-root, watches its `Build/` output, and removes the run root before returning.
-The separate `make test` gate uses `.xcode-build-tests/`. Use `make check-preview`
-for UI work, and `make lint && make test` before merge.
+`make validate-lane` for the global baseline/artifact wrapper. It defaults to
+`git merge-base origin/main HEAD`, accepts `VALIDATE_BASE=...`, and can wrap a
+focused test with `VALIDATE_TARGET=test-focused TEST_FILTER=...`. The lane uses
+a unique ignored `.xcode-build/validate-lane.*` DerivedData root, watches its
+`Build/` output, and removes the run root before returning. Use
+`make test-focused TEST_FILTER='GitMenuBarTests/Name'` for one XCTest target,
+`make check-preview` for UI work, and `make lint && make test` before merge.
 
 The Swift 6.4 toolchain and concurrency baseline is documented in
 [`docs/adr/0007-swift-6-4-agent-baseline.md`](docs/adr/0007-swift-6-4-agent-baseline.md).
@@ -31,23 +32,7 @@ system document and record the rationale in the relevant ADR before shipping.
 ## Execution Policy
 
 Every implementation plan must contain an `## Execution profile` section.
-Use global `agent-ops` for delegation and profile selection; re-evaluate the
-profile against the live diff before execution. Use
-`delivery-workflow` for risk, lanes, validation, and Git.
-
-Use CLI-first verification and keep checks scoped to the touched surface.
-
-When behavior changes, run focused tests; the full test gate belongs before
-merge. Remove orphaned UI, logic, and assets in the same change when their
-runtime path is demonstrably gone.
-
-## Delivery lifecycle
-
-The global `core/policies/worktrees.md` is authoritative for isolation and
-delivery order. Follow `create → work → commit → review → remediation → merge
-→ validate → push → cleanup`; this file and the project overlay supply
-GitMenuBar facts and commands only. Never merge, push, or clean up from an
-implementation worktree without explicit authorization.
+Use `delivery-workflow` for risk, lanes, validation, and Git.
 
 ## SwiftUI Preview Policy
 
@@ -59,25 +44,12 @@ implementation worktree without explicit authorization.
 - Component-only previews should not simulate the full window/titlebar unless they render main-window chrome.
 - Pull requests that introduce UI files without preview coverage are incomplete.
 
-## Completion
-
-A task is complete when:
-
-- The changed surface, risk/lane, and `reuse → extend → create` decision are recorded.
-- Behavior changes pass `make test` and `make validate`; UI changes also pass `make check-preview`.
-- Before merge, `make lint && make test` passes.
-- The handoff records commands and results, assumptions, screenshots for UI changes, and known baseline failures.
-
-## Skills
+## Local routing
 
 Global skill routing is defined by the global agent configuration. Use global
 routes and load the matching project overlay after its global skill.
 
-Choose the narrowest global skill, then load its matching project overlay and
-any local specialist skill. The project-only review profile is
+The project-only review profile is
 `.agents/review-profiles/thermo-gitmenubar.md`; overlays and local skills own
-GitMenuBar-specific invariants.
-
-Run `make guidance-check` after changing plans, routing, or skill metadata. It
-validates required execution profiles, local structure, global references, and
-Markdown links without treating global references as local files.
+GitMenuBar-specific invariants. Run `make guidance-check` after changing plans,
+routing, or skill metadata.
