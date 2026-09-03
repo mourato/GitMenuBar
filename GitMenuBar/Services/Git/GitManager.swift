@@ -39,6 +39,8 @@ class GitManager: ObservableObject {
     @Published var behindCount: Int = 0
     @Published var isPrivate: Bool = false
     @Published private(set) var commitHistoryLimit = 25
+    @Published var stashes: [GitStashInfo] = []
+    @Published var unmergedIntoDefaultBranches: [String] = []
 
     /// Token provider for authenticated git operations (push/pull)
     var tokenProvider: (() -> String?)? {
@@ -58,6 +60,7 @@ class GitManager: ObservableObject {
     private var selectedRefreshPath = ""
     var selectedRefreshOperation: ((GitRefreshSession) async -> Void)?
     let branchService: GitBranchService
+    let stashService: GitStashService
     let atomicCommitService: GitAtomicCommitService
     let commitHistoryService: GitCommitHistoryService
 
@@ -70,6 +73,7 @@ class GitManager: ObservableObject {
             commandRunner: commandRunner
         )
         self.branchService = branchService
+        stashService = GitStashService(commandRunner: commandRunner)
         atomicCommitService = GitAtomicCommitService(
             repositoryContext: repositoryContext,
             commandRunner: commandRunner
@@ -178,6 +182,8 @@ class GitManager: ObservableObject {
         behindCount = 0
         isPrivate = false
         commitCount = 0
+        stashes = []
+        unmergedIntoDefaultBranches = []
     }
 
     func refreshAsync(includeReflogHistory: Bool? = nil) async {
@@ -1742,6 +1748,66 @@ class GitManager: ObservableObject {
 
     func pushBranchToRemoteAsync(branchName: String) async -> Result<Void, Error> {
         await branchService.pushBranchToRemoteAsync(branchName: branchName)
+    }
+
+    func pushNamedLocalBranchAsync(
+        branchName: String,
+        context: RepositoryOperationContext
+    ) async -> Result<Void, Error> {
+        guard !context.repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+        return await branchService.pushNamedLocalBranchAsync(
+            branchName: branchName,
+            repositoryPath: context.repositoryPath
+        )
+    }
+
+    func loadSelectedStashesAsync() async {
+        let session = makeCurrentSelectedRefreshSession()
+        guard session.isCurrent() else { return }
+        await loadStashesAsync(session: session)
+    }
+
+    func loadStashesAsync(session: GitRefreshSession? = nil) async {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
+        let listed: [GitStashInfo] = await runOnBackground {
+            self.stashService.listStashes(in: repositoryPath)
+        }
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
+            self.stashes = listed
+        }
+    }
+
+    func applyStashAsync(hash: String, context: RepositoryOperationContext) async -> Result<Void, Error> {
+        guard !context.repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+        return await runOnBackground {
+            self.stashService.applyStash(hash: hash, in: context.repositoryPath)
+        }
+    }
+
+    func dropStashAsync(hash: String, context: RepositoryOperationContext) async -> Result<Void, Error> {
+        guard !context.repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+        return await runOnBackground {
+            self.stashService.dropStash(hash: hash, in: context.repositoryPath)
+        }
+    }
+
+    func loadSelectedUnmergedLocalBranchesAsync() async {
+        let session = makeCurrentSelectedRefreshSession()
+        guard session.isCurrent() else { return }
+        await loadUnmergedLocalBranchesAsync(session: session)
+    }
+
+    func loadUnmergedLocalBranchesAsync(session: GitRefreshSession? = nil) async {
+        let listed = await branchService.listLocalBranchesNotMergedIntoDefaultAsync(session: session)
+        await GitExecution.publishOnMainActor(ifCurrent: session) {
+            self.unmergedIntoDefaultBranches = listed
+        }
     }
 
     func deleteRemoteBranchAsync(branchName: String) async -> Result<Void, Error> {

@@ -6,6 +6,49 @@
 import Foundation
 
 extension GitBranchService {
+    func pushNamedLocalBranchAsync(branchName: String, repositoryPath: String) async -> Result<Void, Error> {
+        guard !repositoryPath.isEmpty else {
+            return .failure(GitExecution.missingRepositoryError())
+        }
+
+        let trimmedName = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            return .failure(branchError(code: 2, description: "Branch name cannot be empty"))
+        }
+
+        return await runOnBackground {
+            let verify = self.executeGitCommand(
+                in: repositoryPath,
+                args: ["show-ref", "--verify", "--quiet", "refs/heads/\(trimmedName)"]
+            )
+            guard !verify.failure else {
+                return .failure(NSError(
+                    domain: "GitManager",
+                    code: 42,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "Local branch '\(trimmedName)' is no longer in this repository."
+                    ]
+                ))
+            }
+
+            let result = self.executeGitCommand(
+                in: repositoryPath,
+                args: ["push", "origin", "refs/heads/\(trimmedName):refs/heads/\(trimmedName)"],
+                useAuth: true
+            )
+            guard !result.failure else {
+                return .failure(NSError(
+                    domain: "GitManager",
+                    code: 40,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: GitStashService.userFacingMessage(from: result.output)
+                    ]
+                ))
+            }
+            return .success(())
+        }
+    }
+
     func pushBranchToRemoteAsync(branchName: String) async -> Result<Void, Error> {
         let repositoryPath = storedRepoPath
         guard !repositoryPath.isEmpty else {

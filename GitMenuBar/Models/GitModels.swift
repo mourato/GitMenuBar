@@ -198,6 +198,22 @@ struct BranchInfo: Identifiable, Hashable {
     }
 }
 
+struct GitStashInfo: Identifiable, Hashable, Sendable {
+    let hash: String
+    let displayRef: String
+    let subject: String
+    let branchName: String?
+    let createdAt: Date?
+
+    var id: String {
+        hash
+    }
+
+    var shortHash: String {
+        String(hash.prefix(7))
+    }
+}
+
 enum GitWorktreeWorkingTreeState: Hashable {
     case clean
     case dirty

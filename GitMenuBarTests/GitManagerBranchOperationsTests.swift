@@ -304,4 +304,31 @@ final class GitManagerBranchOperationsTests: XCTestCase {
             "gitManager.branchInfos should mirror branchService.branchInfos after the pipe"
         )
     }
+
+    func testUnmergedLocalBranchesAreNotReachableFromDefault() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["checkout", "-b", "feature/unmerged"], in: repoURL)
+        try "unmerged\n".write(to: repoURL.appendingPathComponent("unmerged.txt"), atomically: true, encoding: .utf8)
+        try runGit(["add", "."], in: repoURL)
+        try runGit(["commit", "-m", "feat: unmerged"], in: repoURL)
+        try runGit(["checkout", "main"], in: repoURL)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        await gitManager.loadSelectedUnmergedLocalBranchesAsync()
+
+        XCTAssertTrue(gitManager.unmergedIntoDefaultBranches.contains("feature/unmerged"))
+        XCTAssertFalse(gitManager.unmergedIntoDefaultBranches.contains("main"))
+    }
+
+    func testNamedBranchPushUsesCapturedRepositoryPath() async throws {
+        let repoURL = try prepareRepoWithClonedRemote(testName: #function)
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let context = gitManager.makeRepositoryOperationContext()
+        let result = await gitManager.pushNamedLocalBranchAsync(branchName: "feature/to-push", context: context)
+        if case let .failure(error) = result {
+            XCTFail("Named branch push should succeed: \(error.localizedDescription)")
+        }
+        let remoteBranches = await gitManager.fetchRemoteBranchesAsync()
+        XCTAssertTrue(remoteBranches.contains("feature/to-push"))
+    }
 }
