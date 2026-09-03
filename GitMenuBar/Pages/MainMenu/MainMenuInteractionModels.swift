@@ -57,6 +57,55 @@ enum MainMenuSelectableItem: Hashable {
     case historyCommit(id: String)
 }
 
+enum MainMenuInspectorSelection: Hashable, Identifiable {
+    case workingTree
+    case branches
+    case unpushedCommits
+    case stashes
+    case history
+    case stagedFile(path: String)
+    case unstagedFile(path: String)
+    case branch(name: String)
+    case stash(id: String)
+    case commit(id: String)
+
+    var id: String {
+        switch self {
+        case .workingTree: "working-tree"
+        case .branches: "branches"
+        case .unpushedCommits: "unpushed-commits"
+        case .stashes: "stashes"
+        case .history: "history"
+        case let .stagedFile(path): "staged-file:\(path)"
+        case let .unstagedFile(path): "unstaged-file:\(path)"
+        case let .branch(name): "branch:\(name)"
+        case let .stash(id): "stash:\(id)"
+        case let .commit(id): "commit:\(id)"
+        }
+    }
+
+    init?(mainMenuItem: MainMenuSelectableItem) {
+        switch mainMenuItem {
+        case let .stagedFile(path): self = .stagedFile(path: path)
+        case let .unstagedFile(path): self = .unstagedFile(path: path)
+        case let .historyCommit(id): self = .commit(id: id)
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .workingTree: "Working Tree"
+        case .branches: "Branches"
+        case .unpushedCommits: "Unpushed Commits"
+        case .stashes: "Stashes"
+        case .history: "History"
+        case let .stagedFile(path), let .unstagedFile(path): path
+        case let .branch(name): name
+        case let .stash(id), let .commit(id): id
+        }
+    }
+}
+
 struct WorkingTreeItemActions: Equatable {
     let primaryLabel: String
     let accessibilityLabel: String

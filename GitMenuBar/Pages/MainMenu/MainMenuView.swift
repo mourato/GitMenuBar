@@ -46,6 +46,7 @@ struct MainMenuView: View {
     @State var commandPaletteQuery = ""
     @State var selectedCommandPaletteItemID: String?
     @State var selectedMainItemID: MainMenuSelectableItem?
+    @State var selectedInspectorSelection: MainMenuInspectorSelection?
     @State var lastHandledCommandPaletteToken = 0
     @State var lastHandledRepositoryOptionsToken = 0
     @State var mainKeyboardMonitor: Any?
@@ -291,6 +292,7 @@ struct MainMenuView: View {
         }
         .onChange(of: presentationModel.route) { route in
             if route != .main {
+                clearInspectorSelection()
                 closeCommandPalette()
                 dismissTransientPresentations()
                 if commentText.isEmpty {
@@ -325,6 +327,8 @@ struct MainMenuView: View {
             refreshRenderSnapshot()
         }
         .onChange(of: currentRepositoryPath) { _ in
+            selectedMainItemID = nil
+            clearInspectorSelection()
             reloadRepositorySelectionSnapshot()
             refreshRenderSnapshot()
         }

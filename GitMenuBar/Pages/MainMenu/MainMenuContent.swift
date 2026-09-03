@@ -213,69 +213,132 @@ extension MainMenuView {
         )
     }
 
-    var mainView: some View {
-        applyMainViewOverlays(
-            to: NavigationSplitView(columnVisibility: projectsSidebarVisibility) {
-                ProjectsSidebarView(
-                    currentPath: currentRepositoryPath,
-                    onSelect: switchRepository,
-                    onReveal: revealProjectInFinder,
-                    onStopMonitoring: { projectMonitor.remove(path: $0) },
-                    onRemove: removeProject,
-                    onRename: renameProject,
-                    onProjectCleanup: presentationModel.showProjectCleanup,
-                    onAddProject: selectDirectory,
-                    onRefreshAll: projectMonitor.refreshAll,
-                    onFetchAll: projectMonitor.fetchAll
-                )
-                .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 360)
-            } detail: {
-                routeContent
-                    .padding(.top, WorkbenchMetrics.sectionSpacing)
-                    .padding(.leading, WorkbenchMetrics.windowPadding)
-                    .padding(.trailing, WorkbenchMetrics.windowPadding)
-                    .padding(.bottom, WorkbenchMetrics.windowPadding)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            }
-            .navigationSplitViewStyle(.balanced)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .onExitCommand {
-                if isCommandPalettePresented {
-                    closeCommandPalette()
-                    return
-                }
-                if showBranchSelector {
-                    dismissTransientPresentations()
-                    return
-                }
-                if showRepositoryOptionsPopover {
-                    dismissTransientPresentations()
-                    return
-                }
-                if hasTransientPresentation {
-                    dismissTransientPresentations()
-                    return
-                }
-                closeWindow()
-            }
-            .onReceive(shortcutActionBridge.actions) { action in
-                guard presentationModel.route == .main else { return }
-
-                switch action {
-                case .commit:
-                    guard hasWorkingTreeChanges else { return }
-                    Task {
-                        await submitComment()
-                    }
-                case .sync:
-                    Task {
-                        await actionCoordinator.performSync()
-                    }
-                case .atomicCommits:
-                    startAtomicCommitFlow()
-                }
+    private func inspectorPresentedBinding(isCompact: Bool) -> Binding<Bool> {
+        Binding(
+            get: { selectedInspectorSelection != nil && !isCompact },
+            set: { isPresented in
+                guard !isPresented, !isCompact else { return }
+                clearInspectorSelection()
             }
         )
+    }
+
+    private func compactInspectorSelectionBinding(isCompact: Bool) -> Binding<MainMenuInspectorSelection?> {
+        Binding(
+            get: { isCompact ? selectedInspectorSelection : nil },
+            set: { selection in
+                guard isCompact else { return }
+                selectedInspectorSelection = selection
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var inspectorContent: some View {
+        if let selection = selectedInspectorSelection {
+            MainMenuInspectorView(
+                projectName: renderSnapshot.currentProjectName,
+                selection: selection,
+                onClose: clearInspectorSelection
+            )
+        }
+    }
+
+    var mainView: some View {
+        GeometryReader { geometry in
+            let isCompactInspector = WorkbenchMetrics.usesCompactInspector(for: geometry.size.width)
+
+            applyMainViewOverlays(
+                to: NavigationSplitView(columnVisibility: projectsSidebarVisibility) {
+                    ProjectsSidebarView(
+                        currentPath: currentRepositoryPath,
+                        onSelect: switchRepository,
+                        onReveal: revealProjectInFinder,
+                        onStopMonitoring: { projectMonitor.remove(path: $0) },
+                        onRemove: removeProject,
+                        onRename: renameProject,
+                        onProjectCleanup: presentationModel.showProjectCleanup,
+                        onAddProject: selectDirectory,
+                        onRefreshAll: projectMonitor.refreshAll,
+                        onFetchAll: projectMonitor.fetchAll
+                    )
+                    .navigationSplitViewColumnWidth(
+                        min: WorkbenchMetrics.projectsMinimumWidth,
+                        ideal: 240,
+                        max: 360
+                    )
+                } detail: {
+                    routeContent
+                        .inspector(isPresented: inspectorPresentedBinding(isCompact: isCompactInspector)) {
+                            inspectorContent
+                                .inspectorColumnWidth(
+                                    min: WorkbenchMetrics.inspectorMinimumWidth,
+                                    ideal: WorkbenchMetrics.inspectorMinimumWidth
+                                )
+                        }
+                        .navigationSplitViewColumnWidth(
+                            min: WorkbenchMetrics.centralMinimumWidth,
+                            ideal: WorkbenchMetrics.centralMinimumWidth
+                        )
+                        .padding(.top, WorkbenchMetrics.sectionSpacing)
+                        .padding(.leading, WorkbenchMetrics.windowPadding)
+                        .padding(.trailing, WorkbenchMetrics.windowPadding)
+                        .padding(.bottom, WorkbenchMetrics.windowPadding)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                }
+                .navigationSplitViewStyle(.balanced)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .onExitCommand {
+                    if selectedInspectorSelection != nil {
+                        clearInspectorSelection()
+                        return
+                    }
+                    if isCommandPalettePresented {
+                        closeCommandPalette()
+                        return
+                    }
+                    if showBranchSelector {
+                        dismissTransientPresentations()
+                        return
+                    }
+                    if showRepositoryOptionsPopover {
+                        dismissTransientPresentations()
+                        return
+                    }
+                    if hasTransientPresentation {
+                        dismissTransientPresentations()
+                        return
+                    }
+                    closeWindow()
+                }
+                .onReceive(shortcutActionBridge.actions) { action in
+                    guard presentationModel.route == .main else { return }
+
+                    switch action {
+                    case .commit:
+                        guard hasWorkingTreeChanges else { return }
+                        Task {
+                            await submitComment()
+                        }
+                    case .sync:
+                        Task {
+                            await actionCoordinator.performSync()
+                        }
+                    case .atomicCommits:
+                        startAtomicCommitFlow()
+                    }
+                }
+            )
+            .sheet(item: compactInspectorSelectionBinding(isCompact: isCompactInspector)) { selection in
+                MainMenuInspectorView(
+                    projectName: renderSnapshot.currentProjectName,
+                    selection: selection,
+                    onClose: clearInspectorSelection
+                )
+                .frame(minWidth: WorkbenchMetrics.inspectorMinimumWidth)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var historySection: some View {

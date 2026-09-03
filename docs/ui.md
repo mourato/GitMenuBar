@@ -63,6 +63,27 @@ and no nested workbench panel plates. The multi-project window keeps a
 collapsible Projects sidebar beside the selected-project detail column; the
 system owns its divider and width.
 
+## Three-surface workbench
+
+The main workbench has three possible surfaces with one selection owner:
+
+- Projects remains the compact navigation and attention surface on the left.
+- The selected repository workbench remains in the center.
+- A contextual trailing inspector is hidden until a central item is selected.
+
+On wide windows, the selected-project detail owner presents a resizable native
+`.inspector` using the same `MainMenuInspectorSelection` value that identifies
+the central item. When the named Workbench column minimums cannot fit, that
+selection is presented with one native `.sheet(item:)` instead. The wide and
+compact bindings are mutually exclusive, so resizing preserves the selection
+without creating a duplicate panel or a fourth `NavigationSplitView` column.
+
+The inspector owns one scroll surface, keeps the project selection separate
+from contextual selection, and closes first on Escape. It does not add an
+automatic fetch, duplicate repository query, persistent preference, custom
+AppKit panel, or status-item lifecycle change. Durable rationale is recorded in
+[`ADR 0010`](adr/0010-contextual-workbench-inspector.md).
+
 ## States, accessibility, and motion
 
 Affected surfaces must cover idle, hover, pressed, focused, selected, disabled,
