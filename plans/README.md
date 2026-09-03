@@ -1279,10 +1279,10 @@ rules.
 
 | Plan | Title | Priority | Effort | Depends on | Status | Commit | Review | Integration | Main validation |
 |---|---|---:|---:|---|---|---|---|---|---|
-| [076](076-workbench-inspector-shell.md) | Add the hidden trailing inspector shell | P0 | M | — | TODO | — | — | — | — |
-| [077](077-project-state-overview.md) | Add the central project-state overview | P0 | M | 076 | TODO | — | — | — | — |
-| [078](078-contextual-git-detail-actions.md) | Add contextual Git detail views and safe actions | P0 | L | 076, 077 | TODO | — | — | — | — |
-| [079](079-history-inspector-drilldown.md) | Move history into the contextual inspector | P0 | L | 076, 077, 078 | TODO | — | — | — | — |
+| [076](076-workbench-inspector-shell.md) | Add the hidden trailing inspector shell | P0 | M | — | REVIEWED | 0643d1e | host:code-review PASS | MERGED_LOCAL b2ea14f | PASS: guidance + focused test |
+| [077](077-project-state-overview.md) | Add the central project-state overview | P0 | M | 076 | REVIEWED | 0643d1e | host:code-review PASS | MERGED_LOCAL b2ea14f | PASS: guidance + focused test |
+| [078](078-contextual-git-detail-actions.md) | Add contextual Git detail views and safe actions | P0 | L | 076, 077 | REVIEWED | 0643d1e | host:code-review PASS | MERGED_LOCAL b2ea14f | PASS: guidance + focused test |
+| [079](079-history-inspector-drilldown.md) | Move history into the contextual inspector | P0 | L | 076, 077, 078 | REVIEWED | 0643d1e | host:code-review PASS | MERGED_LOCAL b2ea14f | PASS: guidance + focused test |
 
 ### Dependency notes
 
