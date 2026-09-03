@@ -294,6 +294,14 @@ extension MainMenuView {
                     )
                 } detail: {
                     routeContent
+                        .padding(.top, WorkbenchMetrics.sectionSpacing)
+                        .padding(.leading, WorkbenchMetrics.windowPadding)
+                        .padding(.trailing, WorkbenchMetrics.windowPadding)
+                        .padding(.bottom, WorkbenchMetrics.windowPadding)
+                        .navigationSplitViewColumnWidth(
+                            min: WorkbenchMetrics.centralMinimumWidth,
+                            ideal: WorkbenchMetrics.centralMinimumWidth
+                        )
                         .inspector(isPresented: inspectorPresentedBinding(isCompact: isCompactInspector)) {
                             inspectorContent
                                 .inspectorColumnWidth(
@@ -301,14 +309,6 @@ extension MainMenuView {
                                     ideal: WorkbenchMetrics.inspectorMinimumWidth
                                 )
                         }
-                        .navigationSplitViewColumnWidth(
-                            min: WorkbenchMetrics.centralMinimumWidth,
-                            ideal: WorkbenchMetrics.centralMinimumWidth
-                        )
-                        .padding(.top, WorkbenchMetrics.sectionSpacing)
-                        .padding(.leading, WorkbenchMetrics.windowPadding)
-                        .padding(.trailing, WorkbenchMetrics.windowPadding)
-                        .padding(.bottom, WorkbenchMetrics.windowPadding)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
                 .navigationSplitViewStyle(.balanced)
