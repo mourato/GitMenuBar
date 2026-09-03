@@ -6,6 +6,8 @@ The main panel and Settings window use a **window-level material/vibrancy shell*
 
 **Status:** accepted (2026-07-25); native toolbar adoption and compatibility-key removal recorded 2026-09-02
 
+**Update (sidebar bottom bar):** the Settings gear moved from the window toolbar to the Projects sidebar footer, alongside the quota summary and a collapse toggle. The toolbar keeps the sidebar toggle and a centered title (`centeredItemIdentifier`). Rationale: concentrate sidebar actions in one native bottom surface, keep the toolbar to navigation/title only, and preserve Settings access via the sidebar, status-item menu, and command palette when the sidebar is collapsed.
+
 ## Considered options
 
 - SwiftUI-only padding to fake traffic-light alignment — rejected; vertical mismatch remains on transparent titlebars.

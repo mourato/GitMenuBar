@@ -359,6 +359,7 @@ final class StatusBarController: NSObject, ObservableObject {
         toolbar.displayMode = .iconOnly
         toolbar.sizeMode = .small
         toolbar.allowsUserCustomization = false
+        toolbar.centeredItemIdentifier = MainWindowToolbarItemIdentifier.title
         window.toolbar = toolbar
         mainWindowToolbarDelegate = toolbarDelegate
     }
@@ -382,12 +383,6 @@ final class StatusBarController: NSObject, ObservableObject {
             item.toolTip = "Return to the main repository view"
             item.action = #selector(goBackFromToolbar(_:))
             item.image = NSImage(systemSymbolName: "chevron.backward", accessibilityDescription: "Back")
-        case MainWindowToolbarItemIdentifier.settings:
-            item.label = "Settings"
-            item.paletteLabel = "Settings"
-            item.toolTip = "Open GitMenuBar settings"
-            item.action = #selector(openSettingsFromToolbar(_:))
-            item.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings")
         case MainWindowToolbarItemIdentifier.title:
             let titleField = NSTextField(labelWithString: mainWindowTitle)
             titleField.alignment = .center
@@ -484,11 +479,6 @@ final class StatusBarController: NSObject, ObservableObject {
     @objc
     private func goBackFromToolbar(_: NSToolbarItem) {
         presentationModel.showMain()
-    }
-
-    @objc
-    private func openSettingsFromToolbar(_: NSToolbarItem) {
-        openSettingsWindow()
     }
 
     private func makeRootView() -> AnyView {
@@ -1227,7 +1217,6 @@ private enum MainWindowToolbarItemIdentifier {
     static let sidebarToggle = NSToolbarItem.Identifier("GitMenuBar.sidebarToggle")
     static let back = NSToolbarItem.Identifier("GitMenuBar.back")
     static let title = NSToolbarItem.Identifier("GitMenuBar.title")
-    static let settings = NSToolbarItem.Identifier("GitMenuBar.settings")
 }
 
 @MainActor
@@ -1243,8 +1232,7 @@ private final class MainWindowToolbarDelegate: NSObject, NSToolbarDelegate {
             MainWindowToolbarItemIdentifier.sidebarToggle,
             MainWindowToolbarItemIdentifier.back,
             .flexibleSpace,
-            MainWindowToolbarItemIdentifier.title,
-            MainWindowToolbarItemIdentifier.settings
+            MainWindowToolbarItemIdentifier.title
         ]
     }
 
@@ -1253,8 +1241,7 @@ private final class MainWindowToolbarDelegate: NSObject, NSToolbarDelegate {
             MainWindowToolbarItemIdentifier.sidebarToggle,
             .flexibleSpace,
             MainWindowToolbarItemIdentifier.title,
-            .flexibleSpace,
-            MainWindowToolbarItemIdentifier.settings
+            .flexibleSpace
         ]
     }
 

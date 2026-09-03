@@ -49,8 +49,10 @@ they drift, and use an ADR for a durable decision rather than a task log.
 
 The main route remains native toolbar → commit composer → scroll content →
 branch footer, with optional quota cards secondary to Git work. `NavigationSplitView`
-owns the Projects sidebar's width, selection, and collapse behavior. Stage/
-Unstage section actions stay visible; per-file actions remain hover-revealed
+owns the Projects sidebar's width, selection, and collapse behavior. The sidebar
+footer concentrates the quota summary, Settings access, and collapse toggle in one
+bottom surface; the window toolbar keeps the sidebar toggle and centered title only.
+Stage/Unstage section actions stay visible; per-file actions remain hover-revealed
 where the product policy permits. Preserve keyboard actions, context menus, and
 confirmation for destructive work.
 
