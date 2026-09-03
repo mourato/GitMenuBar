@@ -492,6 +492,17 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
+    /// Hard-resets the captured repository to `hash`. Blocks project switching for
+    /// the full operation because the underlying reset path is not yet a fully
+    /// selected-refresh-generation-bound UI transaction.
+    func resetInspectorCommit(hash: String) async -> MainMenuInspectorActionResult {
+        await executeContextualMutation(allowsRepositorySwitch: false) { context in
+            let result = await gitManager.resetToCommitAsync(hash: hash, context: context)
+            await finishInspectorMutation(result, context: context, failureTitle: "Reset Failed")
+            return result.inspectorActionResult
+        }
+    }
+
     private func executeContextualMutation(
         allowsRepositorySwitch: Bool,
         operation: (RepositoryOperationContext) async -> MainMenuInspectorActionResult

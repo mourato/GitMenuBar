@@ -145,7 +145,7 @@ struct MainMenuView: View {
                 .padding(.horizontal, WorkbenchMetrics.windowPadding)
                 .padding(.bottom, WorkbenchMetrics.windowPadding)
                 .transition(routeTransition)
-            case .main, .historyDetail, .projectCleanup:
+            case .main, .projectCleanup:
                 mainView
                     .transition(routeTransition)
             }
@@ -381,11 +381,6 @@ private enum MainMenuRouteTransition {
             return .asymmetric(
                 insertion: .opacity.combined(with: .move(edge: .bottom)),
                 removal: .opacity.combined(with: .move(edge: .bottom))
-            )
-        case .historyDetail:
-            return .asymmetric(
-                insertion: .opacity.combined(with: .move(edge: .trailing)),
-                removal: .opacity.combined(with: .move(edge: .trailing))
             )
         case .projectCleanup:
             return .opacity

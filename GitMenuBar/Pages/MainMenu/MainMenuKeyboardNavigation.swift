@@ -111,7 +111,7 @@ extension MainMenuView {
         case let .stagedFile(path), let .unstagedFile(path):
             gitManager.openFile(path: path)
         case let .historyCommit(id):
-            presentationModel.showHistoryDetail(commitID: id)
+            selectedInspectorSelection = .commit(id: id)
         }
     }
 

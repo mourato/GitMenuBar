@@ -31,18 +31,18 @@ final class MainMenuPresentationModelTests: XCTestCase {
         XCTAssertEqual(model.focusCommitFieldToken, 1)
     }
 
-    func testShowHistoryDetailUpdatesRoute() {
+    func testShowProjectCleanupUpdatesRoute() {
         let model = MainMenuPresentationModel()
 
-        model.showHistoryDetail(commitID: "abc123")
+        model.showProjectCleanup()
 
-        XCTAssertEqual(model.route, .historyDetail(commitID: "abc123"))
+        XCTAssertEqual(model.route, .projectCleanup)
     }
 
-    func testShowMainExitsHistoryDetail() {
+    func testShowMainExitsProjectCleanup() {
         let model = MainMenuPresentationModel()
 
-        model.showHistoryDetail(commitID: "abc123")
+        model.showProjectCleanup()
         model.showMain()
 
         XCTAssertEqual(model.route, .main)
