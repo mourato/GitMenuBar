@@ -55,6 +55,12 @@ enum MainMenuSyncExecutionResult: Equatable {
     }
 }
 
+enum MainMenuInspectorActionResult: Equatable {
+    case skipped
+    case succeeded
+    case failed
+}
+
 @MainActor
 final class MainMenuActionCoordinator: ObservableObject {
     private enum CommitMessageInputState: Equatable {
@@ -388,6 +394,149 @@ final class MainMenuActionCoordinator: ObservableObject {
         alert = MainMenuActionAlert(title: title, message: message)
     }
 
+    func prepareInspectorSelection(_ selection: MainMenuInspectorSelection?) async {
+        switch selection {
+        case .stashes, .stash:
+            await gitManager.loadSelectedStashesAsync()
+        case .branches, .branch:
+            await gitManager.loadSelectedUnmergedLocalBranchesAsync()
+        case .unpushedCommits:
+            await gitManager.fetchSelectedBranchesAsync()
+        default:
+            break
+        }
+    }
+
+    func pushInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+        await executeContextualMutation(allowsRepositorySwitch: true) { context in
+            let result = await gitManager.pushNamedLocalBranchAsync(branchName: branchName, context: context)
+            await finishInspectorMutation(result, context: context, failureTitle: "Push Failed")
+            return result.inspectorActionResult
+        }
+    }
+
+    func applyInspectorStash(hash: String) async -> MainMenuInspectorActionResult {
+        await executeContextualMutation(allowsRepositorySwitch: true) { context in
+            let result = await gitManager.applyStashAsync(hash: hash, context: context)
+            await finishInspectorMutation(result, context: context, failureTitle: "Apply Stash Failed")
+            if gitManager.isCurrent(context) {
+                await gitManager.loadSelectedStashesAsync()
+            }
+            return result.inspectorActionResult
+        }
+    }
+
+    func dropInspectorStash(hash: String) async -> MainMenuInspectorActionResult {
+        await executeContextualMutation(allowsRepositorySwitch: true) { context in
+            let result = await gitManager.dropStashAsync(hash: hash, context: context)
+            await finishInspectorMutation(result, context: context, failureTitle: "Drop Stash Failed")
+            if gitManager.isCurrent(context) {
+                await gitManager.loadSelectedStashesAsync()
+            }
+            return result.inspectorActionResult
+        }
+    }
+
+    func switchInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+        await executeCallbackMutation(failureTitle: "Branch Switch Failed") { completion in
+            gitManager.switchBranch(branchName: branchName, completion: completion)
+        }
+    }
+
+    func mergeInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+        await executeCallbackMutation(failureTitle: "Merge Failed") { completion in
+            gitManager.mergeBranch(fromBranch: branchName, completion: completion)
+        }
+    }
+
+    func deleteInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+        let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return .skipped
+        }
+        return await executeCallbackMutation(failureTitle: "Delete Failed") { completion in
+            gitManager.deleteBranch(branchName: trimmed, completion: completion)
+        }
+    }
+
+    func stageInspectorFile(path: String) async -> MainMenuInspectorActionResult {
+        await executeCallbackMutation(failureTitle: "Stage Failed") { completion in
+            gitManager.stageFile(path: path, completion: completion)
+        }
+    }
+
+    func unstageInspectorFile(path: String) async -> MainMenuInspectorActionResult {
+        await executeCallbackMutation(failureTitle: "Unstage Failed") { completion in
+            gitManager.unstageFile(path: path, completion: completion)
+        }
+    }
+
+    func stageAllInspectorFiles() async -> MainMenuInspectorActionResult {
+        await executeCallbackMutation(failureTitle: "Stage Failed") { completion in
+            gitManager.stageAllChanges(completion: completion)
+        }
+    }
+
+    func unstageAllInspectorFiles() async -> MainMenuInspectorActionResult {
+        await executeCallbackMutation(failureTitle: "Unstage Failed") { completion in
+            gitManager.unstageAllChanges(completion: completion)
+        }
+    }
+
+    func discardInspectorFile(
+        path: String,
+        status: WorkingTreeFileStatus
+    ) async -> MainMenuInspectorActionResult {
+        await executeCallbackMutation(failureTitle: "Discard Failed") { completion in
+            gitManager.discardFileChanges(path: path, status: status, completion: completion)
+        }
+    }
+
+    private func executeContextualMutation(
+        allowsRepositorySwitch: Bool,
+        operation: (RepositoryOperationContext) async -> MainMenuInspectorActionResult
+    ) async -> MainMenuInspectorActionResult {
+        guard !isBusy else {
+            return .skipped
+        }
+        return await executePrimaryAction(allowsRepositorySwitch: allowsRepositorySwitch) {
+            guard let context = activeOperationContext else {
+                return .skipped
+            }
+            return await operation(context)
+        }
+    }
+
+    private func executeCallbackMutation(
+        failureTitle: String,
+        start: (@escaping (Result<Void, Error>) -> Void) -> Void
+    ) async -> MainMenuInspectorActionResult {
+        await executeContextualMutation(allowsRepositorySwitch: false) { context in
+            let result: Result<Void, Error> = await withCheckedContinuation { continuation in
+                start { value in
+                    continuation.resume(returning: value)
+                }
+            }
+            await finishInspectorMutation(result, context: context, failureTitle: failureTitle)
+            return result.inspectorActionResult
+        }
+    }
+
+    private func finishInspectorMutation(
+        _ result: Result<Void, Error>,
+        context: RepositoryOperationContext,
+        failureTitle: String
+    ) async {
+        await gitManager.refreshAsync(includeReflogHistory: false, context: context)
+        onCommitCompleted?(context.repositoryPath)
+        switch result {
+        case .success:
+            break
+        case let .failure(error):
+            publishAlert(title: failureTitle, message: error.localizedDescription)
+        }
+    }
+
     func publishSuccess(title: String, message: String) {
         guard activeOperationContext.map({ gitManager.isCurrent($0) }) ?? true else { return }
         success = MainMenuActionAlert(title: title, message: message)
@@ -576,5 +725,16 @@ final class MainMenuActionCoordinator: ObservableObject {
         let trace = GitPerformanceTrace.begin(name)
         defer { GitPerformanceTrace.end(name, id: trace) }
         return await operation()
+    }
+}
+
+private extension Result where Success == Void, Failure == Error {
+    var inspectorActionResult: MainMenuInspectorActionResult {
+        switch self {
+        case .success:
+            .succeeded
+        case .failure:
+            .failed
+        }
     }
 }

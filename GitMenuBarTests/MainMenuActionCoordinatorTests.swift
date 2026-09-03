@@ -1,6 +1,8 @@
 @testable import GitMenuBar
 import XCTest
 
+// swiftlint:disable file_length
+
 @MainActor
 final class MainMenuActionCoordinatorTests: XCTestCase {
     override func tearDown() {
@@ -23,6 +25,74 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
 
         XCTAssertFalse(actionCoordinator.canSwitchRepository)
         XCTAssertFalse(actionCoordinator.canSwitchRepository(to: "/tmp/project-b"))
+    }
+
+    func testInspectorPushIsSkippedWhileBusy() async {
+        let gitManager = GitManager(repositoryPathOverride: "")
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+        gitManager.isCommitting = true
+        let result = await actionCoordinator.pushInspectorBranch("main")
+        XCTAssertEqual(result, .skipped)
+    }
+
+    func testFailedInspectorApplyDoesNotReportSuccess() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try "base\n".write(to: repoURL.appendingPathComponent("note.txt"), atomically: true, encoding: .utf8)
+        try runGit(["add", "note.txt"], in: repoURL)
+        try runGit(["commit", "-m", "feat: note"], in: repoURL)
+        try "stashed\n".write(to: repoURL.appendingPathComponent("note.txt"), atomically: true, encoding: .utf8)
+        try runGit(["stash", "push", "-m", "keep-me"], in: repoURL)
+        try "conflicting\n".write(to: repoURL.appendingPathComponent("note.txt"), atomically: true, encoding: .utf8)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        await gitManager.loadSelectedStashesAsync()
+        let hash = try XCTUnwrap(gitManager.stashes.first?.hash)
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await actionCoordinator.applyInspectorStash(hash: hash)
+        XCTAssertEqual(result, .failed)
+        XCTAssertNotNil(actionCoordinator.alert)
+        XCTAssertNil(actionCoordinator.success)
+        XCTAssertEqual(gitManager.stashService.listStashes(in: repoURL.path).map(\.hash), [hash])
+    }
+
+    func testInspectorApplyDoesNotPublishIntoSwitchedProject() async {
+        let manager = InspectorGateGitManager(repositoryPath: "/tmp/project-a")
+        let coordinator = makeActionCoordinator(
+            gitManager: manager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+        let started = expectation(description: "apply starts")
+        manager.applyStarted = started
+
+        let action = Task { @MainActor in
+            await coordinator.applyInspectorStash(hash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        }
+        await fulfillment(of: [started])
+        let duplicate = await coordinator.applyInspectorStash(hash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+        XCTAssertEqual(duplicate, .skipped)
+        manager.selectedPath = "/tmp/project-b"
+        manager.resetSelectedRepositoryState()
+        coordinator.resetForRepositorySwitch()
+        manager.releaseApply(.failure(NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "apply failed"])))
+
+        let result = await action.value
+        XCTAssertEqual(result, .failed)
+        XCTAssertEqual(manager.applyPaths, ["/tmp/project-a"])
+        XCTAssertNil(coordinator.alert)
+        XCTAssertNil(coordinator.success)
     }
 
     func testPerformCommitUsesManualMessageWithoutInvokingAI() async throws {
@@ -457,5 +527,48 @@ private final class SpyAIAPIKeyStore: AIAPIKeyStore, @unchecked Sendable {
 
     func deleteAPIKey(for providerId: AIProviderCredentialID) throws {
         storage.removeValue(forKey: providerId)
+    }
+}
+
+@MainActor
+private final class InspectorGateGitManager: GitManager {
+    var selectedPath: String
+    var applyStarted: XCTestExpectation?
+    var applyPaths: [String] = []
+    private var applyContinuation: CheckedContinuation<Result<Void, Error>, Never>?
+
+    init(repositoryPath: String) {
+        selectedPath = repositoryPath
+        super.init(repositoryPathOverride: repositoryPath)
+    }
+
+    override func isCurrent(_ context: RepositoryOperationContext) -> Bool {
+        selectedPath == context.repositoryPath
+    }
+
+    override func applyStashAsync(
+        hash _: String,
+        context: RepositoryOperationContext
+    ) async -> Result<Void, Error> {
+        applyPaths.append(context.repositoryPath)
+        applyStarted?.fulfill()
+        applyStarted = nil
+        return await withCheckedContinuation { continuation in
+            applyContinuation = continuation
+        }
+    }
+
+    override func refreshAsync(includeReflogHistory _: Bool? = nil) async {}
+
+    override func refreshAsync(
+        includeReflogHistory _: Bool? = nil,
+        context _: RepositoryOperationContext
+    ) async {}
+
+    override func loadSelectedStashesAsync() async {}
+
+    func releaseApply(_ result: Result<Void, Error>) {
+        applyContinuation?.resume(returning: result)
+        applyContinuation = nil
     }
 }

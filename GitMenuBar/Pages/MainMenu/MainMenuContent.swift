@@ -43,6 +43,15 @@ extension MainMenuView {
                 loadingStateView
             }
 
+            if !currentRepoPath.isEmpty {
+                RepositoryOverviewView(
+                    overview: renderSnapshot.overview,
+                    onSelectSection: { selection in
+                        selectedInspectorSelection = selection
+                    }
+                )
+            }
+
             if showsWorkingTreeSections {
                 if hasStagedFiles {
                     WorkingTreeSectionView(
@@ -239,7 +248,28 @@ extension MainMenuView {
             MainMenuInspectorView(
                 projectName: renderSnapshot.currentProjectName,
                 selection: selection,
-                onClose: clearInspectorSelection
+                overview: renderSnapshot.overview,
+                onClose: clearInspectorSelection,
+                onManageBranches: {
+                    dismissTransientPresentations()
+                    showBranchManagement = true
+                },
+                onRequestDiscard: requestDiscard,
+                onRequestDeleteBranch: { name in
+                    branchNameToDelete = name
+                    showBranchDeleteConfirmation = true
+                },
+                onRequestSwitchBranch: { branch in
+                    guard branch != gitManager.currentBranch else { return }
+                    if hasWorkingTreeChanges {
+                        pendingSwitchBranch = branch
+                        showDirtySwitchConfirmation = true
+                    } else {
+                        Task {
+                            _ = await actionCoordinator.switchInspectorBranch(branch)
+                        }
+                    }
+                }
             )
         }
     }
@@ -333,7 +363,28 @@ extension MainMenuView {
                 MainMenuInspectorView(
                     projectName: renderSnapshot.currentProjectName,
                     selection: selection,
-                    onClose: clearInspectorSelection
+                    overview: renderSnapshot.overview,
+                    onClose: clearInspectorSelection,
+                    onManageBranches: {
+                        dismissTransientPresentations()
+                        showBranchManagement = true
+                    },
+                    onRequestDiscard: requestDiscard,
+                    onRequestDeleteBranch: { name in
+                        branchNameToDelete = name
+                        showBranchDeleteConfirmation = true
+                    },
+                    onRequestSwitchBranch: { branch in
+                        guard branch != gitManager.currentBranch else { return }
+                        if hasWorkingTreeChanges {
+                            pendingSwitchBranch = branch
+                            showDirtySwitchConfirmation = true
+                        } else {
+                            Task {
+                                _ = await actionCoordinator.switchInspectorBranch(branch)
+                            }
+                        }
+                    }
                 )
                 .frame(minWidth: WorkbenchMetrics.inspectorMinimumWidth)
             }

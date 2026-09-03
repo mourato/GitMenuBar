@@ -165,6 +165,30 @@ extension GitBranchService {
         return infos.filter { !$0.isRemote || !localNames.contains($0.name) }
     }
 
+    /// Local branches whose commits are not reachable from the selected local default branch.
+    /// This is Git `--no-merged` reachability, not GitHub pull-request merge status.
+    func listLocalBranchesNotMergedIntoDefaultAsync(session: GitRefreshSession? = nil) async -> [String] {
+        let repositoryPath = session?.repositoryPath ?? storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            return []
+        }
+
+        let defaultBranch = await getDefaultBranchNameAsync(session: session)
+        return await runOnBackground {
+            let result = self.executeGitCommand(
+                in: repositoryPath,
+                args: ["branch", "--format=%(refname:short)", "--no-merged", defaultBranch]
+            )
+            guard !result.failure else {
+                return [String]()
+            }
+            return result.output
+                .components(separatedBy: .newlines)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty && $0 != "HEAD" && $0 != defaultBranch }
+        }
+    }
+
     // swiftlint:disable:next cyclomatic_complexity
     private func trackingStatus(upstream: String, track: String) -> BranchTrackingStatus {
         guard !upstream.isEmpty else { return .noRemote }

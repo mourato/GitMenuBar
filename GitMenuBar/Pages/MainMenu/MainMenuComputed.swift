@@ -2,8 +2,140 @@
 //  MainMenuComputed.swift
 //  GitMenuBar
 //
+// swiftlint:disable file_length
 
 import Foundation
+
+// MARK: - Repository overview model
+
+enum RepositoryMetricState<T: Equatable & Sendable>: Equatable, Sendable {
+    case known(T)
+    case loading
+    case unavailable
+}
+
+struct RepositoryOverviewSnapshot: Equatable, Sendable {
+    let stagedCount: Int
+    let unstagedCount: Int
+    let untrackedCount: Int
+    let addedLineCount: Int
+    let removedLineCount: Int
+    let aheadCount: RepositoryMetricState<Int>
+    let behindCount: RepositoryMetricState<Int>
+    let branchesWithoutUpstream: RepositoryMetricState<Int>
+    let unpushedBranches: RepositoryMetricState<Int>
+    let unmergedBranches: RepositoryMetricState<Int>
+    let stashCount: RepositoryMetricState<Int>
+    let historyCount: Int
+    let currentBranch: String?
+    let isDetachedHead: Bool
+    let isLoading: Bool
+    let lastCheckedAt: Date?
+
+    var totalWorkingTreeCount: Int {
+        stagedCount + unstagedCount + untrackedCount
+    }
+
+    var isCleanWorkingTree: Bool {
+        totalWorkingTreeCount == 0
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    static func build(
+        stagedFiles: [WorkingTreeFile],
+        changedFiles: [WorkingTreeFile],
+        commitCount: Int,
+        aheadOfRemote: Bool,
+        behindRemote: Bool,
+        gitBehindCount: Int,
+        commitHistory: [Commit],
+        currentBranch: String,
+        isDetachedHead: Bool,
+        monitorSnapshot: ProjectStatusSnapshot?,
+        isLoading: Bool
+    ) -> RepositoryOverviewSnapshot {
+        let stagedCount = stagedFiles.count
+        let unstagedCount = changedFiles.filter { $0.status != .untracked }.count
+        let untrackedCount = changedFiles.filter { $0.status == .untracked }.count
+        let workingTreeFiles = stagedFiles + changedFiles
+        let addedLineCount = workingTreeFiles.reduce(0) { $0 + $1.lineDiff.added }
+        let removedLineCount = workingTreeFiles.reduce(0) { $0 + $1.lineDiff.removed }
+
+        let aheadCount: RepositoryMetricState<Int>
+        let behindCount: RepositoryMetricState<Int>
+        if let snapshot = monitorSnapshot {
+            aheadCount = .known(snapshot.aheadCount)
+            behindCount = .known(snapshot.behindCount)
+        } else if aheadOfRemote || behindRemote || commitCount > 0 || gitBehindCount > 0 {
+            aheadCount = .known(commitCount)
+            behindCount = .known(gitBehindCount)
+        } else {
+            aheadCount = .known(0)
+            behindCount = .known(0)
+        }
+
+        let branchesWithoutUpstream: RepositoryMetricState<Int>
+        let unpushedBranches: RepositoryMetricState<Int>
+        let unmergedBranches: RepositoryMetricState<Int>
+        let stashCount: RepositoryMetricState<Int>
+        if let snapshot = monitorSnapshot {
+            branchesWithoutUpstream = .known(snapshot.branchesWithoutUpstreamCount)
+            unpushedBranches = .known(snapshot.unpushedBranchCount)
+            unmergedBranches = .known(snapshot.unmergedBranchCount)
+            stashCount = .known(snapshot.stashCount)
+        } else if isLoading {
+            branchesWithoutUpstream = .loading
+            unpushedBranches = .loading
+            unmergedBranches = .loading
+            stashCount = .loading
+        } else {
+            branchesWithoutUpstream = .unavailable
+            unpushedBranches = .unavailable
+            unmergedBranches = .unavailable
+            stashCount = .unavailable
+        }
+
+        return RepositoryOverviewSnapshot(
+            stagedCount: stagedCount,
+            unstagedCount: unstagedCount,
+            untrackedCount: untrackedCount,
+            addedLineCount: addedLineCount,
+            removedLineCount: removedLineCount,
+            aheadCount: aheadCount,
+            behindCount: behindCount,
+            branchesWithoutUpstream: branchesWithoutUpstream,
+            unpushedBranches: unpushedBranches,
+            unmergedBranches: unmergedBranches,
+            stashCount: stashCount,
+            historyCount: commitHistory.count,
+            currentBranch: currentBranch.isEmpty ? nil : currentBranch,
+            isDetachedHead: isDetachedHead,
+            isLoading: isLoading,
+            lastCheckedAt: monitorSnapshot?.lastRefreshedAt
+        )
+    }
+
+    nonisolated(unsafe) static let empty = RepositoryOverviewSnapshot(
+        stagedCount: 0,
+        unstagedCount: 0,
+        untrackedCount: 0,
+        addedLineCount: 0,
+        removedLineCount: 0,
+        aheadCount: .known(0),
+        behindCount: .known(0),
+        branchesWithoutUpstream: .unavailable,
+        unpushedBranches: .unavailable,
+        unmergedBranches: .unavailable,
+        stashCount: .unavailable,
+        historyCount: 0,
+        currentBranch: nil,
+        isDetachedHead: false,
+        isLoading: false,
+        lastCheckedAt: nil
+    )
+}
+
+// MARK: - Render snapshot
 
 struct MainMenuRenderSnapshot: Equatable {
     let stagedRowAdapters: [WorkingTreeRowAdapter]
@@ -15,6 +147,7 @@ struct MainMenuRenderSnapshot: Equatable {
     let recentProjects: [ProjectReference]
     let currentRepoPath: String
     let currentProjectName: String
+    let overview: RepositoryOverviewSnapshot
 
     static let empty = MainMenuRenderSnapshot(
         stagedRowAdapters: [],
@@ -25,7 +158,8 @@ struct MainMenuRenderSnapshot: Equatable {
         branchMenuRows: [],
         recentProjects: [],
         currentRepoPath: "",
-        currentProjectName: "Select Project"
+        currentProjectName: "Select Project",
+        overview: .empty
     )
 
     // Precompute the main menu's expensive derived data from a single snapshot of source state.
@@ -43,7 +177,8 @@ struct MainMenuRenderSnapshot: Equatable {
         isHistorySectionCollapsed: Bool,
         recentProjects: [ProjectReference],
         currentRepoPath: String,
-        isCommitInFuture: (Commit) -> Bool
+        isCommitInFuture: (Commit) -> Bool,
+        overview: RepositoryOverviewSnapshot = .empty
     ) -> MainMenuRenderSnapshot {
         let hasCurrentRepository = !currentRepoPath.isEmpty
         let stagedRowAdapters = hasCurrentRepository ? stagedFiles.map(WorkingTreeRowAdapter.staged(file:)) : []
@@ -87,7 +222,8 @@ struct MainMenuRenderSnapshot: Equatable {
             branchMenuRows: branchMenuRows,
             recentProjects: recentProjects,
             currentRepoPath: currentRepoPath,
-            currentProjectName: projectName
+            currentProjectName: projectName,
+            overview: overview
         )
     }
 }

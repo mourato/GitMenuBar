@@ -87,4 +87,56 @@ final class MainMenuRenderSnapshotTests: XCTestCase {
         XCTAssertTrue(snapshot.keyboardSelectableItems.isEmpty)
         XCTAssertTrue(snapshot.branchMenuRows.isEmpty)
     }
+
+    func testBuildIncludesOverviewInSnapshot() {
+        let overview = RepositoryOverviewSnapshot(
+            stagedCount: 2, unstagedCount: 1, untrackedCount: 0,
+            addedLineCount: 0, removedLineCount: 0,
+            aheadCount: .known(3), behindCount: .known(0),
+            branchesWithoutUpstream: .known(1), unpushedBranches: .known(0),
+            unmergedBranches: .known(0), stashCount: .known(2),
+            historyCount: 10, currentBranch: "main",
+            isDetachedHead: false, isLoading: false, lastCheckedAt: nil
+        )
+        let snapshot = MainMenuRenderSnapshot.build(
+            stagedFiles: [],
+            changedFiles: [],
+            commitHistory: [],
+            currentHash: "",
+            remoteUrl: "",
+            availableBranches: [],
+            currentBranch: "main",
+            isStagedSectionCollapsed: false,
+            isUnstagedSectionCollapsed: false,
+            isHistorySectionCollapsed: false,
+            recentProjects: [],
+            currentRepoPath: "/tmp/repo",
+            isCommitInFuture: { _ in false },
+            overview: overview
+        )
+
+        XCTAssertEqual(snapshot.overview, overview)
+        XCTAssertEqual(snapshot.overview.stagedCount, 2)
+        XCTAssertEqual(snapshot.overview.aheadCount, .known(3))
+    }
+
+    func testDefaultOverviewIsEmpty() {
+        let snapshot = MainMenuRenderSnapshot.build(
+            stagedFiles: [],
+            changedFiles: [],
+            commitHistory: [],
+            currentHash: "",
+            remoteUrl: "",
+            availableBranches: [],
+            currentBranch: "",
+            isStagedSectionCollapsed: false,
+            isUnstagedSectionCollapsed: false,
+            isHistorySectionCollapsed: false,
+            recentProjects: [],
+            currentRepoPath: "",
+            isCommitInFuture: { _ in false }
+        )
+
+        XCTAssertEqual(snapshot.overview, RepositoryOverviewSnapshot.empty)
+    }
 }

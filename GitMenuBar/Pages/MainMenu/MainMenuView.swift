@@ -188,10 +188,8 @@ struct MainMenuView: View {
             onToggleVisibility: toggleRepoVisibility,
             onDiscardConfirm: {
                 if let path = discardFilePath, let status = discardFileStatus {
-                    gitManager.discardFileChanges(path: path, status: status) { result in
-                        if case let .failure(error) = result {
-                            discardError = error.localizedDescription
-                        }
+                    Task {
+                        _ = await actionCoordinator.discardInspectorFile(path: path, status: status)
                     }
                 }
                 discardFilePath = nil
@@ -217,23 +215,22 @@ struct MainMenuView: View {
                 mergeTargetBranch = ""
             },
             onDirtySwitch: {
-                gitManager.switchBranch(branchName: pendingSwitchBranch) { result in
-                    if case let .failure(error) = result {
-                        branchSwitchError = error.localizedDescription
-                    }
-                }
+                let branch = pendingSwitchBranch
                 pendingSwitchBranch = ""
+                guard !branch.isEmpty else { return }
+                Task {
+                    _ = await actionCoordinator.switchInspectorBranch(branch)
+                }
             },
             onCancelDirtySwitch: {
                 pendingSwitchBranch = ""
             },
             onDeleteBranch: {
-                gitManager.deleteBranch(branchName: branchNameToDelete) { result in
-                    if case let .failure(error) = result {
-                        deleteBranchError = error.localizedDescription
-                    }
-                }
+                let name = branchNameToDelete
                 branchNameToDelete = ""
+                Task {
+                    _ = await actionCoordinator.deleteInspectorBranch(name)
+                }
             },
             onCancelDeleteBranch: {
                 branchNameToDelete = ""
@@ -326,6 +323,15 @@ struct MainMenuView: View {
         .onChange(of: gitManager.currentBranch) { _ in
             refreshRenderSnapshot()
         }
+        .onChange(of: gitManager.commitCount) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: gitManager.behindCount) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: gitManager.isDetachedHead) { _ in
+            refreshRenderSnapshot()
+        }
         .onChange(of: currentRepositoryPath) { _ in
             selectedMainItemID = nil
             clearInspectorSelection()
@@ -346,6 +352,14 @@ struct MainMenuView: View {
         }
         .onChange(of: keyboardSelectableItems) { _ in
             synchronizeSelectedMainItem()
+        }
+        .onChange(of: projectMonitor.snapshots) { _ in
+            refreshRenderSnapshot()
+        }
+        .onChange(of: selectedInspectorSelection) { selection in
+            Task {
+                await actionCoordinator.prepareInspectorSelection(selection)
+            }
         }
     }
 }
@@ -400,6 +414,28 @@ private extension MainMenuView {
 
 extension MainMenuView {
     func refreshRenderSnapshot() {
+        let normalizedPath = currentRepositoryPath.isEmpty
+            ? ""
+            : RecentProjectsStore.normalize(currentRepositoryPath)
+        let monitorSnapshot = normalizedPath.isEmpty
+            ? nil
+            : projectMonitor.snapshots[normalizedPath]
+        let overview = currentRepositoryPath.isEmpty
+            ? RepositoryOverviewSnapshot.empty
+            : RepositoryOverviewSnapshot.build(
+                stagedFiles: gitManager.stagedFiles,
+                changedFiles: gitManager.changedFiles,
+                commitCount: gitManager.commitCount,
+                aheadOfRemote: gitManager.isAheadOfRemote,
+                behindRemote: gitManager.isRemoteAhead,
+                gitBehindCount: gitManager.behindCount,
+                commitHistory: gitManager.commitHistory,
+                currentBranch: gitManager.currentBranch,
+                isDetachedHead: gitManager.isDetachedHead,
+                monitorSnapshot: monitorSnapshot,
+                isLoading: presentationModel.isFastLoading
+            )
+
         renderSnapshot = MainMenuRenderSnapshot.build(
             stagedFiles: gitManager.stagedFiles,
             changedFiles: gitManager.changedFiles,
@@ -413,7 +449,8 @@ extension MainMenuView {
             isHistorySectionCollapsed: isHistorySectionCollapsed,
             recentProjects: recentProjectReferences,
             currentRepoPath: currentRepositoryPath,
-            isCommitInFuture: isCommitInFuture
+            isCommitInFuture: isCommitInFuture,
+            overview: overview
         )
     }
 }
