@@ -9,12 +9,14 @@ precedence: project
 
 - `make build` runs `scripts/run-build.sh`; `make build-release` runs it with
   `--configuration Release`.
-- `make test` runs `scripts/run-tests-xcode.sh`; `make lint` runs
+- `make test` runs `scripts/run-tests-xcode.sh`; pass
+  `TEST_FILTER='GitMenuBarTests/Name'` for one XCTest target, or use
+  `make test-focused TEST_FILTER='GitMenuBarTests/Name'`. `make lint` runs
   `scripts/lint.sh`; `make lint-changed` and `make lint-fix` use their matching
   scripts; `make agent-check` combines changed-file lint and a Debug build.
 - `make validate` is the native changed-surface entry and delegates to
-  `make agent-check`. `make validate-lane` wraps it with the global explicit
-  baseline and artifact gate, running the build in a unique ignored
+  `make agent-check`. `make validate-lane` wraps `VALIDATE_TARGET` (default
+  `validate`) with the global explicit baseline and artifact gate, running the build in a unique ignored
   `.xcode-build/validate-lane.*` DerivedData root and watching its `Build/`
   output; the run root is cleaned before the wrapper returns. The separate
   `make test` gate uses `.xcode-build-tests/`.
