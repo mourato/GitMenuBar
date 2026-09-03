@@ -91,8 +91,6 @@ extension MainMenuView {
                         actionHelp: "Stage all files"
                     )
                 }
-                Divider()
-                    .padding(.top, 2)
             }
         }
     }

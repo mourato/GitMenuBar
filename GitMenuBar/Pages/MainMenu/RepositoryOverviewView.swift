@@ -3,9 +3,10 @@ import SwiftUI
 struct RepositoryOverviewView: View {
     let overview: RepositoryOverviewSnapshot
     let onSelectSection: (MainMenuInspectorSelection) -> Void
+    @State private var hoveredSelection: MainMenuInspectorSelection?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
             overviewCard(
                 title: "Working Tree",
                 selection: .workingTree,
@@ -46,27 +47,35 @@ struct RepositoryOverviewView: View {
         content: String,
         accessibilityValue: String
     ) -> some View {
-        Button {
+        let isLoading = content.hasPrefix("Checking")
+        return Button {
             onSelectSection(selection)
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.compactSpacing) {
                 VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
                     Text(title)
-                        .font(WorkbenchTypography.captionStrong)
+                        .font(WorkbenchTypography.sectionLabel)
                     Text(content)
                         .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
+                        .monospacedDigit()
                         .lineLimit(2)
                 }
                 Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.tertiary)
-                    .accessibilityHidden(true)
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityHidden(true)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                }
             }
-            .padding(WorkbenchMetrics.compactSpacing)
+            .padding(WorkbenchMetrics.sectionSpacing)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
+            .contentShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous))
         }
         .buttonStyle(.plain)
         .workbenchPanelSurface(
@@ -75,8 +84,17 @@ struct RepositoryOverviewView: View {
         )
         .overlay {
             RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous)
+                .fill(hoveredSelection == selection ? WorkbenchPalette.hoverFill() : Color.clear)
+                .accessibilityHidden(true)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous)
                 .stroke(WorkbenchPalette.neutralBorder(contrast: .standard), lineWidth: 1)
         }
+        .onHover { inside in
+            hoveredSelection = inside ? selection : nil
+        }
+        .help(accessibilityValue)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
         .accessibilityValue(accessibilityValue)
@@ -144,9 +162,9 @@ struct RepositoryOverviewView: View {
         case let .known(count):
             count == 0 ? "None" : "\(count) retained"
         case .loading:
-            "Checking"
+            "Checking…"
         case .unavailable:
-            "Not checked yet"
+            "Not available"
         }
     }
 
@@ -210,10 +228,10 @@ struct RepositoryOverviewView: View {
             return parts.joined(separator: ", ")
         }
         if sawLoading {
-            return "Checking"
+            return "Checking…"
         }
         if sawUnavailable, !sawKnown {
-            return "Not checked yet"
+            return "Not available"
         }
         if sawUnavailable {
             return "Unavailable"

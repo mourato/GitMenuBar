@@ -103,7 +103,7 @@ struct HistoryInspectorView: View {
             .navigationDestination(item: $destination) { destination in
                 commitDetail(for: destination.hash)
                     .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
+                        ToolbarItem(placement: .navigation) {
                             Button("Back to History") {
                                 self.destination = nil
                                 onBackToHistory()

@@ -206,6 +206,10 @@ struct CommitDetailPageView: View {
             }
             .frame(width: 24, height: 24)
             .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous)
+                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+            }
         } else {
             initialsBadge(for: commit)
         }
@@ -218,6 +222,10 @@ struct CommitDetailPageView: View {
             .frame(width: 24, height: 24)
             .background(Color.accentColor)
             .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous)
+                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+            }
     }
 
     @MainActor

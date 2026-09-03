@@ -64,9 +64,9 @@ struct MainMenuInspectorView: View {
                 }
                 .padding(WorkbenchMetrics.panelPadding)
             } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-                        header
+                VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
+                    header
+                    ScrollView {
                         if let selection {
                             sectionBody(for: selection)
                         } else {
@@ -77,12 +77,11 @@ struct MainMenuInspectorView: View {
                             )
                         }
                     }
-                    .padding(WorkbenchMetrics.panelPadding)
                 }
+                .padding(WorkbenchMetrics.panelPadding)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .navigationTitle("Details")
         .accessibilityElement(children: .contain)
         .accessibilityLabel(selection.map { "Details for \($0.title)" } ?? "Details")
         .task(id: selection) {
@@ -133,8 +132,7 @@ struct MainMenuInspectorView: View {
             Button(action: onClose) {
                 Image(systemName: "xmark")
             }
-            .buttonStyle(.borderless)
-            .frame(width: WorkbenchMetrics.iconHitTarget, height: WorkbenchMetrics.iconHitTarget)
+            .workbenchIcon()
             .accessibilityLabel("Close details")
         }
     }
@@ -162,7 +160,7 @@ struct MainMenuInspectorView: View {
     private var workingTreeSection: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
             if gitManager.stagedFiles.isEmpty, gitManager.changedFiles.isEmpty {
-                emptyState("Working tree is clean", systemImage: "checkmark.circle")
+                emptyState("Working tree is clean", systemImage: "checkmark.circle", description: "Stage files to start a commit.")
             } else {
                 if !gitManager.stagedFiles.isEmpty {
                     WorkingTreeSectionView(
@@ -220,18 +218,21 @@ struct MainMenuInspectorView: View {
                 labeledValue("Path", file.path)
                 labeledValue("Status", file.status.rawValue.capitalized)
                 labeledValue("Lines", "+\(file.lineDiff.added) −\(file.lineDiff.removed)")
-                HStack {
+                HStack(spacing: WorkbenchMetrics.compactSpacing) {
                     Button("Open") {
                         gitManager.openFile(path: file.path)
                     }
+                    .workbenchGhost()
                     if staged {
                         Button("Unstage") {
                             Task { _ = await actionCoordinator.unstageInspectorFile(path: file.path) }
                         }
+                        .workbenchGhost()
                     } else {
                         Button("Stage") {
                             Task { _ = await actionCoordinator.stageInspectorFile(path: file.path) }
                         }
+                        .workbenchGhost()
                         if file.status != .untracked {
                             Button("Discard", role: .destructive) {
                                 onRequestDiscard(file.path, file.status)
@@ -244,7 +245,7 @@ struct MainMenuInspectorView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.cornerRadius, material: .thin)
         } else {
-            emptyState("This file is no longer in the working tree", systemImage: "doc")
+            emptyState("This file is no longer in the working tree", systemImage: "doc", description: "It was staged, discarded, or the working tree refreshed.")
         }
     }
 
@@ -263,6 +264,7 @@ struct MainMenuInspectorView: View {
                     _ = await actionCoordinator.pushInspectorBranch(gitManager.currentBranch)
                 }
             }
+            .workbenchSecondary()
             .disabled(
                 actionCoordinator.isBusy
                     || gitManager.remoteUrl.isEmpty
@@ -277,14 +279,14 @@ struct MainMenuInspectorView: View {
     }
 
     private var branchesSection: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
             Text("Not merged into the local default branch")
                 .font(WorkbenchTypography.sectionLabel)
             Text("These names are local Git reachability against \(gitManager.defaultBranchName.isEmpty ? "the default branch" : gitManager.defaultBranchName), not GitHub pull request status.")
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
             if gitManager.unmergedIntoDefaultBranches.isEmpty {
-                Text("None")
+                Text("None — everything is merged")
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -293,13 +295,11 @@ struct MainMenuInspectorView: View {
                 }
             }
 
-            Divider()
-
             Text("Local branches")
                 .font(WorkbenchTypography.sectionLabel)
             let localBranches = gitManager.branchInfos.filter(\.isLocal)
             if localBranches.isEmpty {
-                emptyState("No local branches", systemImage: "arrow.triangle.branch")
+                emptyState("No local branches", systemImage: "arrow.triangle.branch", description: "Create a branch to start isolated work.")
             } else {
                 ForEach(localBranches) { info in
                     branchRow(name: info.name, unmerged: gitManager.unmergedIntoDefaultBranches.contains(info.name), tracking: info.trackingStatus, isCurrent: info.isCurrent)
@@ -309,6 +309,7 @@ struct MainMenuInspectorView: View {
             Button("Manage Branches") {
                 onManageBranches()
             }
+            .workbenchGhost()
         }
     }
 
@@ -322,6 +323,7 @@ struct MainMenuInspectorView: View {
             HStack {
                 Text(name)
                     .font(WorkbenchTypography.captionStrong)
+                    .lineLimit(1)
                 if isCurrent {
                     Text("Current")
                         .font(WorkbenchTypography.caption)
@@ -333,15 +335,17 @@ struct MainMenuInspectorView: View {
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             }
-            HStack {
+            HStack(spacing: WorkbenchMetrics.compactSpacing) {
                 Button("Switch") {
                     onRequestSwitchBranch(name)
                 }
+                .workbenchGhost()
                 .disabled(isCurrent || actionCoordinator.isBusy)
                 if unmerged, !isCurrent {
                     Button("Merge") {
                         Task { _ = await actionCoordinator.mergeInspectorBranch(name) }
                     }
+                    .workbenchGhost()
                     .disabled(actionCoordinator.isBusy)
                 }
                 Button("Delete", role: .destructive) {
@@ -350,9 +354,11 @@ struct MainMenuInspectorView: View {
                 .disabled(isCurrent || actionCoordinator.isBusy)
             }
         }
-        .padding(WorkbenchMetrics.compactSpacing)
+        .padding(WorkbenchMetrics.sectionSpacing)
         .frame(maxWidth: .infinity, alignment: .leading)
         .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.cornerRadius, material: .thin)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(name)\(isCurrent ? ", current branch" : "")")
     }
 
     private var stashesSection: some View {
@@ -361,19 +367,22 @@ struct MainMenuInspectorView: View {
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
             if gitManager.stashes.isEmpty {
-                emptyState("No retained stashes", systemImage: "archivebox")
+                emptyState("No retained stashes", systemImage: "archivebox", description: "Stash to park work in progress without committing.")
             } else {
                 ForEach(gitManager.stashes) { stash in
                     VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
                         Text(stash.subject.isEmpty ? stash.shortHash : stash.subject)
                             .font(WorkbenchTypography.captionStrong)
+                            .lineLimit(2)
                         Text(stashMetadata(stash))
                             .font(WorkbenchTypography.caption)
                             .foregroundStyle(.secondary)
-                        HStack {
+                            .monospacedDigit()
+                        HStack(spacing: WorkbenchMetrics.compactSpacing) {
                             Button("Apply") {
                                 Task { _ = await actionCoordinator.applyInspectorStash(hash: stash.hash) }
                             }
+                            .workbenchGhost()
                             .disabled(actionCoordinator.isBusy)
                             Button("Drop", role: .destructive) {
                                 stashPendingDrop = stash
@@ -381,11 +390,11 @@ struct MainMenuInspectorView: View {
                             .disabled(actionCoordinator.isBusy)
                         }
                     }
-                    .padding(WorkbenchMetrics.compactSpacing)
+                    .padding(WorkbenchMetrics.sectionSpacing)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.cornerRadius, material: .thin)
                     .accessibilityElement(children: .contain)
-                    .accessibilityLabel(stash.subject)
+                    .accessibilityLabel(stash.subject.isEmpty ? "Stash \(stash.shortHash)" : stash.subject)
                     .accessibilityValue(stashMetadata(stash))
                 }
             }
@@ -403,8 +412,8 @@ struct MainMenuInspectorView: View {
         }
     }
 
-    private func emptyState(_ title: String, systemImage: String) -> some View {
-        ContentUnavailableView(title, systemImage: systemImage)
+    private func emptyState(_ title: String, systemImage: String, description: String? = nil) -> some View {
+        ContentUnavailableView(title, systemImage: systemImage, description: Text(description ?? ""))
     }
 
     private func metricLabel(_ metric: RepositoryMetricState<Int>, unit: String) -> String {
@@ -412,9 +421,9 @@ struct MainMenuInspectorView: View {
         case let .known(count):
             "\(count) \(unit)\(count == 1 ? "" : "s")"
         case .loading:
-            "Checking"
+            "Checking…"
         case .unavailable:
-            "Not checked yet"
+            "Not available"
         }
     }
 
