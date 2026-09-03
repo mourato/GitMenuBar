@@ -36,7 +36,6 @@ extension MainMenuView {
     private func clearCurrentRepositoryPath() {
         guard actionCoordinator.canSwitchRepository(to: currentRepositoryPath) else { return }
 
-        UserDefaults.standard.set("", forKey: AppPreferences.Keys.gitRepoPath)
-        currentRepositoryPath = ""
+        repositorySelectionCoordinator.clearSelection()
     }
 }

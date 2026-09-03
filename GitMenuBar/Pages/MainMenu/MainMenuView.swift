@@ -96,13 +96,16 @@ struct MainMenuView: View {
     @State var discardFileStatus: WorkingTreeFileStatus?
     @State var discardError: String?
     @State var showDiscardAllConfirmation = false
-    @State var currentRepositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
     @State var recentProjectReferences = RecentProjectsStore().recentProjects()
     @State var renderSnapshot = MainMenuRenderSnapshot.empty
 
     let closeWindow: () -> Void
     let openSettingsWindow: () -> Void
     let setAutoHideSuspended: (Bool) -> Void
+
+    var currentRepositoryPath: String {
+        repositorySelectionCoordinator.selectedPath
+    }
 
     init(
         closeWindow: @escaping () -> Void = {},
@@ -125,13 +128,11 @@ struct MainMenuView: View {
                     },
                     onSuccess: { path in
                         guard actionCoordinator.canSwitchRepository(to: path) else { return }
-                        if case let .selected(selectedPath) = repositorySelectionCoordinator.select(
+                        if case .selected = repositorySelectionCoordinator.select(
                             path: path,
                             allowsNonGitSelection: true
                         ) {
                             actionCoordinator.resetForRepositorySwitch()
-                            currentRepositoryPath = selectedPath
-                            recentProjectReferences = RecentProjectsStore().recentProjects()
                         }
                         presentationModel.showMain(requestCommitFocus: true)
                         gitManager.updateRemoteUrl()
@@ -324,6 +325,7 @@ struct MainMenuView: View {
             refreshRenderSnapshot()
         }
         .onChange(of: currentRepositoryPath) { _ in
+            reloadRepositorySelectionSnapshot()
             refreshRenderSnapshot()
         }
         .onChange(of: recentProjectReferences) { _ in
@@ -388,7 +390,6 @@ private extension AppPreferences.AppearanceMode {
 
 private extension MainMenuView {
     func reloadRepositorySelectionSnapshot() {
-        currentRepositoryPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
         recentProjectReferences = RecentProjectsStore().recentProjects()
     }
 }

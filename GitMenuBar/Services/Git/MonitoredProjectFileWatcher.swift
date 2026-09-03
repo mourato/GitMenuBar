@@ -24,6 +24,47 @@ private final class MonitoredProjectFileWatcherContext: Sendable {
     }
 }
 
+final class MonitoredProjectFileEventRelay: @unchecked Sendable {
+    typealias Handler = @MainActor @Sendable ([String], Bool) -> Void
+
+    private let handler: Handler
+    private let lock = NSLock()
+    private var pendingPaths = Set<String>()
+    private var pendingRequiresFullRefresh = false
+    private var deliveryScheduled = false
+
+    init(handler: @escaping Handler) {
+        self.handler = handler
+    }
+
+    func enqueue(paths: [String], requiresFullRefresh: Bool) {
+        lock.lock()
+        pendingPaths.formUnion(paths)
+        pendingRequiresFullRefresh = pendingRequiresFullRefresh || requiresFullRefresh
+        let shouldScheduleDelivery = !deliveryScheduled
+        deliveryScheduled = true
+        lock.unlock()
+
+        guard shouldScheduleDelivery else { return }
+        Task { @MainActor [weak self] in
+            self?.deliver()
+        }
+    }
+
+    @MainActor
+    private func deliver() {
+        lock.lock()
+        let paths = Array(pendingPaths)
+        let requiresFullRefresh = pendingRequiresFullRefresh
+        pendingPaths.removeAll()
+        pendingRequiresFullRefresh = false
+        deliveryScheduled = false
+        lock.unlock()
+
+        handler(paths, requiresFullRefresh)
+    }
+}
+
 // FSEventStream's C callback has six parameters by API contract.
 // swiftlint:disable function_parameter_count
 private func monitoredProjectFileWatcherCallback(
@@ -61,6 +102,10 @@ final class MonitoredProjectFileWatcher {
     typealias EventHandler = @Sendable ([String], Bool) -> Void
 
     private let eventHandler: EventHandler
+    private let eventQueue = DispatchQueue(
+        label: "com.mourato.GitMenuBar.monitored-project-file-watcher",
+        qos: .utility
+    )
     private var stream: FSEventStreamRef?
     private var context: MonitoredProjectFileWatcherContext?
 
@@ -115,7 +160,7 @@ final class MonitoredProjectFileWatcher {
 
         self.context = context
         self.stream = stream
-        FSEventStreamSetDispatchQueue(stream, DispatchQueue.global(qos: .utility))
+        FSEventStreamSetDispatchQueue(stream, eventQueue)
         guard FSEventStreamStart(stream) else {
             stop()
             eventHandler([], true)

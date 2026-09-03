@@ -68,6 +68,26 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         project.path
     }
 
+    func hasSameVisibleState(as other: Self) -> Bool {
+        project == other.project
+            && branchName == other.branchName
+            && isDetachedHead == other.isDetachedHead
+            && stagedCount == other.stagedCount
+            && unstagedCount == other.unstagedCount
+            && untrackedCount == other.untrackedCount
+            && lineDiff == other.lineDiff
+            && aheadCount == other.aheadCount
+            && behindCount == other.behindCount
+            && hasUpstream == other.hasUpstream
+            && lastErrorDescription == other.lastErrorDescription
+            && branchesWithoutUpstreamCount == other.branchesWithoutUpstreamCount
+            && unpushedBranchCount == other.unpushedBranchCount
+            && unmergedBranchCount == other.unmergedBranchCount
+            && stashCount == other.stashCount
+            && lastActivityAt == other.lastActivityAt
+            && pullRequests == other.pullRequests
+    }
+
     var hasWorkingTreeChanges: Bool {
         stagedCount + unstagedCount + untrackedCount > 0
     }

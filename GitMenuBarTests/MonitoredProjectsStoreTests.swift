@@ -284,11 +284,56 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         XCTAssertEqual(paths.values, ["/tmp/project-a"])
     }
 
-    private static func snapshot(path: String, branch: String) -> ProjectStatusSnapshot {
+    @MainActor
+    func testRefreshPublishesAllProjectSnapshotsAsOneBatch() async throws {
+        let defaults = try makeIsolatedTestDefaults(name: #function)
+        let projectStore = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
+        projectStore.add("/tmp/project-a")
+        projectStore.add("/tmp/project-b")
+        let monitor = ProjectMonitorStore(projectStore: projectStore)
+        let allProjectsPublished = expectation(description: "all project snapshots published")
+        var publicationCount = 0
+        let observation = monitor.$snapshots.dropFirst().sink { snapshots in
+            publicationCount += 1
+            if snapshots.count == 2 {
+                XCTAssertEqual(publicationCount, 1)
+                allProjectsPublished.fulfill()
+            }
+        }
+        defer { observation.cancel() }
+        monitor.refreshOperation = { project, _ in
+            Self.snapshot(path: project.path, branch: "main")
+        }
+
+        monitor.refreshAll()
+        await fulfillment(of: [allProjectsPublished], timeout: 3)
+    }
+
+    func testSnapshotVisibleStateIgnoresRefreshTimestamp() {
+        let first = Self.snapshot(
+            path: "/tmp/project",
+            branch: "main",
+            refreshedAt: Date(timeIntervalSinceReferenceDate: 1)
+        )
+        let second = Self.snapshot(
+            path: "/tmp/project",
+            branch: "main",
+            refreshedAt: Date(timeIntervalSinceReferenceDate: 2)
+        )
+
+        XCTAssertTrue(first.hasSameVisibleState(as: second))
+        XCTAssertNotEqual(first.lastRefreshedAt, second.lastRefreshedAt)
+    }
+
+    private static func snapshot(
+        path: String,
+        branch: String,
+        refreshedAt: Date = Date()
+    ) -> ProjectStatusSnapshot {
         ProjectStatusSnapshot(
             project: ProjectReference(path: path), branchName: branch, isDetachedHead: false,
             stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero,
-            aheadCount: 0, behindCount: 0, hasUpstream: true, lastRefreshedAt: Date(),
+            aheadCount: 0, behindCount: 0, hasUpstream: true, lastRefreshedAt: refreshedAt,
             lastErrorDescription: nil, branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0,
             unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil, pullRequests: []
         )

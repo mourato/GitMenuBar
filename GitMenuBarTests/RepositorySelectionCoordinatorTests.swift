@@ -1,3 +1,4 @@
+import Combine
 @testable import GitMenuBar
 import XCTest
 
@@ -57,11 +58,30 @@ final class RepositorySelectionCoordinatorTests: XCTestCase {
         XCTAssertTrue(fixture.monitor.monitoredProjects.isEmpty)
     }
 
+    func testSelectionPublishesOnlyActualPathChanges() throws {
+        let fixture = try Fixture(isGitRepository: false)
+        defer { fixture.remove() }
+        var changes: [String] = []
+        let observation = fixture.coordinator.$selectedPath
+            .dropFirst()
+            .sink { changes.append($0) }
+
+        _ = fixture.coordinator.select(path: fixture.path, allowsNonGitSelection: true)
+        _ = fixture.coordinator.select(path: fixture.path + "/.", allowsNonGitSelection: true)
+        _ = fixture.coordinator.select(path: fixture.secondPath, allowsNonGitSelection: true)
+
+        XCTAssertEqual(changes, [fixture.normalizedPath, fixture.normalizedSecondPath])
+        XCTAssertEqual(fixture.coordinator.selectedPath, fixture.normalizedSecondPath)
+        withExtendedLifetime(observation) {}
+    }
+
     @MainActor
     private final class Fixture {
         let root: URL
         let path: String
         let normalizedPath: String
+        let secondPath: String
+        let normalizedSecondPath: String
         let defaults: UserDefaults
         let suiteName: String
         let recentStore: RecentProjectsStore
@@ -75,11 +95,15 @@ final class RepositorySelectionCoordinatorTests: XCTestCase {
                 .appendingPathComponent("GitMenuBarSelection-\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
             path = root.appendingPathComponent("project").path
+            secondPath = root.appendingPathComponent("project-b").path
             try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(atPath: secondPath, withIntermediateDirectories: true)
             if isGitRepository {
                 _ = try runGit(["init", "-q"], in: URL(fileURLWithPath: path))
+                _ = try runGit(["init", "-q"], in: URL(fileURLWithPath: secondPath))
             }
             normalizedPath = RecentProjectsStore.normalize(path)
+            normalizedSecondPath = RecentProjectsStore.normalize(secondPath)
             suiteName = "RepositorySelectionCoordinatorTests-\(UUID().uuidString)"
             defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
             recentStore = RecentProjectsStore(defaults: defaults)

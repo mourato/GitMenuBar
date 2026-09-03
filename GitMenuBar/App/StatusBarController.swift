@@ -63,8 +63,9 @@ final class StatusBarController: NSObject, ObservableObject {
     lazy var projectCleanupStore = ProjectCleanupStore(
         projectMonitor: projectMonitor,
         onAffectedPaths: { [weak self] paths in
-            guard let self,
-                  let selectedPath = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath),
+            guard let self else { return }
+            let selectedPath = repositorySelectionCoordinator.selectedPath
+            guard !selectedPath.isEmpty,
                   paths.contains(GitRepositoryContext.normalizedPath(selectedPath)) else { return }
             gitManager.refresh(includeReflogHistory: false)
         }
@@ -138,7 +139,7 @@ final class StatusBarController: NSObject, ObservableObject {
 
         Task { @MainActor [weak self] in
             await self?.projectMonitor.seed(
-                currentPath: UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? "",
+                currentPath: self?.repositorySelectionCoordinator.selectedPath ?? "",
                 recentProjects: RecentProjectsStore().recentProjects()
             )
         }
@@ -891,7 +892,7 @@ final class StatusBarController: NSObject, ObservableObject {
     }
 
     private func currentRepositoryPath() -> String? {
-        let path = UserDefaults.standard.string(forKey: AppPreferences.Keys.gitRepoPath) ?? ""
+        let path = repositorySelectionCoordinator.selectedPath
         return path.isEmpty ? nil : path
     }
 
@@ -1170,7 +1171,8 @@ final class StatusBarController: NSObject, ObservableObject {
             remoteExistenceByPath[path] = exists ? .exists : .missing
             logWindowOpen(trace, message: "remote validation completed (\(exists ? "exists" : "missing"))")
 
-            guard currentRepositoryPath() == path else { return }
+            guard let currentPath = currentRepositoryPath(),
+                  RecentProjectsStore.normalize(currentPath) == RecentProjectsStore.normalize(path) else { return }
 
             if exists {
                 presentationModel.clearCreateRepoSuggestion()

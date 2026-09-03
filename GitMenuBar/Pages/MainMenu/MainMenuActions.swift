@@ -188,6 +188,11 @@ extension MainMenuView {
     func switchRepository(path: String) {
         let trace = GitPerformanceTrace.begin("selection.request")
         GitPerformanceTrace.event("selection.arrived", id: trace)
+        guard RecentProjectsStore.normalize(path) != currentRepositoryPath else {
+            GitPerformanceTrace.event("selection.noop", id: trace)
+            GitPerformanceTrace.end("selection.request", id: trace)
+            return
+        }
         guard actionCoordinator.canSwitchRepository(to: path) else {
             GitPerformanceTrace.event("selection.rejected_busy", id: trace)
             GitPerformanceTrace.end("selection.request", id: trace)
@@ -198,7 +203,7 @@ extension MainMenuView {
             path: path,
             allowsNonGitSelection: !githubAuthManager.isAuthenticated
         )
-        guard case let .selected(selectedPath) = result else {
+        guard case .selected = result else {
             if case let .requiresRepositoryCreation(candidatePath) = result {
                 presentationModel.showCreateRepo(path: candidatePath)
             }
@@ -213,8 +218,6 @@ extension MainMenuView {
         dismissTransientPresentations()
         presentationModel.showMain()
         let refreshGeneration = presentationModel.startRefresh()
-        currentRepositoryPath = selectedPath
-        recentProjectReferences = RecentProjectsStore().recentProjects()
         gitManager.refreshSelectedRepository(
             includeReflogHistory: false,
             fastCompletion: {

@@ -15,6 +15,7 @@ final class ProjectMonitorStore: ObservableObject {
     private let runner: GitCommandRunner
     private nonisolated(unsafe) var refreshTimer: Timer?
     private var fileWatcher: MonitoredProjectFileWatcher?
+    private var fileEventRelay: MonitoredProjectFileEventRelay?
     private var fileEventDebounceTask: Task<Void, Never>?
     private var isRefreshing = false
     private var refreshGeneration = 0
@@ -89,9 +90,7 @@ final class ProjectMonitorStore: ObservableObject {
             currentPath: validCurrentPath,
             recentProjects: validRecentProjects
         )
-        for snapshot in result.snapshots.values where snapshot.lastErrorDescription == nil {
-            snapshots[snapshot.project.path] = snapshot
-        }
+        publishSnapshots(result.snapshots.values.filter { $0.lastErrorDescription == nil })
         isRefreshing = false
         reconfigureFileWatcher()
         refreshPendingPathsIfNeeded()
@@ -126,26 +125,28 @@ final class ProjectMonitorStore: ObservableObject {
         projectStore.rename(path: path, name: name)
         let normalizedPath = RecentProjectsStore.normalize(path)
         guard let snapshot = snapshots[normalizedPath] else { return }
-        snapshots[normalizedPath] = ProjectStatusSnapshot(
-            project: ProjectReference(path: snapshot.project.path, name: name),
-            branchName: snapshot.branchName,
-            isDetachedHead: snapshot.isDetachedHead,
-            stagedCount: snapshot.stagedCount,
-            unstagedCount: snapshot.unstagedCount,
-            untrackedCount: snapshot.untrackedCount,
-            lineDiff: snapshot.lineDiff,
-            aheadCount: snapshot.aheadCount,
-            behindCount: snapshot.behindCount,
-            hasUpstream: snapshot.hasUpstream,
-            lastRefreshedAt: snapshot.lastRefreshedAt,
-            lastErrorDescription: snapshot.lastErrorDescription,
-            branchesWithoutUpstreamCount: snapshot.branchesWithoutUpstreamCount,
-            unpushedBranchCount: snapshot.unpushedBranchCount,
-            unmergedBranchCount: snapshot.unmergedBranchCount,
-            stashCount: snapshot.stashCount,
-            lastActivityAt: snapshot.lastActivityAt,
-            pullRequests: snapshot.pullRequests
-        )
+        publishSnapshots([
+            ProjectStatusSnapshot(
+                project: ProjectReference(path: snapshot.project.path, name: name),
+                branchName: snapshot.branchName,
+                isDetachedHead: snapshot.isDetachedHead,
+                stagedCount: snapshot.stagedCount,
+                unstagedCount: snapshot.unstagedCount,
+                untrackedCount: snapshot.untrackedCount,
+                lineDiff: snapshot.lineDiff,
+                aheadCount: snapshot.aheadCount,
+                behindCount: snapshot.behindCount,
+                hasUpstream: snapshot.hasUpstream,
+                lastRefreshedAt: snapshot.lastRefreshedAt,
+                lastErrorDescription: snapshot.lastErrorDescription,
+                branchesWithoutUpstreamCount: snapshot.branchesWithoutUpstreamCount,
+                unpushedBranchCount: snapshot.unpushedBranchCount,
+                unmergedBranchCount: snapshot.unmergedBranchCount,
+                stashCount: snapshot.stashCount,
+                lastActivityAt: snapshot.lastActivityAt,
+                pullRequests: snapshot.pullRequests
+            )
+        ])
     }
 
     func refresh(path: String, includeRemoteData: Bool = true) {
@@ -263,10 +264,7 @@ final class ProjectMonitorStore: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 guard generation == refreshGeneration else { return }
-                for snapshot in results {
-                    guard projectStore.contains(path: snapshot.project.path) else { continue }
-                    snapshots[snapshot.project.path] = snapshot
-                }
+                publishSnapshots(results)
                 isRefreshing = false
                 if pendingFullRefresh {
                     pendingFullRefresh = false
@@ -284,7 +282,24 @@ final class ProjectMonitorStore: ObservableObject {
         guard generation == fetchGeneration,
               projectStore.contains(path: snapshot.project.path)
         else { return }
-        snapshots[snapshot.project.path] = snapshot
+        publishSnapshots([snapshot])
+    }
+
+    private func publishSnapshots(_ updates: some Sequence<ProjectStatusSnapshot>) {
+        let monitoredPaths = Set(projectStore.monitoredProjects().map(\.path))
+        var nextSnapshots = snapshots
+        var didChange = false
+
+        for snapshot in updates {
+            let path = snapshot.project.path
+            guard monitoredPaths.contains(path) else { continue }
+            guard nextSnapshots[path].map({ !$0.hasSameVisibleState(as: snapshot) }) ?? true else { continue }
+            nextSnapshots[path] = snapshot
+            didChange = true
+        }
+
+        guard didChange else { return }
+        snapshots = nextSnapshots
     }
 
     private func refreshPendingPathsIfNeeded() {
@@ -294,21 +309,30 @@ final class ProjectMonitorStore: ObservableObject {
         pendingRefreshPaths.removeAll()
         pendingLocalRefreshPaths.removeAll()
         let projects = monitoredProjects.filter { remotePaths.contains($0.path) || localPaths.contains($0.path) }
-        refresh(projects: projects, remotePaths: remotePaths)
+        guard !projects.isEmpty else { return }
+        if remotePaths.isEmpty {
+            pendingLocalRefreshPaths.formUnion(localPaths)
+            scheduleFileEventFlush()
+        } else {
+            refresh(projects: projects, remotePaths: remotePaths)
+        }
     }
 
     private func reconfigureFileWatcher() {
         if fileWatcher == nil {
-            fileWatcher = MonitoredProjectFileWatcher { [weak self] paths, requiresFullRefresh in
-                Task { @MainActor [weak self] in
-                    self?.receiveFileEvents(paths: paths, requiresFullRefresh: requiresFullRefresh)
-                }
+            let relay = MonitoredProjectFileEventRelay { [weak self] paths, requiresFullRefresh in
+                self?.receiveFileEvents(paths: paths, requiresFullRefresh: requiresFullRefresh)
+            }
+            fileEventRelay = relay
+            fileWatcher = MonitoredProjectFileWatcher { [weak relay] paths, requiresFullRefresh in
+                relay?.enqueue(paths: paths, requiresFullRefresh: requiresFullRefresh)
             }
         }
         fileWatcher?.reconfigure(projects: monitoredProjects)
     }
 
     private func receiveFileEvents(paths: [String], requiresFullRefresh: Bool) {
+        guard !pendingFullRefresh else { return }
         guard !requiresFullRefresh else {
             fileEventDebounceTask?.cancel()
             fileEventDebounceTask = nil
@@ -323,6 +347,10 @@ final class ProjectMonitorStore: ObservableObject {
             .map(\.path)
         guard !affectedPaths.isEmpty else { return }
         pendingLocalRefreshPaths.formUnion(affectedPaths)
+        scheduleFileEventFlush()
+    }
+
+    private func scheduleFileEventFlush() {
         guard fileEventDebounceTask == nil else { return }
         fileEventDebounceTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 250_000_000)
@@ -333,6 +361,10 @@ final class ProjectMonitorStore: ObservableObject {
 
     private func flushFileEvents() {
         fileEventDebounceTask = nil
+        guard !pendingFullRefresh else {
+            pendingLocalRefreshPaths.removeAll()
+            return
+        }
         let paths = pendingLocalRefreshPaths
         pendingLocalRefreshPaths.removeAll()
         for path in paths {

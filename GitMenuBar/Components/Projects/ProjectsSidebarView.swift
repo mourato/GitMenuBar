@@ -5,7 +5,6 @@ struct ProjectsSidebarView: View {
     @AppStorage(AppPreferences.Keys.isCleanProjectsGroupCollapsed) private var isCleanGroupCollapsed = false
     @State private var renameProject: ProjectReference?
     @State private var renameDraft = ""
-    @State private var selection: String?
 
     let currentPath: String
     let onSelect: (String) -> Void
@@ -22,7 +21,7 @@ struct ProjectsSidebarView: View {
         VStack(spacing: 0) {
             sidebarControls
 
-            List(selection: $selection) {
+            List {
                 ForEach(groupedProjects, id: \.0) { title, snapshots in
                     groupSection(title: title, snapshots: snapshots)
                 }
@@ -35,18 +34,6 @@ struct ProjectsSidebarView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .onAppear(perform: synchronizeSelection)
-        .onChange(of: currentPath) { _ in
-            synchronizeSelection()
-        }
-        .onChange(of: selection) { path in
-            guard let path, path != normalizedCurrentPath else { return }
-            Task { @MainActor in
-                await Task.yield()
-                guard selection == path, path != normalizedCurrentPath else { return }
-                onSelect(path)
-            }
-        }
         .alert("Rename Project", isPresented: Binding(
             get: { renameProject != nil },
             set: {
@@ -136,9 +123,9 @@ struct ProjectsSidebarView: View {
     }
 
     private func projectRows(_ snapshots: [ProjectStatusSnapshot]) -> some View {
-        ForEach(snapshots) { snapshot in
-            projectRow(snapshot)
-                .tag(snapshot.project.path as String?)
+        let selectedPath = normalizedCurrentPath
+        return ForEach(snapshots) { snapshot in
+            projectRow(snapshot, isSelected: snapshot.project.path == selectedPath)
         }
     }
 
@@ -152,31 +139,35 @@ struct ProjectsSidebarView: View {
         }
     }
 
-    private func projectRow(_ snapshot: ProjectStatusSnapshot) -> some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(snapshot.classification == .clean ? .green : .orange)
-                .frame(width: 7, height: 7)
+    private func projectRow(_ snapshot: ProjectStatusSnapshot, isSelected: Bool) -> some View {
+        Button {
+            guard !isSelected else { return }
+            onSelect(snapshot.project.path)
+        } label: {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(snapshot.classification == .clean ? .green : .orange)
+                    .frame(width: 7, height: 7)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(snapshot.project.name)
-                    .lineLimit(1)
-                Text(statusSummary(for: snapshot))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(snapshot.project.name)
+                        .lineLimit(1)
+                    Text(statusSummary(for: snapshot))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
 
-            if snapshot.hasWorkingTreeChanges {
-                Text(changeCountSummary(for: snapshot))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if snapshot.hasWorkingTreeChanges {
+                    Text(changeCountSummary(for: snapshot))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
-        .padding(.vertical, 4)
-        .contentShape(Rectangle())
+        .workbenchRow(isSelected: isSelected)
         .contextMenu {
             Button("Rename Project") {
                 renameDraft = snapshot.project.name
@@ -188,6 +179,7 @@ struct ProjectsSidebarView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(for: snapshot))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var cleanGroupExpanded: Binding<Bool> {
@@ -199,10 +191,6 @@ struct ProjectsSidebarView: View {
 
     private var normalizedCurrentPath: String {
         RecentProjectsStore.normalize(currentPath)
-    }
-
-    private func synchronizeSelection() {
-        selection = normalizedCurrentPath.isEmpty ? nil : normalizedCurrentPath
     }
 
     private var groupedProjects: [(String, [ProjectStatusSnapshot])] {
