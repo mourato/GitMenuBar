@@ -1258,3 +1258,86 @@ persisted queue, cache, daemon, event bus, or visible queue UI is proposed.
 - Unbounded cross-project parallelism is rejected; the initial contract allows
   one background mutation plus one selected local refresh, with same-path work
   serialized.
+
+## Contextual workbench inspector — 2026-09-03
+
+The agreed workbench keeps the existing Projects attention sidebar on the
+left, adds a richer repository overview in the center, and presents one
+contextual detail inspector on the right only after a central selection. Wide
+windows use a native resizable trailing inspector; narrow windows transfer the
+same selection into a native sheet. The inspector is not a fourth column, a
+new window, or a persisted navigation system.
+
+The plans reuse the current NavigationSplitView, MainMenuRenderSnapshot,
+ProjectStatusSnapshot, GitManager facade, MainMenuActionCoordinator,
+HistorySectionView, CommitDetailPageView, BranchManagementSheet, and
+Workbench tokens. Only the stash detail path needs a new concrete Git service.
+All mutating actions must honor ADR 0009's repository identity and publication
+rules.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status | Commit | Review | Integration | Main validation |
+|---|---|---:|---:|---|---|---|---|---|---|
+| [076](076-workbench-inspector-shell.md) | Add the hidden trailing inspector shell | P0 | M | — | TODO | — | — | — | — |
+| [077](077-project-state-overview.md) | Add the central project-state overview | P0 | M | 076 | TODO | — | — | — | — |
+| [078](078-contextual-git-detail-actions.md) | Add contextual Git detail views and safe actions | P0 | L | 076, 077 | TODO | — | — | — | — |
+| [079](079-history-inspector-drilldown.md) | Move history into the contextual inspector | P0 | L | 076, 077, 078 | TODO | — | — | — | — |
+
+### Dependency notes
+
+- Plan 076 owns the optional MainMenuInspectorSelection, the native
+  inspector/sheet presentation, compact-width policy, Escape behavior, and
+  durable UI documentation. No later plan may create a second presentation
+  owner.
+- Plan 077 depends on 076 and adds the central overview cards using existing
+  selected/monitor state. It adds no Git command or fetch path.
+- Plan 078 depends on 076–077 and owns the only new Git data surface:
+  stable-hash stash details, local branch health details, and safe contextual
+  actions. It is high risk and must be implemented/reviewed serially.
+- Plan 079 depends on 078 because history reset/restore must use the same
+  contextual action safety boundary. It moves the existing history renderer
+  and removes only the obsolete historyDetail route.
+- Root-session review owns every implementation diff. Executors leave isolated
+  branches intact until review and do not merge or push without authorization.
+
+### Confirmed product constraints
+
+- The right inspector is hidden until a central selection exists. There is no
+  permanent empty column and no toolbar toggle required for discovery.
+- The inspector opens alongside the center on a wide window and becomes a
+  sheet below a named, token-owned compact threshold. One optional selection
+  drives both presentations; they must never be shown simultaneously.
+- The center overview exposes working tree, push/sync, branch health, stashes,
+  and loaded history. Cards are compact native Buttons with accessible labels,
+  values, and hints.
+- Detail actions use one primary action plus a small secondary action set.
+  Destructive discard, drop, delete, and reset actions require confirmation.
+- Git stash detail reports retained stash refs. Git does not provide an
+  authoritative applied/merged/undone flag, so no such state is inferred or
+  persisted in this batch.
+- Existing Git, monitor, branch-management, history, credentials, and
+  titlebar boundaries remain authoritative. No per-project GitManager, global
+  queue, cache, automatic fetch, charting dependency, fourth column, or new
+  window is introduced.
+
+### Findings considered and rejected/deferred
+
+- A permanent third column was rejected: it consumes width when no context is
+  selected and conflicts with the requested hidden-until-selected behavior.
+- A fourth column or separate detail window was rejected: the native trailing
+  inspector/sheet provides the requested adjacency with less lifecycle state.
+- Replacing the center with every detail view was rejected: it hides the
+  repository workbench and makes comparison/context switching slower.
+- A full dashboard, branch graph, or chart system was deferred: the selected
+  counts and existing timeline provide the needed first slice without a new
+  visualization dependency.
+- A stash applied/merged history was deferred: Git's retained stash refs do
+  not encode that state, and persistence would require separate product,
+  privacy, migration, and deletion decisions.
+- Automatic fetch and remote-derived refresh were rejected: the existing
+  monitor and selected-project boundaries intentionally avoid surprise
+  network/authentication work.
+- One view/file per inspector metric was rejected: the inspector remains one
+  contextual surface, with the existing data/services and Workbench tokens
+  reused behind it.
