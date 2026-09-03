@@ -224,7 +224,8 @@ extension MainMenuView {
                         onProjectCleanup: presentationModel.showProjectCleanup,
                         onAddProject: selectDirectory,
                         onRefreshAll: projectMonitor.refreshAll,
-                        onFetchAll: projectMonitor.fetchAll
+                        onFetchAll: projectMonitor.fetchAll,
+                        onOpenSettings: openSettingsWindow
                     )
                     .navigationSplitViewColumnWidth(
                         min: WorkbenchMetrics.projectsMinimumWidth,

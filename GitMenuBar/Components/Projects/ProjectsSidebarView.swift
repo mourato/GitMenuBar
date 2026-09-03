@@ -3,6 +3,7 @@ import SwiftUI
 struct ProjectsSidebarView: View {
     @EnvironmentObject private var monitor: ProjectMonitorStore
     @AppStorage(AppPreferences.Keys.isCleanProjectsGroupCollapsed) private var isCleanGroupCollapsed = false
+    @AppStorage(AppPreferences.Keys.isProjectsSidebarCollapsed) private var isProjectsSidebarCollapsed = false
     @State private var renameProject: ProjectReference?
     @State private var renameDraft = ""
 
@@ -16,6 +17,7 @@ struct ProjectsSidebarView: View {
     let onAddProject: () -> Void
     let onRefreshAll: () -> Void
     let onFetchAll: () -> Void
+    let onOpenSettings: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -28,9 +30,15 @@ struct ProjectsSidebarView: View {
             }
             .listStyle(.sidebar)
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                UsageQuotaStripView()
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 4)
+                VStack(spacing: 0) {
+                    UsageQuotaStripView()
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 4)
+
+                    Divider()
+
+                    sidebarBottomActions
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -83,6 +91,28 @@ struct ProjectsSidebarView: View {
                 accessibilityLabel: "Fetch All Projects",
                 accessibilityHint: "Fetches remotes for every monitored project.",
                 action: onFetchAll
+            )
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+    }
+
+    private var sidebarBottomActions: some View {
+        HStack(spacing: 4) {
+            sidebarButton(
+                systemImage: "gearshape",
+                accessibilityLabel: "Settings",
+                accessibilityHint: "Open GitMenuBar settings.",
+                action: onOpenSettings
+            )
+
+            Spacer(minLength: 0)
+
+            sidebarButton(
+                systemImage: "sidebar.left",
+                accessibilityLabel: "Hide Projects sidebar",
+                accessibilityHint: "Hides the Projects sidebar. Use the toolbar button to show it again.",
+                action: { isProjectsSidebarCollapsed = true }
             )
         }
         .padding(.horizontal, 8)
@@ -318,7 +348,8 @@ struct ProjectsSidebarView: View {
         onProjectCleanup: {},
         onAddProject: {},
         onRefreshAll: {},
-        onFetchAll: {}
+        onFetchAll: {},
+        onOpenSettings: {}
     )
     .environmentObject(ProjectMonitorStore())
     .environmentObject(UsageQuotaStore())

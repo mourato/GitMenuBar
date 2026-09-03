@@ -52,8 +52,10 @@ overview) → branch footer, with optional quota cards secondary to Git work.
 The commit workspace lives in the inspector under the Working Tree selection
 as commit composer → working tree → history, with the composer fixed above
 the workspace's single scroll owner. `NavigationSplitView`
-owns the Projects sidebar's width, selection, and collapse behavior. Stage/
-Unstage section actions stay visible; per-file actions remain hover-revealed
+owns the Projects sidebar's width, selection, and collapse behavior. The sidebar
+footer concentrates the quota summary, Settings access, and collapse toggle in one
+bottom surface; the window toolbar keeps the sidebar toggle and centered title only.
+Stage/Unstage section actions stay visible; per-file actions remain hover-revealed
 where the product policy permits. Preserve keyboard actions, context menus, and
 confirmation for destructive work.
 
