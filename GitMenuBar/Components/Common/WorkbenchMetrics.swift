@@ -37,6 +37,17 @@ enum WorkbenchMetrics {
     static let largeCornerRadius: CGFloat = 14
     static let overlayCornerRadius: CGFloat = 16
     static let iconHitTarget: CGFloat = 28
+    static let projectsMinimumWidth: CGFloat = 220
+    static let centralMinimumWidth: CGFloat = 440
+    static let inspectorMinimumWidth: CGFloat = 320
+    static let compactInspectorThreshold: CGFloat = projectsMinimumWidth
+        + centralMinimumWidth
+        + inspectorMinimumWidth
+        + (windowPadding * 2)
+
+    static func usesCompactInspector(for width: CGFloat) -> Bool {
+        width > 0 && width < compactInspectorThreshold
+    }
 }
 
 enum WorkbenchTypography {

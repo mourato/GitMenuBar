@@ -67,26 +67,40 @@ extension MainMenuView {
 
     func synchronizeSelectedMainItem() {
         guard let selectedMainItemID else {
+            clearInspectorSelection()
             return
         }
 
         if keyboardSelectableItems.contains(selectedMainItemID) {
+            selectedInspectorSelection = MainMenuInspectorSelection(mainMenuItem: selectedMainItemID)
             return
         }
 
         self.selectedMainItemID = nil
+        clearInspectorSelection()
+    }
+
+    func clearInspectorSelection() {
+        selectedInspectorSelection = nil
     }
 
     func selectMainItem(_ itemID: MainMenuSelectableItem) {
         selectedMainItemID = itemID
+        selectedInspectorSelection = MainMenuInspectorSelection(mainMenuItem: itemID)
     }
 
     func moveMainSelection(_ direction: MoveCommandDirection) {
-        selectedMainItemID = MainMenuSelectionNavigator.moveSelection(
+        guard let nextSelection = MainMenuSelectionNavigator.moveSelection(
             currentSelection: selectedMainItemID,
             items: keyboardSelectableItems,
             direction: direction
-        )
+        ) else {
+            selectedMainItemID = nil
+            clearInspectorSelection()
+            return
+        }
+
+        selectMainItem(nextSelection)
     }
 
     func activateSelectedMainItem() {
