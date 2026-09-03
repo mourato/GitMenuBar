@@ -86,10 +86,12 @@ struct RepositoryOverviewView: View {
             RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous)
                 .fill(hoveredSelection == selection ? WorkbenchPalette.hoverFill() : Color.clear)
                 .accessibilityHidden(true)
+                .allowsHitTesting(false)
         }
         .overlay {
             RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous)
                 .stroke(WorkbenchPalette.neutralBorder(contrast: .standard), lineWidth: 1)
+                .allowsHitTesting(false)
         }
         .onHover { inside in
             hoveredSelection = inside ? selection : nil
