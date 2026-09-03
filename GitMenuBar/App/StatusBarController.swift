@@ -14,7 +14,7 @@ final class StatusBarController: NSObject, ObservableObject {
     private enum Constants {
         static let statusIconPointSize = NSSize(width: 16, height: 16)
         static let windowInitialSize = NSSize(width: 700, height: 720)
-        static let windowMinimumSize = NSSize(width: 550, height: 640)
+        static let windowMinimumSize = NSSize(width: 900, height: 640)
         static let autoHideBlurEvaluationDelay: TimeInterval = 0.08
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
         static let screenCaptureUIBundleIdentifier = "com.apple.screencaptureui"
