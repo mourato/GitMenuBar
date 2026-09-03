@@ -72,7 +72,6 @@ extension MainMenuView {
         }
 
         if keyboardSelectableItems.contains(selectedMainItemID) {
-            selectedInspectorSelection = MainMenuInspectorSelection(mainMenuItem: selectedMainItemID)
             return
         }
 

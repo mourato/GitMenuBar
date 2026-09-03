@@ -327,6 +327,7 @@ struct MainMenuView: View {
             refreshRenderSnapshot()
         }
         .onChange(of: currentRepositoryPath) { _ in
+            selectedMainItemID = nil
             clearInspectorSelection()
             reloadRepositorySelectionSnapshot()
             refreshRenderSnapshot()
