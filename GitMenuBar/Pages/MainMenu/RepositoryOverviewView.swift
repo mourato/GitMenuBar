@@ -1,38 +1,59 @@
 import SwiftUI
 
+private struct RepositoryOverviewCardVisual {
+    let systemImage: String
+    let color: Color
+    let metric: String
+}
+
 struct RepositoryOverviewView: View {
     let overview: RepositoryOverviewSnapshot
     let onSelectSection: (MainMenuInspectorSelection) -> Void
     @State private var hoveredSelection: MainMenuInspectorSelection?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
+        LazyVGrid(
+            columns: [
+                GridItem(.flexible(), spacing: WorkbenchMetrics.sectionSpacing),
+                GridItem(.flexible(), spacing: WorkbenchMetrics.sectionSpacing)
+            ],
+            spacing: WorkbenchMetrics.sectionSpacing
+        ) {
             overviewCard(
                 title: "Working Tree",
+                visual: RepositoryOverviewCardVisual(
+                    systemImage: overview.isCleanWorkingTree ? "checkmark.circle.fill" : "exclamationmark.circle.fill",
+                    color: overview.isCleanWorkingTree ? .green : .orange,
+                    metric: "\(overview.totalWorkingTreeCount)"
+                ),
                 selection: .workingTree,
                 content: workingTreeContent,
                 accessibilityValue: workingTreeContent
             )
             overviewCard(
                 title: "Push and Sync",
+                visual: RepositoryOverviewCardVisual(systemImage: "arrow.up.arrow.down.circle.fill", color: .blue, metric: pushSyncMetric),
                 selection: .unpushedCommits,
                 content: pushSyncContent,
                 accessibilityValue: pushSyncAccessibilityValue
             )
             overviewCard(
                 title: "Branch Health",
+                visual: RepositoryOverviewCardVisual(systemImage: "arrow.triangle.branch", color: .purple, metric: branchHealthMetric),
                 selection: .branches,
                 content: branchHealthContent,
                 accessibilityValue: branchHealthAccessibilityValue
             )
             overviewCard(
                 title: "Stashes",
+                visual: RepositoryOverviewCardVisual(systemImage: "archivebox.fill", color: .orange, metric: stashMetric),
                 selection: .stashes,
                 content: stashContent,
                 accessibilityValue: stashAccessibilityValue
             )
             overviewCard(
                 title: "History",
+                visual: RepositoryOverviewCardVisual(systemImage: "clock.fill", color: .indigo, metric: "\(overview.historyCount)"),
                 selection: .history,
                 content: historyContent,
                 accessibilityValue: historyContent
@@ -43,54 +64,73 @@ struct RepositoryOverviewView: View {
 
     private func overviewCard(
         title: String,
+        visual: RepositoryOverviewCardVisual,
         selection: MainMenuInspectorSelection,
         content: String,
         accessibilityValue: String
     ) -> some View {
         let isLoading = content.hasPrefix("Checking")
+        let shape = RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
         return Button {
             onSelectSection(selection)
         } label: {
-            HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.compactSpacing) {
-                VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-                    Text(title)
-                        .font(WorkbenchTypography.sectionLabel)
-                    Text(content)
-                        .font(WorkbenchTypography.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .lineLimit(2)
-                }
-                Spacer(minLength: 0)
-                if isLoading {
-                    ProgressView()
-                        .controlSize(.small)
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+                HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
+                    Image(systemName: visual.systemImage)
+                        .font(.title3.weight(.medium))
                         .accessibilityHidden(true)
-                } else {
-                    Image(systemName: "chevron.right")
-                        .font(WorkbenchTypography.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
+
+                    Spacer(minLength: 0)
+
+                    if isLoading {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(.white)
+                            .accessibilityHidden(true)
+                    } else {
+                        Text(visual.metric)
+                            .font(.title2.weight(.semibold))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                    }
                 }
+
+                Spacer(minLength: WorkbenchMetrics.microSpacing)
+
+                Text(title)
+                    .font(WorkbenchTypography.windowTitle)
+                    .lineLimit(1)
+
+                Text(content)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.white.opacity(0.86))
+                    .monospacedDigit()
+                    .lineLimit(2)
             }
-            .padding(WorkbenchMetrics.sectionSpacing)
+            .foregroundStyle(.white)
+            .padding(WorkbenchMetrics.panelPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous))
+            .contentShape(shape)
         }
         .buttonStyle(.plain)
-        .workbenchPanelSurface(
-            cornerRadius: WorkbenchMetrics.cornerRadius,
-            material: .thin
+        .background(
+            LinearGradient(
+                colors: [visual.color, visual.color.opacity(0.82)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: shape
         )
         .overlay {
-            RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous)
-                .fill(hoveredSelection == selection ? WorkbenchPalette.hoverFill() : Color.clear)
+            shape
+                .fill(hoveredSelection == selection ? Color.white.opacity(0.10) : Color.clear)
                 .accessibilityHidden(true)
                 .allowsHitTesting(false)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous)
-                .stroke(WorkbenchPalette.neutralBorder(contrast: .standard), lineWidth: 1)
+            shape
+                .stroke(Color.white.opacity(0.24), lineWidth: 1)
                 .allowsHitTesting(false)
         }
         .onHover { inside in
@@ -132,6 +172,16 @@ struct RepositoryOverviewView: View {
         )
     }
 
+    private var pushSyncMetric: String {
+        guard
+            case let .known(ahead) = overview.aheadCount,
+            case let .known(behind) = overview.behindCount
+        else {
+            return "—"
+        }
+        return "↑\(ahead) ↓\(behind)"
+    }
+
     private var pushSyncAccessibilityValue: String {
         composedMetricAccessibility(
             (overview.aheadCount, "commits ahead"),
@@ -147,6 +197,17 @@ struct RepositoryOverviewView: View {
             (overview.branchesWithoutUpstream, "no upstream"),
             emptyKnown: "All clear"
         )
+    }
+
+    private var branchHealthMetric: String {
+        guard
+            case let .known(unmerged) = overview.unmergedBranches,
+            case let .known(unpushed) = overview.unpushedBranches,
+            case let .known(withoutUpstream) = overview.branchesWithoutUpstream
+        else {
+            return "—"
+        }
+        return "\(unmerged + unpushed + withoutUpstream)"
     }
 
     private var branchHealthAccessibilityValue: String {
@@ -167,6 +228,15 @@ struct RepositoryOverviewView: View {
             "Checking…"
         case .unavailable:
             "Not available"
+        }
+    }
+
+    private var stashMetric: String {
+        switch overview.stashCount {
+        case let .known(count):
+            "\(count)"
+        case .loading, .unavailable:
+            "—"
         }
     }
 
