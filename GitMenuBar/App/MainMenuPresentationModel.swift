@@ -3,7 +3,6 @@ import Foundation
 enum MainMenuRoute: Equatable {
     case main
     case createRepo(path: String)
-    case historyDetail(commitID: String)
     case projectCleanup
 }
 
@@ -63,10 +62,6 @@ final class MainMenuPresentationModel: ObservableObject {
     func showCreateRepo(path: String) {
         route = .createRepo(path: path)
         createRepoSuggestionPath = nil
-    }
-
-    func showHistoryDetail(commitID: String) {
-        route = .historyDetail(commitID: commitID)
     }
 
     func showProjectCleanup() {

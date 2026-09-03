@@ -1282,7 +1282,7 @@ rules.
 | [076](076-workbench-inspector-shell.md) | Add the hidden trailing inspector shell | P0 | M | — | REVIEWED | cfe710e; remediation 6239fb0 | REVIEWER: host:code-review PASS; remediation dispositioned | MERGED_LOCAL 9330feb | PASS: main agent-check + focused test + guidance-check; full lint/test baselines recorded |
 | [077](077-project-state-overview.md) | Add the central project-state overview | P0 | M | 076 | REVIEWED | implement-plan-077-overview | host:code-review PASS after P1 remediation | — | — |
 | [078](078-contextual-git-detail-actions.md) | Add contextual Git detail views and safe actions | P0 | L | 076, 077 | REVIEWED | implement-plan-077-overview | host:code-review PASS after P1 remediation | — | — |
-| [079](079-history-inspector-drilldown.md) | Move history into the contextual inspector | P0 | L | 076, 077, 078 | REVIEWED | 0643d1e | host:code-review PASS | MERGED_LOCAL b2ea14f | PASS: guidance + focused test |
+| [079](079-history-inspector-drilldown.md) | Move history into the contextual inspector | P0 | L | 076, 077, 078 | REVIEWED | implement-plan-079-history | host:code-review PASS after P1 reset preflight | — | — |
 
 ### Dependency notes
 

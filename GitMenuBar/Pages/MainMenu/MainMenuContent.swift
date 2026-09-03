@@ -94,7 +94,6 @@ extension MainMenuView {
                 Divider()
                     .padding(.top, 2)
             }
-            historySection
         }
     }
 
@@ -122,8 +121,6 @@ extension MainMenuView {
         switch presentationModel.route {
         case .main, .createRepo:
             mainRouteContent
-        case let .historyDetail(commitID):
-            commitDetailRouteView(commitID: commitID)
         case .projectCleanup:
             ProjectCleanupPage()
         }
@@ -182,23 +179,54 @@ extension MainMenuView {
         }
     }
 
-    private func commitDetailRouteView(commitID: String) -> some View {
-        commitDetailContent(commitID: commitID)
+    @ViewBuilder
+    private var inspectorContent: some View {
+        if let selection = selectedInspectorSelection {
+            inspectorView(selection: selection)
+        }
     }
 
-    private func commitDetailContent(commitID: String) -> some View {
-        CommitDetailPageView(
-            commit: gitManager.commitHistory.first(where: { $0.id == commitID }),
-            currentHash: gitManager.currentHash,
-            remoteUrl: gitManager.remoteUrl,
-            isCommitInFuture: isCommitInFuture,
+    private func inspectorView(selection: MainMenuInspectorSelection) -> some View {
+        MainMenuInspectorView(
+            projectName: renderSnapshot.currentProjectName,
+            selection: selection,
+            overview: renderSnapshot.overview,
+            historySections: historyTimelineSections,
+            historySelectedItemID: selectedMainItemID,
+            isHistoryLoading: presentationModel.isDetailLoading,
+            canLoadMoreHistory: gitManager.canLoadMoreCommitHistory,
             animationNamespace: animationNamespace,
-            onBack: {
-                presentationModel.showMain()
+            isCommitInFuture: isCommitInFuture,
+            onClose: clearInspectorSelection,
+            onManageBranches: {
+                dismissTransientPresentations()
+                showBranchManagement = true
             },
-            onRestoreCommit: { commit in
-                guard commit.id != gitManager.currentHash else { return }
-                gitManager.resetToCommit(commit.id)
+            onRequestDiscard: requestDiscard,
+            onRequestDeleteBranch: { name in
+                branchNameToDelete = name
+                showBranchDeleteConfirmation = true
+            },
+            onRequestSwitchBranch: { branch in
+                guard branch != gitManager.currentBranch else { return }
+                if hasWorkingTreeChanges {
+                    pendingSwitchBranch = branch
+                    showDirtySwitchConfirmation = true
+                } else {
+                    Task {
+                        _ = await actionCoordinator.switchInspectorBranch(branch)
+                    }
+                }
+            },
+            onSelectHistoryRow: { row in
+                selectMainItem(row.id)
+            },
+            onOpenHistoryCommit: { commitID in
+                selectedInspectorSelection = .commit(id: commitID)
+                selectedMainItemID = .historyCommit(id: commitID)
+            },
+            onBackToHistory: {
+                selectedInspectorSelection = .history
             },
             onEditCommitMessage: { commit in
                 Task {
@@ -210,9 +238,10 @@ extension MainMenuView {
                     await startAutomaticCommitMessageEdit(for: commit)
                 }
             },
-            onOpenLocalFile: { gitManager.openFile(path: $0) }
+            onLoadMoreHistory: {
+                gitManager.loadMoreCommitHistory(batchSize: 25)
+            }
         )
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var projectsSidebarVisibility: Binding<NavigationSplitViewVisibility> {
@@ -240,38 +269,6 @@ extension MainMenuView {
                 selectedInspectorSelection = selection
             }
         )
-    }
-
-    @ViewBuilder
-    private var inspectorContent: some View {
-        if let selection = selectedInspectorSelection {
-            MainMenuInspectorView(
-                projectName: renderSnapshot.currentProjectName,
-                selection: selection,
-                overview: renderSnapshot.overview,
-                onClose: clearInspectorSelection,
-                onManageBranches: {
-                    dismissTransientPresentations()
-                    showBranchManagement = true
-                },
-                onRequestDiscard: requestDiscard,
-                onRequestDeleteBranch: { name in
-                    branchNameToDelete = name
-                    showBranchDeleteConfirmation = true
-                },
-                onRequestSwitchBranch: { branch in
-                    guard branch != gitManager.currentBranch else { return }
-                    if hasWorkingTreeChanges {
-                        pendingSwitchBranch = branch
-                        showDirtySwitchConfirmation = true
-                    } else {
-                        Task {
-                            _ = await actionCoordinator.switchInspectorBranch(branch)
-                        }
-                    }
-                }
-            )
-        }
     }
 
     var mainView: some View {
@@ -360,71 +357,11 @@ extension MainMenuView {
                 }
             )
             .sheet(item: compactInspectorSelectionBinding(isCompact: isCompactInspector)) { selection in
-                MainMenuInspectorView(
-                    projectName: renderSnapshot.currentProjectName,
-                    selection: selection,
-                    overview: renderSnapshot.overview,
-                    onClose: clearInspectorSelection,
-                    onManageBranches: {
-                        dismissTransientPresentations()
-                        showBranchManagement = true
-                    },
-                    onRequestDiscard: requestDiscard,
-                    onRequestDeleteBranch: { name in
-                        branchNameToDelete = name
-                        showBranchDeleteConfirmation = true
-                    },
-                    onRequestSwitchBranch: { branch in
-                        guard branch != gitManager.currentBranch else { return }
-                        if hasWorkingTreeChanges {
-                            pendingSwitchBranch = branch
-                            showDirtySwitchConfirmation = true
-                        } else {
-                            Task {
-                                _ = await actionCoordinator.switchInspectorBranch(branch)
-                            }
-                        }
-                    }
-                )
-                .frame(minWidth: WorkbenchMetrics.inspectorMinimumWidth)
+                inspectorView(selection: selection)
+                    .frame(minWidth: WorkbenchMetrics.inspectorMinimumWidth)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var historySection: some View {
-        HistorySectionView(
-            sections: historyTimelineSections,
-            selectedItemID: selectedMainItemID,
-            isLoading: presentationModel.isDetailLoading,
-            canLoadMore: gitManager.canLoadMoreCommitHistory,
-            animationNamespace: animationNamespace,
-            onSelectRow: { row in
-                selectMainItem(row.id)
-            },
-            onActivateCommit: { row in
-                selectMainItem(row.id)
-                presentationModel.showHistoryDetail(commitID: row.commit.id)
-            },
-            onRestoreCommit: { row in
-                guard row.actions.canRestore else { return }
-                gitManager.resetToCommit(row.commit.id)
-            },
-            onEditCommitMessage: { row in
-                Task {
-                    await startManualCommitMessageEdit(for: row.commit)
-                }
-            },
-            onGenerateCommitMessage: { row in
-                Task {
-                    await startAutomaticCommitMessageEdit(for: row.commit)
-                }
-            },
-            onLoadMore: {
-                gitManager.loadMoreCommitHistory(batchSize: 25)
-            },
-            isCollapsed: $isHistorySectionCollapsed
-        )
     }
 
     private func requestDiscard(path: String, status: WorkingTreeFileStatus) {

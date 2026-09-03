@@ -4,11 +4,23 @@ struct MainMenuInspectorView: View {
     let projectName: String
     let selection: MainMenuInspectorSelection?
     let overview: RepositoryOverviewSnapshot
+    let historySections: [HistoryTimelineSectionModel]
+    let historySelectedItemID: MainMenuSelectableItem?
+    let isHistoryLoading: Bool
+    let canLoadMoreHistory: Bool
+    let animationNamespace: Namespace.ID
+    let isCommitInFuture: (Commit) -> Bool
     let onClose: () -> Void
     let onManageBranches: () -> Void
     let onRequestDiscard: (String, WorkingTreeFileStatus) -> Void
     let onRequestDeleteBranch: (String) -> Void
     let onRequestSwitchBranch: (String) -> Void
+    let onSelectHistoryRow: (HistoryRowAdapter) -> Void
+    let onOpenHistoryCommit: (String) -> Void
+    let onBackToHistory: () -> Void
+    let onEditCommitMessage: (Commit) -> Void
+    let onGenerateCommitMessage: (Commit) -> Void
+    let onLoadMoreHistory: () -> Void
 
     @EnvironmentObject private var gitManager: GitManager
     @EnvironmentObject private var actionCoordinator: MainMenuActionCoordinator
@@ -16,21 +28,58 @@ struct MainMenuInspectorView: View {
     @State private var isStagedCollapsed = false
     @State private var isUnstagedCollapsed = false
 
+    private var showsHistorySurface: Bool {
+        switch selection {
+        case .history, .commit:
+            true
+        default:
+            false
+        }
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-                header
-                if let selection {
-                    sectionBody(for: selection)
-                } else {
-                    ContentUnavailableView(
-                        "No details selected",
-                        systemImage: "sidebar.right",
-                        description: Text("Select an item in the workbench to view its details.")
+        Group {
+            if showsHistorySurface, let selection {
+                VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
+                    header
+                    HistoryInspectorView(
+                        selection: selection,
+                        sections: historySections,
+                        selectedItemID: historySelectedItemID,
+                        isLoading: isHistoryLoading,
+                        canLoadMore: canLoadMoreHistory,
+                        animationNamespace: animationNamespace,
+                        currentHash: gitManager.currentHash,
+                        remoteUrl: gitManager.remoteUrl,
+                        repositoryPath: gitManager.repositoryPath,
+                        isCommitInFuture: isCommitInFuture,
+                        onSelectRow: onSelectHistoryRow,
+                        onOpenCommit: onOpenHistoryCommit,
+                        onBackToHistory: onBackToHistory,
+                        onEditCommitMessage: onEditCommitMessage,
+                        onGenerateCommitMessage: onGenerateCommitMessage,
+                        onLoadMore: onLoadMoreHistory,
+                        onOpenLocalFile: { gitManager.openFile(path: $0) }
                     )
                 }
+                .padding(WorkbenchMetrics.panelPadding)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
+                        header
+                        if let selection {
+                            sectionBody(for: selection)
+                        } else {
+                            ContentUnavailableView(
+                                "No details selected",
+                                systemImage: "sidebar.right",
+                                description: Text("Select an item in the workbench to view its details.")
+                            )
+                        }
+                    }
+                    .padding(WorkbenchMetrics.panelPadding)
+                }
             }
-            .padding(WorkbenchMetrics.panelPadding)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .navigationTitle("Details")
@@ -106,7 +155,7 @@ struct MainMenuInspectorView: View {
         case .stashes, .stash:
             stashesSection
         case .history, .commit:
-            historyPlaceholder
+            EmptyView()
         }
     }
 
@@ -343,13 +392,6 @@ struct MainMenuInspectorView: View {
         }
     }
 
-    private var historyPlaceholder: some View {
-        labeledValue("Loaded commits", "\(overview.historyCount)")
-            .padding(WorkbenchMetrics.panelPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.cornerRadius, material: .thin)
-    }
-
     private func labeledValue(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
             Text(title)
@@ -390,48 +432,58 @@ struct MainMenuInspectorView: View {
 
 #Preview("No Selection") {
     MainMenuPreviewHarness {
-        MainMenuInspectorView(
-            projectName: "GitMenuBar",
-            selection: nil,
-            overview: .empty,
-            onClose: {},
-            onManageBranches: {},
-            onRequestDiscard: { _, _ in },
-            onRequestDeleteBranch: { _ in },
-            onRequestSwitchBranch: { _ in }
-        )
+        MainMenuInspectorPreviewHost(selection: nil)
     }
     .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 360)
 }
 
 #Preview("Working Tree") {
     MainMenuPreviewHarness {
-        MainMenuInspectorView(
-            projectName: "GitMenuBar",
-            selection: .workingTree,
-            overview: .empty,
-            onClose: {},
-            onManageBranches: {},
-            onRequestDiscard: { _, _ in },
-            onRequestDeleteBranch: { _ in },
-            onRequestSwitchBranch: { _ in }
-        )
+        MainMenuInspectorPreviewHost(selection: .workingTree)
     }
     .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 420)
 }
 
 #Preview("Stashes") {
     MainMenuPreviewHarness {
+        MainMenuInspectorPreviewHost(selection: .stashes)
+    }
+    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 360)
+}
+
+#Preview("History") {
+    MainMenuPreviewHarness {
+        MainMenuInspectorPreviewHost(selection: .history)
+    }
+    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 420)
+}
+
+private struct MainMenuInspectorPreviewHost: View {
+    let selection: MainMenuInspectorSelection?
+    @Namespace private var animationNamespace
+
+    var body: some View {
         MainMenuInspectorView(
             projectName: "GitMenuBar",
-            selection: .stashes,
+            selection: selection,
             overview: .empty,
+            historySections: [],
+            historySelectedItemID: nil,
+            isHistoryLoading: false,
+            canLoadMoreHistory: false,
+            animationNamespace: animationNamespace,
+            isCommitInFuture: { _ in false },
             onClose: {},
             onManageBranches: {},
             onRequestDiscard: { _, _ in },
             onRequestDeleteBranch: { _ in },
-            onRequestSwitchBranch: { _ in }
+            onRequestSwitchBranch: { _ in },
+            onSelectHistoryRow: { _ in },
+            onOpenHistoryCommit: { _ in },
+            onBackToHistory: {},
+            onEditCommitMessage: { _ in },
+            onGenerateCommitMessage: { _ in },
+            onLoadMoreHistory: {}
         )
     }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 360)
 }

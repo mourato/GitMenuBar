@@ -45,8 +45,7 @@ struct CommitDetailPageView: View {
                         changedFilesSection(commit: commit)
                     }
                 }
-                .frame(maxHeight: 520)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
                 missingCommitSection
             }

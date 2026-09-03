@@ -200,9 +200,9 @@ struct MainMenuRenderSnapshot: Equatable {
         if !isUnstagedSectionCollapsed {
             keyboardSelectableItems += unstagedRowAdapters.map(\.id)
         }
-        if !isHistorySectionCollapsed {
-            keyboardSelectableItems += historyRowAdapters.map(\.id)
-        }
+        // History lives in the inspector; keep the preference parameter for call-site
+        // stability but do not expose history rows in the center keyboard surface.
+        _ = isHistorySectionCollapsed
 
         let normalizedCurrentPath = currentRepoPath.isEmpty ? "" : RecentProjectsStore.normalize(currentRepoPath)
         let storedProjectName = recentProjects.first { $0.path == normalizedCurrentPath }?.name

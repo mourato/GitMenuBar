@@ -434,7 +434,7 @@ final class StatusBarController: NSObject, ObservableObject {
         }
 
         let needsBackItem = switch presentationModel.route {
-        case .historyDetail, .projectCleanup:
+        case .projectCleanup:
             true
         case .main, .createRepo:
             false
@@ -456,8 +456,6 @@ final class StatusBarController: NSObject, ObservableObject {
                 ?? PathDisplayFormatter.defaultProjectName(for: path)
         case .createRepo:
             return "Create Repository"
-        case .historyDetail:
-            return "Commit Details"
         case .projectCleanup:
             return "Project Cleanup"
         }
@@ -1208,8 +1206,6 @@ final class StatusBarController: NSObject, ObservableObject {
             "main"
         case let .createRepo(path):
             "createRepo(\(path))"
-        case let .historyDetail(commitID):
-            "historyDetail(\(commitID))"
         case .projectCleanup:
             "projectCleanup"
         }

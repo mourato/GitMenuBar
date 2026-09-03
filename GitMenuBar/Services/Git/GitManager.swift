@@ -1689,22 +1689,70 @@ class GitManager: ObservableObject {
     }
 
     func resetToCommit(_ hash: String) {
-        guard !storedRepoPath.isEmpty else { return }
-
         Task { @MainActor in
-            let repositoryPath = storedRepoPath
-            // Do a hard reset to the specified commit while staying on the current branch
-            let result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["reset", "--hard", hash])
-            }
-
-            if result.failure {
-                print("Error resetting to commit: \(result.output)")
-            } else {
-                self.refresh(includeReflogHistory: true)
-                print("Reset to commit: \(hash)")
-            }
+            let context = makeRepositoryOperationContext()
+            _ = await resetToCommitAsync(hash: hash, context: context)
         }
+    }
+
+    func resetToCommitAsync(
+        hash: String,
+        context: RepositoryOperationContext
+    ) async -> Result<Void, Error> {
+        guard !context.repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+        let trimmedHash = hash.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedHash.isEmpty else {
+            return .failure(
+                NSError(
+                    domain: "GitManager",
+                    code: 50,
+                    userInfo: [NSLocalizedDescriptionKey: "Commit hash is missing."]
+                )
+            )
+        }
+        guard await branchMatches(context) else {
+            return .failure(staleOperationError())
+        }
+
+        let commitExists = await runOnBackground {
+            let result = self.executeGitCommand(
+                in: context.repositoryPath,
+                args: ["cat-file", "-e", "\(trimmedHash)^{commit}"]
+            )
+            return !result.failure
+        }
+        guard commitExists else {
+            return .failure(
+                NSError(
+                    domain: "GitManager",
+                    code: 52,
+                    userInfo: [NSLocalizedDescriptionKey: "The selected commit is no longer available."]
+                )
+            )
+        }
+
+        let result = await runOnBackground {
+            self.executeGitCommand(
+                in: context.repositoryPath,
+                args: ["reset", "--hard", trimmedHash]
+            )
+        }
+        guard !result.failure else {
+            return .failure(
+                NSError(
+                    domain: "GitManager",
+                    code: 51,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: GitStashService.userFacingMessage(from: result.output)
+                    ]
+                )
+            )
+        }
+
+        await refreshAsync(includeReflogHistory: true, context: context)
+        return .success(())
     }
 
     private nonisolated func executeGitCommand(
