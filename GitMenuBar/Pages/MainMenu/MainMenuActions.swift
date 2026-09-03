@@ -160,31 +160,6 @@ extension MainMenuView {
         }
     }
 
-    func stageFile(path: String) {
-        gitManager.stageFile(path: path) { handleFileActionResult($0) }
-    }
-
-    func stageAllFiles() {
-        gitManager.stageAllChanges { handleFileActionResult($0) }
-    }
-
-    func unstageFile(path: String) {
-        gitManager.unstageFile(path: path) { handleFileActionResult($0) }
-    }
-
-    func unstageAllFiles() {
-        gitManager.unstageAllChanges { handleFileActionResult($0) }
-    }
-
-    private func handleFileActionResult(_ result: Result<Void, Error>) {
-        switch result {
-        case .success:
-            HapticFeedback.actionSucceeded()
-        case let .failure(error):
-            syncError = error.localizedDescription
-        }
-    }
-
     func switchRepository(path: String) {
         let trace = GitPerformanceTrace.begin("selection.request")
         GitPerformanceTrace.event("selection.arrived", id: trace)

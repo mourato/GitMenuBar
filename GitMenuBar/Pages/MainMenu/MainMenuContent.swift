@@ -6,26 +6,6 @@
 import SwiftUI
 
 extension MainMenuView {
-    private var hasStagedFiles: Bool {
-        !gitManager.stagedFiles.isEmpty
-    }
-
-    private var hasUnstagedFiles: Bool {
-        !gitManager.changedFiles.isEmpty
-    }
-
-    private var showsWorkingTreeSections: Bool {
-        hasStagedFiles || hasUnstagedFiles
-    }
-
-    private var stagedSummary: WorkingTreeSectionSummary {
-        gitManager.stagedFiles.sectionSummary
-    }
-
-    private var unstagedSummary: WorkingTreeSectionSummary {
-        gitManager.changedFiles.sectionSummary
-    }
-
     private var mainScrollContent: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
             if let inlineStatusBanner {
@@ -50,47 +30,6 @@ extension MainMenuView {
                         selectedInspectorSelection = selection
                     }
                 )
-            }
-
-            if showsWorkingTreeSections {
-                if hasStagedFiles {
-                    WorkingTreeSectionView(
-                        title: "Staged",
-                        summary: stagedSummary,
-                        files: stagedRowAdapters,
-                        isCollapsed: $isStagedSectionCollapsed,
-                        selectedItemID: selectedMainItemID,
-                        onSelect: { selectMainItem($0) },
-                        onStageToggle: { unstageFile(path: $0) },
-                        onOpen: { gitManager.openFile(path: $0) },
-                        onDiscard: requestDiscard,
-                        onReveal: { gitManager.revealInFinder(path: $0) },
-                        onAction: unstageAllFiles,
-                        onDiscardAll: nil,
-                        actionIcon: "minus.circle",
-                        actionHelp: "Unstage all files"
-                    )
-                }
-                if hasUnstagedFiles {
-                    WorkingTreeSectionView(
-                        title: "Unstaged",
-                        summary: unstagedSummary,
-                        files: unstagedRowAdapters,
-                        isCollapsed: $isUnstagedSectionCollapsed,
-                        selectedItemID: selectedMainItemID,
-                        onSelect: { selectMainItem($0) },
-                        onStageToggle: { stageFile(path: $0) },
-                        onOpen: { gitManager.openFile(path: $0) },
-                        onDiscard: requestDiscard,
-                        onReveal: { gitManager.revealInFinder(path: $0) },
-                        onAction: stageAllFiles,
-                        onDiscardAll: {
-                            showDiscardAllConfirmation = true
-                        },
-                        actionIcon: "plus.circle",
-                        actionHelp: "Stage all files"
-                    )
-                }
             }
         }
     }
@@ -126,39 +65,6 @@ extension MainMenuView {
 
     private var mainRouteContent: some View {
         VStack(spacing: WorkbenchMetrics.groupSpacing) {
-            CommitWorkflowView(
-                commentText: $commentText,
-                isCommentFieldFocused: $isCommentFieldFocused,
-                showsCommentField: showsCommentField,
-                primaryButtonSystemImage: primaryButtonSystemImage,
-                isPrimaryActionBusy: isPrimaryActionBusy,
-                automaticMessageHint: automaticMessageHint,
-                generationDisabledReason: shouldShowGenerationHint ? aiCommitCoordinator.generationDisabledReason : nil,
-                generationError: displayedGenerationError,
-                automaticRetryAvailable: aiCommitCoordinator.automaticRetryAvailable,
-                isFallbackModelAvailable: aiCommitCoordinator.isReadyForFallbackGeneration,
-                primaryButtonTitle: primaryButtonTitle,
-                isPrimaryButtonDisabled: isPrimaryButtonDisabled,
-                canShowSplitCommits: canShowAtomicCommits,
-                onPrimaryAction: {
-                    Task {
-                        await performPrimaryAction()
-                    }
-                },
-                onSplitCommits: startAtomicCommitFlow,
-                onRetryGeneration: retryAutomaticGeneration,
-                onUseFallbackModel: commitUsingFallbackModel,
-                onDidCommit: {
-                    if hideCommitMessageField {
-                        isCommitFieldTemporarilyVisible = false
-                    }
-                },
-                onRequestFocus: requestCommitFieldFocus,
-                focusCommitFieldToken: presentationModel.focusCommitFieldToken,
-                actionCoordinator: actionCoordinator,
-                commitHistoryEditCoordinator: commitHistoryEditCoordinator
-            )
-
             ScrollView(.vertical) {
                 mainScrollContent
             }
@@ -195,6 +101,39 @@ extension MainMenuView {
             canLoadMoreHistory: gitManager.canLoadMoreCommitHistory,
             animationNamespace: animationNamespace,
             isCommitInFuture: isCommitInFuture,
+            commitMessage: $commentText,
+            commitFieldFocus: $isCommentFieldFocused,
+            showsCommitField: showsCommentField,
+            commitPrimaryButtonSystemImage: primaryButtonSystemImage,
+            isCommitActionBusy: isPrimaryActionBusy,
+            commitAutomaticMessageHint: automaticMessageHint,
+            commitGenerationDisabledReason: shouldShowGenerationHint ? aiCommitCoordinator.generationDisabledReason : nil,
+            commitGenerationError: displayedGenerationError,
+            commitAutomaticRetryAvailable: aiCommitCoordinator.automaticRetryAvailable,
+            isCommitFallbackModelAvailable: aiCommitCoordinator.isReadyForFallbackGeneration,
+            commitPrimaryButtonTitle: primaryButtonTitle,
+            isCommitPrimaryButtonDisabled: isPrimaryButtonDisabled,
+            canShowSplitCommits: canShowAtomicCommits,
+            workspaceSelectedFileID: selectedMainItemID,
+            commitFocusToken: presentationModel.focusCommitFieldToken,
+            onCommitPrimaryAction: {
+                Task {
+                    await performPrimaryAction()
+                }
+            },
+            onSplitCommits: startAtomicCommitFlow,
+            onRetryCommitGeneration: retryAutomaticGeneration,
+            onUseCommitFallbackModel: commitUsingFallbackModel,
+            onCommitDidCommit: {
+                if hideCommitMessageField {
+                    isCommitFieldTemporarilyVisible = false
+                }
+            },
+            onRequestCommitFocus: requestCommitFieldFocus,
+            onSelectWorkspaceFile: { selectMainItem($0) },
+            onDiscardAllUnstaged: {
+                showDiscardAllConfirmation = true
+            },
             onClose: clearInspectorSelection,
             onManageBranches: {
                 dismissTransientPresentations()

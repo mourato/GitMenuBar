@@ -10,6 +10,29 @@ struct MainMenuInspectorView: View {
     let canLoadMoreHistory: Bool
     let animationNamespace: Namespace.ID
     let isCommitInFuture: (Commit) -> Bool
+    @Binding var commitMessage: String
+    let commitFieldFocus: FocusState<Bool>.Binding
+    let showsCommitField: Bool
+    let commitPrimaryButtonSystemImage: String?
+    let isCommitActionBusy: Bool
+    let commitAutomaticMessageHint: String?
+    let commitGenerationDisabledReason: String?
+    let commitGenerationError: String?
+    let commitAutomaticRetryAvailable: Bool
+    let isCommitFallbackModelAvailable: Bool
+    let commitPrimaryButtonTitle: String
+    let isCommitPrimaryButtonDisabled: Bool
+    let canShowSplitCommits: Bool
+    let workspaceSelectedFileID: MainMenuSelectableItem?
+    let commitFocusToken: Int
+    let onCommitPrimaryAction: () -> Void
+    let onSplitCommits: () -> Void
+    let onRetryCommitGeneration: () -> Void
+    let onUseCommitFallbackModel: () -> Void
+    let onCommitDidCommit: () -> Void
+    let onRequestCommitFocus: () -> Void
+    let onSelectWorkspaceFile: (MainMenuSelectableItem) -> Void
+    let onDiscardAllUnstaged: () -> Void
     let onClose: () -> Void
     let onManageBranches: () -> Void
     let onRequestDiscard: (String, WorkingTreeFileStatus) -> Void
@@ -25,8 +48,10 @@ struct MainMenuInspectorView: View {
     @EnvironmentObject private var gitManager: GitManager
     @EnvironmentObject private var actionCoordinator: MainMenuActionCoordinator
     @State private var stashPendingDrop: GitStashInfo?
-    @State private var isStagedCollapsed = false
-    @State private var isUnstagedCollapsed = false
+
+    private var showsCommitWorkspace: Bool {
+        selection == .workingTree
+    }
 
     private var showsHistorySurface: Bool {
         switch selection {
@@ -63,6 +88,9 @@ struct MainMenuInspectorView: View {
                     )
                 }
                 .padding(WorkbenchMetrics.panelPadding)
+            } else if showsCommitWorkspace {
+                commitWorkspace
+                    .padding(WorkbenchMetrics.panelPadding)
             } else {
                 VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
                     header
@@ -137,11 +165,54 @@ struct MainMenuInspectorView: View {
         }
     }
 
+    private var commitWorkspace: some View {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
+            header
+            InspectorCommitWorkspaceView(
+                commitMessage: $commitMessage,
+                commitFieldFocus: commitFieldFocus,
+                showsCommitField: showsCommitField,
+                commitPrimaryButtonSystemImage: commitPrimaryButtonSystemImage,
+                isCommitActionBusy: isCommitActionBusy,
+                commitAutomaticMessageHint: commitAutomaticMessageHint,
+                commitGenerationDisabledReason: commitGenerationDisabledReason,
+                commitGenerationError: commitGenerationError,
+                commitAutomaticRetryAvailable: commitAutomaticRetryAvailable,
+                isCommitFallbackModelAvailable: isCommitFallbackModelAvailable,
+                commitPrimaryButtonTitle: commitPrimaryButtonTitle,
+                isCommitPrimaryButtonDisabled: isCommitPrimaryButtonDisabled,
+                canShowSplitCommits: canShowSplitCommits,
+                workspaceSelectedFileID: workspaceSelectedFileID,
+                commitFocusToken: commitFocusToken,
+                historySections: historySections,
+                historySelectedItemID: historySelectedItemID,
+                isHistoryLoading: isHistoryLoading,
+                canLoadMoreHistory: canLoadMoreHistory,
+                animationNamespace: animationNamespace,
+                onCommitPrimaryAction: onCommitPrimaryAction,
+                onSplitCommits: onSplitCommits,
+                onRetryCommitGeneration: onRetryCommitGeneration,
+                onUseCommitFallbackModel: onUseCommitFallbackModel,
+                onCommitDidCommit: onCommitDidCommit,
+                onRequestCommitFocus: onRequestCommitFocus,
+                onSelectWorkspaceFile: onSelectWorkspaceFile,
+                onDiscardAllUnstaged: onDiscardAllUnstaged,
+                onRequestDiscard: onRequestDiscard,
+                onSelectHistoryRow: onSelectHistoryRow,
+                onOpenHistoryCommit: onOpenHistoryCommit,
+                onEditCommitMessage: onEditCommitMessage,
+                onGenerateCommitMessage: onGenerateCommitMessage,
+                onLoadMoreHistory: onLoadMoreHistory
+            )
+        }
+    }
+
     @ViewBuilder
     private func sectionBody(for selection: MainMenuInspectorSelection) -> some View {
         switch selection {
         case .workingTree:
-            workingTreeSection
+            // Rendered by commitWorkspace above; unreachable here.
+            EmptyView()
         case let .stagedFile(path):
             fileDetail(path: path, staged: true)
         case let .unstagedFile(path):
@@ -154,59 +225,6 @@ struct MainMenuInspectorView: View {
             stashesSection
         case .history, .commit:
             EmptyView()
-        }
-    }
-
-    private var workingTreeSection: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-            if gitManager.stagedFiles.isEmpty, gitManager.changedFiles.isEmpty {
-                emptyState("Working tree is clean", systemImage: "checkmark.circle", description: "Stage files to start a commit.")
-            } else {
-                if !gitManager.stagedFiles.isEmpty {
-                    WorkingTreeSectionView(
-                        title: "Staged",
-                        summary: gitManager.stagedFiles.sectionSummary,
-                        files: gitManager.stagedFiles.map(WorkingTreeRowAdapter.staged(file:)),
-                        isCollapsed: $isStagedCollapsed,
-                        selectedItemID: nil,
-                        onSelect: { _ in },
-                        onStageToggle: { path in
-                            Task { _ = await actionCoordinator.unstageInspectorFile(path: path) }
-                        },
-                        onOpen: { gitManager.openFile(path: $0) },
-                        onDiscard: onRequestDiscard,
-                        onReveal: { gitManager.revealInFinder(path: $0) },
-                        onAction: {
-                            Task { _ = await actionCoordinator.unstageAllInspectorFiles() }
-                        },
-                        onDiscardAll: nil,
-                        actionIcon: "minus.circle",
-                        actionHelp: "Unstage all files"
-                    )
-                }
-                if !gitManager.changedFiles.isEmpty {
-                    WorkingTreeSectionView(
-                        title: "Unstaged",
-                        summary: gitManager.changedFiles.sectionSummary,
-                        files: gitManager.changedFiles.map(WorkingTreeRowAdapter.unstaged(file:)),
-                        isCollapsed: $isUnstagedCollapsed,
-                        selectedItemID: nil,
-                        onSelect: { _ in },
-                        onStageToggle: { path in
-                            Task { _ = await actionCoordinator.stageInspectorFile(path: path) }
-                        },
-                        onOpen: { gitManager.openFile(path: $0) },
-                        onDiscard: onRequestDiscard,
-                        onReveal: { gitManager.revealInFinder(path: $0) },
-                        onAction: {
-                            Task { _ = await actionCoordinator.stageAllInspectorFiles() }
-                        },
-                        onDiscardAll: nil,
-                        actionIcon: "plus.circle",
-                        actionHelp: "Stage all files"
-                    )
-                }
-            }
         }
     }
 
@@ -436,63 +454,5 @@ struct MainMenuInspectorView: View {
             parts.append(createdAt.formatted(date: .abbreviated, time: .shortened))
         }
         return parts.joined(separator: " · ")
-    }
-}
-
-#Preview("No Selection") {
-    MainMenuPreviewHarness {
-        MainMenuInspectorPreviewHost(selection: nil)
-    }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 360)
-}
-
-#Preview("Working Tree") {
-    MainMenuPreviewHarness {
-        MainMenuInspectorPreviewHost(selection: .workingTree)
-    }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 420)
-}
-
-#Preview("Stashes") {
-    MainMenuPreviewHarness {
-        MainMenuInspectorPreviewHost(selection: .stashes)
-    }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 360)
-}
-
-#Preview("History") {
-    MainMenuPreviewHarness {
-        MainMenuInspectorPreviewHost(selection: .history)
-    }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 420)
-}
-
-private struct MainMenuInspectorPreviewHost: View {
-    let selection: MainMenuInspectorSelection?
-    @Namespace private var animationNamespace
-
-    var body: some View {
-        MainMenuInspectorView(
-            projectName: "GitMenuBar",
-            selection: selection,
-            overview: .empty,
-            historySections: [],
-            historySelectedItemID: nil,
-            isHistoryLoading: false,
-            canLoadMoreHistory: false,
-            animationNamespace: animationNamespace,
-            isCommitInFuture: { _ in false },
-            onClose: {},
-            onManageBranches: {},
-            onRequestDiscard: { _, _ in },
-            onRequestDeleteBranch: { _ in },
-            onRequestSwitchBranch: { _ in },
-            onSelectHistoryRow: { _ in },
-            onOpenHistoryCommit: { _ in },
-            onBackToHistory: {},
-            onEditCommitMessage: { _ in },
-            onGenerateCommitMessage: { _ in },
-            onLoadMoreHistory: {}
-        )
     }
 }

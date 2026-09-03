@@ -344,18 +344,6 @@ struct MainMenuPrimaryActionState: Equatable {
 }
 
 extension MainMenuView {
-    var stagedRowAdapters: [WorkingTreeRowAdapter] {
-        renderSnapshot.stagedRowAdapters
-    }
-
-    var unstagedRowAdapters: [WorkingTreeRowAdapter] {
-        renderSnapshot.unstagedRowAdapters
-    }
-
-    var historyRowAdapters: [HistoryRowAdapter] {
-        renderSnapshot.historyRowAdapters
-    }
-
     var historyTimelineSections: [HistoryTimelineSectionModel] {
         renderSnapshot.historySections
     }

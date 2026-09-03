@@ -47,15 +47,19 @@ they drift, and use an ADR for a durable decision rather than a task log.
 
 ## Composition and interaction
 
-The main route remains native toolbar → commit composer → scroll content →
-branch footer, with optional quota cards secondary to Git work. `NavigationSplitView`
+The main route remains native toolbar → scroll content (repository
+overview) → branch footer, with optional quota cards secondary to Git work.
+The commit workspace lives in the inspector under the Working Tree selection
+as commit composer → working tree → history, with the composer fixed above
+the workspace's single scroll owner. `NavigationSplitView`
 owns the Projects sidebar's width, selection, and collapse behavior. Stage/
 Unstage section actions stay visible; per-file actions remain hover-revealed
 where the product policy permits. Preserve keyboard actions, context menus, and
 confirmation for destructive work.
 
 Each scroll surface has exactly one native vertical `ScrollView` or `List`
-owner. Keep the composer and footer outside the main owner. Do not hide and
+owner. Keep the composer and footer outside their scroll owner, including in
+the inspector workspace. Do not hide and
 redraw native indicators, add edge masks, or add a parallel custom scrollbar.
 
 Settings uses the native grouped Form hierarchy, one scroll owner per pane,
