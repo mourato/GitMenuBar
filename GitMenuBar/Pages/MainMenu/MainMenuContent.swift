@@ -232,33 +232,38 @@ extension MainMenuView {
                     max: WorkbenchMetrics.projectsMinimumWidth
                 )
             } detail: {
-                routeContent
-                    .frame(
-                        minWidth: WorkbenchMetrics.centralMinimumWidth,
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: .top
-                    )
-                    .padding(.top, WorkbenchMetrics.sectionSpacing)
-                    .padding(.leading, WorkbenchMetrics.windowPadding)
-                    .padding(.trailing, WorkbenchMetrics.windowPadding)
-                    .padding(.bottom, WorkbenchMetrics.windowPadding)
-                    .frame(
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: .top
-                    )
-            }
-            .inspector(isPresented: .constant(presentationModel.route == .main)) {
-                inspectorContent
-                    .inspectorColumnWidth(
-                        min: WorkbenchMetrics.inspectorMinimumWidth,
-                        ideal: max(
-                            WorkbenchMetrics.inspectorMinimumWidth,
-                            CGFloat(inspectorColumnWidth)
-                        ),
-                        max: nil
-                    )
+                HSplitView {
+                    routeContent
+                        .frame(
+                            minWidth: WorkbenchMetrics.centralMinimumWidth,
+                            maxWidth: .infinity,
+                            maxHeight: .infinity,
+                            alignment: .top
+                        )
+                        .padding(.top, WorkbenchMetrics.sectionSpacing)
+                        .padding(.leading, WorkbenchMetrics.windowPadding)
+                        .padding(.trailing, WorkbenchMetrics.windowPadding)
+                        .padding(.bottom, WorkbenchMetrics.windowPadding)
+                        .frame(
+                            maxWidth: .infinity,
+                            maxHeight: .infinity,
+                            alignment: .top
+                        )
+
+                    if presentationModel.route == .main {
+                        // ponytail: keep divider persistence out of SwiftUI layout.
+                        // Use an AppKit split-view delegate if relaunch persistence becomes required.
+                        inspectorContent
+                            .frame(
+                                minWidth: WorkbenchMetrics.inspectorMinimumWidth,
+                                idealWidth: CGFloat(MainWindowPreferences.inspectorColumnWidth()),
+                                maxWidth: .infinity,
+                                maxHeight: .infinity,
+                                alignment: .topLeading
+                            )
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationSplitViewStyle(.balanced)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

@@ -18,9 +18,10 @@ dense, calm, and semantic—not a SaaS dashboard or marketing surface.
   `GitMenuBar/`
 - Main composition: `GitMenuBar/Pages/MainMenu/`
 - Settings: `GitMenuBar/Pages/Settings/`
-- Layout persistence: `AppPreferences.Keys.inspectorColumnWidth` and the
-  stable `NSWindow.FrameAutosaveName` in `StatusBarController`
-- Related decisions: [`docs/adr/0001-workbench-depth-and-token-naming.md`](adr/0001-workbench-depth-and-token-naming.md), [`docs/adr/0002-window-shell-material-and-titlebar-chrome.md`](adr/0002-window-shell-material-and-titlebar-chrome.md), [`docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md`](adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md), and [`docs/adr/0012-always-open-inspector.md`](adr/0012-always-open-inspector.md)
+- Layout persistence: the stable `NSWindow.FrameAutosaveName` in
+  `StatusBarController`; the legacy `AppPreferences.Keys.inspectorColumnWidth`
+  is read only as the inspector's initial preferred width.
+- Related decisions: [`docs/adr/0001-workbench-depth-and-token-naming.md`](adr/0001-workbench-depth-and-token-naming.md), [`docs/adr/0002-window-shell-material-and-titlebar-chrome.md`](adr/0002-window-shell-material-and-titlebar-chrome.md), [`docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md`](adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md), [`docs/adr/0012-always-open-inspector.md`](adr/0012-always-open-inspector.md), and [`docs/adr/0013-hsplitview-inspector-fallback.md`](adr/0013-hsplitview-inspector-fallback.md)
 
 The former `.interface-design/system.md` is a legacy pointer. Do not create a
 second canonical design-system document. Reconcile code and this file when
@@ -51,21 +52,24 @@ they drift, and use an ADR for a durable decision rather than a task log.
 
 The main route remains native toolbar → scroll content (repository
 overview) → branch footer, with optional quota cards secondary to Git work.
-The inspector is always present as a native trailing split surface; it shows an
-empty state until a central selection is made. The commit workspace lives in
-the inspector under the Working Tree selection as commit composer → working
-tree → history, with the composer fixed above the workspace's single scroll
-owner. `NavigationSplitView` owns the Projects sidebar's width, selection, and
-collapse behavior. While visible, the sidebar uses a fixed
+The inspector is always present as a native trailing split surface backed by
+`HSplitView`; it shows an empty state until a central selection is made. The
+commit workspace lives in the inspector under the Working Tree selection as
+commit composer → working tree → history, with the composer fixed above the
+workspace's single scroll owner. `NavigationSplitView` owns the Projects
+sidebar's width, selection, and collapse behavior, while `HSplitView` owns the
+center/inspector divider. While visible, the sidebar uses a fixed
 `WorkbenchMetrics.projectsMinimumWidth`; the native visibility control still
 supports collapsing it. The sidebar footer concentrates the quota summary,
 Settings access, and collapse toggle in one bottom surface; the window toolbar
 keeps the sidebar toggle and centered title only.
 
-The inspector's native divider remains user-resizable. Its default width is
-owned by `WorkbenchMetrics.inspectorDefaultWidth`, and the most recent measured
-width is stored under the stable `AppPreferences.Keys.inspectorColumnWidth` so
-it survives relaunches and app updates. The window frame uses its existing
+The inspector's `HSplitView` divider remains user-resizable. Its default width
+is owned by `WorkbenchMetrics.inspectorDefaultWidth`; an existing value under
+`AppPreferences.Keys.inspectorColumnWidth` is used only as the initial ideal
+width. SwiftUI layout must not write measured geometry back to state or
+defaults, because doing so can recurse through AppKit constraint updates. The
+current divider position is session-local. The window frame uses its existing
 stable autosave name for the same session/version continuity.
 Stage/Unstage section actions stay visible; per-file actions remain hover-revealed
 where the product policy permits. Preserve keyboard actions, context menus, and
@@ -89,7 +93,7 @@ The main workbench has three surfaces with one selection owner:
 - The selected repository workbench remains in the center.
 - A trailing inspector is always present as the third split surface.
 
-The selected-project detail owner presents a resizable native `.inspector`
+The selected-project detail owner presents a resizable `HSplitView` inspector
 using the same `MainMenuInspectorSelection` value that identifies the central
 item. The inspector remains visible when that selection is nil and renders the
 existing empty state, so resizing never changes presentation or creates a

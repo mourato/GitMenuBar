@@ -33,7 +33,6 @@ struct MainMenuView: View {
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isUnstagedSectionCollapsed) var isUnstagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isProjectsSidebarCollapsed) var isProjectsSidebarCollapsed = false
-    @State var inspectorColumnWidth = MainWindowPreferences.inspectorColumnWidth()
     @AppStorage(AppPreferences.Keys.hideCommitMessageField) var hideCommitMessageField = false
     @AppStorage(AppPreferences.Keys.commitButtonAction)
     var commitButtonAction = AppPreferences.CommitButtonAction.defaultAction.rawValue

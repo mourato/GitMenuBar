@@ -1,6 +1,6 @@
 # ADR 0012: Always-open workbench inspector
 
-Status: Accepted
+Status: Superseded in part by ADR 0013
 Date: 2026-09-03
 
 ## Context
