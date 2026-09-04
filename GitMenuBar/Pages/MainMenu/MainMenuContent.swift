@@ -84,19 +84,21 @@ extension MainMenuView {
     }
 
     private var inspectorContent: some View {
-        inspectorSelectionView
-            .padding(WorkbenchMetrics.panelPadding)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(selectedInspectorSelection.map { "Details for \($0.title)" } ?? "Details")
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.width
-            } action: { width in
-                let roundedWidth = width.rounded()
-                guard roundedWidth >= WorkbenchMetrics.inspectorMinimumWidth,
-                      roundedWidth != CGFloat(inspectorColumnWidth) else { return }
-                inspectorColumnWidth = Double(roundedWidth)
-            }
+        InspectorContentHost {
+            inspectorSelectionView
+        }
+        .padding(WorkbenchMetrics.panelPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(selectedInspectorSelection.map { "Details for \($0.title)" } ?? "Details")
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { width in
+            let roundedWidth = width.rounded()
+            guard roundedWidth >= WorkbenchMetrics.inspectorMinimumWidth,
+                  roundedWidth != CGFloat(inspectorColumnWidth) else { return }
+            inspectorColumnWidth = Double(roundedWidth)
+        }
     }
 
     @ViewBuilder
@@ -327,6 +329,14 @@ extension MainMenuView {
             }
             isCommentFieldFocused = true
         }
+    }
+}
+
+private struct InspectorContentHost<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        content
     }
 }
 
