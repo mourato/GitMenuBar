@@ -1283,6 +1283,7 @@ rules.
 | [077](077-project-state-overview.md) | Add the central project-state overview | P0 | M | 076 | REVIEWED | implement-plan-077-overview | host:code-review PASS after P1 remediation | — | — |
 | [078](078-contextual-git-detail-actions.md) | Add contextual Git detail views and safe actions | P0 | L | 076, 077 | REVIEWED | implement-plan-077-overview | host:code-review PASS after P1 remediation | — | — |
 | [079](079-history-inspector-drilldown.md) | Move history into the contextual inspector | P0 | L | 076, 077, 078 | REVIEWED | implement-plan-079-history | host:code-review PASS after P1 reset preflight | — | — |
+| [080](080-remove-canvas-skeleton-full-bleed-inspector.md) | Remove canvas skeleton and extend inspector under toolbar | P1 | S | 079 | REVIEWED | plan-080 | root review PASS; build/test/guidance/diff pass; lint baseline recorded | — | — |
 
 ### Dependency notes
 
