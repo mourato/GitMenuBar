@@ -19,10 +19,6 @@ extension MainMenuView {
                 createRepoSuggestionBanner(path: suggestionPath)
             }
 
-            if presentationModel.isFastLoading, !hasWorkingTreeChanges {
-                loadingStateView
-            }
-
             if !currentRepoPath.isEmpty {
                 RepositoryOverviewView(
                     overview: renderSnapshot.overview,
@@ -75,18 +71,20 @@ extension MainMenuView {
                 await gitManager.refreshSelectedRepositoryAsync(includeReflogHistory: false)
             }
 
-            if presentationModel.isFastLoading {
-                branchLoadingStateView
-            } else {
-                footerSection
-            }
+            footerSection
         }
+        .disabled(presentationModel.isFastLoading)
+        .accessibilityElement(children: .contain)
+        .accessibilityValue(presentationModel.isFastLoading ? "Updating project" : "")
     }
 
     private var inspectorContent: some View {
         inspectorSelectionView
-            .padding(WorkbenchMetrics.panelPadding)
+            .padding(.horizontal, WorkbenchMetrics.panelPadding)
+            .padding(.top, WorkbenchMetrics.iconHitTarget + WorkbenchMetrics.compactSpacing)
+            .padding(.bottom, WorkbenchMetrics.panelPadding)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .ignoresSafeArea(.container, edges: .top)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(selectedInspectorSelection.map { "Details for \($0.title)" } ?? "Details")
     }
