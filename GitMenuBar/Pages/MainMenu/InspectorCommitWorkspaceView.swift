@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct InspectorCommitWorkspaceView: View {
+    let projectName: String
     @Binding var commitMessage: String
     let commitFieldFocus: FocusState<Bool>.Binding
     let showsCommitField: Bool
@@ -14,13 +15,9 @@ struct InspectorCommitWorkspaceView: View {
     let commitPrimaryButtonTitle: String
     let isCommitPrimaryButtonDisabled: Bool
     let canShowSplitCommits: Bool
-    let workspaceSelectedFileID: MainMenuSelectableItem?
     let commitFocusToken: Int
-    let historySections: [HistoryTimelineSectionModel]
-    let historySelectedItemID: MainMenuSelectableItem?
-    let isHistoryLoading: Bool
-    let canLoadMoreHistory: Bool
-    let animationNamespace: Namespace.ID
+    let history: InspectorHistoryModel
+    let workspaceSelectedFileID: MainMenuSelectableItem?
     let onCommitPrimaryAction: () -> Void
     let onSplitCommits: () -> Void
     let onRetryCommitGeneration: () -> Void
@@ -30,22 +27,17 @@ struct InspectorCommitWorkspaceView: View {
     let onSelectWorkspaceFile: (MainMenuSelectableItem) -> Void
     let onDiscardAllUnstaged: () -> Void
     let onRequestDiscard: (String, WorkingTreeFileStatus) -> Void
-    let onSelectHistoryRow: (HistoryRowAdapter) -> Void
-    let onOpenHistoryCommit: (String) -> Void
-    let onEditCommitMessage: (Commit) -> Void
-    let onGenerateCommitMessage: (Commit) -> Void
-    let onLoadMoreHistory: () -> Void
 
     @EnvironmentObject private var gitManager: GitManager
     @EnvironmentObject private var actionCoordinator: MainMenuActionCoordinator
     @EnvironmentObject private var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
     @State private var isStagedCollapsed = false
     @State private var isUnstagedCollapsed = false
-    @State private var isHistoryCollapsed = false
     @State private var pendingReset: Commit?
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
+            InspectorHeaderView(projectName: projectName, title: "Working Tree")
             CommitWorkflowView(
                 commentText: $commitMessage,
                 isCommentFieldFocused: commitFieldFocus,
@@ -73,59 +65,13 @@ struct InspectorCommitWorkspaceView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
                     workingTreeContent
-                    HistorySectionView(
-                        sections: historySections,
-                        selectedItemID: historySelectedItemID,
-                        isLoading: isHistoryLoading,
-                        canLoadMore: canLoadMoreHistory,
-                        animationNamespace: animationNamespace,
-                        onSelectRow: onSelectHistoryRow,
-                        onActivateCommit: { row in
-                            onOpenHistoryCommit(row.commit.id)
-                        },
-                        onRestoreCommit: { row in
-                            guard row.actions.canRestore else { return }
-                            pendingReset = row.commit
-                        },
-                        onEditCommitMessage: { row in
-                            onEditCommitMessage(row.commit)
-                        },
-                        onGenerateCommitMessage: { row in
-                            onGenerateCommitMessage(row.commit)
-                        },
-                        onLoadMore: onLoadMoreHistory,
-                        isCollapsed: $isHistoryCollapsed
-                    )
+                    InspectorHistoryBrowserView(history: history, pendingReset: $pendingReset)
                 }
             }
         }
-        .alert(
-            "Reset to this commit?",
-            isPresented: Binding(
-                get: { pendingReset != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        pendingReset = nil
-                    }
-                }
-            )
-        ) {
-            Button("Cancel", role: .cancel) {
-                pendingReset = nil
-            }
-            Button("Reset", role: .destructive) {
-                guard let pendingReset else { return }
-                let commit = pendingReset
-                self.pendingReset = nil
-                Task {
-                    _ = await actionCoordinator.resetInspectorCommit(hash: commit.id)
-                }
-            }
-        } message: {
-            if let pendingReset {
-                Text(
-                    "This hard-resets the current branch to \(pendingReset.shortHash) (\(pendingReset.subject)). Uncommitted work may be lost."
-                )
+        .inspectorResetAlert(commit: $pendingReset) { commit in
+            Task {
+                _ = await actionCoordinator.resetInspectorCommit(hash: commit.id)
             }
         }
     }
@@ -196,12 +142,12 @@ struct InspectorCommitWorkspaceView: View {
 }
 
 private struct InspectorCommitWorkspacePreviewHost: View {
-    @Namespace private var animationNamespace
     @State private var commitMessage = ""
     @FocusState private var isCommitFieldFocused: Bool
 
     var body: some View {
         InspectorCommitWorkspaceView(
+            projectName: "GitMenuBar",
             commitMessage: $commitMessage,
             commitFieldFocus: $isCommitFieldFocused,
             showsCommitField: true,
@@ -215,13 +161,9 @@ private struct InspectorCommitWorkspacePreviewHost: View {
             commitPrimaryButtonTitle: "Commit",
             isCommitPrimaryButtonDisabled: false,
             canShowSplitCommits: true,
-            workspaceSelectedFileID: nil,
             commitFocusToken: 0,
-            historySections: [],
-            historySelectedItemID: nil,
-            isHistoryLoading: false,
-            canLoadMoreHistory: false,
-            animationNamespace: animationNamespace,
+            history: .preview(),
+            workspaceSelectedFileID: nil,
             onCommitPrimaryAction: {},
             onSplitCommits: {},
             onRetryCommitGeneration: {},
@@ -230,12 +172,7 @@ private struct InspectorCommitWorkspacePreviewHost: View {
             onRequestCommitFocus: {},
             onSelectWorkspaceFile: { _ in },
             onDiscardAllUnstaged: {},
-            onRequestDiscard: { _, _ in },
-            onSelectHistoryRow: { _ in },
-            onOpenHistoryCommit: { _ in },
-            onEditCommitMessage: { _ in },
-            onGenerateCommitMessage: { _ in },
-            onLoadMoreHistory: {}
+            onRequestDiscard: { _, _ in }
         )
     }
 }

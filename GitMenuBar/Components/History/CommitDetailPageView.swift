@@ -191,24 +191,34 @@ struct CommitDetailPageView: View {
         return avatarLookupKey(for: commit)
     }
 
+    private var avatarBadgeShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous)
+    }
+
+    private func avatarBadge(@ViewBuilder content: () -> some View) -> some View {
+        content()
+            .frame(width: 24, height: 24)
+            .clipShape(avatarBadgeShape)
+            .overlay {
+                avatarBadgeShape
+                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+            }
+    }
+
     @ViewBuilder
     private func authorIdentityBadge(for commit: Commit) -> some View {
         if let authorAvatarURL {
-            AsyncImage(url: authorAvatarURL) { phase in
-                switch phase {
-                case let .success(image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                default:
-                    initialsBadge(for: commit)
+            avatarBadge {
+                AsyncImage(url: authorAvatarURL) { phase in
+                    switch phase {
+                    case let .success(image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        initialsBadgeFill(for: commit)
+                    }
                 }
-            }
-            .frame(width: 24, height: 24)
-            .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous)
-                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
             }
         } else {
             initialsBadge(for: commit)
@@ -216,16 +226,17 @@ struct CommitDetailPageView: View {
     }
 
     private func initialsBadge(for commit: Commit) -> some View {
+        avatarBadge {
+            initialsBadgeFill(for: commit)
+        }
+    }
+
+    private func initialsBadgeFill(for commit: Commit) -> some View {
         Text(authorInitials(for: commit))
             .font(WorkbenchTypography.detail.weight(.bold))
             .foregroundStyle(.white)
             .frame(width: 24, height: 24)
             .background(Color.accentColor)
-            .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous)
-                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-            }
     }
 
     @MainActor

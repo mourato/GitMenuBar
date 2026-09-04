@@ -13,7 +13,6 @@ final class MainMenuRenderSnapshotTests: XCTestCase {
             currentBranch: "",
             isStagedSectionCollapsed: false,
             isUnstagedSectionCollapsed: false,
-            isHistorySectionCollapsed: false,
             recentProjects: [
                 ProjectReference(path: "/tmp/worktrees/client-a", name: "Client A")
             ],
@@ -35,7 +34,6 @@ final class MainMenuRenderSnapshotTests: XCTestCase {
             currentBranch: "",
             isStagedSectionCollapsed: false,
             isUnstagedSectionCollapsed: false,
-            isHistorySectionCollapsed: false,
             recentProjects: [],
             currentRepoPath: "/tmp/worktrees/client-a",
             isCommitInFuture: { _ in false }
@@ -71,7 +69,6 @@ final class MainMenuRenderSnapshotTests: XCTestCase {
             currentBranch: "main",
             isStagedSectionCollapsed: false,
             isUnstagedSectionCollapsed: false,
-            isHistorySectionCollapsed: false,
             recentProjects: [
                 ProjectReference(path: "/tmp/worktrees/client-a", name: "Client A")
             ],
@@ -108,7 +105,6 @@ final class MainMenuRenderSnapshotTests: XCTestCase {
             currentBranch: "main",
             isStagedSectionCollapsed: false,
             isUnstagedSectionCollapsed: false,
-            isHistorySectionCollapsed: false,
             recentProjects: [],
             currentRepoPath: "/tmp/repo",
             isCommitInFuture: { _ in false },
@@ -131,7 +127,6 @@ final class MainMenuRenderSnapshotTests: XCTestCase {
             currentBranch: "",
             isStagedSectionCollapsed: false,
             isUnstagedSectionCollapsed: false,
-            isHistorySectionCollapsed: false,
             recentProjects: [],
             currentRepoPath: "",
             isCommitInFuture: { _ in false }

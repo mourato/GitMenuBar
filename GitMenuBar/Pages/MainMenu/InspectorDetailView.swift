@@ -1,118 +1,35 @@
 import SwiftUI
 
-struct MainMenuInspectorView: View {
+/// Inspector detail surface for selections that are neither the commit
+/// workspace nor history. The parent routes `.workingTree` and
+/// `.history`/`.commit` elsewhere, so this view only handles detail cases.
+struct InspectorDetailView: View {
     let projectName: String
     let selection: MainMenuInspectorSelection?
     let overview: RepositoryOverviewSnapshot
-    let historySections: [HistoryTimelineSectionModel]
-    let historySelectedItemID: MainMenuSelectableItem?
-    let isHistoryLoading: Bool
-    let canLoadMoreHistory: Bool
-    let animationNamespace: Namespace.ID
-    let isCommitInFuture: (Commit) -> Bool
-    @Binding var commitMessage: String
-    let commitFieldFocus: FocusState<Bool>.Binding
-    let showsCommitField: Bool
-    let commitPrimaryButtonSystemImage: String?
-    let isCommitActionBusy: Bool
-    let commitAutomaticMessageHint: String?
-    let commitGenerationDisabledReason: String?
-    let commitGenerationError: String?
-    let commitAutomaticRetryAvailable: Bool
-    let isCommitFallbackModelAvailable: Bool
-    let commitPrimaryButtonTitle: String
-    let isCommitPrimaryButtonDisabled: Bool
-    let canShowSplitCommits: Bool
-    let workspaceSelectedFileID: MainMenuSelectableItem?
-    let commitFocusToken: Int
-    let onCommitPrimaryAction: () -> Void
-    let onSplitCommits: () -> Void
-    let onRetryCommitGeneration: () -> Void
-    let onUseCommitFallbackModel: () -> Void
-    let onCommitDidCommit: () -> Void
-    let onRequestCommitFocus: () -> Void
-    let onSelectWorkspaceFile: (MainMenuSelectableItem) -> Void
-    let onDiscardAllUnstaged: () -> Void
     let onManageBranches: () -> Void
     let onRequestDiscard: (String, WorkingTreeFileStatus) -> Void
     let onRequestDeleteBranch: (String) -> Void
     let onRequestSwitchBranch: (String) -> Void
-    let onSelectHistoryRow: (HistoryRowAdapter) -> Void
-    let onOpenHistoryCommit: (String) -> Void
-    let onBackToHistory: () -> Void
-    let onEditCommitMessage: (Commit) -> Void
-    let onGenerateCommitMessage: (Commit) -> Void
-    let onLoadMoreHistory: () -> Void
 
     @EnvironmentObject private var gitManager: GitManager
     @EnvironmentObject private var actionCoordinator: MainMenuActionCoordinator
     @State private var stashPendingDrop: GitStashInfo?
 
-    private var showsCommitWorkspace: Bool {
-        selection == .workingTree
-    }
-
-    private var showsHistorySurface: Bool {
-        switch selection {
-        case .history, .commit:
-            true
-        default:
-            false
-        }
-    }
-
     var body: some View {
-        Group {
-            if showsHistorySurface, let selection {
-                VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-                    header
-                    HistoryInspectorView(
-                        selection: selection,
-                        sections: historySections,
-                        selectedItemID: historySelectedItemID,
-                        isLoading: isHistoryLoading,
-                        canLoadMore: canLoadMoreHistory,
-                        animationNamespace: animationNamespace,
-                        currentHash: gitManager.currentHash,
-                        remoteUrl: gitManager.remoteUrl,
-                        repositoryPath: gitManager.repositoryPath,
-                        isCommitInFuture: isCommitInFuture,
-                        onSelectRow: onSelectHistoryRow,
-                        onOpenCommit: onOpenHistoryCommit,
-                        onBackToHistory: onBackToHistory,
-                        onEditCommitMessage: onEditCommitMessage,
-                        onGenerateCommitMessage: onGenerateCommitMessage,
-                        onLoadMore: onLoadMoreHistory,
-                        onOpenLocalFile: { gitManager.openFile(path: $0) }
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
+            InspectorHeaderView(projectName: projectName, title: selection?.title ?? "Details")
+            ScrollView {
+                if let selection {
+                    sectionBody(for: selection)
+                } else {
+                    ContentUnavailableView(
+                        "No details selected",
+                        systemImage: "sidebar.right",
+                        description: Text("Select an item in the workbench to view its details.")
                     )
                 }
-                .padding(WorkbenchMetrics.panelPadding)
-            } else if showsCommitWorkspace {
-                commitWorkspace
-                    .padding(WorkbenchMetrics.panelPadding)
-            } else {
-                VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-                    header
-                    ScrollView {
-                        if let selection {
-                            sectionBody(for: selection)
-                        } else {
-                            ContentUnavailableView(
-                                "No details selected",
-                                systemImage: "sidebar.right",
-                                description: Text("Select an item in the workbench to view its details.")
-                            )
-                        }
-                    }
-                }
-                .padding(WorkbenchMetrics.panelPadding)
             }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(selection.map { "Details for \($0.title)" } ?? "Details")
-        .task(id: selection) {
-            await actionCoordinator.prepareInspectorSelection(selection)
         }
         .alert(
             "Drop stash?",
@@ -141,71 +58,9 @@ struct MainMenuInspectorView: View {
         }
     }
 
-    private var header: some View {
-        HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
-            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-                Text(projectName)
-                    .font(WorkbenchTypography.captionStrong)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                Text(selection?.title ?? "Details")
-                    .font(WorkbenchTypography.windowTitle)
-                    .lineLimit(2)
-                    .accessibilityAddTraits(.isHeader)
-            }
-
-            Spacer(minLength: 0)
-        }
-    }
-
-    private var commitWorkspace: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-            header
-            InspectorCommitWorkspaceView(
-                commitMessage: $commitMessage,
-                commitFieldFocus: commitFieldFocus,
-                showsCommitField: showsCommitField,
-                commitPrimaryButtonSystemImage: commitPrimaryButtonSystemImage,
-                isCommitActionBusy: isCommitActionBusy,
-                commitAutomaticMessageHint: commitAutomaticMessageHint,
-                commitGenerationDisabledReason: commitGenerationDisabledReason,
-                commitGenerationError: commitGenerationError,
-                commitAutomaticRetryAvailable: commitAutomaticRetryAvailable,
-                isCommitFallbackModelAvailable: isCommitFallbackModelAvailable,
-                commitPrimaryButtonTitle: commitPrimaryButtonTitle,
-                isCommitPrimaryButtonDisabled: isCommitPrimaryButtonDisabled,
-                canShowSplitCommits: canShowSplitCommits,
-                workspaceSelectedFileID: workspaceSelectedFileID,
-                commitFocusToken: commitFocusToken,
-                historySections: historySections,
-                historySelectedItemID: historySelectedItemID,
-                isHistoryLoading: isHistoryLoading,
-                canLoadMoreHistory: canLoadMoreHistory,
-                animationNamespace: animationNamespace,
-                onCommitPrimaryAction: onCommitPrimaryAction,
-                onSplitCommits: onSplitCommits,
-                onRetryCommitGeneration: onRetryCommitGeneration,
-                onUseCommitFallbackModel: onUseCommitFallbackModel,
-                onCommitDidCommit: onCommitDidCommit,
-                onRequestCommitFocus: onRequestCommitFocus,
-                onSelectWorkspaceFile: onSelectWorkspaceFile,
-                onDiscardAllUnstaged: onDiscardAllUnstaged,
-                onRequestDiscard: onRequestDiscard,
-                onSelectHistoryRow: onSelectHistoryRow,
-                onOpenHistoryCommit: onOpenHistoryCommit,
-                onEditCommitMessage: onEditCommitMessage,
-                onGenerateCommitMessage: onGenerateCommitMessage,
-                onLoadMoreHistory: onLoadMoreHistory
-            )
-        }
-    }
-
     @ViewBuilder
     private func sectionBody(for selection: MainMenuInspectorSelection) -> some View {
         switch selection {
-        case .workingTree:
-            // Rendered by commitWorkspace above; unreachable here.
-            EmptyView()
         case let .stagedFile(path):
             fileDetail(path: path, staged: true)
         case let .unstagedFile(path):
@@ -216,7 +71,8 @@ struct MainMenuInspectorView: View {
             branchesSection
         case .stashes, .stash:
             stashesSection
-        case .history, .commit:
+        case .workingTree, .history, .commit:
+            // Routed to a dedicated surface by the parent; no content here.
             EmptyView()
         }
     }
@@ -423,8 +279,13 @@ struct MainMenuInspectorView: View {
         }
     }
 
+    @ViewBuilder
     private func emptyState(_ title: String, systemImage: String, description: String? = nil) -> some View {
-        ContentUnavailableView(title, systemImage: systemImage, description: Text(description ?? ""))
+        if let description {
+            ContentUnavailableView(title, systemImage: systemImage, description: Text(description))
+        } else {
+            ContentUnavailableView(title, systemImage: systemImage)
+        }
     }
 
     private func metricLabel(_ metric: RepositoryMetricState<Int>, unit: String) -> String {

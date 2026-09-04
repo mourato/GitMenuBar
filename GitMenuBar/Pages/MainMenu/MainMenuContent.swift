@@ -84,7 +84,11 @@ extension MainMenuView {
     }
 
     private var inspectorContent: some View {
-        inspectorView(selection: selectedInspectorSelection)
+        inspectorSelectionView
+            .padding(WorkbenchMetrics.panelPadding)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(selectedInspectorSelection.map { "Details for \($0.title)" } ?? "Details")
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.size.width
             } action: { width in
@@ -95,17 +99,82 @@ extension MainMenuView {
             }
     }
 
-    private func inspectorView(selection: MainMenuInspectorSelection?) -> some View {
-        MainMenuInspectorView(
-            projectName: renderSnapshot.currentProjectName,
-            selection: selection,
-            overview: renderSnapshot.overview,
-            historySections: historyTimelineSections,
-            historySelectedItemID: selectedMainItemID,
-            isHistoryLoading: presentationModel.isDetailLoading,
-            canLoadMoreHistory: gitManager.canLoadMoreCommitHistory,
+    @ViewBuilder
+    private var inspectorSelectionView: some View {
+        switch selectedInspectorSelection {
+        case .workingTree:
+            commitWorkspaceView
+        case .history, .commit:
+            HistoryInspectorView(
+                projectName: renderSnapshot.currentProjectName,
+                selection: selectedInspectorSelection,
+                history: inspectorHistory
+            )
+        default:
+            InspectorDetailView(
+                projectName: renderSnapshot.currentProjectName,
+                selection: selectedInspectorSelection,
+                overview: renderSnapshot.overview,
+                onManageBranches: {
+                    dismissTransientPresentations()
+                    showBranchManagement = true
+                },
+                onRequestDiscard: requestDiscard,
+                onRequestDeleteBranch: { name in
+                    branchNameToDelete = name
+                    showBranchDeleteConfirmation = true
+                },
+                onRequestSwitchBranch: { branch in
+                    guard branch != gitManager.currentBranch else { return }
+                    if hasWorkingTreeChanges {
+                        pendingSwitchBranch = branch
+                        showDirtySwitchConfirmation = true
+                    } else {
+                        Task {
+                            _ = await actionCoordinator.switchInspectorBranch(branch)
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    private var inspectorHistory: InspectorHistoryModel {
+        InspectorHistoryModel(
+            sections: historyTimelineSections,
+            selectedItemID: selectedMainItemID,
+            isLoading: presentationModel.isDetailLoading,
+            canLoadMore: gitManager.canLoadMoreCommitHistory,
             animationNamespace: animationNamespace,
             isCommitInFuture: isCommitInFuture,
+            onSelectRow: { selectMainItem($0.id) },
+            onOpenCommit: { commitID in
+                selectedInspectorSelection = .commit(id: commitID)
+                selectedMainItemID = .historyCommit(id: commitID)
+            },
+            onBackToHistory: {
+                selectedInspectorSelection = .history
+            },
+            onEditCommitMessage: { commit in
+                Task {
+                    await startManualCommitMessageEdit(for: commit)
+                }
+            },
+            onGenerateCommitMessage: { commit in
+                Task {
+                    await startAutomaticCommitMessageEdit(for: commit)
+                }
+            },
+            onLoadMore: {
+                gitManager.loadMoreCommitHistory(batchSize: 25)
+            },
+            onOpenLocalFile: { gitManager.openFile(path: $0) }
+        )
+    }
+
+    private var commitWorkspaceView: some View {
+        InspectorCommitWorkspaceView(
+            projectName: renderSnapshot.currentProjectName,
             commitMessage: $commentText,
             commitFieldFocus: $isCommentFieldFocused,
             showsCommitField: showsCommentField,
@@ -119,8 +188,9 @@ extension MainMenuView {
             commitPrimaryButtonTitle: primaryButtonTitle,
             isCommitPrimaryButtonDisabled: isPrimaryButtonDisabled,
             canShowSplitCommits: canShowAtomicCommits,
-            workspaceSelectedFileID: selectedMainItemID,
             commitFocusToken: presentationModel.focusCommitFieldToken,
+            history: inspectorHistory,
+            workspaceSelectedFileID: selectedMainItemID,
             onCommitPrimaryAction: {
                 Task {
                     await performPrimaryAction()
@@ -139,49 +209,7 @@ extension MainMenuView {
             onDiscardAllUnstaged: {
                 showDiscardAllConfirmation = true
             },
-            onManageBranches: {
-                dismissTransientPresentations()
-                showBranchManagement = true
-            },
-            onRequestDiscard: requestDiscard,
-            onRequestDeleteBranch: { name in
-                branchNameToDelete = name
-                showBranchDeleteConfirmation = true
-            },
-            onRequestSwitchBranch: { branch in
-                guard branch != gitManager.currentBranch else { return }
-                if hasWorkingTreeChanges {
-                    pendingSwitchBranch = branch
-                    showDirtySwitchConfirmation = true
-                } else {
-                    Task {
-                        _ = await actionCoordinator.switchInspectorBranch(branch)
-                    }
-                }
-            },
-            onSelectHistoryRow: { row in
-                selectMainItem(row.id)
-            },
-            onOpenHistoryCommit: { commitID in
-                selectedInspectorSelection = .commit(id: commitID)
-                selectedMainItemID = .historyCommit(id: commitID)
-            },
-            onBackToHistory: {
-                selectedInspectorSelection = .history
-            },
-            onEditCommitMessage: { commit in
-                Task {
-                    await startManualCommitMessageEdit(for: commit)
-                }
-            },
-            onGenerateCommitMessage: { commit in
-                Task {
-                    await startAutomaticCommitMessageEdit(for: commit)
-                }
-            },
-            onLoadMoreHistory: {
-                gitManager.loadMoreCommitHistory(batchSize: 25)
-            }
+            onRequestDiscard: requestDiscard
         )
     }
 

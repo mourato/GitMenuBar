@@ -12,6 +12,10 @@ enum RepositoryMetricState<T: Equatable & Sendable>: Equatable, Sendable {
     case known(T)
     case loading
     case unavailable
+
+    var isLoading: Bool {
+        self == .loading
+    }
 }
 
 struct RepositoryOverviewSnapshot: Equatable, Sendable {
@@ -174,7 +178,6 @@ struct MainMenuRenderSnapshot: Equatable {
         currentBranch: String,
         isStagedSectionCollapsed: Bool,
         isUnstagedSectionCollapsed: Bool,
-        isHistorySectionCollapsed: Bool,
         recentProjects: [ProjectReference],
         currentRepoPath: String,
         isCommitInFuture: (Commit) -> Bool,
@@ -200,9 +203,6 @@ struct MainMenuRenderSnapshot: Equatable {
         if !isUnstagedSectionCollapsed {
             keyboardSelectableItems += unstagedRowAdapters.map(\.id)
         }
-        // History lives in the inspector; keep the preference parameter for call-site
-        // stability but do not expose history rows in the center keyboard surface.
-        _ = isHistorySectionCollapsed
 
         let normalizedCurrentPath = currentRepoPath.isEmpty ? "" : RecentProjectsStore.normalize(currentRepoPath)
         let storedProjectName = recentProjects.first { $0.path == normalizedCurrentPath }?.name

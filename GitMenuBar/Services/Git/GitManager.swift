@@ -1695,6 +1695,14 @@ class GitManager: ObservableObject {
         }
     }
 
+    private func resetError(code: Int, description: String) -> NSError {
+        NSError(
+            domain: "GitManager",
+            code: code,
+            userInfo: [NSLocalizedDescriptionKey: description]
+        )
+    }
+
     func resetToCommitAsync(
         hash: String,
         context: RepositoryOperationContext
@@ -1704,13 +1712,7 @@ class GitManager: ObservableObject {
         }
         let trimmedHash = hash.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedHash.isEmpty else {
-            return .failure(
-                NSError(
-                    domain: "GitManager",
-                    code: 50,
-                    userInfo: [NSLocalizedDescriptionKey: "Commit hash is missing."]
-                )
-            )
+            return .failure(resetError(code: 50, description: "Commit hash is missing."))
         }
         guard await branchMatches(context) else {
             return .failure(staleOperationError())
@@ -1724,13 +1726,7 @@ class GitManager: ObservableObject {
             return !result.failure
         }
         guard commitExists else {
-            return .failure(
-                NSError(
-                    domain: "GitManager",
-                    code: 52,
-                    userInfo: [NSLocalizedDescriptionKey: "The selected commit is no longer available."]
-                )
-            )
+            return .failure(resetError(code: 52, description: "The selected commit is no longer available."))
         }
 
         let result = await runOnBackground {
@@ -1741,13 +1737,7 @@ class GitManager: ObservableObject {
         }
         guard !result.failure else {
             return .failure(
-                NSError(
-                    domain: "GitManager",
-                    code: 51,
-                    userInfo: [
-                        NSLocalizedDescriptionKey: GitStashService.userFacingMessage(from: result.output)
-                    ]
-                )
+                resetError(code: 51, description: GitStashService.userFacingMessage(from: result.output))
             )
         }
 

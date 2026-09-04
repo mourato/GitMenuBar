@@ -9,7 +9,6 @@ private struct RepositoryOverviewCardVisual {
 struct RepositoryOverviewView: View {
     let overview: RepositoryOverviewSnapshot
     let onSelectSection: (MainMenuInspectorSelection) -> Void
-    @State private var hoveredSelection: MainMenuInspectorSelection?
 
     var body: some View {
         LazyVGrid(
@@ -27,6 +26,7 @@ struct RepositoryOverviewView: View {
                     metric: "\(overview.totalWorkingTreeCount)"
                 ),
                 selection: .workingTree,
+                isLoading: false,
                 content: workingTreeContent,
                 accessibilityValue: workingTreeContent
             )
@@ -34,6 +34,7 @@ struct RepositoryOverviewView: View {
                 title: "Push and Sync",
                 visual: RepositoryOverviewCardVisual(systemImage: "arrow.up.arrow.down.circle.fill", color: .blue, metric: pushSyncMetric),
                 selection: .unpushedCommits,
+                isLoading: overview.aheadCount.isLoading || overview.behindCount.isLoading,
                 content: pushSyncContent,
                 accessibilityValue: pushSyncAccessibilityValue
             )
@@ -41,6 +42,8 @@ struct RepositoryOverviewView: View {
                 title: "Branch Health",
                 visual: RepositoryOverviewCardVisual(systemImage: "arrow.triangle.branch", color: .purple, metric: branchHealthMetric),
                 selection: .branches,
+                isLoading: overview.unmergedBranches.isLoading || overview.unpushedBranches.isLoading
+                    || overview.branchesWithoutUpstream.isLoading,
                 content: branchHealthContent,
                 accessibilityValue: branchHealthAccessibilityValue
             )
@@ -48,6 +51,7 @@ struct RepositoryOverviewView: View {
                 title: "Stashes",
                 visual: RepositoryOverviewCardVisual(systemImage: "archivebox.fill", color: .orange, metric: stashMetric),
                 selection: .stashes,
+                isLoading: overview.stashCount.isLoading,
                 content: stashContent,
                 accessibilityValue: stashAccessibilityValue
             )
@@ -55,14 +59,15 @@ struct RepositoryOverviewView: View {
         .adaptiveMotion()
     }
 
+    // swiftlint:disable:next function_parameter_count
     private func overviewCard(
         title: String,
         visual: RepositoryOverviewCardVisual,
         selection: MainMenuInspectorSelection,
+        isLoading: Bool,
         content: String,
         accessibilityValue: String
     ) -> some View {
-        let isLoading = content.hasPrefix("Checking")
         let shape = RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
         return Button {
             onSelectSection(selection)
@@ -117,17 +122,8 @@ struct RepositoryOverviewView: View {
         )
         .overlay {
             shape
-                .fill(hoveredSelection == selection ? Color.white.opacity(0.10) : Color.clear)
-                .accessibilityHidden(true)
-                .allowsHitTesting(false)
-        }
-        .overlay {
-            shape
                 .stroke(Color.white.opacity(0.24), lineWidth: 1)
                 .allowsHitTesting(false)
-        }
-        .onHover { inside in
-            hoveredSelection = inside ? selection : nil
         }
         .help(accessibilityValue)
         .accessibilityElement(children: .ignore)
@@ -158,7 +154,7 @@ struct RepositoryOverviewView: View {
     }
 
     private var pushSyncContent: String {
-        composedMetricSummary(
+        composedMetricText(
             (overview.aheadCount, "ahead"),
             (overview.behindCount, "behind"),
             emptyKnown: "Up to date"
@@ -176,7 +172,7 @@ struct RepositoryOverviewView: View {
     }
 
     private var pushSyncAccessibilityValue: String {
-        composedMetricAccessibility(
+        composedMetricText(
             (overview.aheadCount, "commits ahead"),
             (overview.behindCount, "commits behind"),
             emptyKnown: "Up to date"
@@ -184,7 +180,7 @@ struct RepositoryOverviewView: View {
     }
 
     private var branchHealthContent: String {
-        composedMetricSummary(
+        composedMetricText(
             (overview.unmergedBranches, "unmerged"),
             (overview.unpushedBranches, "unpushed"),
             (overview.branchesWithoutUpstream, "no upstream"),
@@ -204,7 +200,7 @@ struct RepositoryOverviewView: View {
     }
 
     private var branchHealthAccessibilityValue: String {
-        let summary = composedMetricAccessibility(
+        let summary = composedMetricText(
             (overview.unmergedBranches, "unmerged branches"),
             (overview.unpushedBranches, "unpushed branches"),
             (overview.branchesWithoutUpstream, "branches without upstream"),
@@ -237,14 +233,7 @@ struct RepositoryOverviewView: View {
         appendLastChecked(to: stashContent)
     }
 
-    private func composedMetricSummary(
-        _ metrics: (RepositoryMetricState<Int>, String)...,
-        emptyKnown: String
-    ) -> String {
-        composeMetricParts(metrics, emptyKnown: emptyKnown)
-    }
-
-    private func composedMetricAccessibility(
+    private func composedMetricText(
         _ metrics: (RepositoryMetricState<Int>, String)...,
         emptyKnown: String
     ) -> String {

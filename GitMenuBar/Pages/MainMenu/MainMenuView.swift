@@ -32,7 +32,6 @@ struct MainMenuView: View {
     @Environment(\.accessibilityReduceTransparency) var reduceTransparency
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isUnstagedSectionCollapsed) var isUnstagedSectionCollapsed = false
-    @AppStorage(AppPreferences.Keys.isHistorySectionCollapsed) var isHistorySectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isProjectsSidebarCollapsed) var isProjectsSidebarCollapsed = false
     @AppStorage(AppPreferences.Keys.inspectorColumnWidth)
     var inspectorColumnWidth = Double(WorkbenchMetrics.inspectorDefaultWidth)
@@ -349,9 +348,6 @@ struct MainMenuView: View {
         .onChange(of: isUnstagedSectionCollapsed) { _ in
             refreshRenderSnapshot()
         }
-        .onChange(of: isHistorySectionCollapsed) { _ in
-            refreshRenderSnapshot()
-        }
         .onChange(of: keyboardSelectableItems) { _ in
             synchronizeSelectedMainItem()
         }
@@ -443,7 +439,6 @@ extension MainMenuView {
             currentBranch: gitManager.currentBranch,
             isStagedSectionCollapsed: isStagedSectionCollapsed,
             isUnstagedSectionCollapsed: isUnstagedSectionCollapsed,
-            isHistorySectionCollapsed: isHistorySectionCollapsed,
             recentProjects: recentProjectReferences,
             currentRepoPath: currentRepositoryPath,
             isCommitInFuture: isCommitInFuture,
