@@ -56,9 +56,11 @@ empty state until a central selection is made. The commit workspace lives in
 the inspector under the Working Tree selection as commit composer → working
 tree → history, with the composer fixed above the workspace's single scroll
 owner. `NavigationSplitView` owns the Projects sidebar's width, selection, and
-collapse behavior. The sidebar footer concentrates the quota summary, Settings
-access, and collapse toggle in one bottom surface; the window toolbar keeps the
-sidebar toggle and centered title only.
+collapse behavior. While visible, the sidebar uses a fixed
+`WorkbenchMetrics.projectsMinimumWidth`; the native visibility control still
+supports collapsing it. The sidebar footer concentrates the quota summary,
+Settings access, and collapse toggle in one bottom surface; the window toolbar
+keeps the sidebar toggle and centered title only.
 
 The inspector's native divider remains user-resizable. Its default width is
 owned by `WorkbenchMetrics.inspectorDefaultWidth`, and the most recent measured
