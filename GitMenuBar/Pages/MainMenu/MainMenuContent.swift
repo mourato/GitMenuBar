@@ -226,11 +226,7 @@ extension MainMenuView {
                     onFetchAll: projectMonitor.fetchAll,
                     onOpenSettings: openSettingsWindow
                 )
-                .navigationSplitViewColumnWidth(
-                    min: WorkbenchMetrics.projectsMinimumWidth,
-                    ideal: WorkbenchMetrics.projectsMinimumWidth,
-                    max: WorkbenchMetrics.projectsMinimumWidth
-                )
+                .navigationSplitViewColumnWidth(WorkbenchMetrics.projectsMinimumWidth)
             } detail: {
                 HSplitView {
                     routeContent

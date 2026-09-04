@@ -40,11 +40,13 @@ enum WorkbenchMetrics {
     static let projectsMinimumWidth: CGFloat = 220
     static let centralMinimumWidth: CGFloat = 440
     static let inspectorMinimumWidth: CGFloat = 320
+    static let splitDividerAllowance: CGFloat = 4
     static let inspectorDefaultWidth: CGFloat = 560
     static let mainWindowMinimumWidth: CGFloat = projectsMinimumWidth
         + centralMinimumWidth
         + inspectorMinimumWidth
         + (windowPadding * 2)
+        + splitDividerAllowance
     static let mainWindowInitialWidth: CGFloat = projectsMinimumWidth
         + centralMinimumWidth
         + inspectorDefaultWidth
