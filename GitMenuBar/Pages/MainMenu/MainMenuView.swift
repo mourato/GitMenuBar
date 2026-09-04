@@ -256,7 +256,7 @@ struct MainMenuView: View {
             }
         )
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
-        .frame(minWidth: WorkbenchMetrics.mainWindowMinimumWidth, maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
             mainWindowOverlayContent
         }

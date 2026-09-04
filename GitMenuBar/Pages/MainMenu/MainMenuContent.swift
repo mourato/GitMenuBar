@@ -214,10 +214,13 @@ extension MainMenuView {
 
     var mainView: some View {
         GeometryReader { proxy in
+            let currentSidebarWidth = isProjectsSidebarCollapsed
+                ? CGFloat(0)
+                : WorkbenchMetrics.projectsMinimumWidth
             let maxAllowedInspectorWidth = max(
                 WorkbenchMetrics.inspectorMinimumWidth,
                 proxy.size.width
-                    - WorkbenchMetrics.projectsMinimumWidth
+                    - currentSidebarWidth
                     - WorkbenchMetrics.centralMinimumWidth
                     - (WorkbenchMetrics.windowPadding * 2)
             )
@@ -243,7 +246,7 @@ extension MainMenuView {
                 )
                 .navigationSplitViewColumnWidth(
                     min: WorkbenchMetrics.projectsMinimumWidth,
-                    ideal: 240,
+                    ideal: WorkbenchMetrics.projectsMinimumWidth,
                     max: 360
                 )
             } detail: {
@@ -263,7 +266,7 @@ extension MainMenuView {
                     .inspectorColumnWidth(
                         min: WorkbenchMetrics.inspectorMinimumWidth,
                         ideal: resolvedIdealInspectorWidth,
-                        max: WorkbenchMetrics.inspectorDefaultWidth
+                        max: maxAllowedInspectorWidth
                     )
             }
             .navigationSplitViewStyle(.balanced)
@@ -333,7 +336,6 @@ extension MainMenuView {
         }
     }
 }
-
 
 #Preview("Main Content") {
     MainMenuPreviewHarness(showsTransparentTitlebar: true) {

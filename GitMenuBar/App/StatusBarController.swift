@@ -14,7 +14,8 @@ final class StatusBarController: NSObject, ObservableObject {
     private enum Constants {
         static let statusIconPointSize = NSSize(width: 16, height: 16)
         static let windowInitialSize = NSSize(width: WorkbenchMetrics.mainWindowInitialWidth, height: 720)
-        static let windowMinimumSize = NSSize(width: WorkbenchMetrics.mainWindowMinimumWidth, height: 640)
+        static let windowMinimumHeight: CGFloat = 640
+        static let windowMinimumSize = NSSize(width: 0, height: windowMinimumHeight)
         static let autoHideBlurEvaluationDelay: TimeInterval = 0.08
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
         static let screenCaptureUIBundleIdentifier = "com.apple.screencaptureui"
@@ -790,8 +791,8 @@ final class StatusBarController: NSObject, ObservableObject {
     private func normalizeMainWindowSize(_ window: NSWindow) {
         let currentContentRect = window.contentRect(forFrameRect: window.frame)
         let normalizedContentSize = NSSize(
-            width: max(currentContentRect.width, Constants.windowMinimumSize.width),
-            height: max(currentContentRect.height, Constants.windowMinimumSize.height)
+            width: currentContentRect.width,
+            height: max(currentContentRect.height, Constants.windowMinimumHeight)
         )
 
         guard normalizedContentSize != currentContentRect.size else { return }
