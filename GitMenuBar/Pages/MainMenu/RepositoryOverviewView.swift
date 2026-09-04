@@ -51,13 +51,6 @@ struct RepositoryOverviewView: View {
                 content: stashContent,
                 accessibilityValue: stashAccessibilityValue
             )
-            overviewCard(
-                title: "History",
-                visual: RepositoryOverviewCardVisual(systemImage: "clock.fill", color: .indigo, metric: "\(overview.historyCount)"),
-                selection: .history,
-                content: historyContent,
-                accessibilityValue: historyContent
-            )
         }
         .adaptiveMotion()
     }
@@ -242,21 +235,6 @@ struct RepositoryOverviewView: View {
 
     private var stashAccessibilityValue: String {
         appendLastChecked(to: stashContent)
-    }
-
-    private var historyContent: String {
-        let branchPart = if overview.isDetachedHead {
-            "Detached HEAD"
-        } else if let branch = overview.currentBranch {
-            branch
-        } else {
-            "No branch"
-        }
-
-        if overview.historyCount > 0 {
-            return "\(overview.historyCount) loaded on \(branchPart)"
-        }
-        return branchPart
     }
 
     private func composedMetricSummary(
