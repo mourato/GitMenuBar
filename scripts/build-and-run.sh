@@ -5,6 +5,8 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/config/app_identity.sh
 source "${PROJECT_ROOT}/scripts/config/app_identity.sh"
+# shellcheck source=scripts/config/release_signing.sh
+source "${PROJECT_ROOT}/scripts/config/release_signing.sh"
 
 CONFIGURATION=""
 CLEAN=0
@@ -12,7 +14,7 @@ NO_INTERACTIVE=0
 FORCE_TERMINATE=0
 SKIP_LAUNCH=0
 CONFIRM_INSTALL=1
-SIGNING_IDENTITY="${GITMENUBAR_CODE_SIGN_IDENTITY:-}"
+SIGNING_IDENTITY="${GITMENUBAR_CODE_SIGN_IDENTITY:-${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY:-}}"
 APPLICATIONS_DIR="${GITMENUBAR_APPLICATIONS_DIR:-/Applications}"
 SHUTDOWN_TIMEOUT="${GITMENUBAR_SHUTDOWN_TIMEOUT_SECONDS:-15}"
 STARTUP_TIMEOUT="${GITMENUBAR_STARTUP_TIMEOUT_SECONDS:-15}"
@@ -98,14 +100,11 @@ validate_bundle() {
 
 sign_candidate_if_needed() {
     local candidate="$1"
-    if codesign --verify --deep --strict "$candidate" >/dev/null 2>&1; then
-        return 0
-    fi
 
     if [ -n "$SIGNING_IDENTITY" ]; then
         echo "Signing Release candidate with: ${SIGNING_IDENTITY}"
-        codesign --force --deep --options runtime --timestamp=none --sign "$SIGNING_IDENTITY" "$candidate"
-    else
+        codesign --force --deep --keychain "${HOME}/Library/Keychains/login.keychain-db" --timestamp=none --sign "$SIGNING_IDENTITY" "$candidate"
+    elif ! codesign --verify --deep --strict "$candidate" >/dev/null 2>&1; then
         echo "Release candidate is not signed for local install; applying ad-hoc signature."
         codesign --force --deep --sign - "$candidate"
     fi
@@ -191,6 +190,9 @@ install_release() {
     backup="${target}.backup.$$"
 
     [ -d "$candidate" ] || fail "Release candidate not found at: $candidate"
+    if [ -z "$SIGNING_IDENTITY" ] && [ "$(gitmenubar_autodetect_release_signing_mode)" = "self-signed" ]; then
+        SIGNING_IDENTITY="${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}"
+    fi
     sign_candidate_if_needed "$candidate"
     validate_bundle "$candidate" || fail "Release candidate is not installable: $candidate"
     case "$target" in

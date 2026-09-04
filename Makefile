@@ -1,4 +1,4 @@
-.PHONY: help build build-release test test-focused lint lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command guidance-check install-app dmg clean setup
+.PHONY: help build build-release test test-focused lint lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command guidance-check install-app dmg setup-self-signed-cert clean setup
 
 PROJECT_DIR := $(shell pwd)
 AGENT_CONFIG_HOME ?= $(HOME)/.agents
@@ -24,6 +24,7 @@ help:
 	@echo "make guidance-check Validate agent guidance, plans, and skill references"
 	@echo "make install-app   Build Release and replace the installed app interactively"
 	@echo "make dmg           Build and package DMG"
+	@echo "make setup-self-signed-cert Create or import local code-signing cert"
 	@echo "make clean         Remove generated artifacts"
 	@echo "make setup         Install local dev dependencies"
 
@@ -91,6 +92,9 @@ lint-fix:
 
 dmg:
 	@./scripts/create-dmg.sh
+
+setup-self-signed-cert:
+	@./scripts/setup-self-signed-cert.sh
 
 clean:
 	@rm -rf "$(PROJECT_DIR)/.xcode-build" "$(PROJECT_DIR)/.xcode-build-tests" "$(PROJECT_DIR)/dist"
