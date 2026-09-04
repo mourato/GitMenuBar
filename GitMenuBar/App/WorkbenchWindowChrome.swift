@@ -131,6 +131,7 @@ private final class WorkbenchHostedContentViewController: NSViewController {
 
         let shell = WorkbenchWindowShellView()
         shell.translatesAutoresizingMaskIntoConstraints = false
+        hostingController.sizingOptions = []
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
 
         addChild(hostingController)

@@ -213,9 +213,22 @@ extension MainMenuView {
     }
 
     var mainView: some View {
-        applyMainViewOverlays(
-            to: NavigationSplitView(columnVisibility: projectsSidebarVisibility) {
-                ProjectsSidebarView(
+        GeometryReader { proxy in
+            let maxAllowedInspectorWidth = max(
+                WorkbenchMetrics.inspectorMinimumWidth,
+                proxy.size.width
+                    - WorkbenchMetrics.projectsMinimumWidth
+                    - WorkbenchMetrics.centralMinimumWidth
+                    - (WorkbenchMetrics.windowPadding * 2)
+            )
+            let resolvedIdealInspectorWidth = min(
+                max(WorkbenchMetrics.inspectorMinimumWidth, CGFloat(inspectorColumnWidth)),
+                maxAllowedInspectorWidth
+            )
+
+            applyMainViewOverlays(
+                to: NavigationSplitView(columnVisibility: projectsSidebarVisibility) {
+                    ProjectsSidebarView(
                     currentPath: currentRepositoryPath,
                     onSelect: switchRepository,
                     onReveal: revealProjectInFinder,
@@ -240,21 +253,18 @@ extension MainMenuView {
                     .padding(.trailing, WorkbenchMetrics.windowPadding)
                     .padding(.bottom, WorkbenchMetrics.windowPadding)
                     .frame(
-                        minWidth: WorkbenchMetrics.centralMinimumWidth,
                         maxWidth: .infinity,
                         maxHeight: .infinity,
                         alignment: .top
                     )
-                    .inspector(isPresented: .constant(presentationModel.route == .main)) {
-                        inspectorContent
-                            .inspectorColumnWidth(
-                                min: WorkbenchMetrics.inspectorMinimumWidth,
-                                ideal: max(
-                                    WorkbenchMetrics.inspectorMinimumWidth,
-                                    CGFloat(inspectorColumnWidth)
-                                )
-                            )
-                    }
+            }
+            .inspector(isPresented: .constant(presentationModel.route == .main)) {
+                inspectorContent
+                    .inspectorColumnWidth(
+                        min: WorkbenchMetrics.inspectorMinimumWidth,
+                        ideal: resolvedIdealInspectorWidth,
+                        max: WorkbenchMetrics.inspectorDefaultWidth
+                    )
             }
             .navigationSplitViewStyle(.balanced)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -300,6 +310,7 @@ extension MainMenuView {
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 
     private func requestDiscard(path: String, status: WorkingTreeFileStatus) {
