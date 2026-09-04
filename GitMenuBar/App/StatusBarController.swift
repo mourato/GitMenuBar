@@ -359,7 +359,6 @@ final class StatusBarController: NSObject, ObservableObject {
         toolbar.displayMode = .iconOnly
         toolbar.sizeMode = .small
         toolbar.allowsUserCustomization = false
-        toolbar.centeredItemIdentifier = MainWindowToolbarItemIdentifier.title
         window.toolbar = toolbar
         mainWindowToolbarDelegate = toolbarDelegate
     }
