@@ -53,4 +53,26 @@ final class MainWindowPreferencesTests: XCTestCase {
             MainWindowPreferences.isToggleShortcutUsingMouseMonitorEnabled(userDefaults: userDefaults)
         )
     }
+
+    func testInspectorColumnWidthDefaultsToMetricWhenPreferenceIsMissingOrInvalid() {
+        XCTAssertEqual(
+            MainWindowPreferences.inspectorColumnWidth(userDefaults: userDefaults),
+            Double(WorkbenchMetrics.inspectorDefaultWidth)
+        )
+
+        userDefaults.set(0.0, forKey: AppPreferences.Keys.inspectorColumnWidth)
+        XCTAssertEqual(
+            MainWindowPreferences.inspectorColumnWidth(userDefaults: userDefaults),
+            Double(WorkbenchMetrics.inspectorDefaultWidth)
+        )
+    }
+
+    func testInspectorColumnWidthPreferenceRoundTrip() {
+        MainWindowPreferences.setInspectorColumnWidth(864.0, userDefaults: userDefaults)
+
+        XCTAssertEqual(
+            MainWindowPreferences.inspectorColumnWidth(userDefaults: userDefaults),
+            864.0
+        )
+    }
 }

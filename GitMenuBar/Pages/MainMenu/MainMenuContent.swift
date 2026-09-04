@@ -87,6 +87,17 @@ extension MainMenuView {
             .ignoresSafeArea(.container, edges: .top)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(selectedInspectorSelection.map { "Details for \($0.title)" } ?? "Details")
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { width in
+                let roundedWidth = width.rounded()
+                guard ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1",
+                      roundedWidth >= WorkbenchMetrics.inspectorMinimumWidth,
+                      roundedWidth != CGFloat(inspectorColumnWidth) else { return }
+
+                inspectorColumnWidth = Double(roundedWidth)
+                MainWindowPreferences.setInspectorColumnWidth(Double(roundedWidth))
+            }
     }
 
     @ViewBuilder
@@ -211,25 +222,9 @@ extension MainMenuView {
     }
 
     var mainView: some View {
-        GeometryReader { proxy in
-            let currentSidebarWidth = isProjectsSidebarCollapsed
-                ? CGFloat(0)
-                : WorkbenchMetrics.projectsMinimumWidth
-            let maxAllowedInspectorWidth = max(
-                WorkbenchMetrics.inspectorMinimumWidth,
-                proxy.size.width
-                    - currentSidebarWidth
-                    - WorkbenchMetrics.centralMinimumWidth
-                    - (WorkbenchMetrics.windowPadding * 2)
-            )
-            let resolvedIdealInspectorWidth = min(
-                max(WorkbenchMetrics.inspectorMinimumWidth, CGFloat(inspectorColumnWidth)),
-                maxAllowedInspectorWidth
-            )
-
-            applyMainViewOverlays(
-                to: NavigationSplitView(columnVisibility: projectsSidebarVisibility) {
-                    ProjectsSidebarView(
+        applyMainViewOverlays(
+            to: NavigationSplitView(columnVisibility: projectsSidebarVisibility) {
+                ProjectsSidebarView(
                     currentPath: currentRepositoryPath,
                     onSelect: switchRepository,
                     onReveal: revealProjectInFinder,
@@ -245,10 +240,16 @@ extension MainMenuView {
                 .navigationSplitViewColumnWidth(
                     min: WorkbenchMetrics.projectsMinimumWidth,
                     ideal: WorkbenchMetrics.projectsMinimumWidth,
-                    max: 360
+                    max: WorkbenchMetrics.projectsMinimumWidth
                 )
             } detail: {
                 routeContent
+                    .frame(
+                        minWidth: WorkbenchMetrics.centralMinimumWidth,
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .top
+                    )
                     .padding(.top, WorkbenchMetrics.sectionSpacing)
                     .padding(.leading, WorkbenchMetrics.windowPadding)
                     .padding(.trailing, WorkbenchMetrics.windowPadding)
@@ -263,8 +264,11 @@ extension MainMenuView {
                 inspectorContent
                     .inspectorColumnWidth(
                         min: WorkbenchMetrics.inspectorMinimumWidth,
-                        ideal: resolvedIdealInspectorWidth,
-                        max: maxAllowedInspectorWidth
+                        ideal: max(
+                            WorkbenchMetrics.inspectorMinimumWidth,
+                            CGFloat(inspectorColumnWidth)
+                        ),
+                        max: nil
                     )
             }
             .navigationSplitViewStyle(.balanced)
@@ -311,7 +315,6 @@ extension MainMenuView {
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
     }
 
     private func requestDiscard(path: String, status: WorkingTreeFileStatus) {

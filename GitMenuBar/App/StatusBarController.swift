@@ -713,6 +713,10 @@ final class StatusBarController: NSObject, ObservableObject {
 
         if restoreMainWindowFrameIfAvailable(mainWindow) {
             normalizeMainWindowSize(mainWindow)
+            if let screen = mainWindow.screen ?? NSScreen.main {
+                fitMainWindowWidthToVisibleFrame(mainWindow, visibleFrame: screen.visibleFrame)
+                clampMainWindowOriginToVisibleFrame(mainWindow, visibleFrame: screen.visibleFrame)
+            }
             hasPositionedWindowInitially = true
         } else {
             switch placementStrategy {
@@ -756,14 +760,22 @@ final class StatusBarController: NSObject, ObservableObject {
         let buttonRectInScreen = buttonWindow.convertToScreen(buttonRectInWindow)
         let visibleFrame = screen.visibleFrame
 
+        fitMainWindowWidthToVisibleFrame(window, visibleFrame: visibleFrame)
+
         var originX = buttonRectInScreen.maxX - window.frame.width
         var originY = buttonRectInScreen.minY - window.frame.height - 8
 
-        originX = min(max(originX, visibleFrame.minX + 8), visibleFrame.maxX - window.frame.width - 8)
+        let minX = visibleFrame.minX + 8
+        let maxX = max(minX, visibleFrame.maxX - window.frame.width - 8)
+        originX = min(max(originX, minX), maxX)
 
-        if originY < visibleFrame.minY + 8 {
-            originY = visibleFrame.maxY - window.frame.height - 20
+        let minY = visibleFrame.minY + 8
+        let maxY = max(minY, visibleFrame.maxY - window.frame.height - 20)
+
+        if originY < minY {
+            originY = maxY
         }
+        originY = min(max(originY, minY), maxY)
 
         window.setFrameOrigin(NSPoint(x: originX, y: originY))
     }
@@ -779,13 +791,42 @@ final class StatusBarController: NSObject, ObservableObject {
         let visibleFrame = screen.visibleFrame
         let margin: CGFloat = 12
 
+        fitMainWindowWidthToVisibleFrame(window, visibleFrame: visibleFrame)
+
         let minX = visibleFrame.minX + margin
-        let maxX = visibleFrame.maxX - window.frame.width - margin
+        let maxX = max(minX, visibleFrame.maxX - window.frame.width - margin)
         let minY = visibleFrame.minY + margin
-        let maxY = visibleFrame.maxY - window.frame.height - margin
+        let maxY = max(minY, visibleFrame.maxY - window.frame.height - margin)
 
         let originX = max(minX, maxX)
         let originY = max(minY, maxY)
+
+        window.setFrameOrigin(NSPoint(x: originX, y: originY))
+    }
+
+    private func fitMainWindowWidthToVisibleFrame(_ window: NSWindow, visibleFrame: NSRect) {
+        let margin: CGFloat = 8
+        let maxFrameWidth = visibleFrame.width - (margin * 2)
+        guard maxFrameWidth > 0, window.frame.width > maxFrameWidth else { return }
+
+        let currentContentSize = window.contentRect(forFrameRect: window.frame).size
+        let frameChromeWidth = window.frame.width - currentContentSize.width
+        let maxContentWidth = maxFrameWidth - frameChromeWidth
+        guard maxContentWidth >= window.contentMinSize.width else { return }
+
+        window.setContentSize(
+            NSSize(width: maxContentWidth, height: currentContentSize.height)
+        )
+    }
+
+    private func clampMainWindowOriginToVisibleFrame(_ window: NSWindow, visibleFrame: NSRect) {
+        let margin: CGFloat = 8
+        let minX = visibleFrame.minX + margin
+        let maxX = max(minX, visibleFrame.maxX - window.frame.width - margin)
+        let minY = visibleFrame.minY + margin
+        let maxY = max(minY, visibleFrame.maxY - window.frame.height - margin)
+        let originX = min(max(window.frame.minX, minX), maxX)
+        let originY = min(max(window.frame.minY, minY), maxY)
 
         window.setFrameOrigin(NSPoint(x: originX, y: originY))
     }
