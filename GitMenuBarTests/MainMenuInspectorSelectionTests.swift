@@ -33,12 +33,27 @@ final class MainMenuInspectorSelectionTests: XCTestCase {
         )
     }
 
-    func testInspectorUsesSheetBelowCompactThreshold() {
-        let threshold = WorkbenchMetrics.compactInspectorThreshold
+    func testInspectorDefaultsToLargestWorkbenchColumn() {
+        XCTAssertGreaterThan(
+            WorkbenchMetrics.inspectorDefaultWidth,
+            WorkbenchMetrics.centralMinimumWidth
+        )
+        XCTAssertEqual(
+            WorkbenchMetrics.mainWindowInitialWidth,
+            WorkbenchMetrics.projectsMinimumWidth
+                + WorkbenchMetrics.centralMinimumWidth
+                + WorkbenchMetrics.inspectorDefaultWidth
+                + (WorkbenchMetrics.windowPadding * 2)
+        )
+    }
 
-        XCTAssertTrue(WorkbenchMetrics.usesCompactInspector(for: threshold - 1))
-        XCTAssertFalse(WorkbenchMetrics.usesCompactInspector(for: threshold))
-        XCTAssertFalse(WorkbenchMetrics.usesCompactInspector(for: threshold + 1))
-        XCTAssertFalse(WorkbenchMetrics.usesCompactInspector(for: 0))
+    func testInspectorColumnWidthPreferenceRoundTrips() throws {
+        let suiteName = "MainMenuInspectorSelectionTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        defaults.set(864.0, forKey: AppPreferences.Keys.inspectorColumnWidth)
+
+        XCTAssertEqual(defaults.double(forKey: AppPreferences.Keys.inspectorColumnWidth), 864.0)
     }
 }

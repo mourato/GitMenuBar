@@ -33,7 +33,6 @@ struct MainMenuInspectorView: View {
     let onRequestCommitFocus: () -> Void
     let onSelectWorkspaceFile: (MainMenuSelectableItem) -> Void
     let onDiscardAllUnstaged: () -> Void
-    let onClose: () -> Void
     let onManageBranches: () -> Void
     let onRequestDiscard: (String, WorkingTreeFileStatus) -> Void
     let onRequestDeleteBranch: (String) -> Void
@@ -156,12 +155,6 @@ struct MainMenuInspectorView: View {
             }
 
             Spacer(minLength: 0)
-
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-            }
-            .workbenchIcon()
-            .accessibilityLabel("Close details")
         }
     }
 

@@ -40,14 +40,15 @@ enum WorkbenchMetrics {
     static let projectsMinimumWidth: CGFloat = 220
     static let centralMinimumWidth: CGFloat = 440
     static let inspectorMinimumWidth: CGFloat = 320
-    static let compactInspectorThreshold: CGFloat = projectsMinimumWidth
+    static let inspectorDefaultWidth: CGFloat = 720
+    static let mainWindowMinimumWidth: CGFloat = projectsMinimumWidth
         + centralMinimumWidth
         + inspectorMinimumWidth
         + (windowPadding * 2)
-
-    static func usesCompactInspector(for width: CGFloat) -> Bool {
-        width > 0 && width < compactInspectorThreshold
-    }
+    static let mainWindowInitialWidth: CGFloat = projectsMinimumWidth
+        + centralMinimumWidth
+        + inspectorDefaultWidth
+        + (windowPadding * 2)
 }
 
 enum WorkbenchTypography {
