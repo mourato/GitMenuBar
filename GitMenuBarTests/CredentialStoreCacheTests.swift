@@ -13,6 +13,24 @@ final class CredentialStoreCacheTests: XCTestCase {
         XCTAssertEqual(backingStore.readCount, 1)
     }
 
+    func testCachedAIAPIKeyStoreMigratesBeforeItsFirstBackingRead() throws {
+        let providerId = UUID()
+        let credentialID = AIProviderCredentialID(rawValue: "custom:\(providerId.uuidString.lowercased())")
+        let backingStore = SpyAIAPIKeyBackingStore(storage: [credentialID: "secret-key"])
+        var migrationCount = 0
+        let store = CachedAIAPIKeyStore(backingStore: backingStore) {
+            migrationCount += 1
+            return true
+        }
+
+        XCTAssertEqual(migrationCount, 0)
+        XCTAssertEqual(try store.apiKey(for: credentialID), "secret-key")
+        XCTAssertEqual(migrationCount, 1)
+        XCTAssertEqual(backingStore.readCount, 1)
+        XCTAssertEqual(try store.apiKey(for: credentialID), "secret-key")
+        XCTAssertEqual(migrationCount, 1)
+    }
+
     func testCachedGitHubTokenStoreReadsBackingStoreOnlyOnce() {
         let backingStore = SpyGitHubTokenBackingStore(token: "gho_test")
         let store = CachedGitHubTokenStore(backingStore: backingStore)

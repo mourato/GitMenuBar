@@ -37,8 +37,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        // Migrate keychain items to the unified domain if necessary before setting up the app
-        KeychainMigrator.migrateToUnifiedDomain()
+        // Migrate non-AI credentials and preferences without touching AI keychain data.
+        KeychainMigrator.migrateToUnifiedDomain(migrateAI: false)
 
         // Hide the dock icon immediately
         NSApp.setActivationPolicy(.accessory)

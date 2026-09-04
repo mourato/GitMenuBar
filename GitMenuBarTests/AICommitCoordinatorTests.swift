@@ -3,9 +3,9 @@ import XCTest
 
 @MainActor
 final class AICommitCoordinatorTests: XCTestCase {
-    func testReadinessUsesStoredAPIKeyAsSourceOfTruth() {
+    func testReadinessUsesPersistedAPIKeyPresenceWithoutReadingKeychain() {
         let providerStore = makeProviderStore()
-        let provider = makeProvider(hasStoredAPIKey: false)
+        let provider = makeProvider(hasStoredAPIKey: true)
         providerStore.upsertProvider(provider)
 
         let apiKeyStore = SpyAIAPIKeyStore(storage: [AIProviderCredentialID(provider: provider): "secret-key"])
@@ -17,7 +17,7 @@ final class AICommitCoordinatorTests: XCTestCase {
         XCTAssertTrue(coordinator.isReadyForGeneration)
         XCTAssertEqual(coordinator.generationDisabledReason, "")
         XCTAssertEqual(providerStore.defaultProvider?.hasStoredAPIKey, true)
-        XCTAssertGreaterThanOrEqual(apiKeyStore.readCount, 1)
+        XCTAssertEqual(apiKeyStore.readCount, 0)
     }
 
     func testSaveAndDeleteAPIKeyUpdatesStoredFlag() {
@@ -94,25 +94,6 @@ final class AICommitCoordinatorTests: XCTestCase {
             coordinator.generationDisabledReason,
             "Add an API key for the default provider in Settings to enable commit generation."
         )
-    }
-
-    func testReadinessClearsStoredFlagWhenKeyIsMissing() {
-        let providerStore = makeProviderStore()
-        let provider = makeProvider(hasStoredAPIKey: true)
-        providerStore.upsertProvider(provider)
-
-        let apiKeyStore = SpyAIAPIKeyStore()
-        let coordinator = makeCoordinator(
-            providerStore: providerStore,
-            apiKeyStore: apiKeyStore
-        )
-
-        XCTAssertFalse(coordinator.isReadyForGeneration)
-        XCTAssertEqual(
-            coordinator.generationDisabledReason,
-            "Add an API key for the default provider in Settings to enable commit generation."
-        )
-        XCTAssertEqual(providerStore.defaultProvider?.hasStoredAPIKey, false)
     }
 
     func testGenerateMessageForRawDiffUsesExplicitDiff() async throws {

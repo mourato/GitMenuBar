@@ -108,7 +108,6 @@ final class StatusBarController: NSObject, ObservableObject {
             aiKeychainStore = InMemoryAIAPIKeyStore()
         } else {
             let cachedStore = CachedAIAPIKeyStore.shared
-            try? cachedStore.preloadAllKeys() // Retry on demand if the Keychain is locked.
             aiKeychainStore = cachedStore
         }
         usageQuotaStore = UsageQuotaStore(providers: [CodexUsageProvider(), CursorUsageProvider(), OpenRouterUsageProvider(keyStore: aiKeychainStore)])

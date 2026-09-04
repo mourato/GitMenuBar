@@ -239,7 +239,7 @@ final class AICommitCoordinator: ObservableObject {
             return false
         }
 
-        let hasAPIKey = !resolvedAPIKey(for: provider).isEmpty
+        let hasAPIKey = provider.hasStoredAPIKey
         let hasModel = !providerStore.effectiveDefaultModel().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
         return hasAPIKey && hasModel
@@ -250,7 +250,7 @@ final class AICommitCoordinator: ObservableObject {
             return "Configure at least one AI provider in Settings to enable commit generation."
         }
 
-        if resolvedAPIKey(for: provider).isEmpty {
+        if !provider.hasStoredAPIKey {
             return "Add an API key for the default provider in Settings to enable commit generation."
         }
 
@@ -267,7 +267,7 @@ final class AICommitCoordinator: ObservableObject {
             return false
         }
 
-        return !resolvedAPIKey(for: provider).isEmpty
+        return provider.hasStoredAPIKey
             && !providerStore.effectiveFallbackModel().isEmpty
     }
 

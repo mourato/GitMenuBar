@@ -68,14 +68,16 @@ final class AICommitRecoveryTests: XCTestCase {
             type: .openAI,
             endpointURL: "https://mock.openai.local",
             selectedModel: "primary",
-            availableModels: ["primary"]
+            availableModels: ["primary"],
+            hasStoredAPIKey: true
         )
         let fallbackProvider = AIProviderConfig(
             name: "Anthropic",
             type: .anthropic,
             endpointURL: "https://mock.anthropic.local",
             selectedModel: "fallback",
-            availableModels: ["fallback"]
+            availableModels: ["fallback"],
+            hasStoredAPIKey: true
         )
         let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
         providerStore.upsertProvider(primaryProvider)
@@ -148,7 +150,8 @@ final class AICommitRecoveryTests: XCTestCase {
                 type: .openAI,
                 endpointURL: "https://mock.openai.local",
                 selectedModel: models[0],
-                availableModels: models
+                availableModels: models,
+                hasStoredAPIKey: true
             )
         )
         return store

@@ -175,7 +175,8 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             name: "OpenAI",
             type: .openAI,
             endpointURL: "https://mock.openai.local",
-            selectedModel: "gpt-4.1"
+            selectedModel: "gpt-4.1",
+            hasStoredAPIKey: true
         )
         providerStore.upsertProvider(provider)
 
@@ -274,7 +275,8 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             name: "OpenAI",
             type: .openAI,
             endpointURL: "https://mock.openai.local",
-            selectedModel: "gpt-4.1"
+            selectedModel: "gpt-4.1",
+            hasStoredAPIKey: true
         )
         providerStore.upsertProvider(provider)
 
@@ -363,7 +365,8 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             name: "OpenAI",
             type: .openAI,
             endpointURL: "https://mock.openai.local",
-            selectedModel: "gpt-4.1"
+            selectedModel: "gpt-4.1",
+            hasStoredAPIKey: true
         )
         providerStore.upsertProvider(provider)
 
@@ -425,7 +428,8 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             name: "OpenAI",
             type: .openAI,
             endpointURL: "https://mock.openai.local",
-            selectedModel: "gpt-4.1"
+            selectedModel: "gpt-4.1",
+            hasStoredAPIKey: true
         )
         providerStore.upsertProvider(provider)
 

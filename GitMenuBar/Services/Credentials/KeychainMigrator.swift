@@ -54,23 +54,39 @@ enum KeychainMigrator {
     private static let oldAIService = "com.pizzaman.GitMenuBar.ai.providers"
     private static let migrationVersion = 1
 
-    // swiftlint:disable:next cyclomatic_complexity
+    // swiftlint:disable cyclomatic_complexity
+    @discardableResult
     static func migrateToUnifiedDomain(
         providerConfigs: [AIProviderConfig] = AIProviderStore().providers,
         destination: AIAPIKeyStore? = nil,
         legacyClient: any KeychainMigratorItemClient = SecurityKeychainMigratorItemClient(),
         defaults: UserDefaults = .standard,
         migrateGitHub: Bool = true,
-        migratePreferences: Bool = true
-    ) {
+        migratePreferences: Bool = true,
+        migrateAI: Bool = true
+    ) -> Bool {
+        if !migrateAI {
+            do {
+                if migrateGitHub {
+                    try migrateGitHubToken()
+                }
+                if migratePreferences {
+                    migrateUserDefaults()
+                }
+                return true
+            } catch {
+                return false
+            }
+        }
+
         guard defaults.integer(forKey: AppPreferences.Keys.aiCredentialMigrationVersion) < migrationVersion else {
-            return
+            return true
         }
 
         let destination = destination ?? AIKeychainStore()
-        guard let legacyItems = try? fetchLegacyAIItems(using: legacyClient) else { return }
+        guard let legacyItems = try? fetchLegacyAIItems(using: legacyClient) else { return false }
         let providersByID = Dictionary(uniqueKeysWithValues: providerConfigs.map { ($0.id.uuidString.lowercased(), $0) })
-        guard var values = try? destination.fetchAllAPIKeys() else { return }
+        guard var values = try? destination.fetchAllAPIKeys() else { return false }
         var sourcesByIdentity: [AIProviderCredentialID: [LegacySource]] = [:]
 
         for item in legacyItems {
@@ -82,19 +98,19 @@ enum KeychainMigrator {
             {
                 identity = AIProviderCredentialID(provider: provider)
             } else {
-                return
+                return false
             }
 
-            guard let identity else { return }
+            guard let identity else { return false }
             sourcesByIdentity[identity, default: []].append(LegacySource(service: item.service, account: item.account, value: item.value))
         }
 
         var sourceAccounts: [(service: String, account: String)] = []
         for (identity, sources) in sourcesByIdentity {
             let sourceValues = Set(sources.map(\.value))
-            guard sourceValues.count == 1, let value = sourceValues.first else { return }
+            guard sourceValues.count == 1, let value = sourceValues.first else { return false }
             if let existing = values[identity], existing != value {
-                return
+                return false
             }
             values[identity] = value
             sourceAccounts.append(contentsOf: sources.map { ($0.service, $0.account) })
@@ -102,7 +118,7 @@ enum KeychainMigrator {
 
         do {
             try destination.replaceAPIKeys(values)
-            guard try destination.fetchAllAPIKeys() == values else { return }
+            guard try destination.fetchAllAPIKeys() == values else { return false }
             for source in sourceAccounts {
                 try legacyClient.delete(service: source.service, account: source.account)
             }
@@ -113,10 +129,14 @@ enum KeychainMigrator {
                 migrateUserDefaults()
             }
             defaults.set(migrationVersion, forKey: AppPreferences.Keys.aiCredentialMigrationVersion)
+            return true
         } catch {
             // Keep all legacy origins and the pending marker for a safe retry.
+            return false
         }
     }
+
+    // swiftlint:enable cyclomatic_complexity
 
     private struct LegacyItem {
         let service: String
