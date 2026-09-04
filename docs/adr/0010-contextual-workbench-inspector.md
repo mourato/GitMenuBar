@@ -1,6 +1,6 @@
 # ADR 0010: Contextual workbench inspector
 
-Status: Accepted
+Status: Superseded in part by ADR 0012
 Date: 2026-09-03
 
 ## Context

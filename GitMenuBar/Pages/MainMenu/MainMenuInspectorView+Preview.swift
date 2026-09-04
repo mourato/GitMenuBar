@@ -68,7 +68,6 @@ private struct MainMenuInspectorPreviewHost: View {
             onRequestCommitFocus: {},
             onSelectWorkspaceFile: { _ in },
             onDiscardAllUnstaged: {},
-            onClose: {},
             onManageBranches: {},
             onRequestDiscard: { _, _ in },
             onRequestDeleteBranch: { _ in },

@@ -83,14 +83,19 @@ extension MainMenuView {
         }
     }
 
-    @ViewBuilder
     private var inspectorContent: some View {
-        if let selection = selectedInspectorSelection {
-            inspectorView(selection: selection)
-        }
+        inspectorView(selection: selectedInspectorSelection)
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { width in
+                let roundedWidth = width.rounded()
+                guard roundedWidth >= WorkbenchMetrics.inspectorMinimumWidth,
+                      roundedWidth != CGFloat(inspectorColumnWidth) else { return }
+                inspectorColumnWidth = Double(roundedWidth)
+            }
     }
 
-    private func inspectorView(selection: MainMenuInspectorSelection) -> some View {
+    private func inspectorView(selection: MainMenuInspectorSelection?) -> some View {
         MainMenuInspectorView(
             projectName: renderSnapshot.currentProjectName,
             selection: selection,
@@ -134,7 +139,6 @@ extension MainMenuView {
             onDiscardAllUnstaged: {
                 showDiscardAllConfirmation = true
             },
-            onClose: clearInspectorSelection,
             onManageBranches: {
                 dismissTransientPresentations()
                 showBranchManagement = true
@@ -188,117 +192,92 @@ extension MainMenuView {
         )
     }
 
-    private func inspectorPresentedBinding(isCompact: Bool) -> Binding<Bool> {
-        Binding(
-            get: { selectedInspectorSelection != nil && !isCompact },
-            set: { isPresented in
-                guard !isPresented, !isCompact else { return }
-                clearInspectorSelection()
-            }
-        )
-    }
-
-    private func compactInspectorSelectionBinding(isCompact: Bool) -> Binding<MainMenuInspectorSelection?> {
-        Binding(
-            get: { isCompact ? selectedInspectorSelection : nil },
-            set: { selection in
-                guard isCompact else { return }
-                selectedInspectorSelection = selection
-            }
-        )
-    }
-
     var mainView: some View {
-        GeometryReader { geometry in
-            let isCompactInspector = WorkbenchMetrics.usesCompactInspector(for: geometry.size.width)
-
-            applyMainViewOverlays(
-                to: NavigationSplitView(columnVisibility: projectsSidebarVisibility) {
-                    ProjectsSidebarView(
-                        currentPath: currentRepositoryPath,
-                        onSelect: switchRepository,
-                        onReveal: revealProjectInFinder,
-                        onStopMonitoring: { projectMonitor.remove(path: $0) },
-                        onRemove: removeProject,
-                        onRename: renameProject,
-                        onProjectCleanup: presentationModel.showProjectCleanup,
-                        onAddProject: selectDirectory,
-                        onRefreshAll: projectMonitor.refreshAll,
-                        onFetchAll: projectMonitor.fetchAll,
-                        onOpenSettings: openSettingsWindow
-                    )
+        applyMainViewOverlays(
+            to: NavigationSplitView(columnVisibility: projectsSidebarVisibility) {
+                ProjectsSidebarView(
+                    currentPath: currentRepositoryPath,
+                    onSelect: switchRepository,
+                    onReveal: revealProjectInFinder,
+                    onStopMonitoring: { projectMonitor.remove(path: $0) },
+                    onRemove: removeProject,
+                    onRename: renameProject,
+                    onProjectCleanup: presentationModel.showProjectCleanup,
+                    onAddProject: selectDirectory,
+                    onRefreshAll: projectMonitor.refreshAll,
+                    onFetchAll: projectMonitor.fetchAll,
+                    onOpenSettings: openSettingsWindow
+                )
+                .navigationSplitViewColumnWidth(
+                    min: WorkbenchMetrics.projectsMinimumWidth,
+                    ideal: 240,
+                    max: 360
+                )
+            } detail: {
+                routeContent
+                    .padding(.top, WorkbenchMetrics.sectionSpacing)
+                    .padding(.leading, WorkbenchMetrics.windowPadding)
+                    .padding(.trailing, WorkbenchMetrics.windowPadding)
+                    .padding(.bottom, WorkbenchMetrics.windowPadding)
                     .navigationSplitViewColumnWidth(
-                        min: WorkbenchMetrics.projectsMinimumWidth,
-                        ideal: 240,
-                        max: 360
+                        min: WorkbenchMetrics.centralMinimumWidth,
+                        ideal: WorkbenchMetrics.centralMinimumWidth
                     )
-                } detail: {
-                    routeContent
-                        .padding(.top, WorkbenchMetrics.sectionSpacing)
-                        .padding(.leading, WorkbenchMetrics.windowPadding)
-                        .padding(.trailing, WorkbenchMetrics.windowPadding)
-                        .padding(.bottom, WorkbenchMetrics.windowPadding)
-                        .navigationSplitViewColumnWidth(
-                            min: WorkbenchMetrics.centralMinimumWidth,
-                            ideal: WorkbenchMetrics.centralMinimumWidth
-                        )
-                        .inspector(isPresented: inspectorPresentedBinding(isCompact: isCompactInspector)) {
-                            inspectorContent
-                                .inspectorColumnWidth(
-                                    min: WorkbenchMetrics.inspectorMinimumWidth,
-                                    ideal: WorkbenchMetrics.inspectorMinimumWidth
+                    .inspector(isPresented: .constant(presentationModel.route == .main)) {
+                        inspectorContent
+                            .inspectorColumnWidth(
+                                min: WorkbenchMetrics.inspectorMinimumWidth,
+                                ideal: max(
+                                    WorkbenchMetrics.inspectorMinimumWidth,
+                                    CGFloat(inspectorColumnWidth)
                                 )
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                }
-                .navigationSplitViewStyle(.balanced)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .onExitCommand {
-                    if selectedInspectorSelection != nil {
-                        clearInspectorSelection()
-                        return
+                            )
                     }
-                    if isCommandPalettePresented {
-                        closeCommandPalette()
-                        return
-                    }
-                    if showBranchSelector {
-                        dismissTransientPresentations()
-                        return
-                    }
-                    if showRepositoryOptionsPopover {
-                        dismissTransientPresentations()
-                        return
-                    }
-                    if hasTransientPresentation {
-                        dismissTransientPresentations()
-                        return
-                    }
-                    closeWindow()
-                }
-                .onReceive(shortcutActionBridge.actions) { action in
-                    guard presentationModel.route == .main else { return }
-
-                    switch action {
-                    case .commit:
-                        guard hasWorkingTreeChanges else { return }
-                        Task {
-                            await submitComment()
-                        }
-                    case .sync:
-                        Task {
-                            await actionCoordinator.performSync()
-                        }
-                    case .atomicCommits:
-                        startAtomicCommitFlow()
-                    }
-                }
-            )
-            .sheet(item: compactInspectorSelectionBinding(isCompact: isCompactInspector)) { selection in
-                inspectorView(selection: selection)
-                    .frame(minWidth: WorkbenchMetrics.inspectorMinimumWidth)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-        }
+            .navigationSplitViewStyle(.balanced)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .onExitCommand {
+                if selectedInspectorSelection != nil {
+                    clearInspectorSelection()
+                    return
+                }
+                if isCommandPalettePresented {
+                    closeCommandPalette()
+                    return
+                }
+                if showBranchSelector {
+                    dismissTransientPresentations()
+                    return
+                }
+                if showRepositoryOptionsPopover {
+                    dismissTransientPresentations()
+                    return
+                }
+                if hasTransientPresentation {
+                    dismissTransientPresentations()
+                    return
+                }
+                closeWindow()
+            }
+            .onReceive(shortcutActionBridge.actions) { action in
+                guard presentationModel.route == .main else { return }
+
+                switch action {
+                case .commit:
+                    guard hasWorkingTreeChanges else { return }
+                    Task {
+                        await submitComment()
+                    }
+                case .sync:
+                    Task {
+                        await actionCoordinator.performSync()
+                    }
+                case .atomicCommits:
+                    startAtomicCommitFlow()
+                }
+            }
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
