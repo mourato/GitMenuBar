@@ -87,17 +87,6 @@ extension MainMenuView {
             .ignoresSafeArea(.container, edges: .top)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(selectedInspectorSelection.map { "Details for \($0.title)" } ?? "Details")
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.width
-            } action: { width in
-                let roundedWidth = width.rounded()
-                guard ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1",
-                      roundedWidth >= WorkbenchMetrics.inspectorMinimumWidth,
-                      roundedWidth != CGFloat(inspectorColumnWidth) else { return }
-
-                inspectorColumnWidth = Double(roundedWidth)
-                MainWindowPreferences.setInspectorColumnWidth(Double(roundedWidth))
-            }
     }
 
     @ViewBuilder
