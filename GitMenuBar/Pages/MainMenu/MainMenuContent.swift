@@ -84,21 +84,11 @@ extension MainMenuView {
     }
 
     private var inspectorContent: some View {
-        InspectorContentHost {
-            inspectorSelectionView
-        }
-        .padding(WorkbenchMetrics.panelPadding)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(selectedInspectorSelection.map { "Details for \($0.title)" } ?? "Details")
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            proxy.size.width
-        } action: { width in
-            let roundedWidth = width.rounded()
-            guard roundedWidth >= WorkbenchMetrics.inspectorMinimumWidth,
-                  roundedWidth != CGFloat(inspectorColumnWidth) else { return }
-            inspectorColumnWidth = Double(roundedWidth)
-        }
+        inspectorSelectionView
+            .padding(WorkbenchMetrics.panelPadding)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(selectedInspectorSelection.map { "Details for \($0.title)" } ?? "Details")
     }
 
     @ViewBuilder
@@ -253,17 +243,17 @@ extension MainMenuView {
                         min: WorkbenchMetrics.centralMinimumWidth,
                         ideal: WorkbenchMetrics.centralMinimumWidth
                     )
-                    .inspector(isPresented: .constant(presentationModel.route == .main)) {
-                        inspectorContent
-                            .inspectorColumnWidth(
-                                min: WorkbenchMetrics.inspectorMinimumWidth,
-                                ideal: max(
-                                    WorkbenchMetrics.inspectorMinimumWidth,
-                                    CGFloat(inspectorColumnWidth)
-                                )
-                            )
-                    }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
+            .inspector(isPresented: .constant(presentationModel.route == .main)) {
+                inspectorContent
+                    .inspectorColumnWidth(
+                        min: WorkbenchMetrics.inspectorMinimumWidth,
+                        ideal: max(
+                            WorkbenchMetrics.inspectorMinimumWidth,
+                            CGFloat(inspectorColumnWidth)
+                        )
+                    )
             }
             .navigationSplitViewStyle(.balanced)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -332,13 +322,6 @@ extension MainMenuView {
     }
 }
 
-private struct InspectorContentHost<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        content
-    }
-}
 
 #Preview("Main Content") {
     MainMenuPreviewHarness(showsTransparentTitlebar: true) {

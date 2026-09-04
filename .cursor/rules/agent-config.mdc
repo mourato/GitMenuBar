@@ -24,9 +24,11 @@ skill, and preserve unrelated changes.
   routing policy. Resolve material gaps with `grill-with-docs`; do not guess.
 - Before any write, run the `delivery-contract` worktree and target guards with
   absolute paths; require `PASS` before a patch, autofix, or generator.
-- Resolve a skill by name with
-  `${AGENT_CONFIG_HOME:-$HOME/.agents}/scripts/skill-path <name>` before reading
-  it; catalog aliases such as `r0` are labels, not filesystem paths.
+- Skills resolve to `skills/<name>/SKILL.md` under the agent-config root.
+  When multiple roots are configured or precedence is ambiguous, use
+  `${AGENT_CONFIG_HOME:-$HOME/.agents}/scripts/skill-path <name>` to resolve
+  the correct path; catalog aliases such as `r0` are labels, not filesystem
+  paths.
 - Before implementation or delivery, load `delivery-contract`. Before a
   build, test, lint, validation, or release command, load `delivery-workflow`
   and its project overlay when present.
