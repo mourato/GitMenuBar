@@ -239,21 +239,22 @@ extension MainMenuView {
                     .padding(.leading, WorkbenchMetrics.windowPadding)
                     .padding(.trailing, WorkbenchMetrics.windowPadding)
                     .padding(.bottom, WorkbenchMetrics.windowPadding)
-                    .navigationSplitViewColumnWidth(
-                        min: WorkbenchMetrics.centralMinimumWidth,
-                        ideal: WorkbenchMetrics.centralMinimumWidth
+                    .frame(
+                        minWidth: WorkbenchMetrics.centralMinimumWidth,
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .top
                     )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            }
-            .inspector(isPresented: .constant(presentationModel.route == .main)) {
-                inspectorContent
-                    .inspectorColumnWidth(
-                        min: WorkbenchMetrics.inspectorMinimumWidth,
-                        ideal: max(
-                            WorkbenchMetrics.inspectorMinimumWidth,
-                            CGFloat(inspectorColumnWidth)
-                        )
-                    )
+                    .inspector(isPresented: .constant(presentationModel.route == .main)) {
+                        inspectorContent
+                            .inspectorColumnWidth(
+                                min: WorkbenchMetrics.inspectorMinimumWidth,
+                                ideal: max(
+                                    WorkbenchMetrics.inspectorMinimumWidth,
+                                    CGFloat(inspectorColumnWidth)
+                                )
+                            )
+                    }
             }
             .navigationSplitViewStyle(.balanced)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

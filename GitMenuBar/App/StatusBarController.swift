@@ -391,8 +391,11 @@ final class StatusBarController: NSObject, ObservableObject {
             titleField.maximumNumberOfLines = 1
             titleField.translatesAutoresizingMaskIntoConstraints = false
             item.view = titleField
-            item.minSize = NSSize(width: 120, height: 22)
-            item.maxSize = NSSize(width: 240, height: 22)
+            NSLayoutConstraint.activate([
+                titleField.widthAnchor.constraint(greaterThanOrEqualToConstant: 120),
+                titleField.widthAnchor.constraint(lessThanOrEqualToConstant: 240),
+                titleField.heightAnchor.constraint(equalToConstant: 22)
+            ])
         default:
             return nil
         }
