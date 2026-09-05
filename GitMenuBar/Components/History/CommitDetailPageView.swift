@@ -32,7 +32,16 @@ struct CommitDetailPageView: View {
     }
 
     var body: some View {
-        VStack(spacing: WorkbenchMetrics.panelPadding) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.panelPadding) {
+            Button {
+                onBack()
+            } label: {
+                Label("Back to History", systemImage: "chevron.left")
+            }
+            .workbenchGhost()
+            .frame(minHeight: WorkbenchMetrics.iconHitTarget, alignment: .leading)
+            .accessibilityLabel("Back to History")
+
             if let commit {
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
@@ -47,7 +56,9 @@ struct CommitDetailPageView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
-                missingCommitSection
+                Text("Commit not available in current history view.")
+                    .font(WorkbenchTypography.detail)
+                    .foregroundStyle(.secondary)
             }
         }
         .task(id: avatarTaskID) {
@@ -163,20 +174,6 @@ struct CommitDetailPageView: View {
             remoteURL: remoteUrl,
             onOpenLocalFile: onOpenLocalFile
         )
-    }
-
-    private var missingCommitSection: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-            Text("Commit not available in current history view.")
-                .font(WorkbenchTypography.detail)
-                .foregroundStyle(.secondary)
-
-            Button("Back to History") {
-                onBack()
-            }
-            .workbenchGhost()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func copyToPasteboard(_ value: String) {

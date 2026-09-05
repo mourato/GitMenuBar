@@ -12,23 +12,7 @@ struct HistoryInspectorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
             InspectorHeaderView(projectName: projectName, title: selection?.title ?? "History")
-            NavigationStack {
-                ScrollView(.vertical) {
-                    InspectorHistoryBrowserView(history: history, pendingReset: $pendingReset)
-                        .padding(.bottom, WorkbenchMetrics.compactSpacing)
-                }
-                .navigationDestination(item: commitHashBinding) { hash in
-                    commitDetail(for: hash)
-                        .toolbar {
-                            ToolbarItem(placement: .navigation) {
-                                Button("Back to History") {
-                                    history.onBackToHistory()
-                                }
-                                .accessibilityLabel("Back to History")
-                            }
-                        }
-                }
-            }
+            historyContent
         }
         .inspectorResetAlert(commit: $pendingReset) { commit in
             Task {
@@ -37,23 +21,16 @@ struct HistoryInspectorView: View {
         }
     }
 
-    /// The pushed commit derives from the workbench selection, so swipe-back
-    /// dismissal and programmatic navigation can never diverge.
-    private var commitHashBinding: Binding<String?> {
-        Binding(
-            get: {
-                if case let .commit(id) = selection {
-                    id
-                } else {
-                    nil
-                }
-            },
-            set: { newValue in
-                if newValue == nil {
-                    history.onBackToHistory()
-                }
+    @ViewBuilder
+    private var historyContent: some View {
+        if case let .commit(hash) = selection {
+            commitDetail(for: hash)
+        } else {
+            ScrollView(.vertical) {
+                InspectorHistoryBrowserView(history: history, pendingReset: $pendingReset)
+                    .padding(.bottom, WorkbenchMetrics.compactSpacing)
             }
-        )
+        }
     }
 
     @ViewBuilder
