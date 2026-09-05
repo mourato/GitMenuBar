@@ -27,6 +27,57 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertFalse(actionCoordinator.canSwitchRepository(to: "/tmp/project-b"))
     }
 
+    func testDeleteRemoteInspectorBranchBlankIsSkipped() async {
+        let gitManager = GitManager(repositoryPathOverride: "")
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await actionCoordinator.deleteRemoteInspectorBranch("   ")
+        XCTAssertEqual(result, .skipped)
+        XCTAssertNil(actionCoordinator.alert)
+    }
+
+    func testCheckoutRemoteInspectorBranchFailurePublishesAlert() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await actionCoordinator.checkoutRemoteInspectorBranch("feature/missing")
+        XCTAssertEqual(result, .failed)
+        XCTAssertNotNil(actionCoordinator.alert)
+    }
+
+    func testInspectorCleanupEmptyUnitsIsSkipped() async {
+        let gitManager = GitManager(repositoryPathOverride: "")
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+        let snapshot = GitWorktreeSnapshot(
+            repositoryPath: "",
+            defaultBranchName: "main",
+            defaultBranchRef: "refs/heads/main",
+            analysisDescription: "",
+            worktrees: [],
+            branches: []
+        )
+
+        let result = await actionCoordinator.performInspectorCleanup(units: [], snapshot: snapshot)
+        XCTAssertEqual(result, .skipped)
+        XCTAssertNil(actionCoordinator.alert)
+    }
+
     func testInspectorPushIsSkippedWhileBusy() async {
         let gitManager = GitManager(repositoryPathOverride: "")
         let actionCoordinator = makeActionCoordinator(

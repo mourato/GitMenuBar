@@ -214,7 +214,6 @@ extension MainMenuView {
             .sheet(isPresented: $actionCoordinator.showSyncOptions, content: syncOptionsSheet)
             .sheet(isPresented: $showCreateBranch, content: createBranchSheet)
             .sheet(isPresented: $showPullToNewBranch, content: pullToNewBranchSheet)
-            .sheet(isPresented: $showBranchManagement, content: branchManagementSheet)
             .sheet(isPresented: $showAtomicCommitSheet, content: atomicCommitSheet)
     }
 
@@ -355,10 +354,6 @@ extension MainMenuView {
             },
             onPull: pullToNewBranch
         )
-    }
-
-    private func branchManagementSheet() -> some View {
-        BranchManagementSheet(gitManager: gitManager)
     }
 
     private func atomicCommitSheet() -> some View {

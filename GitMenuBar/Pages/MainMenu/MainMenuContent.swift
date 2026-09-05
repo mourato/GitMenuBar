@@ -41,7 +41,7 @@ extension MainMenuView {
             onBranchTap: toggleBranchSelectorPresentation,
             onManage: {
                 dismissTransientPresentations()
-                showBranchManagement = true
+                selectedInspectorSelection = .branches
             }
         )
         .popover(isPresented: $showBranchSelector, arrowEdge: .bottom) {
@@ -105,10 +105,6 @@ extension MainMenuView {
                 projectName: renderSnapshot.currentProjectName,
                 selection: selectedInspectorSelection,
                 overview: renderSnapshot.overview,
-                onManageBranches: {
-                    dismissTransientPresentations()
-                    showBranchManagement = true
-                },
                 onRequestDiscard: requestDiscard,
                 onRequestDeleteBranch: { name in
                     branchNameToDelete = name
@@ -124,6 +120,16 @@ extension MainMenuView {
                             _ = await actionCoordinator.switchInspectorBranch(branch)
                         }
                     }
+                },
+                onCreateBranch: {
+                    dismissTransientPresentations()
+                    showCreateBranch = true
+                },
+                onRenameBranch: { name in
+                    dismissTransientPresentations()
+                    oldBranchName = name
+                    renameBranchNewName = name
+                    showRenameBranch = true
                 }
             )
         }

@@ -6,7 +6,6 @@ import SwiftUI
             projectName: "GitMenuBar",
             selection: nil,
             overview: .empty,
-            onManageBranches: {},
             onRequestDiscard: { _, _ in },
             onRequestDeleteBranch: { _ in },
             onRequestSwitchBranch: { _ in }
@@ -21,7 +20,6 @@ import SwiftUI
             projectName: "GitMenuBar",
             selection: .stashes,
             overview: .empty,
-            onManageBranches: {},
             onRequestDiscard: { _, _ in },
             onRequestDeleteBranch: { _ in },
             onRequestSwitchBranch: { _ in }
@@ -36,7 +34,6 @@ import SwiftUI
             projectName: "GitMenuBar",
             selection: .unpushedCommits,
             overview: .empty,
-            onManageBranches: {},
             onRequestDiscard: { _, _ in },
             onRequestDeleteBranch: { _ in },
             onRequestSwitchBranch: { _ in }
@@ -51,7 +48,6 @@ import SwiftUI
             projectName: "GitMenuBar",
             selection: .branches,
             overview: .empty,
-            onManageBranches: {},
             onRequestDiscard: { _, _ in },
             onRequestDeleteBranch: { _ in },
             onRequestSwitchBranch: { _ in }

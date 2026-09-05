@@ -7,14 +7,35 @@ struct InspectorDetailView: View {
     let projectName: String
     let selection: MainMenuInspectorSelection?
     let overview: RepositoryOverviewSnapshot
-    let onManageBranches: () -> Void
     let onRequestDiscard: (String, WorkingTreeFileStatus) -> Void
     let onRequestDeleteBranch: (String) -> Void
     let onRequestSwitchBranch: (String) -> Void
+    let onCreateBranch: () -> Void
+    let onRenameBranch: (String) -> Void
 
     @EnvironmentObject private var gitManager: GitManager
     @EnvironmentObject private var actionCoordinator: MainMenuActionCoordinator
     @State private var stashPendingDrop: GitStashInfo?
+
+    init(
+        projectName: String,
+        selection: MainMenuInspectorSelection?,
+        overview: RepositoryOverviewSnapshot,
+        onRequestDiscard: @escaping (String, WorkingTreeFileStatus) -> Void,
+        onRequestDeleteBranch: @escaping (String) -> Void,
+        onRequestSwitchBranch: @escaping (String) -> Void,
+        onCreateBranch: @escaping () -> Void = {},
+        onRenameBranch: @escaping (String) -> Void = { _ in }
+    ) {
+        self.projectName = projectName
+        self.selection = selection
+        self.overview = overview
+        self.onRequestDiscard = onRequestDiscard
+        self.onRequestDeleteBranch = onRequestDeleteBranch
+        self.onRequestSwitchBranch = onRequestSwitchBranch
+        self.onCreateBranch = onCreateBranch
+        self.onRenameBranch = onRenameBranch
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
@@ -217,108 +238,12 @@ struct InspectorDetailView: View {
     }
 
     private var branchesSection: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
-            Text("Not merged into the local default branch")
-                .font(WorkbenchTypography.sectionLabel)
-            Text("These names are local Git reachability against \(gitManager.defaultBranchName.isEmpty ? "the default branch" : gitManager.defaultBranchName), not GitHub pull request status.")
-                .font(WorkbenchTypography.caption)
-                .foregroundStyle(.secondary)
-            if gitManager.unmergedIntoDefaultBranches.isEmpty {
-                Text("None — everything is merged")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(gitManager.unmergedIntoDefaultBranches, id: \.self) { name in
-                    branchRow(name: name, unmerged: true)
-                }
-            }
-
-            Text("Local branches")
-                .font(WorkbenchTypography.sectionLabel)
-            let localBranches = gitManager.branchInfos.filter(\.isLocal)
-            if localBranches.isEmpty {
-                emptyState("No local branches", systemImage: "arrow.triangle.branch", description: "Create a branch to start isolated work.")
-            } else {
-                ForEach(localBranches) { info in
-                    branchRow(name: info.name, unmerged: gitManager.unmergedIntoDefaultBranches.contains(info.name), tracking: info.trackingStatus, isCurrent: info.isCurrent)
-                }
-            }
-
-            Button("Manage Branches") {
-                onManageBranches()
-            }
-            .workbenchGhost()
-        }
-    }
-
-    private func branchRow(
-        name: String,
-        unmerged: Bool,
-        tracking: BranchTrackingStatus? = nil,
-        isCurrent: Bool = false
-    ) -> some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-            HStack {
-                Text(name)
-                    .font(WorkbenchTypography.captionStrong)
-                    .lineLimit(1)
-                if isCurrent {
-                    Text("Current")
-                        .font(WorkbenchTypography.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            if let tracking {
-                Text(tracking.description)
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
-            }
-            HStack(spacing: WorkbenchMetrics.compactSpacing) {
-                Button("Switch") {
-                    onRequestSwitchBranch(name)
-                }
-                .workbenchGhost()
-                .disabled(isCurrent || actionCoordinator.isBusy)
-                if tracking == .noRemote {
-                    Button("Publish") {
-                        Task { _ = await actionCoordinator.publishInspectorBranch(name) }
-                    }
-                    .workbenchGhost()
-                    .disabled(actionCoordinator.isBusy)
-                } else if trackingNeedsPush(tracking) {
-                    Button("Push") {
-                        Task { _ = await actionCoordinator.pushInspectorBranch(name) }
-                    }
-                    .workbenchGhost()
-                    .disabled(actionCoordinator.isBusy)
-                }
-                if unmerged, !isCurrent {
-                    Button("Merge") {
-                        Task { _ = await actionCoordinator.mergeInspectorBranch(name) }
-                    }
-                    .workbenchGhost()
-                    .disabled(actionCoordinator.isBusy)
-                }
-                Button("Delete", role: .destructive) {
-                    onRequestDeleteBranch(name)
-                }
-                .disabled(isCurrent || actionCoordinator.isBusy)
-            }
-        }
-        .padding(WorkbenchMetrics.sectionSpacing)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.cornerRadius, material: .thin)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(name)\(isCurrent ? ", current branch" : "")")
-    }
-
-    private func trackingNeedsPush(_ tracking: BranchTrackingStatus?) -> Bool {
-        switch tracking {
-        case .ahead, .diverged:
-            true
-        case .upToDate, .behind, .noRemote, .unknown, nil:
-            false
-        }
+        InspectorBranchManagementView(
+            onRequestDeleteBranch: onRequestDeleteBranch,
+            onRequestSwitchBranch: onRequestSwitchBranch,
+            onCreateBranch: onCreateBranch,
+            onRenameBranch: onRenameBranch
+        )
     }
 
     private var stashesSection: some View {

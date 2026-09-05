@@ -400,6 +400,7 @@ final class MainMenuActionCoordinator: ObservableObject {
             await gitManager.loadSelectedStashesAsync()
         case .branches, .branch:
             await gitManager.loadSelectedUnmergedLocalBranchesAsync()
+            await reloadInspectorBranchData()
         case .unpushedCommits:
             await gitManager.fetchSelectedBranchesAsync()
         default:
@@ -407,10 +408,20 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
+    /// Refreshes the branch list and worktree snapshot backing the inspector's
+    /// Branch Health section. Runs sessionless so it always publishes.
+    func reloadInspectorBranchData() async {
+        _ = await gitManager.resolveBranchInfoAsync()
+        _ = await gitManager.resolveWorktreeSnapshotAsync()
+    }
+
     func pushInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
         await executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.pushNamedLocalBranchAsync(branchName: branchName, context: context)
             await finishInspectorMutation(result, context: context, failureTitle: "Push Failed")
+            if gitManager.isCurrent(context) {
+                await reloadInspectorBranchData()
+            }
             return result.inspectorActionResult
         }
     }
@@ -419,6 +430,9 @@ final class MainMenuActionCoordinator: ObservableObject {
         await executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.publishBranchAsync(branchName: branchName, context: context)
             await finishInspectorMutation(result, context: context, failureTitle: "Publish Failed")
+            if gitManager.isCurrent(context) {
+                await reloadInspectorBranchData()
+            }
             return result.inspectorActionResult
         }
     }
@@ -493,15 +507,27 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     func switchInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
-        await executeCallbackMutation(failureTitle: "Branch Switch Failed") { completion in
+        let result = await executeCallbackMutation(failureTitle: "Branch Switch Failed") { completion in
             gitManager.switchBranch(branchName: branchName, completion: completion)
         }
+        await reloadInspectorBranchData()
+        return result
+    }
+
+    func checkoutRemoteInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+        let result = await executeCallbackMutation(failureTitle: "Checkout Failed") { completion in
+            gitManager.switchBranch(branchName: "origin/\(branchName)", completion: completion)
+        }
+        await reloadInspectorBranchData()
+        return result
     }
 
     func mergeInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
-        await executeCallbackMutation(failureTitle: "Merge Failed") { completion in
+        let result = await executeCallbackMutation(failureTitle: "Merge Failed") { completion in
             gitManager.mergeBranch(fromBranch: branchName, completion: completion)
         }
+        await reloadInspectorBranchData()
+        return result
     }
 
     func deleteInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
@@ -509,9 +535,67 @@ final class MainMenuActionCoordinator: ObservableObject {
         guard !trimmed.isEmpty else {
             return .skipped
         }
-        return await executeCallbackMutation(failureTitle: "Delete Failed") { completion in
+        let result = await executeCallbackMutation(failureTitle: "Delete Failed") { completion in
             gitManager.deleteBranch(branchName: trimmed, completion: completion)
         }
+        await reloadInspectorBranchData()
+        return result
+    }
+
+    func deleteRemoteInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+        let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return .skipped
+        }
+        return await executeContextualMutation(allowsRepositorySwitch: false) { context in
+            let result = await gitManager.deleteRemoteBranchAsync(branchName: trimmed)
+            await finishInspectorMutation(result, context: context, failureTitle: "Delete Remote Failed")
+            if gitManager.isCurrent(context) {
+                await reloadInspectorBranchData()
+            }
+            return result.inspectorActionResult
+        }
+    }
+
+    func performInspectorCleanup(units: [GitCleanupUnit], snapshot: GitWorktreeSnapshot) async -> MainMenuInspectorActionResult {
+        guard !units.isEmpty else {
+            return .skipped
+        }
+        return await executeContextualMutation(allowsRepositorySwitch: false) { context in
+            let result = await gitManager.performCleanupAsync(units: units, snapshot: snapshot)
+            switch result {
+            case let .success(batch):
+                await finishInspectorMutation(.success(()), context: context, failureTitle: "Cleanup Failed")
+                publishSuccess(title: "Cleanup complete", message: batchSummary(batch))
+            case let .failure(error):
+                await finishInspectorMutation(.failure(error), context: context, failureTitle: "Cleanup Failed")
+            }
+            if gitManager.isCurrent(context) {
+                await reloadInspectorBranchData()
+            }
+            switch result {
+            case .success:
+                return .succeeded
+            case .failure:
+                return .failed
+            }
+        }
+    }
+
+    private func batchSummary(_ batch: GitCleanupBatchResult) -> String {
+        batch.items.map { item in
+            let status = switch item.status {
+            case .succeeded:
+                "completed"
+            case let .partiallySucceeded(reason):
+                "partially completed — \(reason)"
+            case let .skipped(reason):
+                "skipped — \(reason)"
+            case let .failed(reason):
+                "failed — \(reason)"
+            }
+            return "\(item.unit?.title ?? item.target.title): \(status)"
+        }.joined(separator: "\n")
     }
 
     func stageInspectorFile(path: String) async -> MainMenuInspectorActionResult {

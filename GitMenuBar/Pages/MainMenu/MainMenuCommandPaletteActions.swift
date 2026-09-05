@@ -73,7 +73,7 @@ extension MainMenuView {
         case .atomicCommits:
             startAtomicCommitFlow()
         case .branchManagement:
-            showBranchManagement = true
+            selectedInspectorSelection = .branches
         case .createBranch:
             showCreateBranch = true
         case let .mergeToDefault(featureBranch):
