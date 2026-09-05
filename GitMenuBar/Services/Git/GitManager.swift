@@ -1835,6 +1835,40 @@ class GitManager: ObservableObject {
         }
     }
 
+    func saveStashAsync(message: String, context: RepositoryOperationContext) async -> Result<Void, Error> {
+        guard !context.repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+        return await runOnBackground {
+            self.stashService.saveStash(message: message, in: context.repositoryPath)
+        }
+    }
+
+    func publishBranchAsync(branchName: String, context: RepositoryOperationContext) async -> Result<Void, Error> {
+        let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !context.repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+        guard !trimmed.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+        return await runOnBackground {
+            let result = self.executeGitCommand(
+                in: context.repositoryPath,
+                args: ["push", "-u", "origin", trimmed],
+                useAuth: true
+            )
+            guard !result.failure else {
+                return .failure(NSError(
+                    domain: "GitManager",
+                    code: 40,
+                    userInfo: [NSLocalizedDescriptionKey: GitStashService.userFacingMessage(from: result.output)]
+                ))
+            }
+            return .success(())
+        }
+    }
+
     func loadSelectedUnmergedLocalBranchesAsync() async {
         let session = makeCurrentSelectedRefreshSession()
         guard session.isCurrent() else { return }

@@ -30,6 +30,21 @@ import SwiftUI
     .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 360)
 }
 
+#Preview("Push and Sync") {
+    MainMenuPreviewHarness {
+        InspectorDetailView(
+            projectName: "GitMenuBar",
+            selection: .unpushedCommits,
+            overview: .empty,
+            onManageBranches: {},
+            onRequestDiscard: { _, _ in },
+            onRequestDeleteBranch: { _ in },
+            onRequestSwitchBranch: { _ in }
+        )
+    }
+    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 360)
+}
+
 #Preview("Branches") {
     MainMenuPreviewHarness {
         InspectorDetailView(

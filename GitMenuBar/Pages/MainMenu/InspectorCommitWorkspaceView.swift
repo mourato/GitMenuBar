@@ -85,6 +85,15 @@ struct InspectorCommitWorkspaceView: View {
                     description: Text("Stage files to start a commit.")
                 )
             } else {
+                HStack {
+                    Spacer(minLength: 0)
+                    Button("Stash changes") {
+                        Task { _ = await actionCoordinator.saveInspectorStash() }
+                    }
+                    .workbenchGhost()
+                    .disabled(isCommitActionBusy || actionCoordinator.isBusy)
+                    .accessibilityHint("Parks working tree changes in a stash without committing")
+                }
                 if !gitManager.stagedFiles.isEmpty {
                     WorkingTreeSectionView(
                         title: "Staged",

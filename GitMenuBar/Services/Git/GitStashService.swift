@@ -95,6 +95,22 @@ final class GitStashService: @unchecked Sendable {
         return .success(())
     }
 
+    func saveStash(message: String, in repositoryPath: String) -> Result<Void, Error> {
+        guard !repositoryPath.isEmpty else {
+            return .failure(GitExecution.missingRepositoryError())
+        }
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        let result = GitExecution.executeGitCommand(
+            in: repositoryPath,
+            args: ["stash", "push", "-u", "-m", trimmed.isEmpty ? "GitMenuBar stash" : trimmed],
+            using: commandRunner
+        )
+        guard !result.failure else {
+            return .failure(stashError(Self.userFacingMessage(from: result.output)))
+        }
+        return .success(())
+    }
+
     static func userFacingMessage(from output: String) -> String {
         let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
         let firstLine = trimmed.split(whereSeparator: \.isNewline).first.map(String.init) ?? trimmed

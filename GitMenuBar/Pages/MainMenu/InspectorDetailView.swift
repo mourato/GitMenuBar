@@ -121,28 +121,99 @@ struct InspectorDetailView: View {
             labeledValue("Current branch", gitManager.isDetachedHead ? "Detached HEAD" : gitManager.currentBranch)
             labeledValue("Ahead", metricLabel(overview.aheadCount, unit: "commit"))
             labeledValue("Behind", metricLabel(overview.behindCount, unit: "commit"))
-            if gitManager.remoteUrl.isEmpty {
-                Text("No remote is configured, so Push is unavailable.")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Button("Push") {
-                Task {
-                    _ = await actionCoordinator.pushInspectorBranch(gitManager.currentBranch)
+            Text(pushSyncGuidance)
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.secondary)
+            HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                Button(pushSyncPrimaryTitle) {
+                    Task {
+                        if isCurrentBranchUnpublished {
+                            _ = await actionCoordinator.publishInspectorBranch(gitManager.currentBranch)
+                        } else {
+                            _ = await actionCoordinator.pushInspectorBranch(gitManager.currentBranch)
+                        }
+                    }
                 }
+                .workbenchSecondary()
+                .disabled(
+                    actionCoordinator.isBusy
+                        || gitManager.remoteUrl.isEmpty
+                        || gitManager.isDetachedHead
+                        || gitManager.currentBranch.isEmpty
+                        || pushSyncAhead == 0
+                )
+                .accessibilityHint("Pushes the current local branch to origin without force")
+                Menu("Pull") {
+                    Button("Pull") {
+                        Task { _ = await actionCoordinator.pullInspectorBranch(rebase: false) }
+                    }
+                    .disabled(!canPull)
+                    Button("Pull with Rebase") {
+                        Task { _ = await actionCoordinator.pullInspectorBranch(rebase: true) }
+                    }
+                    .disabled(!canPull)
+                }
+                .workbenchGhost()
+                .disabled(!canPull)
+                .accessibilityHint("Fetches and integrates remote changes into the current branch")
             }
-            .workbenchSecondary()
-            .disabled(
-                actionCoordinator.isBusy
-                    || gitManager.remoteUrl.isEmpty
-                    || gitManager.isDetachedHead
-                    || gitManager.currentBranch.isEmpty
-            )
-            .accessibilityHint("Pushes the current local branch to origin without force")
         }
         .padding(WorkbenchMetrics.panelPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.cornerRadius, material: .thin)
+    }
+
+    private var pushSyncAhead: Int {
+        if case let .known(count) = overview.aheadCount {
+            count
+        } else {
+            0
+        }
+    }
+
+    private var pushSyncBehind: Int {
+        if case let .known(count) = overview.behindCount {
+            count
+        } else {
+            0
+        }
+    }
+
+    private var isCurrentBranchUnpublished: Bool {
+        gitManager.branchInfos.first(where: \.isCurrent)?.trackingStatus == .noRemote
+    }
+
+    private var canPull: Bool {
+        !actionCoordinator.isBusy
+            && !gitManager.remoteUrl.isEmpty
+            && !gitManager.isDetachedHead
+            && !gitManager.currentBranch.isEmpty
+            && pushSyncBehind > 0
+    }
+
+    private var pushSyncPrimaryTitle: String {
+        isCurrentBranchUnpublished ? "Publish" : "Push"
+    }
+
+    private var pushSyncGuidance: String {
+        if gitManager.isDetachedHead {
+            return "Detached HEAD — create a branch to push."
+        }
+        if gitManager.remoteUrl.isEmpty {
+            return "No remote is configured, so Push is unavailable."
+        }
+        if pushSyncAhead > 0, pushSyncBehind > 0 {
+            return "Diverged — pull first, then push."
+        }
+        if pushSyncBehind > 0 {
+            return "Behind — pull to get up to date."
+        }
+        if pushSyncAhead > 0 {
+            return isCurrentBranchUnpublished
+                ? "No upstream — publish to get clean."
+                : "Ahead — push to get clean."
+        }
+        return "Up to date."
     }
 
     private var branchesSection: some View {
@@ -208,6 +279,19 @@ struct InspectorDetailView: View {
                 }
                 .workbenchGhost()
                 .disabled(isCurrent || actionCoordinator.isBusy)
+                if tracking == .noRemote {
+                    Button("Publish") {
+                        Task { _ = await actionCoordinator.publishInspectorBranch(name) }
+                    }
+                    .workbenchGhost()
+                    .disabled(actionCoordinator.isBusy)
+                } else if trackingNeedsPush(tracking) {
+                    Button("Push") {
+                        Task { _ = await actionCoordinator.pushInspectorBranch(name) }
+                    }
+                    .workbenchGhost()
+                    .disabled(actionCoordinator.isBusy)
+                }
                 if unmerged, !isCurrent {
                     Button("Merge") {
                         Task { _ = await actionCoordinator.mergeInspectorBranch(name) }
@@ -228,11 +312,29 @@ struct InspectorDetailView: View {
         .accessibilityLabel("\(name)\(isCurrent ? ", current branch" : "")")
     }
 
+    private func trackingNeedsPush(_ tracking: BranchTrackingStatus?) -> Bool {
+        switch tracking {
+        case .ahead, .diverged:
+            true
+        case .upToDate, .behind, .noRemote, .unknown, nil:
+            false
+        }
+    }
+
     private var stashesSection: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-            Text("Retained stash refs")
-                .font(WorkbenchTypography.caption)
-                .foregroundStyle(.secondary)
+            HStack {
+                Text("Retained stash refs")
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Button("Stash changes") {
+                    Task { _ = await actionCoordinator.saveInspectorStash() }
+                }
+                .workbenchGhost()
+                .disabled(actionCoordinator.isBusy || !hasWorkingTreeChanges)
+                .accessibilityHint("Parks working tree changes in a new stash")
+            }
             if gitManager.stashes.isEmpty {
                 emptyState("No retained stashes", systemImage: "archivebox", description: "Stash to park work in progress without committing.")
             } else {
@@ -246,8 +348,15 @@ struct InspectorDetailView: View {
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                         HStack(spacing: WorkbenchMetrics.compactSpacing) {
-                            Button("Apply") {
-                                Task { _ = await actionCoordinator.applyInspectorStash(hash: stash.hash) }
+                            Menu("Apply") {
+                                Button("Apply") {
+                                    Task { _ = await actionCoordinator.applyInspectorStash(hash: stash.hash) }
+                                }
+                                .disabled(actionCoordinator.isBusy)
+                                Button("Apply and drop") {
+                                    Task { _ = await actionCoordinator.popInspectorStash(hash: stash.hash) }
+                                }
+                                .disabled(actionCoordinator.isBusy)
                             }
                             .workbenchGhost()
                             .disabled(actionCoordinator.isBusy)
@@ -266,6 +375,10 @@ struct InspectorDetailView: View {
                 }
             }
         }
+    }
+
+    private var hasWorkingTreeChanges: Bool {
+        !gitManager.stagedFiles.isEmpty || !gitManager.changedFiles.isEmpty
     }
 
     private func labeledValue(_ title: String, _ value: String) -> some View {

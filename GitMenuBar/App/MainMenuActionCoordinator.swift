@@ -415,12 +415,31 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
+    func publishInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+        await executeContextualMutation(allowsRepositorySwitch: true) { context in
+            let result = await gitManager.publishBranchAsync(branchName: branchName, context: context)
+            await finishInspectorMutation(result, context: context, failureTitle: "Publish Failed")
+            return result.inspectorActionResult
+        }
+    }
+
+    func pullInspectorBranch(rebase: Bool) async -> MainMenuInspectorActionResult {
+        await executeContextualMutation(allowsRepositorySwitch: true) { context in
+            let result = await gitManager.pullFromRemoteAsync(rebase: rebase, context: context)
+            await finishInspectorMutation(result, context: context, failureTitle: "Pull Failed")
+            return result.inspectorActionResult
+        }
+    }
+
     func applyInspectorStash(hash: String) async -> MainMenuInspectorActionResult {
         await executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.applyStashAsync(hash: hash, context: context)
             await finishInspectorMutation(result, context: context, failureTitle: "Apply Stash Failed")
             if gitManager.isCurrent(context) {
                 await gitManager.loadSelectedStashesAsync()
+            }
+            if case .success = result {
+                publishSuccess(title: "Stash applied", message: "Review the working tree to commit the restored changes.")
             }
             return result.inspectorActionResult
         }
@@ -434,6 +453,42 @@ final class MainMenuActionCoordinator: ObservableObject {
                 await gitManager.loadSelectedStashesAsync()
             }
             return result.inspectorActionResult
+        }
+    }
+
+    func saveInspectorStash(message: String = "GitMenuBar stash") async -> MainMenuInspectorActionResult {
+        await executeContextualMutation(allowsRepositorySwitch: true) { context in
+            let result = await gitManager.saveStashAsync(message: message, context: context)
+            await finishInspectorMutation(result, context: context, failureTitle: "Stash Failed")
+            if gitManager.isCurrent(context) {
+                await gitManager.loadSelectedStashesAsync()
+            }
+            return result.inspectorActionResult
+        }
+    }
+
+    func popInspectorStash(hash: String) async -> MainMenuInspectorActionResult {
+        await executeContextualMutation(allowsRepositorySwitch: true) { context in
+            let applied = await gitManager.applyStashAsync(hash: hash, context: context)
+            switch applied {
+            case .success:
+                break
+            case let .failure(error):
+                await finishInspectorMutation(.failure(error), context: context, failureTitle: "Apply Stash Failed")
+                if gitManager.isCurrent(context) {
+                    await gitManager.loadSelectedStashesAsync()
+                }
+                return .failed
+            }
+            let dropped = await gitManager.dropStashAsync(hash: hash, context: context)
+            await finishInspectorMutation(dropped, context: context, failureTitle: "Drop Stash Failed")
+            if gitManager.isCurrent(context) {
+                await gitManager.loadSelectedStashesAsync()
+            }
+            if case .success = dropped {
+                publishSuccess(title: "Stash popped", message: "Applied and dropped. Review the working tree to commit.")
+            }
+            return dropped.inspectorActionResult
         }
     }
 
