@@ -38,11 +38,7 @@ extension MainMenuView {
             behindCount: gitManager.behindCount,
             isDetachedHead: gitManager.isDetachedHead,
             isBranchSelectorPresented: showBranchSelector,
-            onBranchTap: toggleBranchSelectorPresentation,
-            onManage: {
-                dismissTransientPresentations()
-                selectedInspectorSelection = .branches
-            }
+            onBranchTap: toggleBranchSelectorPresentation
         )
         .popover(isPresented: $showBranchSelector, arrowEdge: .bottom) {
             branchSelectorOverlay
@@ -216,6 +212,24 @@ extension MainMenuView {
         )
     }
 
+    /// Presents the inspector as a sheet when the window is too narrow for
+    /// three inline columns. Dismissing clears the selection, matching the
+    /// Escape-clears-selection-first contract.
+    private var isCompactInspectorPresented: Binding<Bool> {
+        Binding(
+            get: {
+                presentationModel.isInspectorCompact
+                    && presentationModel.route == .main
+                    && selectedInspectorSelection != nil
+            },
+            set: { isPresented in
+                if !isPresented {
+                    selectedInspectorSelection = nil
+                }
+            }
+        )
+    }
+
     var mainView: some View {
         applyMainViewOverlays(
             to: NavigationSplitView(columnVisibility: projectsSidebarVisibility) {
@@ -232,27 +246,27 @@ extension MainMenuView {
                     onFetchAll: projectMonitor.fetchAll,
                     onOpenSettings: openSettingsWindow
                 )
-                .navigationSplitViewColumnWidth(WorkbenchMetrics.projectsMinimumWidth)
+                .navigationSplitViewColumnWidth(
+                    min: WorkbenchMetrics.projectsMinimumWidth,
+                    ideal: WorkbenchMetrics.projectsMinimumWidth,
+                    max: WorkbenchMetrics.projectsMaximumWidth
+                )
             } detail: {
                 HSplitView {
                     routeContent
-                        .frame(
-                            minWidth: WorkbenchMetrics.centralMinimumWidth,
-                            maxWidth: .infinity,
-                            maxHeight: .infinity,
-                            alignment: .top
-                        )
                         .padding(.top, WorkbenchMetrics.sectionSpacing)
                         .padding(.leading, WorkbenchMetrics.windowPadding)
                         .padding(.trailing, WorkbenchMetrics.windowPadding)
                         .padding(.bottom, WorkbenchMetrics.windowPadding)
                         .frame(
-                            maxWidth: .infinity,
+                            minWidth: WorkbenchMetrics.centralMinimumWidth,
+                            maxWidth: presentationModel.isInspectorCompact
+                                ? nil : WorkbenchMetrics.centralMaximumWidth,
                             maxHeight: .infinity,
                             alignment: .top
                         )
 
-                    if presentationModel.route == .main {
+                    if presentationModel.route == .main, !presentationModel.isInspectorCompact {
                         // ponytail: keep divider persistence out of SwiftUI layout.
                         // Use an AppKit split-view delegate if relaunch persistence becomes required.
                         inspectorContent
@@ -268,6 +282,10 @@ extension MainMenuView {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationSplitViewStyle(.balanced)
+            .sheet(isPresented: isCompactInspectorPresented) {
+                inspectorContent
+                    .frame(minWidth: WorkbenchMetrics.inspectorMinimumWidth)
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .onExitCommand {
                 if selectedInspectorSelection != nil {

@@ -44,6 +44,29 @@ final class MainMenuInspectorSelectionTests: XCTestCase {
                 + WorkbenchMetrics.centralMinimumWidth
                 + WorkbenchMetrics.inspectorDefaultWidth
                 + (WorkbenchMetrics.windowPadding * 2)
+                + (WorkbenchMetrics.splitDividerThickness * 2)
+        )
+    }
+
+    func testCompactInspectorThresholdMatchesWindowMinimums() {
+        XCTAssertEqual(
+            WorkbenchMetrics.mainWindowCompactMinimumWidth,
+            WorkbenchMetrics.projectsMinimumWidth
+                + WorkbenchMetrics.centralMinimumWidth
+                + (WorkbenchMetrics.windowPadding * 2)
+                + WorkbenchMetrics.splitDividerThickness
+        )
+        XCTAssertEqual(
+            WorkbenchMetrics.compactInspectorThresholdWidth,
+            WorkbenchMetrics.mainWindowMinimumWidth
+        )
+        XCTAssertGreaterThan(
+            WorkbenchMetrics.projectsMaximumWidth,
+            WorkbenchMetrics.projectsMinimumWidth
+        )
+        XCTAssertGreaterThan(
+            WorkbenchMetrics.centralMaximumWidth,
+            WorkbenchMetrics.centralMinimumWidth
         )
     }
 

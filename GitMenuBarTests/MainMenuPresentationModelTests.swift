@@ -124,4 +124,35 @@ final class MainMenuPresentationModelTests: XCTestCase {
         model.clearCreateRepoSuggestion()
         XCTAssertNil(model.createRepoSuggestionPath)
     }
+
+    func testInspectorStartsInline() {
+        XCTAssertFalse(MainMenuPresentationModel().isInspectorCompact)
+    }
+
+    func testNarrowContentWidthSwitchesInspectorToCompact() {
+        let model = MainMenuPresentationModel()
+
+        model.updateInspectorCompactMode(contentWidth: WorkbenchMetrics.compactInspectorThresholdWidth - 1)
+
+        XCTAssertTrue(model.isInspectorCompact)
+    }
+
+    func testWideContentWidthRestoresInlineInspectorWithHysteresis() {
+        let model = MainMenuPresentationModel()
+        model.updateInspectorCompactMode(contentWidth: 0)
+        XCTAssertTrue(model.isInspectorCompact)
+
+        // Inside the hysteresis band the compact mode holds.
+        model.updateInspectorCompactMode(
+            contentWidth: WorkbenchMetrics.compactInspectorThresholdWidth
+                + WorkbenchMetrics.compactInspectorHysteresis - 1
+        )
+        XCTAssertTrue(model.isInspectorCompact)
+
+        model.updateInspectorCompactMode(
+            contentWidth: WorkbenchMetrics.compactInspectorThresholdWidth
+                + WorkbenchMetrics.compactInspectorHysteresis
+        )
+        XCTAssertFalse(model.isInspectorCompact)
+    }
 }

@@ -38,19 +38,28 @@ enum WorkbenchMetrics {
     static let overlayCornerRadius: CGFloat = 16
     static let iconHitTarget: CGFloat = 28
     static let projectsMinimumWidth: CGFloat = 220
-    static let centralMinimumWidth: CGFloat = 440
+    static let projectsMaximumWidth: CGFloat = 360
+    static let centralMinimumWidth: CGFloat = 360
+    static let centralMaximumWidth: CGFloat = 500
     static let inspectorMinimumWidth: CGFloat = 320
-    static let splitDividerAllowance: CGFloat = 4
+    static let splitDividerThickness: CGFloat = 8
     static let inspectorDefaultWidth: CGFloat = 560
     static let mainWindowMinimumWidth: CGFloat = projectsMinimumWidth
         + centralMinimumWidth
         + inspectorMinimumWidth
         + (windowPadding * 2)
-        + splitDividerAllowance
+        + (splitDividerThickness * 2)
+    static let mainWindowCompactMinimumWidth: CGFloat = projectsMinimumWidth
+        + centralMinimumWidth
+        + (windowPadding * 2)
+        + splitDividerThickness
     static let mainWindowInitialWidth: CGFloat = projectsMinimumWidth
         + centralMinimumWidth
         + inspectorDefaultWidth
         + (windowPadding * 2)
+        + (splitDividerThickness * 2)
+    static let compactInspectorThresholdWidth: CGFloat = mainWindowMinimumWidth
+    static let compactInspectorHysteresis: CGFloat = 40
 }
 
 enum WorkbenchTypography {

@@ -8,7 +8,6 @@ struct BranchManagementControlsView: View {
     let isDetachedHead: Bool
     let isBranchSelectorPresented: Bool
     let onBranchTap: () -> Void
-    let onManage: () -> Void
 
     var body: some View {
         HStack {
@@ -23,13 +22,6 @@ struct BranchManagementControlsView: View {
             )
 
             Spacer()
-
-            Button("Branches") {
-                onManage()
-            }
-            .workbenchGhost()
-            .accessibilityHint("Shows branch and worktree management.")
-            .help("Manage branches and worktrees")
         }
     }
 }
@@ -42,8 +34,7 @@ struct BranchManagementControlsView: View {
         behindCount: 1,
         isDetachedHead: false,
         isBranchSelectorPresented: false,
-        onBranchTap: {},
-        onManage: {}
+        onBranchTap: {}
     )
     .padding()
     .frame(width: 380)

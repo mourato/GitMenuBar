@@ -21,7 +21,7 @@ dense, calm, and semantic—not a SaaS dashboard or marketing surface.
 - Layout persistence: the stable `NSWindow.FrameAutosaveName` in
   `StatusBarController`; the legacy `AppPreferences.Keys.inspectorColumnWidth`
   is read only as the inspector's initial preferred width.
-- Related decisions: [`docs/adr/0001-workbench-depth-and-token-naming.md`](adr/0001-workbench-depth-and-token-naming.md), [`docs/adr/0002-window-shell-material-and-titlebar-chrome.md`](adr/0002-window-shell-material-and-titlebar-chrome.md), [`docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md`](adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md), [`docs/adr/0012-always-open-inspector.md`](adr/0012-always-open-inspector.md), and [`docs/adr/0013-hsplitview-inspector-fallback.md`](adr/0013-hsplitview-inspector-fallback.md)
+- Related decisions: [`docs/adr/0001-workbench-depth-and-token-naming.md`](adr/0001-workbench-depth-and-token-naming.md), [`docs/adr/0002-window-shell-material-and-titlebar-chrome.md`](adr/0002-window-shell-material-and-titlebar-chrome.md), [`docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md`](adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md), [`docs/adr/0012-always-open-inspector.md`](adr/0012-always-open-inspector.md), [`docs/adr/0013-hsplitview-inspector-fallback.md`](adr/0013-hsplitview-inspector-fallback.md), and [`docs/adr/0014-compact-inspector-sheet.md`](adr/0014-compact-inspector-sheet.md)
 
 The former `.interface-design/system.md` is a legacy pointer. Do not create a
 second canonical design-system document. Reconcile code and this file when
@@ -58,11 +58,26 @@ commit workspace lives in the inspector under the Working Tree selection as
 commit composer → working tree → history, with the composer fixed above the
 workspace's single scroll owner. `NavigationSplitView` owns the Projects
 sidebar's width, selection, and collapse behavior, while `HSplitView` owns the
-center/inspector divider. While visible, the sidebar uses a fixed
-`WorkbenchMetrics.projectsMinimumWidth`; the native visibility control still
-supports collapsing it. The sidebar footer concentrates the quota summary,
+center/inspector divider. While visible, the sidebar is always present and
+user-resizable between `WorkbenchMetrics.projectsMinimumWidth` and
+`WorkbenchMetrics.projectsMaximumWidth`; only the native visibility control
+(toolbar toggle or sidebar hide action) collapses it. The center pane keeps a
+minimum of `WorkbenchMetrics.centralMinimumWidth` and a maximum of
+`WorkbenchMetrics.centralMaximumWidth`, so extra window width flows to the
+inspector. The sidebar footer concentrates the quota summary,
 Settings access, and collapse toggle in one bottom surface; the window toolbar
 keeps the sidebar toggle and centered title only.
+
+When the window content width drops below
+`WorkbenchMetrics.compactInspectorThresholdWidth`, the inspector leaves the
+split and renders the same selection in a sheet; it returns inline once the
+width clears the threshold plus `WorkbenchMetrics.compactInspectorHysteresis`.
+The sheet opens only while a contextual selection exists and dismissing it
+clears that selection, matching the Escape-clears-selection-first contract.
+The compact flag is owned by the presentation model and driven by the
+`NSWindow` content width, never by SwiftUI layout measurements. The window
+minimum swaps with the mode: `mainWindowMinimumWidth` for three inline
+columns, `mainWindowCompactMinimumWidth` while the inspector is sheeted.
 
 The inspector's `HSplitView` divider remains user-resizable. Its default width
 is owned by `WorkbenchMetrics.inspectorDefaultWidth`; an existing value under
@@ -97,7 +112,9 @@ The selected-project detail owner presents a resizable `HSplitView` inspector
 using the same `MainMenuInspectorSelection` value that identifies the central
 item. The inspector remains visible when that selection is nil and renders the
 existing empty state, so resizing never changes presentation or creates a
-duplicate panel or a fourth `NavigationSplitView` column.
+duplicate panel or a fourth `NavigationSplitView` column. Below the compact
+width threshold the same selection value drives a sheet instead of the split
+column, so there is still exactly one inspector surface.
 
 The inspector owns one scroll surface, keeps the project selection separate
 from contextual selection, and clears contextual selection first on Escape
