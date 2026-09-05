@@ -336,6 +336,15 @@ extension GitBranchService {
 
         Task {
             let repositoryPath = storedRepoPath
+            if let holder = await worktreeHoldingBranch(branchName, in: repositoryPath) {
+                await publishOnMainActor {
+                    completion(.failure(self.branchError(
+                        code: 4,
+                        description: "Branch '\(branchName)' is checked out in worktree at '\(holder)'. Remove the worktree first — Manage Branches → Cleanup removes both."
+                    )))
+                }
+                return
+            }
             // Try to delete the branch locally first
             let localResult = await runOnBackground {
                 self.executeGitCommand(in: repositoryPath, args: ["branch", "--delete", branchName])
@@ -361,6 +370,21 @@ extension GitBranchService {
                     }
                 }
             }
+        }
+    }
+
+    /// Returns the worktree path holding `branchName`, if any. Prunes stale
+    /// worktree metadata first so removed directories stop blocking deletes.
+    /// Returns nil when the worktree list is unavailable so the caller can
+    /// fall through to `git branch --delete` and report its own error.
+    private func worktreeHoldingBranch(_ branchName: String, in repositoryPath: String) async -> String? {
+        await runOnBackground {
+            _ = self.executeGitCommand(in: repositoryPath, args: ["worktree", "prune"])
+            let list = self.executeGitCommand(in: repositoryPath, args: ["worktree", "list", "--porcelain"])
+            guard !list.failure, let worktrees = try? WorktreeParser().parse(list.output) else {
+                return nil
+            }
+            return worktrees.first(where: { $0.branchName == branchName })?.path
         }
     }
 

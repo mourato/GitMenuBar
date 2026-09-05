@@ -217,6 +217,29 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertTrue(try runGit(["show-ref", "--verify", "refs/heads/feature/unmerged"], in: repoURL).contains("feature/unmerged"))
     }
 
+    func testDeleteBranchCheckedOutInWorktreeReportsWorktreePath() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["branch", "feature/linked"], in: repoURL)
+        let worktreeURL = temporaryTestPath(testName: #function + "-worktree")
+        try runGit(["worktree", "add", worktreeURL.path, "feature/linked"], in: repoURL)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let result: Result<Void, Error> = await withCheckedContinuation { continuation in
+            gitManager.deleteBranch(branchName: "feature/linked") {
+                continuation.resume(returning: $0)
+            }
+        }
+
+        switch result {
+        case .success:
+            XCTFail("A branch checked out in a worktree must not be deleted.")
+        case let .failure(error):
+            XCTAssertTrue(error.localizedDescription.contains(worktreeURL.path))
+            XCTAssertTrue(error.localizedDescription.contains("Cleanup"))
+        }
+        XCTAssertTrue(try runGit(["show-ref", "--verify", "refs/heads/feature/linked"], in: repoURL).contains("feature/linked"))
+    }
+
     func testBranchInfoModelProperties() {
         let local = BranchInfo(
             name: "feature/x",
