@@ -58,6 +58,9 @@ struct CleanupManagementContentView: View {
     let onDismissError: () -> Void
     let onReveal: (String) -> Void
     let onCopyPath: (String) -> Void
+    let onCleanUnit: (GitCleanupUnit) -> Void
+
+    @State private var diagnosticsExpanded = false
 
     private var units: [GitCleanupUnit] {
         guard let snapshot else { return [] }
@@ -79,15 +82,24 @@ struct CleanupManagementContentView: View {
 
     private var diagnosticWorktrees: [GitWorktreeCleanupInfo] {
         guard let snapshot else { return [] }
-        let candidatePaths = Set(snapshot.cleanupUnits.compactMap { $0.worktree?.worktree.path }.map(GitRepositoryContext.normalizedPath))
+        let candidatePaths = Set(
+            snapshot.cleanupUnits.compactMap { $0.worktree?.worktree.path }.map(GitRepositoryContext.normalizedPath)
+        )
         return snapshot.worktrees
-            .filter { !$0.status.isEligible && !candidatePaths.contains(GitRepositoryContext.normalizedPath($0.worktree.path)) }
+            .filter {
+                !$0.status.isEligible
+                    && !candidatePaths.contains(GitRepositoryContext.normalizedPath($0.worktree.path))
+            }
             .filter {
                 query.isEmpty
                     || $0.worktree.path.localizedCaseInsensitiveContains(query)
                     || ($0.worktree.branchName?.localizedCaseInsensitiveContains(query) ?? false)
             }
             .sorted { $0.worktree.path.localizedStandardCompare($1.worktree.path) == .orderedAscending }
+    }
+
+    private var diagnosticCount: Int {
+        diagnosticBranches.count + diagnosticWorktrees.count
     }
 
     private var eligibleCount: Int {
@@ -108,6 +120,10 @@ struct CleanupManagementContentView: View {
         max(0, (snapshot?.branches.filter { !$0.reference.isRemote }.count ?? 0) - eligibleCount - unknownCount)
     }
 
+    private var defaultBranchName: String {
+        snapshot?.defaultBranchName ?? "the default branch"
+    }
+
     var body: some View {
         if let errorMessage {
             InlineStatusBannerView(
@@ -116,25 +132,16 @@ struct CleanupManagementContentView: View {
             )
             .padding(16)
         } else if let snapshot {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
                 summary(snapshot: snapshot)
-                if units.isEmpty, diagnosticBranches.isEmpty, diagnosticWorktrees.isEmpty {
-                    Text("No cleanup units match your filter.")
+                if units.isEmpty, diagnosticCount == 0 {
+                    Text("No branches match your filter.")
                         .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(units) { unit in
-                        cleanupRow(unit)
-                    }
-                    ForEach(diagnosticBranches) { info in
-                        legacyCleanupRow(info)
-                    }
-                    ForEach(diagnosticWorktrees) { info in
-                        WorktreeManagementRowView(
-                            info: info,
-                            onReveal: { onReveal(info.worktree.path) },
-                            onCopyPath: { onCopyPath(info.worktree.path) }
-                        )
+                    eligibleSection
+                    if diagnosticCount > 0 {
+                        diagnosticsSection
                     }
                 }
             }
@@ -147,26 +154,71 @@ struct CleanupManagementContentView: View {
         }
     }
 
+    private var eligibleSection: some View {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+            Text("Safe to clean")
+                .font(WorkbenchTypography.sectionLabel)
+                .foregroundStyle(.secondary)
+            if units.isEmpty {
+                Text("No local branches are merged into \(defaultBranchName).")
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(units) { unit in
+                    cleanupRow(unit)
+                }
+            }
+        }
+    }
+
+    private var diagnosticsSection: some View {
+        DisclosureGroup(isExpanded: $diagnosticsExpanded) {
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+                Text("These local branches and worktrees are not safe to remove yet.")
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+                ForEach(diagnosticBranches) { info in
+                    diagnosticBranchRow(info)
+                }
+                ForEach(diagnosticWorktrees) { info in
+                    WorktreeManagementRowView(
+                        info: info,
+                        onReveal: { onReveal(info.worktree.path) },
+                        onCopyPath: { onCopyPath(info.worktree.path) }
+                    )
+                }
+            }
+            .padding(.top, WorkbenchMetrics.microSpacing)
+        } label: {
+            Text("Not eligible (\(diagnosticCount))")
+                .font(WorkbenchTypography.sectionLabel)
+        }
+        .accessibilityHint("Shows why branches and worktrees cannot be cleaned yet.")
+    }
+
     private func summary(snapshot: GitWorktreeSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
             HStack {
-                Label("Default branch: \(snapshot.defaultBranchName)", systemImage: "arrow.triangle.branch")
+                Label("Compared to \(snapshot.defaultBranchName)", systemImage: "arrow.triangle.branch")
                     .font(WorkbenchTypography.sectionLabel)
-                Spacer()
-                Text("Local refs")
+                Spacer(minLength: WorkbenchMetrics.compactSpacing)
+                Text("Local only")
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             }
-            Text(snapshot.analysisDescription)
-                .font(WorkbenchTypography.caption)
-                .foregroundStyle(.secondary)
-            HStack(spacing: 8) {
-                summaryCount(eligibleCount, title: "eligible", color: .green)
-                summaryCount(blockedCount, title: "blocked", color: .orange)
+            Text(
+                "A branch is safe to clean when its tip is already in \(snapshot.defaultBranchName). "
+                    + "Linked worktrees are removed before their branches."
+            )
+            .font(WorkbenchTypography.caption)
+            .foregroundStyle(.secondary)
+            HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                summaryCount(eligibleCount, title: "safe", color: .green)
+                summaryCount(blockedCount, title: "not eligible", color: .orange)
                 summaryCount(unknownCount, title: "unknown", color: .red)
             }
         }
-        .padding(10)
+        .padding(WorkbenchMetrics.compactSpacing)
         .background(
             Color(nsColor: .controlBackgroundColor),
             in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius)
@@ -174,7 +226,7 @@ struct CleanupManagementContentView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             "Cleanup analysis against \(snapshot.defaultBranchName). "
-                + "\(eligibleCount) eligible, \(blockedCount) blocked, \(unknownCount) unknown."
+                + "\(eligibleCount) safe, \(blockedCount) not eligible, \(unknownCount) unknown."
         )
     }
 
@@ -185,7 +237,7 @@ struct CleanupManagementContentView: View {
     }
 
     private func cleanupRow(_ unit: GitCleanupUnit) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
             Toggle(
                 "Select cleanup unit \(unit.branch.reference.name)",
                 isOn: Binding(
@@ -202,62 +254,50 @@ struct CleanupManagementContentView: View {
             .toggleStyle(.checkbox)
             .labelsHidden()
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(unit.isPaired ? "Branch \(unit.branch.reference.name)" : unit.branch.reference.name)
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                Text(unit.branch.reference.name)
                     .font(WorkbenchTypography.body)
-                if let worktree = unit.worktree {
-                    Text("Also remove worktree \(worktree.worktree.path) first")
-                        .font(WorkbenchTypography.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                } else {
-                    Text("Safe to clean: delete the merged local branch.")
-                        .font(WorkbenchTypography.caption)
-                        .foregroundStyle(.secondary)
-                }
+                    .lineLimit(1)
+                Text(eligibleDetail(for: unit))
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
             }
-            Spacer()
-            Text(unit.isPaired ? "Paired" : "Branch")
-                .font(WorkbenchTypography.captionStrong)
-                .foregroundStyle(.secondary)
+
+            Spacer(minLength: WorkbenchMetrics.compactSpacing)
+
+            CleanupStatusBadgeView(status: GitBranchCleanupStatus.mergedIntoDefault)
+
+            Button("Clean") {
+                onCleanUnit(unit)
+            }
+            .controlSize(.small)
+            .workbenchSecondary()
+            .accessibilityLabel("Clean \(unit.branch.reference.name)")
+            .accessibilityHint(
+                unit.isPaired
+                    ? "Reviews removing the linked worktree, then the merged branch."
+                    : "Reviews deleting the merged local branch."
+            )
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+        .padding(.vertical, WorkbenchMetrics.microSpacing)
         .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(unit.title + (unit.isPaired ? ", worktree removed first" : ", safe to clean"))
+        .accessibilityElement(children: .contain)
     }
 
-    private func legacyCleanupRow(_ info: GitBranchCleanupInfo) -> some View {
-        HStack(spacing: 8) {
-            if info.isEligible {
-                Toggle(
-                    "Select \(info.reference.name)",
-                    isOn: Binding(
-                        get: { selectedIDs.contains(GitCleanupTarget.localBranch(info).id) },
-                        set: { selected in
-                            let id = GitCleanupTarget.localBranch(info).id
-                            if selected {
-                                selectedIDs.insert(id)
-                            } else {
-                                selectedIDs.remove(id)
-                            }
-                        }
-                    )
-                )
-                .toggleStyle(.checkbox)
-                .labelsHidden()
-            } else {
-                Image(systemName: "minus.circle")
-                    .foregroundStyle(.secondary)
-                    .frame(width: 18)
-                    .accessibilityHidden(true)
-            }
+    private func diagnosticBranchRow(_ info: GitBranchCleanupInfo) -> some View {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+            Image(systemName: "minus.circle")
+                .foregroundStyle(.secondary)
+                .frame(width: 18)
+                .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
                 Text(info.reference.name)
                     .font(WorkbenchTypography.body)
+                    .lineLimit(1)
                 if let worktreePath = info.worktreePath {
                     Text("Checked out at \(worktreePath)")
                         .font(WorkbenchTypography.caption)
@@ -272,14 +312,23 @@ struct CleanupManagementContentView: View {
                         .lineLimit(2)
                 }
             }
-            Spacer()
+
+            Spacer(minLength: WorkbenchMetrics.compactSpacing)
+
             CleanupStatusBadgeView(status: info.status)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(info.isEligible ? Color.clear : WorkbenchPalette.hoverFill())
+        .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+        .padding(.vertical, WorkbenchMetrics.microSpacing)
+        .background(WorkbenchPalette.hoverFill())
         .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(cleanupAccessibilityLabel(for: info))
+    }
+
+    private func eligibleDetail(for unit: GitCleanupUnit) -> String {
+        if let worktree = unit.worktree {
+            return "Merged into \(defaultBranchName). Removes \(worktree.worktree.path) first."
+        }
+        return "Merged into \(defaultBranchName)."
     }
 }

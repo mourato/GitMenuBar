@@ -18,6 +18,11 @@ import SwiftUI
                     reference: GitBranchReference(name: "feature/active", headHash: "5678", isRemote: false),
                     status: .current,
                     worktreePath: nil
+                ),
+                GitBranchCleanupInfo(
+                    reference: GitBranchReference(name: "feature/wip", headHash: "9abc", isRemote: false),
+                    status: .notMerged,
+                    worktreePath: nil
                 )
             ]
         ),
@@ -26,7 +31,8 @@ import SwiftUI
         selectedIDs: .constant([]),
         onDismissError: {},
         onReveal: { _ in },
-        onCopyPath: { _ in }
+        onCopyPath: { _ in },
+        onCleanUnit: { _ in }
     )
     .frame(width: 560)
 }

@@ -18,6 +18,7 @@ struct InspectorBranchManagementView: View {
     @State private var cleanupExpanded = false
     @State private var deleteRemoteName: String?
     @State private var selectedCleanupIDs: Set<String> = []
+    @State private var pendingCleanupUnits: [GitCleanupUnit] = []
     @State private var showCleanupConfirmation = false
 
     var body: some View {
@@ -46,13 +47,11 @@ struct InspectorBranchManagementView: View {
             }
         }
         .sheet(isPresented: $showCleanupConfirmation) {
-            if let snapshot = gitManager.worktreeSnapshot {
-                CleanupConfirmationView(
-                    units: selectedCleanupUnits(snapshot),
-                    onCancel: { showCleanupConfirmation = false },
-                    onConfirm: runCleanup
-                )
-            }
+            CleanupConfirmationView(
+                units: pendingCleanupUnits,
+                onCancel: dismissCleanupConfirmation,
+                onConfirm: runCleanup
+            )
         }
     }
 
@@ -128,17 +127,20 @@ struct InspectorBranchManagementView: View {
                         selectedIDs: $selectedCleanupIDs,
                         onDismissError: {},
                         onReveal: revealWorktree,
-                        onCopyPath: copyPath
+                        onCopyPath: copyPath,
+                        onCleanUnit: { unit in
+                            presentCleanupConfirmation(units: [unit])
+                        }
                     )
-                    Button("Clean Up Selected") {
-                        showCleanupConfirmation = true
+                    Button("Clean Selected") {
+                        presentCleanupConfirmation(units: selectedCleanupUnits(snapshot))
                     }
                     .workbenchSecondary()
                     .disabled(actionCoordinator.isBusy || selectedCleanupUnits(snapshot).isEmpty)
                     .help(
                         selectedCleanupUnits(snapshot).isEmpty
-                            ? "Select a cleanup unit first."
-                            : "Review the selected cleanup items."
+                            ? "Select at least one safe branch first."
+                            : "Review the selected branches and worktrees."
                     )
                 }
             } else {
@@ -248,14 +250,25 @@ struct InspectorBranchManagementView: View {
         snapshot.cleanupUnits.filter { selectedCleanupIDs.contains($0.id) }
     }
 
+    private func presentCleanupConfirmation(units: [GitCleanupUnit]) {
+        guard !units.isEmpty else { return }
+        pendingCleanupUnits = units
+        showCleanupConfirmation = true
+    }
+
+    private func dismissCleanupConfirmation() {
+        showCleanupConfirmation = false
+        pendingCleanupUnits = []
+    }
+
     private func runCleanup() {
         guard let snapshot = gitManager.worktreeSnapshot else { return }
-        let units = selectedCleanupUnits(snapshot)
+        let units = pendingCleanupUnits
         guard !units.isEmpty else { return }
-        showCleanupConfirmation = false
+        dismissCleanupConfirmation()
         Task {
             _ = await actionCoordinator.performInspectorCleanup(units: units, snapshot: snapshot)
-            selectedCleanupIDs = []
+            selectedCleanupIDs.subtract(Set(units.map(\.id)))
         }
     }
 
