@@ -87,9 +87,38 @@ final class MonitoredProjectsStoreTests: XCTestCase {
 
         XCTAssertEqual(snapshot.classification, .needsAttention)
         XCTAssertEqual(snapshot.attentionPriority, .review)
-        XCTAssertTrue(snapshot.reasons.contains(.branchesWithoutUpstream))
         XCTAssertTrue(snapshot.reasons.contains(.unmergedBranches))
-        XCTAssertTrue(snapshot.reasons.contains(.stashes))
+        XCTAssertFalse(snapshot.reasons.contains(.branchesWithoutUpstream))
+        XCTAssertFalse(snapshot.reasons.contains(.stashes))
+    }
+
+    func testLocalOnlyBranchesDoNotNeedAttention() {
+        let snapshot = ProjectStatusSnapshot(
+            project: ProjectReference(path: "/tmp/project"), branchName: "agent/local-work", isDetachedHead: false,
+            stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
+            hasUpstream: false, lastRefreshedAt: Date(), lastErrorDescription: nil,
+            branchesWithoutUpstreamCount: 3, unpushedBranchCount: 0, unmergedBranchCount: 0, stashCount: 0,
+            lastActivityAt: nil, pullRequests: []
+        )
+
+        XCTAssertEqual(snapshot.classification, .clean)
+        XCTAssertEqual(snapshot.attentionPriority, .clean)
+        XCTAssertFalse(snapshot.reasons.contains(.noUpstream))
+        XCTAssertFalse(snapshot.reasons.contains(.branchesWithoutUpstream))
+    }
+
+    func testStashesAloneDoNotNeedAttention() {
+        let snapshot = ProjectStatusSnapshot(
+            project: ProjectReference(path: "/tmp/project"), branchName: "main", isDetachedHead: false,
+            stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero, aheadCount: 0, behindCount: 0,
+            hasUpstream: true, lastRefreshedAt: Date(), lastErrorDescription: nil,
+            branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0, unmergedBranchCount: 0, stashCount: 2,
+            lastActivityAt: nil, pullRequests: []
+        )
+
+        XCTAssertEqual(snapshot.classification, .clean)
+        XCTAssertEqual(snapshot.attentionPriority, .clean)
+        XCTAssertFalse(snapshot.reasons.contains(.stashes))
     }
 
     func testUnpushedBranchRequiresActionPriority() {
