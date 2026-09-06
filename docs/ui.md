@@ -122,6 +122,17 @@ while staying open. It does not add an automatic fetch, duplicate repository
 query, custom AppKit panel, or status-item lifecycle change. Durable rationale
 is recorded in [`ADR 0012`](adr/0012-always-open-inspector.md).
 
+## Branch Health cleanup
+
+Inspector Branch Health → Cleanup is the primary surface for safe local
+cleanup. Show eligible merged local branches first with empty default
+selection, per-row Clean, and Clean Selected. Both actions use the shared
+cleanup confirmation (including the extra worktree acknowledgement). Keep
+not-eligible diagnostics behind a collapsed disclosure. Cleanup is local-only
+and uses default-branch ancestry; do not batch-force unmerged branches from
+this surface. Project Cleanup remains the multi-repo shortcut and keeps the
+same eligibility contract.
+
 ## States, accessibility, and motion
 
 Affected surfaces must cover idle, hover, pressed, focused, selected, disabled,

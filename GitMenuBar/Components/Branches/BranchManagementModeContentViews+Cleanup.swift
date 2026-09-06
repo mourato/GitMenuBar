@@ -16,21 +16,21 @@ extension CleanupManagementContentView {
         case let .unknown(reason: value):
             "unknown status: \(value)"
         }
-        return "\(info.reference.name), \(reason), \(info.isEligible ? "eligible for cleanup" : "cleanup unavailable")"
+        return "\(info.reference.name), \(reason), cleanup unavailable"
     }
 
     func statusDetail(for status: GitBranchCleanupStatus) -> String? {
         switch status {
         case .mergedIntoDefault:
-            "Tip is reachable from the default branch."
+            "Tip is already in the default branch."
         case .notMerged:
-            "Tip is not reachable from the default branch."
+            "Tip is not in the default branch yet."
         case .protected:
             "Protected branch cannot be cleaned up."
         case .current:
             "Current branch cannot be cleaned up."
         case .checkedOutElsewhere:
-            nil
+            "Checked out in another worktree."
         case let .unknown(reason):
             "Status unavailable: \(reason)"
         }
