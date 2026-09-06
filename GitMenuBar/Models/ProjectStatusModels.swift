@@ -102,10 +102,12 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         return hasAttentionState && now.timeIntervalSince(lastActivityAt) >= Self.staleThreshold
     }
 
+    /// Local-only branches (no upstream) and stashes are intentional in agent
+    /// workflows; they do not drive project attention or sidebar state.
     private var hasAttentionState: Bool {
-        hasWorkingTreeChanges || aheadCount > 0 || behindCount > 0 || isDetachedHead || !hasUpstream
-            || branchesWithoutUpstreamCount > 0 || unpushedBranchCount > 0 || unmergedBranchCount > 0
-            || stashCount > 0 || !pullRequests.isEmpty
+        hasWorkingTreeChanges || aheadCount > 0 || behindCount > 0 || isDetachedHead
+            || unpushedBranchCount > 0 || unmergedBranchCount > 0
+            || !pullRequests.isEmpty
     }
 
     var classification: ProjectAttentionClassification {
@@ -125,9 +127,7 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         if pullRequests.contains(where: \.needsAction) {
             return .requiresAction
         }
-        if unmergedBranchCount > 0 || branchesWithoutUpstreamCount > 0 || stashCount > 0
-            || isDetachedHead || !hasUpstream
-        {
+        if unmergedBranchCount > 0 || isDetachedHead {
             return .review
         }
         if !pullRequests.isEmpty {
@@ -151,20 +151,11 @@ struct ProjectStatusSnapshot: Equatable, Identifiable {
         } else if behindCount > 0 {
             result.insert(.behind)
         }
-        if !hasUpstream {
-            result.insert(.noUpstream)
-        }
-        if branchesWithoutUpstreamCount > 0 {
-            result.insert(.branchesWithoutUpstream)
-        }
         if unpushedBranchCount > 0 {
             result.insert(.unpushedBranches)
         }
         if unmergedBranchCount > 0 {
             result.insert(.unmergedBranches)
-        }
-        if stashCount > 0 {
-            result.insert(.stashes)
         }
         if !pullRequests.isEmpty {
             result.insert(.openPullRequests)

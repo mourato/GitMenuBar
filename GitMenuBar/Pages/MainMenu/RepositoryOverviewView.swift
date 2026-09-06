@@ -42,8 +42,7 @@ struct RepositoryOverviewView: View {
                 title: "Branch Health",
                 visual: RepositoryOverviewCardVisual(systemImage: "arrow.triangle.branch", color: .purple, metric: branchHealthMetric),
                 selection: .branches,
-                isLoading: overview.unmergedBranches.isLoading || overview.unpushedBranches.isLoading
-                    || overview.branchesWithoutUpstream.isLoading,
+                isLoading: overview.unmergedBranches.isLoading || overview.unpushedBranches.isLoading,
                 content: branchHealthContent,
                 accessibilityValue: branchHealthAccessibilityValue
             )
@@ -183,7 +182,6 @@ struct RepositoryOverviewView: View {
         composedMetricText(
             (overview.unmergedBranches, "unmerged"),
             (overview.unpushedBranches, "unpushed"),
-            (overview.branchesWithoutUpstream, "no upstream"),
             emptyKnown: "All clear"
         )
     }
@@ -191,19 +189,17 @@ struct RepositoryOverviewView: View {
     private var branchHealthMetric: String {
         guard
             case let .known(unmerged) = overview.unmergedBranches,
-            case let .known(unpushed) = overview.unpushedBranches,
-            case let .known(withoutUpstream) = overview.branchesWithoutUpstream
+            case let .known(unpushed) = overview.unpushedBranches
         else {
             return "—"
         }
-        return "\(unmerged + unpushed + withoutUpstream)"
+        return "\(unmerged + unpushed)"
     }
 
     private var branchHealthAccessibilityValue: String {
         let summary = composedMetricText(
             (overview.unmergedBranches, "unmerged branches"),
             (overview.unpushedBranches, "unpushed branches"),
-            (overview.branchesWithoutUpstream, "branches without upstream"),
             emptyKnown: "All clear"
         )
         return appendLastChecked(to: summary)

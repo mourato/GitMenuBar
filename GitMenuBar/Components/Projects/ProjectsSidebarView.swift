@@ -257,11 +257,6 @@ struct ProjectsSidebarView: View {
                     + "\(snapshot.untrackedCount) untracked"
             )
         }
-        if snapshot.branchesWithoutUpstreamCount > 0 {
-            parts.append(
-                "\(snapshot.branchesWithoutUpstreamCount) branch\(snapshot.branchesWithoutUpstreamCount == 1 ? "" : "es") without upstream"
-            )
-        }
         if snapshot.unpushedBranchCount > 0 {
             parts.append(
                 "\(snapshot.unpushedBranchCount) branch\(snapshot.unpushedBranchCount == 1 ? "" : "es") with unpushed commits"
@@ -271,9 +266,6 @@ struct ProjectsSidebarView: View {
             parts.append(
                 "\(snapshot.unmergedBranchCount) branch\(snapshot.unmergedBranchCount == 1 ? "" : "es") not merged"
             )
-        }
-        if snapshot.stashCount > 0 {
-            parts.append("\(snapshot.stashCount) stash\(snapshot.stashCount == 1 ? "" : "es")")
         }
         if let pullRequestSummary = pullRequestSummary(for: snapshot) {
             parts.append(pullRequestSummary)
@@ -318,14 +310,9 @@ struct ProjectsSidebarView: View {
             if snapshot.behindCount > 0 {
                 parts.append("\(snapshot.behindCount) commit\(snapshot.behindCount == 1 ? "" : "s") behind")
             }
-        } else {
-            parts.append("No upstream")
         }
         if snapshot.unmergedBranchCount > 0 {
             parts.append("\(snapshot.unmergedBranchCount) branch\(snapshot.unmergedBranchCount == 1 ? "" : "es") not merged")
-        }
-        if snapshot.stashCount > 0 {
-            parts.append("\(snapshot.stashCount) stash\(snapshot.stashCount == 1 ? "" : "es")")
         }
         if let pullRequestSummary = pullRequestSummary(for: snapshot) {
             parts.append(pullRequestSummary)
