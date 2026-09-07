@@ -230,6 +230,7 @@ struct CleanupManagementContentView: View {
                     Button("Remove Worktree", role: .destructive) {
                         onRemoveWorktree(remove)
                     }
+                    .disabled(!remove.canPrimaryClean)
                     if snapshot?.canForceRemove(worktree) == true, let onForceRemove {
                         Button("Force Remove Worktree", role: .destructive) { onForceRemove(worktree) }
                     }
