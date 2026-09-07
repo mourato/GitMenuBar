@@ -319,7 +319,7 @@ extension GitBranchService {
         }
     }
 
-    func deleteBranch(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
+    func deleteBranch(branchName: String, force: Bool = false, completion: @escaping (Result<Void, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
             completion(.failure(branchError(code: 1, description: "No repository path configured")))
             return
@@ -347,7 +347,10 @@ extension GitBranchService {
             }
             // Try to delete the branch locally first
             let localResult = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["branch", "--delete", branchName])
+                self.executeGitCommand(
+                    in: repositoryPath,
+                    args: force ? ["branch", "--delete", "--force", branchName] : ["branch", "--delete", branchName]
+                )
             }
 
             if localResult.failure {

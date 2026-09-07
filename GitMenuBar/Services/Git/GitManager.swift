@@ -2127,8 +2127,8 @@ class GitManager: ObservableObject {
         branchService.mergeBranch(fromBranch: fromBranch, completion: completion)
     }
 
-    func deleteBranch(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        branchService.deleteBranch(branchName: branchName, completion: completion)
+    func deleteBranch(branchName: String, force: Bool = false, completion: @escaping (Result<Void, Error>) -> Void) {
+        branchService.deleteBranch(branchName: branchName, force: force, completion: completion)
     }
 
     func renameBranch(oldName: String, newName: String, completion: @escaping (Result<Void, Error>) -> Void) {

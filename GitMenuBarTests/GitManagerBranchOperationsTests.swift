@@ -217,6 +217,31 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertTrue(try runGit(["show-ref", "--verify", "refs/heads/feature/unmerged"], in: repoURL).contains("feature/unmerged"))
     }
 
+    func testDeleteBranchCanForceDeleteUnmergedBranch() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["checkout", "-b", "feature/unmerged"], in: repoURL)
+        try "unmerged\n".write(
+            to: repoURL.appendingPathComponent("unmerged.txt"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try runGit(["add", "."], in: repoURL)
+        try runGit(["commit", "-m", "feat: unmerged"], in: repoURL)
+        try runGit(["checkout", "main"], in: repoURL)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let result: Result<Void, Error> = await withCheckedContinuation { continuation in
+            gitManager.deleteBranch(branchName: "feature/unmerged", force: true) {
+                continuation.resume(returning: $0)
+            }
+        }
+
+        if case let .failure(error) = result {
+            XCTFail("An explicitly forced branch delete should succeed: \(error.localizedDescription)")
+        }
+        XCTAssertThrowsError(try runGit(["show-ref", "--verify", "refs/heads/feature/unmerged"], in: repoURL))
+    }
+
     func testDeleteBranchCheckedOutInWorktreeReportsWorktreePath() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         try runGit(["branch", "feature/linked"], in: repoURL)

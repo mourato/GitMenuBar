@@ -530,13 +530,13 @@ final class MainMenuActionCoordinator: ObservableObject {
         return result
     }
 
-    func deleteSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
+    func deleteSidePanelBranch(_ branchName: String, force: Bool = false) async -> MainMenuSidePanelActionResult {
         let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return .skipped
         }
         let result = await executeCallbackMutation(failureTitle: "Delete Failed") { completion in
-            gitManager.deleteBranch(branchName: trimmed, completion: completion)
+            gitManager.deleteBranch(branchName: trimmed, force: force, completion: completion)
         }
         await reloadSidePanelBranchData()
         return result

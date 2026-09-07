@@ -232,6 +232,9 @@ extension MainMenuView {
 
     var deleteBranchWarningMessage: String {
         let protectedBranches = ["main", "master", "develop"]
+        if gitManager.unmergedIntoDefaultBranches.contains(branchNameToDelete) {
+            return "WARNING: This branch is not merged into the default branch. Deleting it permanently removes its branch reference and may make its commits harder to recover."
+        }
         if protectedBranches.contains(branchNameToDelete) {
             return "WARNING: '\(branchNameToDelete)' is a primary branch. Deleting it may cause serious issues."
         }
