@@ -40,9 +40,9 @@ extension GitBranchService {
                 .components(separatedBy: .newlines)
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
-                .filter { $0 != "HEAD" && $0 != "origin/HEAD" }
-                .compactMap { branch in
-                    branch.hasPrefix("origin/") ? String(branch.dropFirst(7)) : nil
+                .filter { $0 != "HEAD" && !$0.hasSuffix("/HEAD") }
+                .map { branch in
+                    branch.hasPrefix("origin/") ? String(branch.dropFirst(7)) : branch
                 }
         }
     }
@@ -56,14 +56,7 @@ extension GitBranchService {
         guard !repositoryPath.isEmpty else { return "main" }
 
         let detected: String? = await runOnBackground { () -> String? in
-            let result = self.executeGitCommand(
-                in: repositoryPath,
-                args: ["symbolic-ref", "refs/remotes/origin/HEAD"]
-            )
-            if !result.failure, let last = result.output.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "/").last {
-                return last
-            }
-            return nil
+            GitCleanupRepository(runner: self.commandRunner).defaultBranchName(in: repositoryPath)
         }
 
         if let detected, !detected.isEmpty {
@@ -113,7 +106,7 @@ extension GitBranchService {
                     "for-each-ref",
                     "--format=%(refname)%00%(upstream:short)%00%(committerdate:unix)%00%(upstream:track,nobracket)%00",
                     "refs/heads",
-                    "refs/remotes/origin"
+                    "refs/remotes"
                 ]
             ).output
         }
@@ -139,11 +132,16 @@ extension GitBranchService {
             let date = TimeInterval(fields[2]).map(Date.init(timeIntervalSince1970:))
             let track = fields[3]
 
-            if fullRef.hasPrefix("refs/remotes/origin/") {
-                let name = String(fullRef.dropFirst("refs/remotes/origin/".count))
-                guard !name.isEmpty, name != "HEAD" else { continue }
-                guard !localNames.contains(name) else { continue }
-                infos.append(BranchInfo(name: name, isLocal: false, isRemote: true, isCurrent: false, trackingStatus: .noRemote, lastCommitDate: date))
+            if fullRef.hasPrefix("refs/remotes/") {
+                let remoteRef = String(fullRef.dropFirst("refs/remotes/".count))
+                let remoteParts = remoteRef.split(separator: "/", maxSplits: 1).map(String.init)
+                guard remoteParts.count == 2, !remoteParts[1].isEmpty, remoteParts[1] != "HEAD" else { continue }
+                let remoteName = remoteParts[0]
+                let name = remoteParts[1]
+                guard remoteName != "origin" || !localNames.contains(name) else { continue }
+                var info = BranchInfo(name: name, isLocal: false, isRemote: true, isCurrent: false, trackingStatus: .noRemote, lastCommitDate: date)
+                info.remoteName = remoteName
+                infos.append(info)
                 continue
             }
 
@@ -162,7 +160,7 @@ extension GitBranchService {
             )
         }
 
-        return infos.filter { !$0.isRemote || !localNames.contains($0.name) }
+        return infos.filter { !$0.isRemote || $0.remoteName != "origin" || !localNames.contains($0.name) }
     }
 
     /// Local branches whose commits are not reachable from the selected local default branch.
@@ -186,7 +184,14 @@ extension GitBranchService {
                 .components(separatedBy: .newlines)
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty && $0 != "HEAD" && $0 != defaultBranch }
+                .filter { !self.isCherryEquivalent(in: repositoryPath, upstream: defaultBranch, branch: $0) }
         }
+    }
+
+    private nonisolated func isCherryEquivalent(in repositoryPath: String, upstream: String, branch: String) -> Bool {
+        let result = executeGitCommand(in: repositoryPath, args: ["cherry", upstream, branch])
+        guard !result.failure else { return false }
+        return !result.output.split(whereSeparator: \.isNewline).contains { $0.first == "+" }
     }
 
     // swiftlint:disable:next cyclomatic_complexity

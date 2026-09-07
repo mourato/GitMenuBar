@@ -200,8 +200,7 @@ final class ProjectCleanupStore: ObservableObject {
 
     private static func defaultAnalyzer(runner: GitCommandRunner) -> @Sendable (ProjectReference, Set<String>) -> ProjectCleanupAnalysisResult {
         { project, protectedPaths in
-            let defaultResult = runner.runGitCommand(in: project.path, args: ["symbolic-ref", "refs/remotes/origin/HEAD"])
-            let detected = defaultResult.failure ? "" : defaultResult.output.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "/").last.map(String.init) ?? ""
+            let detected = GitCleanupRepository(runner: runner).defaultBranchName(in: project.path) ?? ""
             let branches = runner.runGitCommand(in: project.path, args: ["branch", "--format=%(refname:short)"]).output.components(separatedBy: .newlines)
             let defaultBranch = !detected.isEmpty ? detected : branches.contains("main") ? "main" : branches.contains("master") ? "master" : "main"
             switch GitCleanupRepository(runner: runner).analyze(repositoryPath: project.path, defaultBranchName: defaultBranch, protectedWorktreePaths: protectedPaths) {

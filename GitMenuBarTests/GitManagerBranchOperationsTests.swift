@@ -84,6 +84,34 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertFalse(remoteBranches.contains(where: { $0.contains("origin/") }))
     }
 
+    func testFetchRemoteBranchesAsyncIncludesConfiguredNonOriginRemote() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["remote", "add", "company", repoURL.path], in: repoURL)
+        let headSHA = try runGit(["rev-parse", "HEAD"], in: repoURL)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        try runGit(["update-ref", "refs/remotes/company/feature/shared", headSHA], in: repoURL)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let remoteBranches = await gitManager.fetchRemoteBranchesAsync()
+
+        XCTAssertTrue(remoteBranches.contains("company/feature/shared"), "Expected all configured remotes, got: \(remoteBranches)")
+    }
+
+    func testGetDefaultBranchNameAsyncUsesConfiguredRemoteHead() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["branch", "-m", "trunk"], in: repoURL)
+        try runGit(["remote", "add", "company", repoURL.path], in: repoURL)
+        let headSHA = try runGit(["rev-parse", "refs/heads/trunk"], in: repoURL)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        try runGit(["update-ref", "refs/remotes/company/trunk", headSHA], in: repoURL)
+        try runGit(["symbolic-ref", "refs/remotes/company/HEAD", "refs/remotes/company/trunk"], in: repoURL)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+
+        let defaultBranch = await gitManager.getDefaultBranchNameAsync()
+        XCTAssertEqual(defaultBranch, "trunk")
+    }
+
     func testResolveBranchInfoAsyncMarksCurrentBranch() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
@@ -217,6 +245,31 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertTrue(try runGit(["show-ref", "--verify", "refs/heads/feature/unmerged"], in: repoURL).contains("feature/unmerged"))
     }
 
+    func testDeleteBranchCanForceDeleteUnmergedBranch() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["checkout", "-b", "feature/unmerged"], in: repoURL)
+        try "unmerged\n".write(
+            to: repoURL.appendingPathComponent("unmerged.txt"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try runGit(["add", "."], in: repoURL)
+        try runGit(["commit", "-m", "feat: unmerged"], in: repoURL)
+        try runGit(["checkout", "main"], in: repoURL)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let result: Result<Void, Error> = await withCheckedContinuation { continuation in
+            gitManager.deleteBranch(branchName: "feature/unmerged", force: true) {
+                continuation.resume(returning: $0)
+            }
+        }
+
+        if case let .failure(error) = result {
+            XCTFail("An explicitly forced branch delete should succeed: \(error.localizedDescription)")
+        }
+        XCTAssertThrowsError(try runGit(["show-ref", "--verify", "refs/heads/feature/unmerged"], in: repoURL))
+    }
+
     func testDeleteBranchCheckedOutInWorktreeReportsWorktreePath() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         try runGit(["branch", "feature/linked"], in: repoURL)
@@ -286,7 +339,8 @@ final class GitManagerBranchOperationsTests: XCTestCase {
             "refs/heads/origin", "", "105", "",
             "refs/remotes/origin/remote-only", "", "106", "",
             "refs/remotes/origin/HEAD", "", "107", "",
-            "refs/heads/malformed", "origin/malformed", "108", "wat"
+            "refs/remotes/upstream/upstream-only", "", "108", "",
+            "refs/heads/malformed", "origin/malformed", "109", "wat"
         ]
         let output = stride(from: 0, to: fields.count, by: 4)
             .map { fields[$0 ..< $0 + 4].joined(separator: "\0") + "\0" }
@@ -302,6 +356,8 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertEqual(infos.first { $0.name == "none" }?.trackingStatus, .noRemote)
         XCTAssertEqual(infos.first { $0.name == "malformed" }?.trackingStatus, .unknown)
         XCTAssertEqual(infos.first { $0.name == "remote-only" }?.displayName, "origin/remote-only")
+        XCTAssertEqual(infos.first { $0.name == "upstream-only" }?.displayName, "upstream/upstream-only")
+        XCTAssertEqual(infos.first { $0.name == "upstream-only" }?.remoteName, "upstream")
         XCTAssertTrue(infos.first { $0.name == "origin" }?.isLocal == true)
         XCTAssertFalse(infos.contains { $0.name == "HEAD" })
         XCTAssertTrue(infos.first { $0.name == "main" }?.isCurrent == true)

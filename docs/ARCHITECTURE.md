@@ -49,7 +49,8 @@ Use this rule order:
 - A worktree is one checkout managed by `git worktree`; linked worktrees have
   their own directory while sharing the repository's object database and refs.
 - A branch is considered merged for cleanup when its tip is reachable from the
-  selected local default branch or Git reports it as cherry-equivalent. Remote
+  selected local default branch or Git reports its commits as
+  cherry-equivalent. Remote
   status uses the last fetched remote-tracking refs and does not imply a
   network fetch.
 - Only local branches and clean, linked, attached worktrees can be eligible

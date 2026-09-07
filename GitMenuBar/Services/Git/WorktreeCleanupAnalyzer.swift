@@ -15,6 +15,7 @@ struct GitWorktreeAnalysisInput {
     let remoteBranches: [GitBranchReference]
     let mergedLocalBranchNames: Set<String>
     let mergedRemoteBranchNames: Set<String>?
+    let mergedRemoteBranchNamesByRemote: [String: Set<String>]?
     let analysisDescription: String
     let protectedWorktreePaths: Set<String>
 
@@ -29,7 +30,8 @@ struct GitWorktreeAnalysisInput {
         mergedLocalBranchNames: Set<String>,
         mergedRemoteBranchNames: Set<String>?,
         analysisDescription: String,
-        protectedWorktreePaths: Set<String> = []
+        protectedWorktreePaths: Set<String> = [],
+        mergedRemoteBranchNamesByRemote: [String: Set<String>]? = nil
     ) {
         self.defaultBranchName = defaultBranchName
         self.defaultBranchRef = defaultBranchRef
@@ -40,6 +42,7 @@ struct GitWorktreeAnalysisInput {
         self.remoteBranches = remoteBranches
         self.mergedLocalBranchNames = mergedLocalBranchNames
         self.mergedRemoteBranchNames = mergedRemoteBranchNames
+        self.mergedRemoteBranchNamesByRemote = mergedRemoteBranchNamesByRemote
         self.analysisDescription = analysisDescription
         self.protectedWorktreePaths = Set(protectedWorktreePaths.map(Self.standardizedPath))
     }
@@ -72,23 +75,29 @@ struct WorktreeCleanupAnalyzer {
                 reference: reference,
                 status: branchStatus(
                     for: reference,
+                    defaultBranchName: input.defaultBranchName,
                     currentBranchName: input.currentBranchName,
                     worktreePath: worktreeByBranch[reference.name],
                     mergedNames: input.mergedLocalBranchNames
                 ),
-                worktreePath: worktreeByBranch[reference.name]
+                worktreePath: worktreeByBranch[reference.name],
+                isMergedIntoDefaultHint: input.mergedLocalBranchNames.contains(reference.name)
             )
         } + input.remoteBranches.map { reference in
-            GitBranchCleanupInfo(
+            let mergedNames = input.mergedRemoteBranchNamesByRemote?[reference.remoteName ?? "origin"]
+                ?? input.mergedRemoteBranchNames
+            return GitBranchCleanupInfo(
                 reference: reference,
                 status: branchStatus(
                     for: reference,
+                    defaultBranchName: input.defaultBranchName,
                     currentBranchName: nil,
                     worktreePath: nil,
-                    mergedNames: input.mergedRemoteBranchNames,
+                    mergedNames: mergedNames,
                     unknownReason: "Remote default branch ref is unavailable."
                 ),
-                worktreePath: nil
+                worktreePath: nil,
+                isMergedIntoDefaultHint: mergedNames?.contains(reference.name)
             )
         }
 
@@ -128,18 +137,24 @@ struct WorktreeCleanupAnalyzer {
                 repositoryIdentity: snapshot.repositoryIdentity,
                 branches: snapshot.branches,
                 worktrees: snapshot.worktrees
+            ),
+            managementUnits: GitCleanupUnit.buildManagementUnits(
+                repositoryIdentity: snapshot.repositoryIdentity,
+                branches: snapshot.branches,
+                worktrees: snapshot.worktrees
             )
         )
     }
 
     private func branchStatus(
         for reference: GitBranchReference,
+        defaultBranchName: String,
         currentBranchName: String?,
         worktreePath: String?,
         mergedNames: Set<String>?,
         unknownReason: String = "Merge status is unavailable."
     ) -> GitBranchCleanupStatus {
-        if Self.protectedBranchNames.contains(reference.name) {
+        if Self.protectedBranchNames.contains(reference.name) || reference.name == defaultBranchName {
             return .protected
         }
         if !reference.isRemote, reference.name == currentBranchName {
@@ -185,6 +200,9 @@ struct WorktreeCleanupAnalyzer {
         case .clean:
             break
         }
+        if protectedWorktreePaths.contains(standardizedPath(worktree.path)) {
+            return .unknown(reason: "Worktree is monitored as a project and protected from cleanup.")
+        }
         guard let branchName = worktree.branchName else {
             return .detached
         }
@@ -193,9 +211,6 @@ struct WorktreeCleanupAnalyzer {
         }
         guard mergedLocalBranchNames.contains(branchName) else {
             return .branchNotMerged
-        }
-        if protectedWorktreePaths.contains(standardizedPath(worktree.path)) {
-            return .unknown(reason: "Worktree is monitored as a project and protected from cleanup.")
         }
         return .eligible
     }

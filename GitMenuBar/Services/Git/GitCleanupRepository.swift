@@ -25,12 +25,23 @@ struct GitCleanupRepository {
         guard let worktrees = queryWorktrees(repositoryPath),
               let localBranches = queryReferences(repositoryPath, remote: false),
               let remoteBranches = queryReferences(repositoryPath, remote: true),
-              let mergedLocal = queryMerged(repositoryPath, ref: defaultBranchRef, scope: "refs/heads")
+              let reachableLocal = queryMerged(repositoryPath, ref: defaultBranchRef, scope: "refs/heads")
         else {
             return .failure(error("Failed to analyze Git worktrees and branches."))
         }
+        let mergedLocal = reachableLocal.union(
+            cherryPickedBranches(
+                repositoryPath,
+                upstreamRef: defaultBranchRef,
+                references: localBranches
+            )
+        )
         let currentBranch = queryCurrentBranch(repositoryPath)
-        let mergedRemote = queryMergedRemote(repositoryPath, defaultBranchName: defaultBranchName)
+        let mergedRemote = queryMergedRemote(
+            repositoryPath,
+            defaultBranchName: defaultBranchName,
+            references: remoteBranches
+        )
         let input = GitWorktreeAnalysisInput(
             defaultBranchName: defaultBranchName,
             defaultBranchRef: defaultBranchRef,
@@ -40,9 +51,10 @@ struct GitCleanupRepository {
             localBranches: localBranches,
             remoteBranches: remoteBranches,
             mergedLocalBranchNames: mergedLocal,
-            mergedRemoteBranchNames: mergedRemote,
-            analysisDescription: "Local Git refs; remote status uses existing remote-tracking refs.",
-            protectedWorktreePaths: protectedWorktreePaths
+            mergedRemoteBranchNames: nil,
+            analysisDescription: "Local Git refs; cherry-picked commits count as merged; remote status uses existing remote-tracking refs.",
+            protectedWorktreePaths: protectedWorktreePaths,
+            mergedRemoteBranchNamesByRemote: mergedRemote
         )
         let snapshot = WorktreeCleanupAnalyzer().analyze(input)
         return .success(GitCleanupAnalysis(
@@ -59,6 +71,11 @@ struct GitCleanupRepository {
                 repositoryIdentity: identity,
                 protectedWorktreePaths: snapshot.protectedWorktreePaths,
                 cleanupUnits: GitCleanupUnit.build(
+                    repositoryIdentity: identity,
+                    branches: snapshot.branches,
+                    worktrees: snapshot.worktrees
+                ),
+                managementUnits: GitCleanupUnit.buildManagementUnits(
                     repositoryIdentity: identity,
                     branches: snapshot.branches,
                     worktrees: snapshot.worktrees
@@ -88,7 +105,10 @@ struct GitCleanupRepository {
                 projectName: projectName,
                 detail: cleanupDetail(for: unit)
             ))
-            let item = GitCleanupItemResult(unit: unit, status: cleanup(unit, snapshot: snapshot, repositoryPath: repositoryPath))
+            let status = unitValidationReason(unit, snapshot: snapshot)
+                .map(GitCleanupItemResultStatus.skipped)
+                ?? cleanup(unit, snapshot: snapshot, repositoryPath: repositoryPath)
+            let item = GitCleanupItemResult(unit: unit, status: status)
             progress?(.init(
                 completed: index + 1,
                 total: units.count,
@@ -120,13 +140,17 @@ struct GitCleanupRepository {
                 projectName: projectName,
                 detail: "Cleaning \(target.title)"
             ))
-            let status: GitCleanupItemResultStatus = switch target {
-            case let .localBranch(info):
-                cleanupBranch(info, snapshot: snapshot, repositoryPath: repositoryPath, requireDetached: true)
-            case let .worktree(info):
-                cleanupWorktree(info, snapshot: snapshot, repositoryPath: repositoryPath)
-            case let .remoteBranch(info):
-                cleanupRemote(info, snapshot: snapshot, repositoryPath: repositoryPath)
+            let status: GitCleanupItemResultStatus = if let reason = targetValidationReason(target, snapshot: snapshot) {
+                .skipped(reason: reason)
+            } else {
+                switch target {
+                case let .localBranch(info):
+                    cleanupBranch(info, snapshot: snapshot, repositoryPath: repositoryPath, requireDetached: true, allowUnmerged: false)
+                case let .worktree(info):
+                    cleanupWorktree(info, snapshot: snapshot, repositoryPath: repositoryPath, allowUnmerged: false)
+                case let .remoteBranch(info):
+                    cleanupRemote(info, snapshot: snapshot, repositoryPath: repositoryPath)
+                }
             }
             progress?(.init(
                 completed: index + 1,
@@ -143,15 +167,41 @@ struct GitCleanupRepository {
         snapshot: GitWorktreeSnapshot,
         repositoryPath: String
     ) -> GitCleanupItemResultStatus {
+        let allowUnmerged = unit.isDangerousBranchDeletion
         if unit.isForceWorktreeRemoval {
             guard let worktree = unit.worktree else {
                 return .skipped(reason: "The worktree is no longer available for removal.")
             }
             return forceRemoveWorktree(worktree, snapshot: snapshot, repositoryPath: repositoryPath)
         }
-        guard unit.branch.status == .mergedIntoDefault || unit.branch.status.isCheckedOutElsewhere else { return .skipped(reason: "The branch is no longer eligible for cleanup.") }
+        if unit.isWorktreeOnlyAction {
+            guard let worktree = unit.worktree else {
+                return .skipped(reason: "The worktree is no longer available for removal.")
+            }
+            return cleanupWorktree(
+                worktree,
+                snapshot: snapshot,
+                repositoryPath: repositoryPath,
+                allowUnmerged: true
+            )
+        }
+        if unit.isBranchOnlyAction {
+            return cleanupBranch(
+                unit.branch,
+                snapshot: snapshot,
+                repositoryPath: repositoryPath,
+                requireDetached: true,
+                allowUnmerged: allowUnmerged
+            )
+        }
         if let worktree = unit.worktree {
-            let worktreeStatus = cleanupWorktreeValidation(worktree, branchName: unit.branch.reference.name, snapshot: snapshot, repositoryPath: repositoryPath)
+            let worktreeStatus = cleanupWorktreeValidation(
+                worktree,
+                branchName: unit.branch.reference.name,
+                snapshot: snapshot,
+                repositoryPath: repositoryPath,
+                allowUnmerged: allowUnmerged
+            )
             if let worktreeStatus {
                 return .skipped(reason: worktreeStatus)
             }
@@ -160,16 +210,36 @@ struct GitCleanupRepository {
                 return .failed(reason: "Failed to remove '\(worktree.worktree.path)': \(removed.output)")
             }
             // `git branch --delete` is the final detached-worktree guard after a successful removal.
-            let branchStatus = cleanupBranchValidation(unit.branch, snapshot: snapshot, repositoryPath: repositoryPath, requireDetached: false)
+            let branchStatus = cleanupBranchValidation(
+                unit.branch,
+                snapshot: snapshot,
+                repositoryPath: repositoryPath,
+                requireDetached: true,
+                allowUnmerged: allowUnmerged
+            )
             if let branchStatus {
                 return .partiallySucceeded(reason: "Worktree removed, but the branch was kept: \(branchStatus)")
             }
-            let deleted = execute(repositoryPath, ["branch", "--delete", unit.branch.reference.name])
+            let deleted = execute(
+                repositoryPath,
+                branchDeleteArguments(
+                    for: unit.branch,
+                    defaultBranchRef: snapshot.defaultBranchRef,
+                    repositoryPath: repositoryPath,
+                    allowUnmerged: allowUnmerged
+                )
+            )
             return deleted.failure
                 ? .partiallySucceeded(reason: "Worktree removed, but branch deletion failed: \(deleted.output)")
                 : .succeeded
         }
-        return cleanupBranch(unit.branch, snapshot: snapshot, repositoryPath: repositoryPath, requireDetached: true)
+        return cleanupBranch(
+            unit.branch,
+            snapshot: snapshot,
+            repositoryPath: repositoryPath,
+            requireDetached: true,
+            allowUnmerged: allowUnmerged
+        )
     }
 
     private func forceRemoveWorktree(
@@ -226,38 +296,92 @@ struct GitCleanupRepository {
         return nil
     }
 
-    private func cleanupBranch(_ info: GitBranchCleanupInfo, snapshot: GitWorktreeSnapshot, repositoryPath: String, requireDetached: Bool) -> GitCleanupItemResultStatus {
-        guard let reason = cleanupBranchValidation(info, snapshot: snapshot, repositoryPath: repositoryPath, requireDetached: requireDetached) else {
-            let result = execute(repositoryPath, ["branch", "--delete", info.reference.name])
+    private func cleanupBranch(
+        _ info: GitBranchCleanupInfo,
+        snapshot: GitWorktreeSnapshot,
+        repositoryPath: String,
+        requireDetached: Bool,
+        allowUnmerged: Bool
+    ) -> GitCleanupItemResultStatus {
+        guard let reason = cleanupBranchValidation(
+            info,
+            snapshot: snapshot,
+            repositoryPath: repositoryPath,
+            requireDetached: requireDetached,
+            allowUnmerged: allowUnmerged
+        ) else {
+            let result = execute(
+                repositoryPath,
+                branchDeleteArguments(
+                    for: info,
+                    defaultBranchRef: snapshot.defaultBranchRef,
+                    repositoryPath: repositoryPath,
+                    allowUnmerged: allowUnmerged
+                )
+            )
             return result.failure ? .failed(reason: "Failed to delete '\(info.reference.name)': \(result.output)") : .succeeded
         }
         return .skipped(reason: reason)
     }
 
-    private func cleanupBranchValidation(_ info: GitBranchCleanupInfo, snapshot: GitWorktreeSnapshot, repositoryPath: String, requireDetached: Bool = true) -> String? {
-        guard !info.reference.isRemote, info.status == .mergedIntoDefault || info.status.isCheckedOutElsewhere else { return "The branch is no longer eligible for local cleanup." }
+    private func cleanupBranchValidation(
+        _ info: GitBranchCleanupInfo,
+        snapshot: GitWorktreeSnapshot,
+        repositoryPath: String,
+        requireDetached: Bool = true,
+        allowUnmerged: Bool = false
+    ) -> String? {
+        guard !info.reference.isRemote else { return "The branch is no longer eligible for local cleanup." }
+        switch info.status {
+        case .protected, .current, .unknown:
+            return "The branch is no longer eligible for local cleanup."
+        default:
+            break
+        }
         guard refHash("refs/heads/\(info.reference.name)", in: repositoryPath) == info.reference.headHash else { return "The branch changed since analysis; it was skipped." }
-        guard queryCurrentBranch(repositoryPath) != info.reference.name else { return "The current branch cannot be deleted." }
-        guard isMerged(info.reference.name, ref: snapshot.defaultBranchRef, in: repositoryPath) else { return "The branch is no longer merged into the default branch." }
-        if requireDetached, queryWorktrees(repositoryPath)?.contains(where: { $0.branchName == info.reference.name }) == true {
-            return "The branch is checked out in a worktree."
+        guard let currentBranch = queryCurrentBranch(repositoryPath) else { return "The current branch could not be verified; cleanup was skipped." }
+        guard currentBranch != info.reference.name else { return "The current branch cannot be deleted." }
+        let merged = isMerged(info.reference.name, ref: snapshot.defaultBranchRef, in: repositoryPath)
+        guard merged || allowUnmerged else { return "The branch is no longer merged into the default branch." }
+        if requireDetached {
+            guard let worktrees = queryWorktrees(repositoryPath) else {
+                return "Worktree state could not be verified; cleanup was skipped."
+            }
+            if worktrees.contains(where: { $0.branchName == info.reference.name }) {
+                return "The branch is checked out in a worktree."
+            }
         }
         return nil
     }
 
-    private func cleanupWorktree(_ info: GitWorktreeCleanupInfo, snapshot: GitWorktreeSnapshot, repositoryPath: String) -> GitCleanupItemResultStatus {
-        guard let branchName = info.worktree.branchName else {
-            return .skipped(reason: "The worktree is no longer eligible for cleanup.")
-        }
-        if let reason = cleanupWorktreeValidation(info, branchName: branchName, snapshot: snapshot, repositoryPath: repositoryPath) {
+    private func cleanupWorktree(
+        _ info: GitWorktreeCleanupInfo,
+        snapshot: GitWorktreeSnapshot,
+        repositoryPath: String,
+        allowUnmerged: Bool
+    ) -> GitCleanupItemResultStatus {
+        if let reason = cleanupWorktreeValidation(
+            info,
+            branchName: info.worktree.branchName,
+            snapshot: snapshot,
+            repositoryPath: repositoryPath,
+            allowUnmerged: allowUnmerged
+        ) {
             return .skipped(reason: reason)
         }
         let result = execute(repositoryPath, ["worktree", "remove", info.worktree.path])
         return result.failure ? .failed(reason: "Failed to remove '\(info.worktree.path)': \(result.output)") : .succeeded
     }
 
-    private func cleanupWorktreeValidation(_ info: GitWorktreeCleanupInfo, branchName: String, snapshot: GitWorktreeSnapshot, repositoryPath: String) -> String? {
-        guard info.status.isEligible else { return "The worktree is no longer eligible for cleanup." }
+    private func cleanupWorktreeValidation(
+        _ info: GitWorktreeCleanupInfo,
+        branchName: String?,
+        snapshot: GitWorktreeSnapshot,
+        repositoryPath: String,
+        allowUnmerged: Bool = false
+    ) -> String? {
+        let cleanStatuses: Set<GitWorktreeCleanupStatus> = [.eligible, .branchNotMerged, .detached]
+        guard cleanStatuses.contains(info.status) else { return "The worktree is no longer eligible for cleanup." }
         guard !info.worktree.isMainWorktree, GitRepositoryContext.normalizedPath(info.worktree.path) != GitRepositoryContext.normalizedPath(repositoryPath) else { return "The current worktree cannot be removed." }
         guard !snapshot.protectedWorktreePaths.contains(GitRepositoryContext.normalizedPath(info.worktree.path)) else { return "Worktree is monitored as a project and protected from cleanup." }
         guard FileManager.default.fileExists(atPath: info.worktree.path) else { return "The worktree path no longer exists." }
@@ -267,26 +391,45 @@ struct GitCleanupRepository {
               current.headHash == info.worktree.headHash,
               current.lockReason == nil,
               current.pruneReason == nil else { return "The worktree changed or is no longer eligible for cleanup." }
-        guard let branch = current.branchName,
-              isClean(info.worktree.path),
-              refHash("refs/heads/\(branch)", in: repositoryPath) != nil else { return "The worktree is no longer eligible for cleanup." }
-        guard isMerged(branch, ref: snapshot.defaultBranchRef, in: repositoryPath) else { return "The linked branch is no longer merged into the default branch." }
+        guard isClean(info.worktree.path) else { return "The worktree is no longer eligible for cleanup." }
+        if let branch = current.branchName,
+           let reason = linkedBranchValidation(
+               branch,
+               expectedHash: info.worktree.headHash,
+               defaultBranchRef: snapshot.defaultBranchRef,
+               repositoryPath: repositoryPath,
+               allowUnmerged: allowUnmerged
+           )
+        {
+            return reason
+        }
+        return nil
+    }
+
+    private func linkedBranchValidation(
+        _ branch: String,
+        expectedHash: String,
+        defaultBranchRef: String,
+        repositoryPath: String,
+        allowUnmerged: Bool
+    ) -> String? {
+        guard let currentHash = refHash("refs/heads/\(branch)", in: repositoryPath) else {
+            return allowUnmerged ? nil : "The worktree is no longer eligible for cleanup."
+        }
+        guard currentHash == expectedHash else { return "The worktree changed or is no longer eligible for cleanup." }
+        guard allowUnmerged || isMerged(branch, ref: defaultBranchRef, in: repositoryPath) else {
+            return "The linked branch is no longer merged into the default branch."
+        }
         return nil
     }
 
     private func cleanupRemote(_ info: GitBranchCleanupInfo, snapshot _: GitWorktreeSnapshot, repositoryPath: String) -> GitCleanupItemResultStatus {
         guard info.reference.isRemote, info.status == .mergedIntoDefault else { return .skipped(reason: "Remote deletion requires an explicit merged-branch selection.") }
-        let ref = "refs/remotes/origin/\(info.reference.name)"
+        let remoteName = info.reference.remoteName ?? "origin"
+        let ref = "refs/remotes/\(remoteName)/\(info.reference.name)"
         guard refHash(ref, in: repositoryPath) == info.reference.headHash else { return .skipped(reason: "The remote-tracking branch changed since analysis; it was skipped.") }
-        let result = execute(repositoryPath, ["push", "origin", "--delete", info.reference.name], useAuth: true)
-        return result.failure ? .failed(reason: "Failed to delete remote branch 'origin/\(info.reference.name)': \(result.output)") : .succeeded
-    }
-
-    private func cleanupDetail(for unit: GitCleanupUnit) -> String {
-        if let worktree = unit.worktree {
-            return "Removing worktree \(worktree.worktree.path)"
-        }
-        return "Deleting branch \(unit.branch.reference.name)"
+        let result = execute(repositoryPath, ["push", remoteName, "--delete", info.reference.name], useAuth: true)
+        return result.failure ? .failed(reason: "Failed to delete remote branch '\(remoteName)/\(info.reference.name)': \(result.output)") : .succeeded
     }
 
     private func repositoryIdentity(_ path: String) -> String? {
@@ -302,31 +445,6 @@ struct GitCleanupRepository {
         let result = execute(path, ["worktree", "list", "--porcelain"])
         guard !result.failure else { return nil }
         return try? WorktreeParser().parse(result.output)
-    }
-
-    private func queryReferences(_ path: String, remote: Bool) -> [GitBranchReference]? {
-        let scope = remote ? "refs/remotes/origin" : "refs/heads"
-        let result = execute(path, ["for-each-ref", "--format=%(refname:short)%00%(objectname)", scope])
-        guard !result.failure else { return nil }
-        return result.output.components(separatedBy: .newlines).compactMap { line in
-            let parts = line.components(separatedBy: "\u{0}")
-            guard parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty else { return nil }
-            let name = remote && parts[0].hasPrefix("origin/") ? String(parts[0].dropFirst(7)) : parts[0]
-            return name == "HEAD" ? nil : GitBranchReference(name: name, headHash: parts[1], isRemote: remote)
-        }
-    }
-
-    private func queryMerged(_ path: String, ref: String, scope: String) -> Set<String>? {
-        let result = execute(path, ["for-each-ref", "--merged=\(ref)", "--format=%(refname:short)", scope])
-        guard !result.failure else { return nil }
-        return Set(result.output.split(whereSeparator: \.isNewline).map(String.init))
-    }
-
-    private func queryMergedRemote(_ path: String, defaultBranchName: String) -> Set<String>? {
-        let ref = "refs/remotes/origin/\(defaultBranchName)"
-        guard !execute(path, ["show-ref", "--verify", "--quiet", ref]).failure,
-              let names = queryMerged(path, ref: ref, scope: "refs/remotes/origin") else { return nil }
-        return Set(names.filter { $0 != "origin/HEAD" }.map { $0.hasPrefix("origin/") ? String($0.dropFirst(7)) : $0 })
     }
 
     private func queryCurrentBranch(_ path: String) -> String? {
@@ -356,6 +474,7 @@ struct GitCleanupRepository {
 
     private func isMerged(_ name: String, ref: String, in path: String) -> Bool {
         queryMerged(path, ref: ref, scope: "refs/heads")?.contains(name) == true
+            || isCherryEquivalent(path, upstreamRef: ref, branchRef: name)
     }
 
     private func refHash(_ ref: String, in path: String) -> String? {
@@ -364,7 +483,7 @@ struct GitCleanupRepository {
         return result.output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func execute(_ path: String, _ args: [String], useAuth: Bool = false) -> (output: String, failure: Bool) {
+    func execute(_ path: String, _ args: [String], useAuth: Bool = false) -> (output: String, failure: Bool) {
         runner.runGitCommand(in: path, args: args, useAuth: useAuth)
     }
 

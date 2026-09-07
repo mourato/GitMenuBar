@@ -107,16 +107,24 @@ in [`ADR 0015`](adr/0015-contextual-side-panel.md).
 
 ## Branch Health cleanup
 
-Side Panel Branch Health → Cleanup is the primary surface for safe local
-cleanup. Show eligible merged local branches first with empty default
-selection, per-row Clean, and Clean Selected. Both actions use the shared
-cleanup confirmation (including the extra worktree acknowledgement). Keep
-not-eligible diagnostics behind a collapsed disclosure. Cleanup is local-only
-and uses default-branch ancestry; do not batch-force unmerged branches from
-this surface. A dirty linked worktree may expose an explicit Force Remove
-Worktree action in its actions menu; require a dedicated warning that its
+Side Panel Branch Health → Cleanup is the primary local cleanup surface. Show
+each local branch and its linked worktree as one work unit; detached worktrees
+appear as worktree-only units. The unit action removes a linked worktree before
+its branch, while its ellipsis menu exposes branch-only and worktree-only
+actions. A branch-only action is unavailable while that branch is checked out
+in a worktree because Git requires the worktree to be removed first.
+
+Merged status includes both default-branch reachability and Git's
+cherry-equivalent result. Clean worktrees may be removed even when their branch
+is not merged, and clean detached worktrees may be removed. Deleting an
+unmerged branch requires the shared confirmation to show a clear data-loss
+warning and an explicit risk-review step. A dirty linked worktree may expose
+an explicit Force Remove Worktree action; require a dedicated warning that its
 directory and uncommitted changes are permanently deleted while its branch is
-kept. Project Cleanup remains the multi-repo shortcut and keeps the same safe
+kept. Remote branch management lists all remote-tracking refs, including
+`upstream`, and labels the remote being removed.
+
+Project Cleanup remains the multi-repo shortcut and keeps its existing safe
 eligibility contract.
 
 ## States, accessibility, and motion

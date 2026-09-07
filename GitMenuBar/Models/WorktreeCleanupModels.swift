@@ -21,9 +21,25 @@ struct GitBranchReference: Identifiable, Hashable {
     let name: String
     let headHash: String
     let isRemote: Bool
+    let remoteName: String?
+
+    init(name: String, headHash: String, isRemote: Bool, remoteName: String? = nil) {
+        self.name = name
+        self.headHash = headHash
+        self.isRemote = isRemote
+        self.remoteName = remoteName
+    }
 
     var id: String {
-        "\(isRemote ? "remote" : "local")/\(name)"
+        guard isRemote else { return "local/\(name)" }
+        if let remoteName, remoteName != "origin" {
+            return "remote/\(remoteName)/\(name)"
+        }
+        return "remote/\(name)"
+    }
+
+    var qualifiedName: String {
+        isRemote ? "\(remoteName ?? "origin")/\(name)" : name
     }
 }
 
@@ -51,9 +67,26 @@ struct GitBranchCleanupInfo: Identifiable, Hashable {
     let reference: GitBranchReference
     let status: GitBranchCleanupStatus
     let worktreePath: String?
+    let isMergedIntoDefaultHint: Bool?
+
+    init(
+        reference: GitBranchReference,
+        status: GitBranchCleanupStatus,
+        worktreePath: String?,
+        isMergedIntoDefaultHint: Bool? = nil
+    ) {
+        self.reference = reference
+        self.status = status
+        self.worktreePath = worktreePath
+        self.isMergedIntoDefaultHint = isMergedIntoDefaultHint
+    }
 
     var isEligible: Bool {
         !reference.isRemote && status.isEligible
+    }
+
+    var isMergedIntoDefault: Bool {
+        isMergedIntoDefaultHint ?? (status == .mergedIntoDefault)
     }
 
     var id: String {
@@ -88,12 +121,18 @@ struct GitWorktreeCleanupInfo: Identifiable, Hashable {
 
 enum GitCleanupUnitMode: Hashable {
     case safe
+    case deleteBranch
+    case removeWorktree
     case forceRemoveWorktree
 
     var id: String {
         switch self {
         case .safe:
             "safe"
+        case .deleteBranch:
+            "delete-branch"
+        case .removeWorktree:
+            "remove-worktree"
         case .forceRemoveWorktree:
             "force-worktree"
         }
@@ -120,21 +159,57 @@ struct GitCleanupUnit: Identifiable, Hashable {
 
     var id: String {
         let path = worktree.map { GitRepositoryContext.normalizedPath($0.worktree.path) } ?? "branch"
-        let prefix = isForceWorktreeRemoval ? "\(mode.id)/" : ""
+        let prefix = mode == .safe ? "" : "\(mode.id)/"
         return "\(prefix)\(repositoryIdentity)/\(branch.reference.name)/\(path)"
     }
 
     var isPaired: Bool {
-        worktree != nil
+        worktree?.worktree.branchName != nil && !isWorktreeOnlyAction
     }
 
     var isForceWorktreeRemoval: Bool {
         mode == .forceRemoveWorktree
     }
 
+    var isBranchOnlyAction: Bool {
+        mode == .deleteBranch
+    }
+
+    var isWorktreeOnlyAction: Bool {
+        mode == .removeWorktree || mode == .forceRemoveWorktree
+    }
+
+    var isDangerousBranchDeletion: Bool {
+        !isWorktreeOnlyAction && !branch.isMergedIntoDefault
+    }
+
+    var canPrimaryClean: Bool {
+        guard !branch.reference.isRemote,
+              branch.status != .protected,
+              branch.status != .current else { return false }
+        if isBranchOnlyAction {
+            return worktree == nil
+        }
+        if isWorktreeOnlyAction {
+            return worktree?.status == .eligible
+                || worktree?.status == .branchNotMerged
+                || worktree?.status == .detached
+        }
+        if let worktree {
+            return worktree.status == .eligible || worktree.status == .branchNotMerged
+        }
+        return branch.status == .mergedIntoDefault || branch.status == .notMerged
+    }
+
     var title: String {
         if isForceWorktreeRemoval, let worktree {
             return "Worktree \(worktree.worktree.path) (branch kept)"
+        }
+        if isWorktreeOnlyAction, let worktree {
+            return "Worktree \(worktree.worktree.path) (branch kept)"
+        }
+        if isBranchOnlyAction {
+            return "Local branch \(branch.reference.name)"
         }
         if let worktree {
             return "Branch \(branch.reference.name) and worktree \(worktree.worktree.path)"
@@ -161,6 +236,25 @@ struct GitCleanupUnit: Identifiable, Hashable {
             branch: branch,
             worktree: info,
             mode: .forceRemoveWorktree
+        )
+    }
+
+    func deletingBranchOnly() -> GitCleanupUnit {
+        GitCleanupUnit(
+            repositoryIdentity: repositoryIdentity,
+            branch: branch,
+            worktree: worktree,
+            mode: .deleteBranch
+        )
+    }
+
+    func removingWorktreeOnly() -> GitCleanupUnit? {
+        guard worktree != nil else { return nil }
+        return GitCleanupUnit(
+            repositoryIdentity: repositoryIdentity,
+            branch: branch,
+            worktree: worktree,
+            mode: .removeWorktree
         )
     }
 
@@ -201,6 +295,47 @@ struct GitCleanupUnit: Identifiable, Hashable {
             )
         }
     }
+
+    static func buildManagementUnits(
+        repositoryIdentity: String,
+        branches: [GitBranchCleanupInfo],
+        worktrees: [GitWorktreeCleanupInfo]
+    ) -> [GitCleanupUnit] {
+        let localBranches = branches.filter { !$0.reference.isRemote }
+        let worktreeByBranch = Dictionary(
+            worktrees.compactMap { info -> (String, GitWorktreeCleanupInfo)? in
+                guard let branchName = info.worktree.branchName else { return nil }
+                return (branchName, info)
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var units = localBranches.map { branch in
+            GitCleanupUnit(
+                repositoryIdentity: repositoryIdentity,
+                branch: branch,
+                worktree: worktreeByBranch[branch.reference.name]
+            )
+        }
+
+        let localBranchNames = Set(localBranches.map(\.reference.name))
+        for worktree in worktrees where worktree.worktree.branchName.map({ !localBranchNames.contains($0) }) ?? true {
+            let name = worktree.worktree.branchName ?? "detached"
+            let branch = GitBranchCleanupInfo(
+                reference: GitBranchReference(name: name, headHash: worktree.worktree.headHash, isRemote: false),
+                status: .notMerged,
+                worktreePath: worktree.worktree.path
+            )
+            units.append(
+                GitCleanupUnit(
+                    repositoryIdentity: repositoryIdentity,
+                    branch: branch,
+                    worktree: worktree,
+                    mode: .removeWorktree
+                )
+            )
+        }
+        return units
+    }
 }
 
 struct GitWorktreeSnapshot: Hashable {
@@ -213,6 +348,7 @@ struct GitWorktreeSnapshot: Hashable {
     let repositoryIdentity: String
     let protectedWorktreePaths: Set<String>
     let cleanupUnits: [GitCleanupUnit]
+    let managementUnits: [GitCleanupUnit]
 
     init(
         repositoryPath: String,
@@ -223,7 +359,8 @@ struct GitWorktreeSnapshot: Hashable {
         branches: [GitBranchCleanupInfo],
         repositoryIdentity: String? = nil,
         protectedWorktreePaths: Set<String> = [],
-        cleanupUnits: [GitCleanupUnit]? = nil
+        cleanupUnits: [GitCleanupUnit]? = nil,
+        managementUnits: [GitCleanupUnit]? = nil
     ) {
         self.repositoryPath = repositoryPath
         self.defaultBranchName = defaultBranchName
@@ -236,6 +373,11 @@ struct GitWorktreeSnapshot: Hashable {
             URL(fileURLWithPath: $0).standardizedFileURL.path
         })
         self.cleanupUnits = cleanupUnits ?? GitCleanupUnit.build(
+            repositoryIdentity: self.repositoryIdentity,
+            branches: branches,
+            worktrees: worktrees
+        )
+        self.managementUnits = managementUnits ?? GitCleanupUnit.buildManagementUnits(
             repositoryIdentity: self.repositoryIdentity,
             branches: branches,
             worktrees: worktrees
@@ -283,7 +425,7 @@ enum GitCleanupTarget: Hashable, Identifiable {
         case let .worktree(info):
             "Worktree \(info.worktree.path)"
         case let .remoteBranch(info):
-            "Remote branch origin/\(info.reference.name)"
+            "Remote branch \(info.reference.qualifiedName)"
         }
     }
 }
@@ -311,7 +453,14 @@ struct GitCleanupItemResult: Identifiable, Hashable {
     }
 
     init(unit: GitCleanupUnit, status: GitCleanupItemResultStatus) {
-        target = unit.worktree.map(GitCleanupTarget.worktree) ?? .localBranch(unit.branch)
+        target = switch unit.mode {
+        case .deleteBranch:
+            .localBranch(unit.branch)
+        case .removeWorktree, .forceRemoveWorktree:
+            unit.worktree.map(GitCleanupTarget.worktree) ?? .localBranch(unit.branch)
+        case .safe:
+            unit.worktree.map(GitCleanupTarget.worktree) ?? .localBranch(unit.branch)
+        }
         self.unit = unit
         self.status = status
     }

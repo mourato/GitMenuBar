@@ -15,8 +15,8 @@ struct SidePanelBranchManagementView: View {
     @State private var branchQuery = ""
     @State private var branchesExpanded = true
     @State private var worktreesExpanded = false
-    @State private var cleanupExpanded = false
-    @State private var deleteRemoteName: String?
+    @State private var cleanupExpanded = true
+    @State private var deleteRemoteBranch: BranchInfo?
     @State private var selectedCleanupIDs: Set<String> = []
     @State private var pendingCleanupUnits: [GitCleanupUnit] = []
     @State private var showCleanupConfirmation = false
@@ -28,22 +28,22 @@ struct SidePanelBranchManagementView: View {
             cleanupGroup
         }
         .alert("Delete Remote Branch?", isPresented: Binding(
-            get: { deleteRemoteName != nil },
+            get: { deleteRemoteBranch != nil },
             set: {
                 if !$0 {
-                    deleteRemoteName = nil
+                    deleteRemoteBranch = nil
                 }
             }
         )) {
             Button("Delete", role: .destructive) {
-                guard let name = deleteRemoteName else { return }
-                deleteRemoteName = nil
-                Task { _ = await actionCoordinator.deleteRemoteSidePanelBranch(name) }
+                guard let branch = deleteRemoteBranch else { return }
+                deleteRemoteBranch = nil
+                Task { _ = await actionCoordinator.deleteRemoteSidePanelBranch(branch.name, remoteName: branch.remoteName ?? "origin") }
             }
-            Button("Cancel", role: .cancel) { deleteRemoteName = nil }
+            Button("Cancel", role: .cancel) { deleteRemoteBranch = nil }
         } message: {
-            if let name = deleteRemoteName {
-                Text("This will permanently delete 'origin/\(name)' on the remote. This cannot be undone.")
+            if let branch = deleteRemoteBranch {
+                Text("This will permanently delete '\(branch.displayName)' on the remote. This cannot be undone.")
             }
         }
         .sheet(isPresented: $showCleanupConfirmation) {
@@ -91,29 +91,6 @@ struct SidePanelBranchManagementView: View {
         }
     }
 
-    private var worktreesGroup: some View {
-        DisclosureGroup(isExpanded: $worktreesExpanded) {
-            if let snapshot = gitManager.worktreeSnapshot {
-                WorktreeManagementContentView(
-                    snapshot: snapshot,
-                    errorMessage: nil,
-                    query: branchQuery,
-                    onReveal: revealWorktree,
-                    onCopyPath: copyPath,
-                    onForceRemove: forceRemoveWorktree,
-                    onDismissError: {}
-                )
-            } else {
-                Text("No cleanup analysis is available.")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
-            }
-        } label: {
-            Text("Worktrees (\(gitManager.worktreeSnapshot?.worktrees.count ?? 0))")
-                .font(WorkbenchTypography.sectionLabel)
-        }
-    }
-
     private var cleanupGroup: some View {
         DisclosureGroup(isExpanded: $cleanupExpanded) {
             if let snapshot = gitManager.worktreeSnapshot {
@@ -131,6 +108,12 @@ struct SidePanelBranchManagementView: View {
                         onCopyPath: copyPath,
                         onForceRemove: forceRemoveWorktree,
                         onCleanUnit: { unit in
+                            presentCleanupConfirmation(units: [unit])
+                        },
+                        onDeleteBranch: { unit in
+                            presentCleanupConfirmation(units: [unit])
+                        },
+                        onRemoveWorktree: { unit in
                             presentCleanupConfirmation(units: [unit])
                         }
                     )
@@ -152,6 +135,29 @@ struct SidePanelBranchManagementView: View {
             }
         } label: {
             Text("Cleanup")
+                .font(WorkbenchTypography.sectionLabel)
+        }
+    }
+
+    private var worktreesGroup: some View {
+        DisclosureGroup(isExpanded: $worktreesExpanded) {
+            if let snapshot = gitManager.worktreeSnapshot {
+                WorktreeManagementContentView(
+                    snapshot: snapshot,
+                    errorMessage: nil,
+                    query: branchQuery,
+                    onReveal: revealWorktree,
+                    onCopyPath: copyPath,
+                    onForceRemove: forceRemoveWorktree,
+                    onDismissError: {}
+                )
+            } else {
+                Text("No cleanup analysis is available.")
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } label: {
+            Text("Worktrees (\(gitManager.worktreeSnapshot?.worktrees.count ?? 0))")
                 .font(WorkbenchTypography.sectionLabel)
         }
     }
@@ -187,9 +193,9 @@ struct SidePanelBranchManagementView: View {
             onDelete: {},
             onPush: nil,
             onMerge: nil,
-            onDeleteRemote: { deleteRemoteName = info.name },
+            onDeleteRemote: { deleteRemoteBranch = info },
             onCheckoutLocally: {
-                Task { _ = await actionCoordinator.checkoutRemoteSidePanelBranch(info.name) }
+                Task { _ = await actionCoordinator.checkoutRemoteSidePanelBranch(info.name, remoteName: info.remoteName ?? "origin") }
             }
         )
     }
@@ -249,7 +255,7 @@ struct SidePanelBranchManagementView: View {
     }
 
     private func selectedCleanupUnits(_ snapshot: GitWorktreeSnapshot) -> [GitCleanupUnit] {
-        snapshot.cleanupUnits.filter { selectedCleanupIDs.contains($0.id) }
+        snapshot.managementUnits.filter { selectedCleanupIDs.contains($0.id) && $0.canPrimaryClean }
     }
 
     private func presentCleanupConfirmation(units: [GitCleanupUnit]) {

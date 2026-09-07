@@ -23,7 +23,7 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
             snapshot: snapshot
         )
 
-        XCTAssertEqual(result.items.map(\.status), [.succeeded])
+        XCTAssertEqual(result.items.map(\.status), [.succeeded], "\(result.items)")
         XCTAssertFalse(try runGit(["branch", "--format=%(refname:short)"], in: repositoryURL).contains("feature/worktree"))
         XCTAssertFalse(FileManager.default.fileExists(atPath: linkedURL.path))
     }
@@ -119,7 +119,7 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
         )
         let result = try await successfulCleanup(gitManager, units: [unit], snapshot: snapshot)
 
-        XCTAssertEqual(result.items.map(\.status), [.succeeded])
+        XCTAssertEqual(result.items.map(\.status), [.succeeded], "\(result.items)")
         XCTAssertFalse(FileManager.default.fileExists(atPath: linkedURL.path))
         XCTAssertTrue(try runGit(["show-ref", "--verify", "refs/heads/feature/dirty-force"], in: repositoryURL).contains("feature/dirty-force"))
     }

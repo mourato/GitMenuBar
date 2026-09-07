@@ -69,14 +69,14 @@ extension GitBranchService {
         return .success(())
     }
 
-    func deleteRemoteBranchAsync(branchName: String) async -> Result<Void, Error> {
+    func deleteRemoteBranchAsync(branchName: String, remoteName: String = "origin") async -> Result<Void, Error> {
         let repositoryPath = storedRepoPath
         guard !repositoryPath.isEmpty else {
             return .failure(GitExecution.missingRepositoryError())
         }
 
         let result = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["push", "origin", "--delete", branchName], useAuth: true)
+            self.executeGitCommand(in: repositoryPath, args: ["push", remoteName, "--delete", branchName], useAuth: true)
         }
 
         guard !result.failure else {
@@ -84,7 +84,7 @@ extension GitBranchService {
                 domain: "GitManager",
                 code: 41,
                 userInfo: [
-                    NSLocalizedDescriptionKey: "Failed to delete remote branch '\(branchName)': \(result.output)"
+                    NSLocalizedDescriptionKey: "Failed to delete remote branch '\(remoteName)/\(branchName)': \(result.output)"
                 ]
             ))
         }
@@ -319,7 +319,7 @@ extension GitBranchService {
         }
     }
 
-    func deleteBranch(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
+    func deleteBranch(branchName: String, force: Bool = false, completion: @escaping (Result<Void, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
             completion(.failure(branchError(code: 1, description: "No repository path configured")))
             return
@@ -336,18 +336,43 @@ extension GitBranchService {
 
         Task {
             let repositoryPath = storedRepoPath
-            if let holder = await worktreeHoldingBranch(branchName, in: repositoryPath) {
+            let expectedHash = await runOnBackground { () -> String? in
+                let result = self.executeGitCommand(
+                    in: repositoryPath,
+                    args: ["rev-parse", "--verify", "refs/heads/\(branchName)"]
+                )
+                guard !result.failure else { return nil }
+                return result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            guard let expectedHash, !expectedHash.isEmpty else {
+                await publishOnMainActor {
+                    completion(.failure(self.branchError(
+                        code: 3,
+                        description: "Branch '\(branchName)' no longer exists."
+                    )))
+                }
+                return
+            }
+
+            if let reason = await branchDeletionValidation(
+                branchName: branchName,
+                expectedHash: expectedHash,
+                in: repositoryPath
+            ) {
                 await publishOnMainActor {
                     completion(.failure(self.branchError(
                         code: 4,
-                        description: "Branch '\(branchName)' is checked out in worktree at '\(holder)'. Remove the worktree first — Manage Branches → Cleanup removes both."
+                        description: reason
                     )))
                 }
                 return
             }
             // Try to delete the branch locally first
             let localResult = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["branch", "--delete", branchName])
+                self.executeGitCommand(
+                    in: repositoryPath,
+                    args: force ? ["branch", "--delete", "--force", branchName] : ["branch", "--delete", branchName]
+                )
             }
 
             if localResult.failure {
@@ -373,18 +398,47 @@ extension GitBranchService {
         }
     }
 
-    /// Returns the worktree path holding `branchName`, if any. Prunes stale
-    /// worktree metadata first so removed directories stop blocking deletes.
-    /// Returns nil when the worktree list is unavailable so the caller can
-    /// fall through to `git branch --delete` and report its own error.
-    private func worktreeHoldingBranch(_ branchName: String, in repositoryPath: String) async -> String? {
+    /// Rechecks every mutable precondition after the confirmation boundary.
+    /// The expected hash prevents a confirmed delete from applying to a newer
+    /// incarnation of the same branch name.
+    private func branchDeletionValidation(
+        branchName: String,
+        expectedHash: String,
+        in repositoryPath: String
+    ) async -> String? {
         await runOnBackground {
+            let currentHash = self.executeGitCommand(
+                in: repositoryPath,
+                args: ["rev-parse", "--verify", "refs/heads/\(branchName)"]
+            )
+            guard !currentHash.failure else {
+                return "Branch '\(branchName)' no longer exists."
+            }
+            guard currentHash.output.trimmingCharacters(in: .whitespacesAndNewlines) == expectedHash else {
+                return "Branch '\(branchName)' changed since confirmation; it was not deleted."
+            }
+
+            let current = self.executeGitCommand(
+                in: repositoryPath,
+                args: ["rev-parse", "--abbrev-ref", "HEAD"]
+            )
+            guard !current.failure else {
+                return "The current branch could not be verified; reload and try again."
+            }
+            let currentBranch = current.output.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard currentBranch != branchName else {
+                return "Cannot delete the currently checked out branch."
+            }
+
             _ = self.executeGitCommand(in: repositoryPath, args: ["worktree", "prune"])
             let list = self.executeGitCommand(in: repositoryPath, args: ["worktree", "list", "--porcelain"])
             guard !list.failure, let worktrees = try? WorktreeParser().parse(list.output) else {
-                return nil
+                return "Worktree state could not be verified; reload and try again."
             }
-            return worktrees.first(where: { $0.branchName == branchName })?.path
+            if let holder = worktrees.first(where: { $0.branchName == branchName })?.path {
+                return "Branch '\(branchName)' is checked out in worktree at '\(holder)'. Remove the worktree first — Manage Branches → Cleanup removes both."
+            }
+            return nil
         }
     }
 

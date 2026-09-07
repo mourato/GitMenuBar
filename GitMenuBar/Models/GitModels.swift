@@ -188,13 +188,20 @@ struct BranchInfo: Identifiable, Hashable {
     let isCurrent: Bool
     let trackingStatus: BranchTrackingStatus
     let lastCommitDate: Date?
+    var remoteName: String?
 
     var id: String {
-        "\(isLocal ? "local" : "remote")/\(name)"
+        guard isLocal else {
+            if let remoteName, remoteName != "origin" {
+                return "remote/\(remoteName)/\(name)"
+            }
+            return "remote/\(name)"
+        }
+        return "local/\(name)"
     }
 
     var displayName: String {
-        isRemote ? "origin/\(name)" : name
+        isRemote ? "\(remoteName ?? "origin")/\(name)" : name
     }
 }
 

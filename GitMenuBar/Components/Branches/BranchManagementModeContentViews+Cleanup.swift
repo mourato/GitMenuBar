@@ -29,8 +29,31 @@ extension CleanupManagementContentView {
             "Protected branch cannot be cleaned up."
         case .current:
             "Current branch cannot be cleaned up."
-        case .checkedOutElsewhere:
-            "Checked out in another worktree."
+        case let .checkedOutElsewhere(path):
+            "Checked out in another worktree: \(path)."
+        case let .unknown(reason):
+            "Status unavailable: \(reason)"
+        }
+    }
+
+    func worktreeStatusDetail(for status: GitWorktreeCleanupStatus) -> String {
+        switch status {
+        case .eligible:
+            "Ready for cleanup."
+        case .main:
+            "Main worktree cannot be removed."
+        case .current:
+            "Current worktree cannot be removed."
+        case .dirty:
+            "Uncommitted changes prevent cleanup."
+        case let .locked(reason):
+            "Locked: \(reason)"
+        case let .prunable(reason):
+            "Prunable: \(reason)"
+        case .branchNotMerged:
+            "Branch is not merged into the default branch."
+        case .detached:
+            "No branch is attached."
         case let .unknown(reason):
             "Status unavailable: \(reason)"
         }
