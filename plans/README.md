@@ -1361,7 +1361,7 @@ in the same unit; register VoiceInk in `.agents/overlays/reference-apps.md`.
 
 | Plan | Title | Priority | Effort | Depends on | Status | Commit | Review | Integration | Main validation |
 |---|---|---:|---:|---|---|---|---|---|---|
-| [081](081-contextual-side-panel.md) | Replace inspector with contextual side panel | P0 | L | 076–080 | REVIEWED | 6c055c6; bookkeeping 9384a41 | REVIEWER: host:plan-acceptance PASS | pending-merge | — |
+| [081](081-contextual-side-panel.md) | Replace inspector with contextual side panel | P0 | L | 076–080 | REVIEWED | 6c055c6; bookkeeping 9384a41 | REVIEWER: host:plan-acceptance PASS | MERGED_LOCAL e23b6dd | PASS: reuse tip validation (agent-check + focused tests + preview + guidance) |
 
 ### Dependency notes
 
