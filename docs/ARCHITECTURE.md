@@ -64,5 +64,7 @@ Use this rule order:
   explicit selection and a fresh validation of the remote-tracking ref.
 - Cleanup revalidates each item immediately before mutation, runs serially,
   skips unsafe or stale items individually, and reports every outcome. It
-  never force-removes a worktree, stashes changes, checks out another branch,
-  or mutates the current worktree implicitly.
+  never stashes changes, checks out another branch, or mutates the current
+  worktree implicitly. An explicitly confirmed force-removal unit may remove a
+  dirty, non-current, non-main, non-monitored linked worktree with
+  `git worktree remove --force`; it keeps the branch and reports the result.

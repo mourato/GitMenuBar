@@ -93,6 +93,87 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: linkedURL.path))
     }
 
+    func testForceCleanupRemovesDirtyWorktreeAndKeepsBranch() async throws {
+        let repositoryURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["branch", "feature/dirty-force"], in: repositoryURL)
+        let linkedURL = repositoryURL.deletingLastPathComponent()
+            .appendingPathComponent("\(repositoryURL.lastPathComponent)-dirty-force")
+        try runGit(["worktree", "add", linkedURL.path, "feature/dirty-force"], in: repositoryURL)
+        addTemporaryGitWorktreeCleanup(linkedURL, repositoryURL: repositoryURL)
+        try "discard me\n".write(
+            to: linkedURL.appendingPathComponent("uncommitted.txt"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
+        let snapshot = try await resolvedSnapshot(from: gitManager)
+        let worktree = try XCTUnwrap(snapshot.worktrees.first {
+            $0.worktree.branchName == "feature/dirty-force"
+        })
+        XCTAssertTrue(snapshot.canForceRemove(worktree))
+
+        let unit = GitCleanupUnit.forceWorktreeRemoval(
+            repositoryIdentity: snapshot.repositoryIdentity,
+            info: worktree
+        )
+        let result = try await successfulCleanup(gitManager, units: [unit], snapshot: snapshot)
+
+        XCTAssertEqual(result.items.map(\.status), [.succeeded])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: linkedURL.path))
+        XCTAssertTrue(try runGit(["show-ref", "--verify", "refs/heads/feature/dirty-force"], in: repositoryURL).contains("feature/dirty-force"))
+    }
+
+    func testForceCleanupSkipsWorktreeThatBecomesClean() async throws {
+        let repositoryURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["branch", "feature/stale-force"], in: repositoryURL)
+        let linkedURL = repositoryURL.deletingLastPathComponent()
+            .appendingPathComponent("\(repositoryURL.lastPathComponent)-stale-force")
+        try runGit(["worktree", "add", linkedURL.path, "feature/stale-force"], in: repositoryURL)
+        addTemporaryGitWorktreeCleanup(linkedURL, repositoryURL: repositoryURL)
+        let dirtyFile = linkedURL.appendingPathComponent("uncommitted.txt")
+        try "discard me\n".write(to: dirtyFile, atomically: true, encoding: .utf8)
+
+        let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
+        let snapshot = try await resolvedSnapshot(from: gitManager)
+        let worktree = try XCTUnwrap(snapshot.worktrees.first {
+            $0.worktree.branchName == "feature/stale-force"
+        })
+        try FileManager.default.removeItem(at: dirtyFile)
+
+        let unit = GitCleanupUnit.forceWorktreeRemoval(
+            repositoryIdentity: snapshot.repositoryIdentity,
+            info: worktree
+        )
+        let result = try await successfulCleanup(gitManager, units: [unit], snapshot: snapshot)
+
+        XCTAssertEqual(result.items.first?.status, .skipped(reason: "The worktree is no longer dirty; reload and try again."))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: linkedURL.path))
+    }
+
+    func testForceCleanupDoesNotRemoveMainWorktree() async throws {
+        let repositoryURL = try createTemporaryGitRepository(testName: #function)
+        try "keep me\n".write(
+            to: repositoryURL.appendingPathComponent("uncommitted.txt"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
+        let snapshot = try await resolvedSnapshot(from: gitManager)
+        let main = try XCTUnwrap(snapshot.worktrees.first { $0.worktree.isMainWorktree })
+        let dirtyMain = GitWorktreeCleanupInfo(worktree: main.worktree, status: .dirty)
+        let unit = GitCleanupUnit.forceWorktreeRemoval(
+            repositoryIdentity: snapshot.repositoryIdentity,
+            info: dirtyMain
+        )
+
+        let result = try await successfulCleanup(gitManager, units: [unit], snapshot: snapshot)
+
+        XCTAssertEqual(result.items.first?.status, .skipped(reason: "The current worktree cannot be removed."))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: repositoryURL.path))
+    }
+
     func testBatchCleanupSkipsWorktreeWhenItsBranchChangedWithSameHead() async throws {
         let repositoryURL = try createTemporaryGitRepository(testName: #function)
         try runGit(["branch", "feature/worktree"], in: repositoryURL)

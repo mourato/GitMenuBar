@@ -6,6 +6,7 @@ struct WorktreeManagementContentView: View {
     let query: String
     let onReveal: (String) -> Void
     let onCopyPath: (String) -> Void
+    let onForceRemove: ((GitWorktreeCleanupInfo) -> Void)?
     let onDismissError: () -> Void
     private var filteredWorktrees: [GitWorktreeCleanupInfo] {
         guard let snapshot else { return [] }
@@ -41,7 +42,10 @@ struct WorktreeManagementContentView: View {
                     WorktreeManagementRowView(
                         info: info,
                         onReveal: { onReveal(info.worktree.path) },
-                        onCopyPath: { onCopyPath(info.worktree.path) }
+                        onCopyPath: { onCopyPath(info.worktree.path) },
+                        onForceRemove: snapshot?.canForceRemove(info) == true
+                            ? onForceRemove.map { handler in { handler(info) } }
+                            : nil
                     )
                 }
             }
@@ -58,6 +62,7 @@ struct CleanupManagementContentView: View {
     let onDismissError: () -> Void
     let onReveal: (String) -> Void
     let onCopyPath: (String) -> Void
+    let onForceRemove: ((GitWorktreeCleanupInfo) -> Void)?
     let onCleanUnit: (GitCleanupUnit) -> Void
 
     @State private var diagnosticsExpanded = false
@@ -184,7 +189,10 @@ struct CleanupManagementContentView: View {
                     WorktreeManagementRowView(
                         info: info,
                         onReveal: { onReveal(info.worktree.path) },
-                        onCopyPath: { onCopyPath(info.worktree.path) }
+                        onCopyPath: { onCopyPath(info.worktree.path) },
+                        onForceRemove: snapshot?.canForceRemove(info) == true
+                            ? onForceRemove.map { handler in { handler(info) } }
+                            : nil
                     )
                 }
             }

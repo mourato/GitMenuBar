@@ -24,6 +24,7 @@ import SwiftUI
         query: "",
         onReveal: { _ in },
         onCopyPath: { _ in },
+        onForceRemove: { _ in },
         onDismissError: {}
     )
     .frame(width: 560)

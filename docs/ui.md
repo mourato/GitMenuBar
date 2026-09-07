@@ -130,8 +130,11 @@ selection, per-row Clean, and Clean Selected. Both actions use the shared
 cleanup confirmation (including the extra worktree acknowledgement). Keep
 not-eligible diagnostics behind a collapsed disclosure. Cleanup is local-only
 and uses default-branch ancestry; do not batch-force unmerged branches from
-this surface. Project Cleanup remains the multi-repo shortcut and keeps the
-same eligibility contract.
+this surface. A dirty linked worktree may expose an explicit Force Remove
+Worktree action in its actions menu; require a dedicated warning that its
+directory and uncommitted changes are permanently deleted while its branch is
+kept. Project Cleanup remains the multi-repo shortcut and keeps the same safe
+eligibility contract.
 
 ## States, accessibility, and motion
 

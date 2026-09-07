@@ -143,6 +143,12 @@ struct GitCleanupRepository {
         snapshot: GitWorktreeSnapshot,
         repositoryPath: String
     ) -> GitCleanupItemResultStatus {
+        if unit.isForceWorktreeRemoval {
+            guard let worktree = unit.worktree else {
+                return .skipped(reason: "The worktree is no longer available for removal.")
+            }
+            return forceRemoveWorktree(worktree, snapshot: snapshot, repositoryPath: repositoryPath)
+        }
         guard unit.branch.status == .mergedIntoDefault || unit.branch.status.isCheckedOutElsewhere else { return .skipped(reason: "The branch is no longer eligible for cleanup.") }
         if let worktree = unit.worktree {
             let worktreeStatus = cleanupWorktreeValidation(worktree, branchName: unit.branch.reference.name, snapshot: snapshot, repositoryPath: repositoryPath)
@@ -164,6 +170,60 @@ struct GitCleanupRepository {
                 : .succeeded
         }
         return cleanupBranch(unit.branch, snapshot: snapshot, repositoryPath: repositoryPath, requireDetached: true)
+    }
+
+    private func forceRemoveWorktree(
+        _ info: GitWorktreeCleanupInfo,
+        snapshot: GitWorktreeSnapshot,
+        repositoryPath: String
+    ) -> GitCleanupItemResultStatus {
+        if let reason = forceWorktreeValidation(info, snapshot: snapshot, repositoryPath: repositoryPath) {
+            return .skipped(reason: reason)
+        }
+        let result = execute(repositoryPath, ["worktree", "remove", "--force", info.worktree.path])
+        return result.failure
+            ? .failed(reason: "Failed to force-remove '\(info.worktree.path)': \(result.output)")
+            : .succeeded
+    }
+
+    private func forceWorktreeValidation(
+        _ info: GitWorktreeCleanupInfo,
+        snapshot: GitWorktreeSnapshot,
+        repositoryPath: String
+    ) -> String? {
+        guard info.status == .dirty, info.worktree.branchName != nil else {
+            return "The worktree is no longer eligible for force removal; reload and try again."
+        }
+        guard !info.worktree.isMainWorktree,
+              GitRepositoryContext.normalizedPath(info.worktree.path) != GitRepositoryContext.normalizedPath(repositoryPath)
+        else { return "The current worktree cannot be removed." }
+        let normalizedPath = GitRepositoryContext.normalizedPath(info.worktree.path)
+        guard !snapshot.protectedWorktreePaths.contains(normalizedPath) else {
+            return "Worktree is monitored as a project and protected from cleanup."
+        }
+        guard FileManager.default.fileExists(atPath: info.worktree.path) else {
+            return "The worktree path no longer exists."
+        }
+        guard let current = queryWorktrees(repositoryPath)?.first(where: {
+            GitRepositoryContext.normalizedPath($0.path) == normalizedPath
+        }) else {
+            return "The worktree changed or is no longer registered."
+        }
+        guard !current.isMainWorktree,
+              current.branchName == info.worktree.branchName,
+              current.headHash == info.worktree.headHash,
+              current.lockReason == nil,
+              current.pruneReason == nil
+        else {
+            return "The worktree changed or is no longer eligible for force removal."
+        }
+        guard let state = workingTreeState(info.worktree.path) else {
+            return "The worktree status is unavailable; reload and try again."
+        }
+        guard state == .dirty else {
+            return "The worktree is no longer dirty; reload and try again."
+        }
+        return nil
     }
 
     private func cleanupBranch(_ info: GitBranchCleanupInfo, snapshot: GitWorktreeSnapshot, repositoryPath: String, requireDetached: Bool) -> GitCleanupItemResultStatus {
@@ -286,6 +346,12 @@ struct GitCleanupRepository {
     private func isClean(_ path: String) -> Bool {
         let result = execute(path, ["status", "--porcelain", "--untracked-files=all"])
         return !result.failure && result.output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func workingTreeState(_ path: String) -> GitWorktreeWorkingTreeState? {
+        let result = execute(path, ["status", "--porcelain", "--untracked-files=all"])
+        guard !result.failure else { return nil }
+        return result.output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .clean : .dirty
     }
 
     private func isMerged(_ name: String, ref: String, in path: String) -> Bool {

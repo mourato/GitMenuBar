@@ -11,16 +11,29 @@ struct CleanupConfirmationView: View {
     }
 
     private var paired: [GitCleanupUnit] {
-        units.filter(\.isPaired)
+        units.filter { $0.isPaired && !$0.isForceWorktreeRemoval }
+    }
+
+    private var forced: [GitCleanupUnit] {
+        units.filter(\.isForceWorktreeRemoval)
+    }
+
+    private var requiresRiskReview: Bool {
+        !paired.isEmpty || !forced.isEmpty
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(didReviewRisk || paired.isEmpty ? "Confirm Cleanup" : "Review Cleanup")
+            Text(didReviewRisk || !requiresRiskReview ? "Confirm Cleanup" : "Review Cleanup")
                 .font(.headline.weight(.semibold))
-            Text("\(branchOnly.count) branch-only unit\(branchOnly.count == 1 ? "" : "s"), \(paired.count) paired unit\(paired.count == 1 ? "" : "s") selected.")
+            Text("\(branchOnly.count) branch-only, \(paired.count) paired, \(forced.count) forced worktree unit\(forced.count == 1 ? "" : "s") selected.")
                 .font(WorkbenchTypography.detail)
                 .foregroundStyle(.secondary)
+            if !forced.isEmpty, !didReviewRisk {
+                Label("Force removal permanently deletes this worktree directory and all uncommitted changes. The branch will be kept.", systemImage: "exclamationmark.triangle.fill")
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.red)
+            }
             if !paired.isEmpty, !didReviewRisk {
                 Label("Paired worktree directories will be removed before their branches.", systemImage: "exclamationmark.triangle.fill")
                     .font(WorkbenchTypography.caption)
@@ -30,14 +43,15 @@ struct CleanupConfirmationView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     section("Branch-only cleanup", branchOnly)
                     section("Paired worktree and branch cleanup", paired)
+                    section("Forced worktree removal", forced)
                 }
             }
             .frame(maxHeight: 260)
             HStack {
                 Button("Cancel", action: onCancel).keyboardShortcut(.cancelAction)
                 Spacer()
-                Button(didReviewRisk || paired.isEmpty ? "Confirm Cleanup" : "Review Worktree Removal") {
-                    if paired.isEmpty || didReviewRisk {
+                Button(didReviewRisk || !requiresRiskReview ? "Confirm Cleanup" : forced.isEmpty ? "Review Worktree Removal" : "Review Forced Removal") {
+                    if !requiresRiskReview || didReviewRisk {
                         onConfirm()
                     } else {
                         didReviewRisk = true

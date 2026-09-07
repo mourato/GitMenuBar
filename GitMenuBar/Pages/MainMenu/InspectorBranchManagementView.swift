@@ -100,6 +100,7 @@ struct InspectorBranchManagementView: View {
                     query: branchQuery,
                     onReveal: revealWorktree,
                     onCopyPath: copyPath,
+                    onForceRemove: forceRemoveWorktree,
                     onDismissError: {}
                 )
             } else {
@@ -128,6 +129,7 @@ struct InspectorBranchManagementView: View {
                         onDismissError: {},
                         onReveal: revealWorktree,
                         onCopyPath: copyPath,
+                        onForceRemove: forceRemoveWorktree,
                         onCleanUnit: { unit in
                             presentCleanupConfirmation(units: [unit])
                         }
@@ -254,6 +256,13 @@ struct InspectorBranchManagementView: View {
         guard !units.isEmpty else { return }
         pendingCleanupUnits = units
         showCleanupConfirmation = true
+    }
+
+    private func forceRemoveWorktree(_ info: GitWorktreeCleanupInfo) {
+        guard let snapshot = gitManager.worktreeSnapshot, snapshot.canForceRemove(info) else { return }
+        presentCleanupConfirmation(units: [
+            GitCleanupUnit.forceWorktreeRemoval(repositoryIdentity: snapshot.repositoryIdentity, info: info)
+        ])
     }
 
     private func dismissCleanupConfirmation() {

@@ -32,6 +32,7 @@ import SwiftUI
         onDismissError: {},
         onReveal: { _ in },
         onCopyPath: { _ in },
+        onForceRemove: { _ in },
         onCleanUnit: { _ in }
     )
     .frame(width: 560)

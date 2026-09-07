@@ -4,8 +4,21 @@ struct WorktreeManagementRowView: View {
     let info: GitWorktreeCleanupInfo
     let onReveal: () -> Void
     let onCopyPath: () -> Void
+    let onForceRemove: (() -> Void)?
 
     @State private var isHovered = false
+
+    init(
+        info: GitWorktreeCleanupInfo,
+        onReveal: @escaping () -> Void,
+        onCopyPath: @escaping () -> Void,
+        onForceRemove: (() -> Void)? = nil
+    ) {
+        self.info = info
+        self.onReveal = onReveal
+        self.onCopyPath = onCopyPath
+        self.onForceRemove = onForceRemove
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -56,6 +69,10 @@ struct WorktreeManagementRowView: View {
             Menu {
                 Button("Reveal in Finder", action: onReveal)
                 Button("Copy Path", action: onCopyPath)
+                if info.status == .dirty, let onForceRemove {
+                    Divider()
+                    Button("Force Remove Worktree", role: .destructive, action: onForceRemove)
+                }
             } label: {
                 Image(systemName: "ellipsis.circle")
                     .font(WorkbenchTypography.body)
@@ -75,7 +92,7 @@ struct WorktreeManagementRowView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
-        .accessibilityHint("Use the actions menu to reveal or copy this path. Removal is unavailable in this version.")
+        .accessibilityHint(accessibilityHint)
     }
 
     private var shortHash: String {
@@ -85,6 +102,13 @@ struct WorktreeManagementRowView: View {
     private var accessibilityLabel: String {
         let branch = info.worktree.branchName ?? "detached HEAD"
         return "\(branch), \(info.worktree.path), \(statusDescription)"
+    }
+
+    private var accessibilityHint: String {
+        if info.status == .dirty, onForceRemove != nil {
+            return "Use the actions menu to reveal, copy, or permanently remove this worktree and its local changes."
+        }
+        return "Use the actions menu to reveal or copy this path. Removal is unavailable for this worktree."
     }
 
     private var statusDescription: String {
@@ -158,7 +182,8 @@ struct WorktreeManagementRowView: View {
                 status: .dirty
             ),
             onReveal: {},
-            onCopyPath: {}
+            onCopyPath: {},
+            onForceRemove: {}
         )
     }
     .padding()
