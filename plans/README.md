@@ -1342,3 +1342,53 @@ rules.
 - One view/file per inspector metric was rejected: the inspector remains one
   contextual surface, with the existing data/services and Workbench tokens
   reused behind it.
+
+## Contextual side panel (VoiceInk-inspired) — 2026-09-07
+
+Grill-closed product decision: retire the always-open trailing inspector and
+compact sheet in favor of a selection-gated trailing **side panel** overlay.
+Study VoiceInk’s `sidePanel` locally at
+`~/Documents/Projects/References/VoiceInk` @ `8f089cb` (GPL-3.0 —
+inspiration / independent reimplementation only). All former inspector content
+— including Working Tree / commit workspace — becomes contextual and temporary.
+Narrow windows use the same overlay (no sheet). Working Tree disables
+tap-outside dismiss; other selections keep VoiceInk-like outside tap + Escape +
+close. Center overview drops the 500pt max so it grows with the window. Panel
+width is a fixed Workbench token. Code and docs rename Inspector → Side Panel
+in the same unit; register VoiceInk in `.agents/overlays/reference-apps.md`.
+
+### Execution order & status
+
+| Plan | Title | Priority | Effort | Depends on | Status | Commit | Review | Integration | Main validation |
+|---|---|---:|---:|---|---|---|---|---|---|
+| [081](081-contextual-side-panel.md) | Replace inspector with contextual side panel | P0 | L | 076–080 | READY | — | — | — | — |
+
+### Dependency notes
+
+- Plan 081 assumes the inspector content wave (076–080) already hosts Working
+  Tree, history, and contextual Git detail in the trailing surface. It changes
+  presentation ownership, metrics/window contract, naming, and durable docs — not
+  Git query ownership.
+- Root-session review owns the implementation diff. Executors leave isolated
+  branches intact until review and do not merge or push without authorization.
+
+### Confirmed product constraints
+
+- Reference pin: VoiceInk `8f089cb` / `upstream/main`; GPL → no source/asset copy.
+- No permanent third column and no compact inspector sheet.
+- One optional `MainMenuSidePanelSelection` drives a detail-hosted overlay.
+- Working Tree: Escape + close only (no tap-outside). Draft `commentText`
+  survives dismiss.
+- Other selections: tap-outside + Escape + close.
+- Fixed `sidePanelWidth` (560); do not persist panel width.
+- Remove center `maxWidth` 500pt.
+- Same delivery unit updates `docs/ui.md`, ADR 0015 (superseding 0010–0014 as
+  needed), and the VoiceInk catalog entry.
+
+### Findings considered and rejected/deferred
+
+- Keeping an always-open inspector for Working Tree only was rejected: the
+  agreed model is fully contextual/temporary.
+- Compact sheet fallback was rejected: one overlay owner at every width.
+- Resizable/persisted panel width was deferred: overlay uses a fixed token.
+- Copying VoiceInk’s `SidePanel.swift` was rejected under GPL-3.0.
