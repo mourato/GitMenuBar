@@ -1,9 +1,9 @@
 @testable import GitMenuBar
 import XCTest
 
-final class MainMenuInspectorSelectionTests: XCTestCase {
+final class MainMenuSidePanelSelectionTests: XCTestCase {
     func testStableIDsCoverEverySelectionCase() {
-        let selections: [MainMenuInspectorSelection] = [
+        let selections: [MainMenuSidePanelSelection] = [
             .workingTree, .branches, .unpushedCommits, .stashes, .history,
             .stagedFile(path: "Sources/App.swift"),
             .unstagedFile(path: "Sources/Other.swift"),
@@ -18,60 +18,52 @@ final class MainMenuInspectorSelectionTests: XCTestCase {
         ])
     }
 
-    func testMainMenuItemsMapToInspectorSelections() {
+    func testMainMenuItemsMapToSidePanelSelections() {
         XCTAssertEqual(
-            MainMenuInspectorSelection(mainMenuItem: .stagedFile(path: "a.txt")),
+            MainMenuSidePanelSelection(mainMenuItem: .stagedFile(path: "a.txt")),
             .stagedFile(path: "a.txt")
         )
         XCTAssertEqual(
-            MainMenuInspectorSelection(mainMenuItem: .unstagedFile(path: "b.txt")),
+            MainMenuSidePanelSelection(mainMenuItem: .unstagedFile(path: "b.txt")),
             .unstagedFile(path: "b.txt")
         )
         XCTAssertEqual(
-            MainMenuInspectorSelection(mainMenuItem: .historyCommit(id: "abc123")),
+            MainMenuSidePanelSelection(mainMenuItem: .historyCommit(id: "abc123")),
             .commit(id: "abc123")
         )
     }
 
-    func testInspectorDefaultsToLargestWorkbenchColumn() {
+    func testSidePanelDefaultsToLargestWorkbenchColumn() {
         XCTAssertGreaterThan(
-            WorkbenchMetrics.inspectorDefaultWidth,
+            WorkbenchMetrics.sidePanelWidth,
             WorkbenchMetrics.centralMinimumWidth
         )
         XCTAssertEqual(
             WorkbenchMetrics.mainWindowInitialWidth,
             WorkbenchMetrics.projectsMinimumWidth
                 + WorkbenchMetrics.centralMinimumWidth
-                + WorkbenchMetrics.inspectorDefaultWidth
+                + WorkbenchMetrics.sidePanelWidth
                 + (WorkbenchMetrics.windowPadding * 2)
-                + (WorkbenchMetrics.splitDividerThickness * 2)
+                + WorkbenchMetrics.splitDividerThickness
         )
     }
 
-    func testCompactInspectorThresholdMatchesWindowMinimums() {
+    func testMainWindowMinimumIsTwoColumnFloor() {
         XCTAssertEqual(
-            WorkbenchMetrics.mainWindowCompactMinimumWidth,
+            WorkbenchMetrics.mainWindowMinimumWidth,
             WorkbenchMetrics.projectsMinimumWidth
                 + WorkbenchMetrics.centralMinimumWidth
                 + (WorkbenchMetrics.windowPadding * 2)
                 + WorkbenchMetrics.splitDividerThickness
         )
-        XCTAssertEqual(
-            WorkbenchMetrics.compactInspectorThresholdWidth,
-            WorkbenchMetrics.mainWindowMinimumWidth
-        )
         XCTAssertGreaterThan(
             WorkbenchMetrics.projectsMaximumWidth,
             WorkbenchMetrics.projectsMinimumWidth
         )
-        XCTAssertGreaterThan(
-            WorkbenchMetrics.centralMaximumWidth,
-            WorkbenchMetrics.centralMinimumWidth
-        )
     }
 
-    func testInspectorColumnWidthPreferenceRoundTrips() throws {
-        let suiteName = "MainMenuInspectorSelectionTests-\(UUID().uuidString)"
+    func testLegacyInspectorColumnWidthKeyRemainsReadable() throws {
+        let suiteName = "MainMenuSidePanelSelectionTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
 

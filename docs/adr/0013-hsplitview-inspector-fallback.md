@@ -1,6 +1,6 @@
 # ADR 0013: HSplitView fallback for the always-open inspector
 
-Status: Accepted
+Status: Superseded by ADR 0015
 Date: 2026-09-04
 
 ## Context

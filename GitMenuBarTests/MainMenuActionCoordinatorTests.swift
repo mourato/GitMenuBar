@@ -27,7 +27,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertFalse(actionCoordinator.canSwitchRepository(to: "/tmp/project-b"))
     }
 
-    func testDeleteRemoteInspectorBranchBlankIsSkipped() async {
+    func testDeleteRemoteSidePanelBranchBlankIsSkipped() async {
         let gitManager = GitManager(repositoryPathOverride: "")
         let actionCoordinator = makeActionCoordinator(
             gitManager: gitManager,
@@ -36,12 +36,12 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             session: makeMockedURLSession()
         )
 
-        let result = await actionCoordinator.deleteRemoteInspectorBranch("   ")
+        let result = await actionCoordinator.deleteRemoteSidePanelBranch("   ")
         XCTAssertEqual(result, .skipped)
         XCTAssertNil(actionCoordinator.alert)
     }
 
-    func testCheckoutRemoteInspectorBranchFailurePublishesAlert() async throws {
+    func testCheckoutRemoteSidePanelBranchFailurePublishesAlert() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
         let actionCoordinator = makeActionCoordinator(
@@ -51,12 +51,12 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             session: makeMockedURLSession()
         )
 
-        let result = await actionCoordinator.checkoutRemoteInspectorBranch("feature/missing")
+        let result = await actionCoordinator.checkoutRemoteSidePanelBranch("feature/missing")
         XCTAssertEqual(result, .failed)
         XCTAssertNotNil(actionCoordinator.alert)
     }
 
-    func testInspectorCleanupEmptyUnitsIsSkipped() async {
+    func testSidePanelCleanupEmptyUnitsIsSkipped() async {
         let gitManager = GitManager(repositoryPathOverride: "")
         let actionCoordinator = makeActionCoordinator(
             gitManager: gitManager,
@@ -73,12 +73,12 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             branches: []
         )
 
-        let result = await actionCoordinator.performInspectorCleanup(units: [], snapshot: snapshot)
+        let result = await actionCoordinator.performSidePanelCleanup(units: [], snapshot: snapshot)
         XCTAssertEqual(result, .skipped)
         XCTAssertNil(actionCoordinator.alert)
     }
 
-    func testInspectorPushIsSkippedWhileBusy() async {
+    func testSidePanelPushIsSkippedWhileBusy() async {
         let gitManager = GitManager(repositoryPathOverride: "")
         let actionCoordinator = makeActionCoordinator(
             gitManager: gitManager,
@@ -87,11 +87,11 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             session: makeMockedURLSession()
         )
         gitManager.isCommitting = true
-        let result = await actionCoordinator.pushInspectorBranch("main")
+        let result = await actionCoordinator.pushSidePanelBranch("main")
         XCTAssertEqual(result, .skipped)
     }
 
-    func testFailedInspectorApplyDoesNotReportSuccess() async throws {
+    func testFailedSidePanelApplyDoesNotReportSuccess() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         try "base\n".write(to: repoURL.appendingPathComponent("note.txt"), atomically: true, encoding: .utf8)
         try runGit(["add", "note.txt"], in: repoURL)
@@ -110,15 +110,15 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             session: makeMockedURLSession()
         )
 
-        let result = await actionCoordinator.applyInspectorStash(hash: hash)
+        let result = await actionCoordinator.applySidePanelStash(hash: hash)
         XCTAssertEqual(result, .failed)
         XCTAssertNotNil(actionCoordinator.alert)
         XCTAssertNil(actionCoordinator.success)
         XCTAssertEqual(gitManager.stashService.listStashes(in: repoURL.path).map(\.hash), [hash])
     }
 
-    func testInspectorApplyDoesNotPublishIntoSwitchedProject() async {
-        let manager = InspectorGateGitManager(repositoryPath: "/tmp/project-a")
+    func testSidePanelApplyDoesNotPublishIntoSwitchedProject() async {
+        let manager = SidePanelGateGitManager(repositoryPath: "/tmp/project-a")
         let coordinator = makeActionCoordinator(
             gitManager: manager,
             providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
@@ -129,10 +129,10 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         manager.applyStarted = started
 
         let action = Task { @MainActor in
-            await coordinator.applyInspectorStash(hash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            await coordinator.applySidePanelStash(hash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         }
         await fulfillment(of: [started])
-        let duplicate = await coordinator.applyInspectorStash(hash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+        let duplicate = await coordinator.applySidePanelStash(hash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
         XCTAssertEqual(duplicate, .skipped)
         manager.selectedPath = "/tmp/project-b"
         manager.resetSelectedRepositoryState()
@@ -586,7 +586,7 @@ private final class SpyAIAPIKeyStore: AIAPIKeyStore, @unchecked Sendable {
 }
 
 @MainActor
-private final class InspectorGateGitManager: GitManager {
+private final class SidePanelGateGitManager: GitManager {
     var selectedPath: String
     var applyStarted: XCTestExpectation?
     var applyPaths: [String] = []

@@ -3,8 +3,8 @@ import SwiftUI
 /// Shared history list: one `HistorySectionView` wiring, one collapse state,
 /// one reset target. Used by both the history inspector and the commit
 /// workspace so the two surfaces cannot drift apart.
-struct InspectorHistoryBrowserView: View {
-    let history: InspectorHistoryModel
+struct SidePanelHistoryBrowserView: View {
+    let history: SidePanelHistoryModel
     @Binding var pendingReset: Commit?
 
     @State private var isCollapsed = false
@@ -32,7 +32,7 @@ struct InspectorHistoryBrowserView: View {
 
 extension View {
     /// Shared hard-reset confirmation used by every history surface.
-    func inspectorResetAlert(
+    func sidePanelResetAlert(
         commit: Binding<Commit?>,
         onConfirm: @escaping (Commit) -> Void
     ) -> some View {
@@ -67,17 +67,17 @@ extension View {
 
 #Preview("History Browser") {
     MainMenuPreviewHarness {
-        InspectorHistoryBrowserPreviewHost()
+        SidePanelHistoryBrowserPreviewHost()
     }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 420)
+    .frame(width: WorkbenchMetrics.sidePanelWidth, height: 420)
 }
 
-private struct InspectorHistoryBrowserPreviewHost: View {
+private struct SidePanelHistoryBrowserPreviewHost: View {
     @State private var pendingReset: Commit?
 
     var body: some View {
-        InspectorHistoryBrowserView(
-            history: .preview(sections: InspectorHistoryModel.sampleSections, canLoadMore: true),
+        SidePanelHistoryBrowserView(
+            history: .preview(sections: SidePanelHistoryModel.sampleSections, canLoadMore: true),
             pendingReset: $pendingReset
         )
         .padding()

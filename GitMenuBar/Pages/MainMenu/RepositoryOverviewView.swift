@@ -8,7 +8,7 @@ private struct RepositoryOverviewCardVisual {
 
 struct RepositoryOverviewView: View {
     let overview: RepositoryOverviewSnapshot
-    let onSelectSection: (MainMenuInspectorSelection) -> Void
+    let onSelectSection: (MainMenuSidePanelSelection) -> Void
 
     var body: some View {
         LazyVGrid(
@@ -62,7 +62,7 @@ struct RepositoryOverviewView: View {
     private func overviewCard(
         title: String,
         visual: RepositoryOverviewCardVisual,
-        selection: MainMenuInspectorSelection,
+        selection: MainMenuSidePanelSelection,
         isLoading: Bool,
         content: String,
         accessibilityValue: String

@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct InspectorCommitWorkspaceView: View {
+struct SidePanelCommitWorkspaceView: View {
     let projectName: String
     @Binding var commitMessage: String
     let commitFieldFocus: FocusState<Bool>.Binding
@@ -16,8 +16,9 @@ struct InspectorCommitWorkspaceView: View {
     let isCommitPrimaryButtonDisabled: Bool
     let canShowSplitCommits: Bool
     let commitFocusToken: Int
-    let history: InspectorHistoryModel
+    let history: SidePanelHistoryModel
     let workspaceSelectedFileID: MainMenuSelectableItem?
+    let onClose: () -> Void
     let onCommitPrimaryAction: () -> Void
     let onSplitCommits: () -> Void
     let onRetryCommitGeneration: () -> Void
@@ -37,7 +38,11 @@ struct InspectorCommitWorkspaceView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-            InspectorHeaderView(projectName: projectName, title: "Working Tree")
+            SidePanelHeaderView(
+                projectName: projectName,
+                title: "Working Tree",
+                onClose: onClose
+            )
             CommitWorkflowView(
                 commentText: $commitMessage,
                 isCommentFieldFocused: commitFieldFocus,
@@ -65,13 +70,13 @@ struct InspectorCommitWorkspaceView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
                     workingTreeContent
-                    InspectorHistoryBrowserView(history: history, pendingReset: $pendingReset)
+                    SidePanelHistoryBrowserView(history: history, pendingReset: $pendingReset)
                 }
             }
         }
-        .inspectorResetAlert(commit: $pendingReset) { commit in
+        .sidePanelResetAlert(commit: $pendingReset) { commit in
             Task {
-                _ = await actionCoordinator.resetInspectorCommit(hash: commit.id)
+                _ = await actionCoordinator.resetSidePanelCommit(hash: commit.id)
             }
         }
     }
@@ -88,7 +93,7 @@ struct InspectorCommitWorkspaceView: View {
                 HStack {
                     Spacer(minLength: 0)
                     Button("Stash changes") {
-                        Task { _ = await actionCoordinator.saveInspectorStash() }
+                        Task { _ = await actionCoordinator.saveSidePanelStash() }
                     }
                     .workbenchGhost()
                     .disabled(isCommitActionBusy || actionCoordinator.isBusy)
@@ -103,13 +108,13 @@ struct InspectorCommitWorkspaceView: View {
                         selectedItemID: workspaceSelectedFileID,
                         onSelect: onSelectWorkspaceFile,
                         onStageToggle: { path in
-                            Task { _ = await actionCoordinator.unstageInspectorFile(path: path) }
+                            Task { _ = await actionCoordinator.unstageSidePanelFile(path: path) }
                         },
                         onOpen: { gitManager.openFile(path: $0) },
                         onDiscard: onRequestDiscard,
                         onReveal: { gitManager.revealInFinder(path: $0) },
                         onAction: {
-                            Task { _ = await actionCoordinator.unstageAllInspectorFiles() }
+                            Task { _ = await actionCoordinator.unstageAllSidePanelFiles() }
                         },
                         onDiscardAll: nil,
                         actionIcon: "minus.circle",
@@ -125,13 +130,13 @@ struct InspectorCommitWorkspaceView: View {
                         selectedItemID: workspaceSelectedFileID,
                         onSelect: onSelectWorkspaceFile,
                         onStageToggle: { path in
-                            Task { _ = await actionCoordinator.stageInspectorFile(path: path) }
+                            Task { _ = await actionCoordinator.stageSidePanelFile(path: path) }
                         },
                         onOpen: { gitManager.openFile(path: $0) },
                         onDiscard: onRequestDiscard,
                         onReveal: { gitManager.revealInFinder(path: $0) },
                         onAction: {
-                            Task { _ = await actionCoordinator.stageAllInspectorFiles() }
+                            Task { _ = await actionCoordinator.stageAllSidePanelFiles() }
                         },
                         onDiscardAll: onDiscardAllUnstaged,
                         actionIcon: "plus.circle",
@@ -145,17 +150,17 @@ struct InspectorCommitWorkspaceView: View {
 
 #Preview("Commit Workspace") {
     MainMenuPreviewHarness {
-        InspectorCommitWorkspacePreviewHost()
+        SidePanelCommitWorkspacePreviewHost()
     }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 640)
+    .frame(width: WorkbenchMetrics.sidePanelWidth, height: 640)
 }
 
-private struct InspectorCommitWorkspacePreviewHost: View {
+private struct SidePanelCommitWorkspacePreviewHost: View {
     @State private var commitMessage = ""
     @FocusState private var isCommitFieldFocused: Bool
 
     var body: some View {
-        InspectorCommitWorkspaceView(
+        SidePanelCommitWorkspaceView(
             projectName: "GitMenuBar",
             commitMessage: $commitMessage,
             commitFieldFocus: $isCommitFieldFocused,
@@ -173,6 +178,7 @@ private struct InspectorCommitWorkspacePreviewHost: View {
             commitFocusToken: 0,
             history: .preview(),
             workspaceSelectedFileID: nil,
+            onClose: {},
             onCommitPrimaryAction: {},
             onSplitCommits: {},
             onRetryCommitGeneration: {},

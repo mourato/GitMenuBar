@@ -40,26 +40,19 @@ enum WorkbenchMetrics {
     static let projectsMinimumWidth: CGFloat = 220
     static let projectsMaximumWidth: CGFloat = 360
     static let centralMinimumWidth: CGFloat = 360
-    static let centralMaximumWidth: CGFloat = 500
-    static let inspectorMinimumWidth: CGFloat = 320
+    /// Fixed trailing side-panel overlay width (contextual details).
+    static let sidePanelWidth: CGFloat = 560
     static let splitDividerThickness: CGFloat = 8
-    static let inspectorDefaultWidth: CGFloat = 560
+    /// Two-column floor: Projects sidebar + overview (side panel overlays detail).
     static let mainWindowMinimumWidth: CGFloat = projectsMinimumWidth
-        + centralMinimumWidth
-        + inspectorMinimumWidth
-        + (windowPadding * 2)
-        + (splitDividerThickness * 2)
-    static let mainWindowCompactMinimumWidth: CGFloat = projectsMinimumWidth
         + centralMinimumWidth
         + (windowPadding * 2)
         + splitDividerThickness
     static let mainWindowInitialWidth: CGFloat = projectsMinimumWidth
         + centralMinimumWidth
-        + inspectorDefaultWidth
+        + sidePanelWidth
         + (windowPadding * 2)
-        + (splitDividerThickness * 2)
-    static let compactInspectorThresholdWidth: CGFloat = mainWindowMinimumWidth
-    static let compactInspectorHysteresis: CGFloat = 40
+        + splitDividerThickness
 }
 
 enum WorkbenchTypography {

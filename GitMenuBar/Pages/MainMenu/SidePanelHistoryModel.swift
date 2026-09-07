@@ -3,7 +3,7 @@ import SwiftUI
 /// Shared history-surface input, built once by the workbench and consumed by
 /// both the history inspector and the commit workspace. Replaces threading
 /// the same dozen values through the inspector dispatcher.
-struct InspectorHistoryModel {
+struct SidePanelHistoryModel {
     let sections: [HistoryTimelineSectionModel]
     let selectedItemID: MainMenuSelectableItem?
     let isLoading: Bool
@@ -23,8 +23,8 @@ struct InspectorHistoryModel {
         selectedItemID: MainMenuSelectableItem? = nil,
         isLoading: Bool = false,
         canLoadMore: Bool = false
-    ) -> InspectorHistoryModel {
-        InspectorHistoryModel(
+    ) -> SidePanelHistoryModel {
+        SidePanelHistoryModel(
             sections: sections,
             selectedItemID: selectedItemID,
             isLoading: isLoading,

@@ -1,6 +1,6 @@
 # ADR 0014: Compact inspector sheet and bounded workbench columns
 
-Status: Accepted
+Status: Superseded by ADR 0015
 Date: 2026-09-05
 
 ## Context

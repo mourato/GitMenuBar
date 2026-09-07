@@ -16,7 +16,6 @@ final class StatusBarController: NSObject, ObservableObject {
         static let windowInitialSize = NSSize(width: WorkbenchMetrics.mainWindowInitialWidth, height: 720)
         static let windowMinimumHeight: CGFloat = 640
         static let windowMinimumSize = NSSize(width: WorkbenchMetrics.mainWindowMinimumWidth, height: windowMinimumHeight)
-        static let windowCompactMinimumSize = NSSize(width: WorkbenchMetrics.mainWindowCompactMinimumWidth, height: windowMinimumHeight)
         static let autoHideBlurEvaluationDelay: TimeInterval = 0.08
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
         static let screenCaptureUIBundleIdentifier = "com.apple.screencaptureui"
@@ -321,7 +320,6 @@ final class StatusBarController: NSObject, ObservableObject {
         window.setFrameAutosaveName(Constants.windowAutosaveName)
         hasPositionedWindowInitially = window.setFrameUsingName(Constants.windowAutosaveName, force: false)
         normalizeMainWindowSize(window)
-        updateInspectorCompactMode(for: window)
 
         let contentController = WorkbenchWindowChrome.makeHostedContentController(rootView: makeRootView())
         window.contentViewController = contentController
@@ -336,9 +334,6 @@ final class StatusBarController: NSObject, ObservableObject {
         }
         windowDelegate.onDidMoveOrResize = { [weak self] in
             self?.persistMainWindowFrameIfPossible()
-            if let window = self?.mainWindow {
-                self?.updateInspectorCompactMode(for: window)
-            }
         }
 
         window.delegate = windowDelegate
@@ -714,7 +709,6 @@ final class StatusBarController: NSObject, ObservableObject {
 
         if restoreMainWindowFrameIfAvailable(mainWindow) {
             normalizeMainWindowSize(mainWindow)
-            updateInspectorCompactMode(for: mainWindow)
             if let screen = mainWindow.screen ?? NSScreen.main {
                 fitMainWindowWidthToVisibleFrame(mainWindow, visibleFrame: screen.visibleFrame)
                 clampMainWindowOriginToVisibleFrame(mainWindow, visibleFrame: screen.visibleFrame)
@@ -836,28 +830,12 @@ final class StatusBarController: NSObject, ObservableObject {
     private func normalizeMainWindowSize(_ window: NSWindow) {
         let currentContentRect = window.contentRect(forFrameRect: window.frame)
         let normalizedContentSize = NSSize(
-            width: max(currentContentRect.width, Constants.windowCompactMinimumSize.width),
-            height: max(currentContentRect.height, Constants.windowCompactMinimumSize.height)
+            width: max(currentContentRect.width, Constants.windowMinimumSize.width),
+            height: max(currentContentRect.height, Constants.windowMinimumSize.height)
         )
 
         guard normalizedContentSize != currentContentRect.size else { return }
         window.setContentSize(normalizedContentSize)
-    }
-
-    /// Drives the inline-inspector vs compact-sheet mode from the NSWindow
-    /// content width and swaps the window minimum between the three-column
-    /// and two-column floors. Window-driven, so SwiftUI layout never feeds
-    /// back into this state.
-    private func updateInspectorCompactMode(for window: NSWindow) {
-        let contentWidth = window.contentRect(forFrameRect: window.frame).width
-        presentationModel.updateInspectorCompactMode(contentWidth: contentWidth)
-
-        let minimumSize = presentationModel.isInspectorCompact
-            ? Constants.windowCompactMinimumSize
-            : Constants.windowMinimumSize
-        if window.contentMinSize != minimumSize {
-            window.contentMinSize = minimumSize
-        }
     }
 
     private func hideMainWindow() {

@@ -123,7 +123,7 @@ extension MainMenuView {
             case .success:
                 showCreateBranch = false
                 newBranchName = ""
-                Task { await actionCoordinator.reloadInspectorBranchData() }
+                Task { await actionCoordinator.reloadSidePanelBranchData() }
             case let .failure(error):
                 createBranchError = error.localizedDescription
             }
@@ -138,7 +138,7 @@ extension MainMenuView {
                 showRenameBranch = false
                 renameBranchNewName = ""
                 oldBranchName = ""
-                Task { await actionCoordinator.reloadInspectorBranchData() }
+                Task { await actionCoordinator.reloadSidePanelBranchData() }
             case let .failure(error):
                 renameBranchError = error.localizedDescription
             }

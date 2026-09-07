@@ -4,7 +4,7 @@ import SwiftUI
 /// Branch Health management surface hosted by the inspector. It covers the
 /// Branches, Worktrees, and Cleanup modes previously owned by the
 /// BranchManagementSheet, reusing its row and content views.
-struct InspectorBranchManagementView: View {
+struct SidePanelBranchManagementView: View {
     let onRequestDeleteBranch: (String) -> Void
     let onRequestSwitchBranch: (String) -> Void
     let onCreateBranch: () -> Void
@@ -38,7 +38,7 @@ struct InspectorBranchManagementView: View {
             Button("Delete", role: .destructive) {
                 guard let name = deleteRemoteName else { return }
                 deleteRemoteName = nil
-                Task { _ = await actionCoordinator.deleteRemoteInspectorBranch(name) }
+                Task { _ = await actionCoordinator.deleteRemoteSidePanelBranch(name) }
             }
             Button("Cancel", role: .cancel) { deleteRemoteName = nil }
         } message: {
@@ -165,14 +165,14 @@ struct InspectorBranchManagementView: View {
             onPush: needsPush(info) ? {
                 Task {
                     if info.trackingStatus == .noRemote {
-                        _ = await actionCoordinator.publishInspectorBranch(info.name)
+                        _ = await actionCoordinator.publishSidePanelBranch(info.name)
                     } else {
-                        _ = await actionCoordinator.pushInspectorBranch(info.name)
+                        _ = await actionCoordinator.pushSidePanelBranch(info.name)
                     }
                 }
             } : nil,
             onMerge: gitManager.unmergedIntoDefaultBranches.contains(info.name) && !info.isCurrent ? {
-                Task { _ = await actionCoordinator.mergeInspectorBranch(info.name) }
+                Task { _ = await actionCoordinator.mergeSidePanelBranch(info.name) }
             } : nil,
             onDeleteRemote: nil,
             onCheckoutLocally: nil
@@ -189,7 +189,7 @@ struct InspectorBranchManagementView: View {
             onMerge: nil,
             onDeleteRemote: { deleteRemoteName = info.name },
             onCheckoutLocally: {
-                Task { _ = await actionCoordinator.checkoutRemoteInspectorBranch(info.name) }
+                Task { _ = await actionCoordinator.checkoutRemoteSidePanelBranch(info.name) }
             }
         )
     }
@@ -276,7 +276,7 @@ struct InspectorBranchManagementView: View {
         guard !units.isEmpty else { return }
         dismissCleanupConfirmation()
         Task {
-            _ = await actionCoordinator.performInspectorCleanup(units: units, snapshot: snapshot)
+            _ = await actionCoordinator.performSidePanelCleanup(units: units, snapshot: snapshot)
             selectedCleanupIDs.subtract(Set(units.map(\.id)))
         }
     }
@@ -291,14 +291,14 @@ struct InspectorBranchManagementView: View {
     }
 }
 
-#Preview("Inspector Branch Management") {
+#Preview("Side Panel Branch Management") {
     MainMenuPreviewHarness {
-        InspectorBranchManagementView(
+        SidePanelBranchManagementView(
             onRequestDeleteBranch: { _ in },
             onRequestSwitchBranch: { _ in },
             onCreateBranch: {},
             onRenameBranch: { _ in }
         )
     }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 640)
+    .frame(width: WorkbenchMetrics.sidePanelWidth, height: 640)
 }

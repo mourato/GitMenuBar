@@ -44,7 +44,7 @@ struct MainMenuView: View {
     @State var commandPaletteQuery = ""
     @State var selectedCommandPaletteItemID: String?
     @State var selectedMainItemID: MainMenuSelectableItem?
-    @State var selectedInspectorSelection: MainMenuInspectorSelection?
+    @State var selectedSidePanelSelection: MainMenuSidePanelSelection?
     @State var lastHandledCommandPaletteToken = 0
     @State var lastHandledRepositoryOptionsToken = 0
     @State var mainKeyboardMonitor: Any?
@@ -187,7 +187,7 @@ struct MainMenuView: View {
             onDiscardConfirm: {
                 if let path = discardFilePath, let status = discardFileStatus {
                     Task {
-                        _ = await actionCoordinator.discardInspectorFile(path: path, status: status)
+                        _ = await actionCoordinator.discardSidePanelFile(path: path, status: status)
                     }
                 }
                 discardFilePath = nil
@@ -217,7 +217,7 @@ struct MainMenuView: View {
                 pendingSwitchBranch = ""
                 guard !branch.isEmpty else { return }
                 Task {
-                    _ = await actionCoordinator.switchInspectorBranch(branch)
+                    _ = await actionCoordinator.switchSidePanelBranch(branch)
                 }
             },
             onCancelDirtySwitch: {
@@ -227,7 +227,7 @@ struct MainMenuView: View {
                 let name = branchNameToDelete
                 branchNameToDelete = ""
                 Task {
-                    _ = await actionCoordinator.deleteInspectorBranch(name)
+                    _ = await actionCoordinator.deleteSidePanelBranch(name)
                 }
             },
             onCancelDeleteBranch: {
@@ -287,7 +287,7 @@ struct MainMenuView: View {
         }
         .onChange(of: presentationModel.route) { route in
             if route != .main {
-                clearInspectorSelection()
+                clearSidePanelSelection()
                 closeCommandPalette()
                 dismissTransientPresentations()
                 if commentText.isEmpty {
@@ -332,7 +332,7 @@ struct MainMenuView: View {
         }
         .onChange(of: currentRepositoryPath) { _ in
             selectedMainItemID = nil
-            clearInspectorSelection()
+            clearSidePanelSelection()
             reloadRepositorySelectionSnapshot()
             refreshRenderSnapshot()
         }
@@ -351,9 +351,9 @@ struct MainMenuView: View {
         .onChange(of: projectMonitor.snapshots) { _ in
             refreshRenderSnapshot()
         }
-        .onChange(of: selectedInspectorSelection) { selection in
+        .onChange(of: selectedSidePanelSelection) { selection in
             Task {
-                await actionCoordinator.prepareInspectorSelection(selection)
+                await actionCoordinator.prepareSidePanelSelection(selection)
             }
         }
     }

@@ -57,7 +57,7 @@ enum MainMenuSelectableItem: Hashable {
     case historyCommit(id: String)
 }
 
-enum MainMenuInspectorSelection: Hashable, Identifiable {
+enum MainMenuSidePanelSelection: Hashable, Identifiable {
     case workingTree
     case branches
     case unpushedCommits

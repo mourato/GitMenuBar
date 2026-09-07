@@ -23,7 +23,7 @@ extension MainMenuView {
                 RepositoryOverviewView(
                     overview: renderSnapshot.overview,
                     onSelectSection: { selection in
-                        selectedInspectorSelection = selection
+                        selectedSidePanelSelection = selection
                     }
                 )
             }
@@ -74,33 +74,37 @@ extension MainMenuView {
         .accessibilityValue(presentationModel.isFastLoading ? "Updating project" : "")
     }
 
-    private var inspectorContent: some View {
-        inspectorSelectionView
+    private var sidePanelContent: some View {
+        sidePanelSelectionView
             .padding(.horizontal, WorkbenchMetrics.panelPadding)
             .padding(.top, WorkbenchMetrics.iconHitTarget + WorkbenchMetrics.compactSpacing)
             .padding(.bottom, WorkbenchMetrics.panelPadding)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .ignoresSafeArea(.container, edges: .top)
             .accessibilityElement(children: .contain)
-            .accessibilityLabel(selectedInspectorSelection.map { "Details for \($0.title)" } ?? "Details")
+            .accessibilityLabel(
+                selectedSidePanelSelection.map { "Details for \($0.title)" } ?? "Details"
+            )
     }
 
     @ViewBuilder
-    private var inspectorSelectionView: some View {
-        switch selectedInspectorSelection {
+    private var sidePanelSelectionView: some View {
+        switch selectedSidePanelSelection {
         case .workingTree:
             commitWorkspaceView
         case .history, .commit:
-            HistoryInspectorView(
+            HistorySidePanelView(
                 projectName: renderSnapshot.currentProjectName,
-                selection: selectedInspectorSelection,
-                history: inspectorHistory
+                selection: selectedSidePanelSelection,
+                history: sidePanelHistory,
+                onClose: clearSidePanelSelection
             )
         default:
-            InspectorDetailView(
+            SidePanelDetailView(
                 projectName: renderSnapshot.currentProjectName,
-                selection: selectedInspectorSelection,
+                selection: selectedSidePanelSelection,
                 overview: renderSnapshot.overview,
+                onClose: clearSidePanelSelection,
                 onRequestDiscard: requestDiscard,
                 onRequestDeleteBranch: { name in
                     branchNameToDelete = name
@@ -113,7 +117,7 @@ extension MainMenuView {
                         showDirtySwitchConfirmation = true
                     } else {
                         Task {
-                            _ = await actionCoordinator.switchInspectorBranch(branch)
+                            _ = await actionCoordinator.switchSidePanelBranch(branch)
                         }
                     }
                 },
@@ -131,8 +135,8 @@ extension MainMenuView {
         }
     }
 
-    private var inspectorHistory: InspectorHistoryModel {
-        InspectorHistoryModel(
+    private var sidePanelHistory: SidePanelHistoryModel {
+        SidePanelHistoryModel(
             sections: historyTimelineSections,
             selectedItemID: selectedMainItemID,
             isLoading: presentationModel.isDetailLoading,
@@ -141,11 +145,11 @@ extension MainMenuView {
             isCommitInFuture: isCommitInFuture,
             onSelectRow: { selectMainItem($0.id) },
             onOpenCommit: { commitID in
-                selectedInspectorSelection = .commit(id: commitID)
+                selectedSidePanelSelection = .commit(id: commitID)
                 selectedMainItemID = .historyCommit(id: commitID)
             },
             onBackToHistory: {
-                selectedInspectorSelection = .history
+                selectedSidePanelSelection = .history
             },
             onEditCommitMessage: { commit in
                 Task {
@@ -165,7 +169,7 @@ extension MainMenuView {
     }
 
     private var commitWorkspaceView: some View {
-        InspectorCommitWorkspaceView(
+        SidePanelCommitWorkspaceView(
             projectName: renderSnapshot.currentProjectName,
             commitMessage: $commentText,
             commitFieldFocus: $isCommentFieldFocused,
@@ -181,8 +185,9 @@ extension MainMenuView {
             isCommitPrimaryButtonDisabled: isPrimaryButtonDisabled,
             canShowSplitCommits: canShowAtomicCommits,
             commitFocusToken: presentationModel.focusCommitFieldToken,
-            history: inspectorHistory,
+            history: sidePanelHistory,
             workspaceSelectedFileID: selectedMainItemID,
+            onClose: clearSidePanelSelection,
             onCommitPrimaryAction: {
                 Task {
                     await performPrimaryAction()
@@ -212,22 +217,23 @@ extension MainMenuView {
         )
     }
 
-    /// Presents the inspector as a sheet when the window is too narrow for
-    /// three inline columns. Dismissing clears the selection, matching the
-    /// Escape-clears-selection-first contract.
-    private var isCompactInspectorPresented: Binding<Bool> {
+    /// Presents the trailing side panel while a contextual selection exists on
+    /// the main route. Dismissing clears the selection.
+    private var isSidePanelPresented: Binding<Bool> {
         Binding(
             get: {
-                presentationModel.isInspectorCompact
-                    && presentationModel.route == .main
-                    && selectedInspectorSelection != nil
+                presentationModel.route == .main && selectedSidePanelSelection != nil
             },
             set: { isPresented in
                 if !isPresented {
-                    selectedInspectorSelection = nil
+                    selectedSidePanelSelection = nil
                 }
             }
         )
+    }
+
+    private var sidePanelDismissesOnOutsideTap: Bool {
+        selectedSidePanelSelection != .workingTree
     }
 
     var mainView: some View {
@@ -252,44 +258,29 @@ extension MainMenuView {
                     max: WorkbenchMetrics.projectsMaximumWidth
                 )
             } detail: {
-                HSplitView {
-                    routeContent
-                        .padding(.top, WorkbenchMetrics.sectionSpacing)
-                        .padding(.leading, WorkbenchMetrics.windowPadding)
-                        .padding(.trailing, WorkbenchMetrics.windowPadding)
-                        .padding(.bottom, WorkbenchMetrics.windowPadding)
-                        .frame(
-                            minWidth: WorkbenchMetrics.centralMinimumWidth,
-                            maxWidth: presentationModel.isInspectorCompact
-                                ? nil : WorkbenchMetrics.centralMaximumWidth,
-                            maxHeight: .infinity,
-                            alignment: .top
-                        )
-
-                    if presentationModel.route == .main, !presentationModel.isInspectorCompact {
-                        // ponytail: keep divider persistence out of SwiftUI layout.
-                        // Use an AppKit split-view delegate if relaunch persistence becomes required.
-                        inspectorContent
-                            .frame(
-                                minWidth: WorkbenchMetrics.inspectorMinimumWidth,
-                                idealWidth: CGFloat(MainWindowPreferences.inspectorColumnWidth()),
-                                maxWidth: .infinity,
-                                maxHeight: .infinity,
-                                alignment: .topLeading
-                            )
+                routeContent
+                    .padding(.top, WorkbenchMetrics.sectionSpacing)
+                    .padding(.leading, WorkbenchMetrics.windowPadding)
+                    .padding(.trailing, WorkbenchMetrics.windowPadding)
+                    .padding(.bottom, WorkbenchMetrics.windowPadding)
+                    .frame(
+                        minWidth: WorkbenchMetrics.centralMinimumWidth,
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .top
+                    )
+                    .sidePanel(
+                        isPresented: isSidePanelPresented,
+                        dismissOnOutsideTap: sidePanelDismissesOnOutsideTap
+                    ) {
+                        sidePanelContent
                     }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationSplitViewStyle(.balanced)
-            .sheet(isPresented: isCompactInspectorPresented) {
-                inspectorContent
-                    .frame(minWidth: WorkbenchMetrics.inspectorMinimumWidth)
-            }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .onExitCommand {
-                if selectedInspectorSelection != nil {
-                    clearInspectorSelection()
+                if selectedSidePanelSelection != nil {
+                    clearSidePanelSelection()
                     return
                 }
                 if isCommandPalettePresented {

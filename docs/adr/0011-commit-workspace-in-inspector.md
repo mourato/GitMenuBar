@@ -1,6 +1,6 @@
 # ADR 0011: Commit workspace in the inspector
 
-Status: Superseded in part by ADR 0012
+Status: Superseded by ADR 0015
 Date: 2026-09-03
 
 ## Context

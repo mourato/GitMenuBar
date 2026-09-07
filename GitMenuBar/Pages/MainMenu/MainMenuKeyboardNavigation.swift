@@ -67,7 +67,7 @@ extension MainMenuView {
 
     func synchronizeSelectedMainItem() {
         guard let selectedMainItemID else {
-            clearInspectorSelection()
+            clearSidePanelSelection()
             return
         }
 
@@ -76,16 +76,16 @@ extension MainMenuView {
         }
 
         self.selectedMainItemID = nil
-        clearInspectorSelection()
+        clearSidePanelSelection()
     }
 
-    func clearInspectorSelection() {
-        selectedInspectorSelection = nil
+    func clearSidePanelSelection() {
+        selectedSidePanelSelection = nil
     }
 
     func selectMainItem(_ itemID: MainMenuSelectableItem) {
         selectedMainItemID = itemID
-        selectedInspectorSelection = MainMenuInspectorSelection(mainMenuItem: itemID)
+        selectedSidePanelSelection = MainMenuSidePanelSelection(mainMenuItem: itemID)
     }
 
     func moveMainSelection(_ direction: MoveCommandDirection) {
@@ -95,7 +95,7 @@ extension MainMenuView {
             direction: direction
         ) else {
             selectedMainItemID = nil
-            clearInspectorSelection()
+            clearSidePanelSelection()
             return
         }
 
@@ -111,7 +111,7 @@ extension MainMenuView {
         case let .stagedFile(path), let .unstagedFile(path):
             gitManager.openFile(path: path)
         case let .historyCommit(id):
-            selectedInspectorSelection = .commit(id: id)
+            selectedSidePanelSelection = .commit(id: id)
         }
     }
 

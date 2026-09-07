@@ -38,22 +38,6 @@ final class MainMenuPresentationModel: ObservableObject {
     @Published private(set) var showRepositoryOptionsToken = 0
     @Published private(set) var createRepoSuggestionPath: String?
     @Published private(set) var quotaInfoSnapshot: UsageQuotaSnapshot?
-    @Published private(set) var isInspectorCompact = false
-
-    /// Switches the inspector between the inline split column and the compact
-    /// sheet. Driven by the NSWindow content width (never by SwiftUI layout),
-    /// with hysteresis so live resizing does not flap at the boundary.
-    func updateInspectorCompactMode(contentWidth: CGFloat) {
-        if isInspectorCompact {
-            if contentWidth >= WorkbenchMetrics.compactInspectorThresholdWidth
-                + WorkbenchMetrics.compactInspectorHysteresis
-            {
-                isInspectorCompact = false
-            }
-        } else if contentWidth < WorkbenchMetrics.compactInspectorThresholdWidth {
-            isInspectorCompact = true
-        }
-    }
 
     func prepareForPresentation(route: MainMenuRoute, requestCommitFocus: Bool) {
         self.route = route

@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// Inspector detail surface for selections that are neither the commit
+/// Side panel detail surface for selections that are neither the commit
 /// workspace nor history. The parent routes `.workingTree` and
 /// `.history`/`.commit` elsewhere, so this view only handles detail cases.
-struct InspectorDetailView: View {
+struct SidePanelDetailView: View {
     let projectName: String
-    let selection: MainMenuInspectorSelection?
+    let selection: MainMenuSidePanelSelection?
     let overview: RepositoryOverviewSnapshot
+    let onClose: () -> Void
     let onRequestDiscard: (String, WorkingTreeFileStatus) -> Void
     let onRequestDeleteBranch: (String) -> Void
     let onRequestSwitchBranch: (String) -> Void
@@ -19,8 +20,9 @@ struct InspectorDetailView: View {
 
     init(
         projectName: String,
-        selection: MainMenuInspectorSelection?,
+        selection: MainMenuSidePanelSelection?,
         overview: RepositoryOverviewSnapshot,
+        onClose: @escaping () -> Void = {},
         onRequestDiscard: @escaping (String, WorkingTreeFileStatus) -> Void,
         onRequestDeleteBranch: @escaping (String) -> Void,
         onRequestSwitchBranch: @escaping (String) -> Void,
@@ -30,6 +32,7 @@ struct InspectorDetailView: View {
         self.projectName = projectName
         self.selection = selection
         self.overview = overview
+        self.onClose = onClose
         self.onRequestDiscard = onRequestDiscard
         self.onRequestDeleteBranch = onRequestDeleteBranch
         self.onRequestSwitchBranch = onRequestSwitchBranch
@@ -39,16 +42,14 @@ struct InspectorDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-            InspectorHeaderView(projectName: projectName, title: selection?.title ?? "Details")
+            SidePanelHeaderView(
+                projectName: projectName,
+                title: selection?.title ?? "Details",
+                onClose: onClose
+            )
             ScrollView {
                 if let selection {
                     sectionBody(for: selection)
-                } else {
-                    ContentUnavailableView(
-                        "No details selected",
-                        systemImage: "sidebar.right",
-                        description: Text("Select an item in the workbench to view its details.")
-                    )
                 }
             }
         }
@@ -69,7 +70,7 @@ struct InspectorDetailView: View {
             Button("Drop", role: .destructive) {
                 if let stashPendingDrop {
                     Task {
-                        _ = await actionCoordinator.dropInspectorStash(hash: stashPendingDrop.hash)
+                        _ = await actionCoordinator.dropSidePanelStash(hash: stashPendingDrop.hash)
                     }
                 }
                 stashPendingDrop = nil
@@ -80,7 +81,7 @@ struct InspectorDetailView: View {
     }
 
     @ViewBuilder
-    private func sectionBody(for selection: MainMenuInspectorSelection) -> some View {
+    private func sectionBody(for selection: MainMenuSidePanelSelection) -> some View {
         switch selection {
         case let .stagedFile(path):
             fileDetail(path: path, staged: true)
@@ -113,12 +114,12 @@ struct InspectorDetailView: View {
                     .workbenchGhost()
                     if staged {
                         Button("Unstage") {
-                            Task { _ = await actionCoordinator.unstageInspectorFile(path: file.path) }
+                            Task { _ = await actionCoordinator.unstageSidePanelFile(path: file.path) }
                         }
                         .workbenchGhost()
                     } else {
                         Button("Stage") {
-                            Task { _ = await actionCoordinator.stageInspectorFile(path: file.path) }
+                            Task { _ = await actionCoordinator.stageSidePanelFile(path: file.path) }
                         }
                         .workbenchGhost()
                         if file.status != .untracked {
@@ -149,9 +150,9 @@ struct InspectorDetailView: View {
                 Button(pushSyncPrimaryTitle) {
                     Task {
                         if isCurrentBranchUnpublished {
-                            _ = await actionCoordinator.publishInspectorBranch(gitManager.currentBranch)
+                            _ = await actionCoordinator.publishSidePanelBranch(gitManager.currentBranch)
                         } else {
-                            _ = await actionCoordinator.pushInspectorBranch(gitManager.currentBranch)
+                            _ = await actionCoordinator.pushSidePanelBranch(gitManager.currentBranch)
                         }
                     }
                 }
@@ -166,11 +167,11 @@ struct InspectorDetailView: View {
                 .accessibilityHint("Pushes the current local branch to origin without force")
                 Menu("Pull") {
                     Button("Pull") {
-                        Task { _ = await actionCoordinator.pullInspectorBranch(rebase: false) }
+                        Task { _ = await actionCoordinator.pullSidePanelBranch(rebase: false) }
                     }
                     .disabled(!canPull)
                     Button("Pull with Rebase") {
-                        Task { _ = await actionCoordinator.pullInspectorBranch(rebase: true) }
+                        Task { _ = await actionCoordinator.pullSidePanelBranch(rebase: true) }
                     }
                     .disabled(!canPull)
                 }
@@ -238,7 +239,7 @@ struct InspectorDetailView: View {
     }
 
     private var branchesSection: some View {
-        InspectorBranchManagementView(
+        SidePanelBranchManagementView(
             onRequestDeleteBranch: onRequestDeleteBranch,
             onRequestSwitchBranch: onRequestSwitchBranch,
             onCreateBranch: onCreateBranch,
@@ -254,7 +255,7 @@ struct InspectorDetailView: View {
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 0)
                 Button("Stash changes") {
-                    Task { _ = await actionCoordinator.saveInspectorStash() }
+                    Task { _ = await actionCoordinator.saveSidePanelStash() }
                 }
                 .workbenchGhost()
                 .disabled(actionCoordinator.isBusy || !hasWorkingTreeChanges)
@@ -275,11 +276,11 @@ struct InspectorDetailView: View {
                         HStack(spacing: WorkbenchMetrics.compactSpacing) {
                             Menu("Apply") {
                                 Button("Apply") {
-                                    Task { _ = await actionCoordinator.applyInspectorStash(hash: stash.hash) }
+                                    Task { _ = await actionCoordinator.applySidePanelStash(hash: stash.hash) }
                                 }
                                 .disabled(actionCoordinator.isBusy)
                                 Button("Apply and drop") {
-                                    Task { _ = await actionCoordinator.popInspectorStash(hash: stash.hash) }
+                                    Task { _ = await actionCoordinator.popSidePanelStash(hash: stash.hash) }
                                 }
                                 .disabled(actionCoordinator.isBusy)
                             }

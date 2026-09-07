@@ -1,57 +1,46 @@
 import SwiftUI
 
-#Preview("No Selection") {
-    MainMenuPreviewHarness {
-        InspectorDetailView(
-            projectName: "GitMenuBar",
-            selection: nil,
-            overview: .empty,
-            onRequestDiscard: { _, _ in },
-            onRequestDeleteBranch: { _ in },
-            onRequestSwitchBranch: { _ in }
-        )
-    }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 360)
-}
-
 #Preview("Stashes") {
     MainMenuPreviewHarness {
-        InspectorDetailView(
+        SidePanelDetailView(
             projectName: "GitMenuBar",
             selection: .stashes,
             overview: .empty,
+            onClose: {},
             onRequestDiscard: { _, _ in },
             onRequestDeleteBranch: { _ in },
             onRequestSwitchBranch: { _ in }
         )
     }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 360)
+    .frame(width: WorkbenchMetrics.sidePanelWidth, height: 360)
 }
 
 #Preview("Push and Sync") {
     MainMenuPreviewHarness {
-        InspectorDetailView(
+        SidePanelDetailView(
             projectName: "GitMenuBar",
             selection: .unpushedCommits,
             overview: .empty,
+            onClose: {},
             onRequestDiscard: { _, _ in },
             onRequestDeleteBranch: { _ in },
             onRequestSwitchBranch: { _ in }
         )
     }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 360)
+    .frame(width: WorkbenchMetrics.sidePanelWidth, height: 360)
 }
 
 #Preview("Branches") {
     MainMenuPreviewHarness {
-        InspectorDetailView(
+        SidePanelDetailView(
             projectName: "GitMenuBar",
             selection: .branches,
             overview: .empty,
+            onClose: {},
             onRequestDiscard: { _, _ in },
             onRequestDeleteBranch: { _ in },
             onRequestSwitchBranch: { _ in }
         )
     }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 420)
+    .frame(width: WorkbenchMetrics.sidePanelWidth, height: 420)
 }

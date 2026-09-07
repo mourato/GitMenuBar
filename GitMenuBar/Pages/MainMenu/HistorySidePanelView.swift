@@ -1,9 +1,10 @@
 import SwiftUI
 
-struct HistoryInspectorView: View {
+struct HistorySidePanelView: View {
     let projectName: String
-    let selection: MainMenuInspectorSelection?
-    let history: InspectorHistoryModel
+    let selection: MainMenuSidePanelSelection?
+    let history: SidePanelHistoryModel
+    let onClose: () -> Void
 
     @EnvironmentObject private var gitManager: GitManager
     @EnvironmentObject private var actionCoordinator: MainMenuActionCoordinator
@@ -11,12 +12,16 @@ struct HistoryInspectorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-            InspectorHeaderView(projectName: projectName, title: selection?.title ?? "History")
+            SidePanelHeaderView(
+                projectName: projectName,
+                title: selection?.title ?? "History",
+                onClose: onClose
+            )
             historyContent
         }
-        .inspectorResetAlert(commit: $pendingReset) { commit in
+        .sidePanelResetAlert(commit: $pendingReset) { commit in
             Task {
-                _ = await actionCoordinator.resetInspectorCommit(hash: commit.id)
+                _ = await actionCoordinator.resetSidePanelCommit(hash: commit.id)
             }
         }
     }
@@ -27,7 +32,7 @@ struct HistoryInspectorView: View {
             commitDetail(for: hash)
         } else {
             ScrollView(.vertical) {
-                InspectorHistoryBrowserView(history: history, pendingReset: $pendingReset)
+                SidePanelHistoryBrowserView(history: history, pendingReset: $pendingReset)
                     .padding(.bottom, WorkbenchMetrics.compactSpacing)
             }
         }
@@ -59,33 +64,36 @@ struct HistoryInspectorView: View {
 
 #Preview("History List") {
     MainMenuPreviewHarness {
-        HistoryInspectorView(
+        HistorySidePanelView(
             projectName: "GitMenuBar",
             selection: .history,
-            history: .preview(sections: InspectorHistoryModel.sampleSections, canLoadMore: true)
+            history: .preview(sections: SidePanelHistoryModel.sampleSections, canLoadMore: true),
+            onClose: {}
         )
     }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 480)
+    .frame(width: WorkbenchMetrics.sidePanelWidth, height: 480)
 }
 
 #Preview("Commit Detail") {
     MainMenuPreviewHarness {
-        HistoryInspectorView(
+        HistorySidePanelView(
             projectName: "GitMenuBar",
             selection: .commit(id: "abc123"),
-            history: .preview(sections: InspectorHistoryModel.sampleSections)
+            history: .preview(sections: SidePanelHistoryModel.sampleSections),
+            onClose: {}
         )
     }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 480)
+    .frame(width: WorkbenchMetrics.sidePanelWidth, height: 480)
 }
 
 #Preview("Empty History") {
     MainMenuPreviewHarness {
-        HistoryInspectorView(
+        HistorySidePanelView(
             projectName: "GitMenuBar",
             selection: .history,
-            history: .preview()
+            history: .preview(),
+            onClose: {}
         )
     }
-    .frame(width: WorkbenchMetrics.inspectorMinimumWidth, height: 360)
+    .frame(width: WorkbenchMetrics.sidePanelWidth, height: 360)
 }

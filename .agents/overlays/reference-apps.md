@@ -91,6 +91,22 @@ quota strip.
 | **Consultation** | Remote GitHub README and LICENSE consulted because the canonical local clone is absent. |
 | **Description** | Keyboard-driven, agent-aware multi-repo dashboard. One-screen branch and dirty/ahead/behind status, multi-select fetch/pull/branch actions, cross-repo search, worklog, and local Claude/Codex activity footprints. Primary reference for monitoring multiple Git projects simultaneously and surfacing uncommitted AI work. |
 
+
+### VoiceInk
+
+| Attribute | Value |
+|-----------|-------|
+| **Canonical name** | VoiceInk |
+| **Classification** | UI/UX + Engineering |
+| **Local path** | ~/Documents/Projects/References/VoiceInk |
+| **Cloned?** | Yes |
+| **Remote** | https://github.com/Beingpax/VoiceInk |
+| **Reference revision** | `8f089cb` (`v2.13-10-g8f089cb`, `upstream/main`, 2026-09-07) |
+| **License** | GPL-3.0 (`LICENSE`) |
+| **License URL** | https://www.gnu.org/licenses/gpl-3.0.html |
+| **Reuse decision** | Inspiration and independent reimplementation only; do not copy source, assets, trademarks, or brand identity. No README credit required. |
+| **Description** | Native macOS dictation app. Trailing `sidePanel` overlay for mode editing and cloud transcription/enhancement model configuration. Primary study surface for GitMenuBar's contextual side-panel overlay (Plan 081). |
+
 ## Relevant GitMenuBar touchpoints
 
 When studying T3Code, cross-reference:
@@ -133,3 +149,10 @@ After locating reference material:
 - General macOS UI → global `macos-app-engineering` (+ overlay)
 - Architecture adoption → global `code-quality` (+ overlay)
 - Latency budgets, Instruments, regression measurement → local `performance-profiling`
+
+When studying VoiceInk, cross-reference:
+
+- `VoiceInk/DesignSystem/Overlays/SidePanel.swift` — trailing overlay modifier, dismiss layer, Reduce Motion
+- `VoiceInk/Features/Modes/Views/ModeView.swift` — mode configuration panel host
+- `VoiceInk/Features/ModelLibrary/Views/ModelManagementView.swift` — cloud provider / model detail panels
+- GitMenuBar consumers: `SidePanel.swift`, `MainMenuContent.swift`, side-panel detail/workspace views

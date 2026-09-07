@@ -19,9 +19,9 @@ dense, calm, and semantic—not a SaaS dashboard or marketing surface.
 - Main composition: `GitMenuBar/Pages/MainMenu/`
 - Settings: `GitMenuBar/Pages/Settings/`
 - Layout persistence: the stable `NSWindow.FrameAutosaveName` in
-  `StatusBarController`; the legacy `AppPreferences.Keys.inspectorColumnWidth`
-  is read only as the inspector's initial preferred width.
-- Related decisions: [`docs/adr/0001-workbench-depth-and-token-naming.md`](adr/0001-workbench-depth-and-token-naming.md), [`docs/adr/0002-window-shell-material-and-titlebar-chrome.md`](adr/0002-window-shell-material-and-titlebar-chrome.md), [`docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md`](adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md), [`docs/adr/0012-always-open-inspector.md`](adr/0012-always-open-inspector.md), [`docs/adr/0013-hsplitview-inspector-fallback.md`](adr/0013-hsplitview-inspector-fallback.md), and [`docs/adr/0014-compact-inspector-sheet.md`](adr/0014-compact-inspector-sheet.md)
+  `StatusBarController`. `AppPreferences.Keys.inspectorColumnWidth` is a
+  legacy unused key retained for compatibility after the side-panel overlay.
+- Related decisions: [`docs/adr/0001-workbench-depth-and-token-naming.md`](adr/0001-workbench-depth-and-token-naming.md), [`docs/adr/0002-window-shell-material-and-titlebar-chrome.md`](adr/0002-window-shell-material-and-titlebar-chrome.md), [`docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md`](adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md), and [`docs/adr/0015-contextual-side-panel.md`](adr/0015-contextual-side-panel.md) (supersedes ADRs 0010–0014)
 
 The former `.interface-design/system.md` is a legacy pointer. Do not create a
 second canonical design-system document. Reconcile code and this file when
@@ -52,47 +52,36 @@ they drift, and use an ADR for a durable decision rather than a task log.
 
 The main route remains native toolbar → scroll content (repository
 overview) → branch footer, with optional quota cards secondary to Git work.
-The inspector is always present as a native trailing split surface backed by
-`HSplitView`; it shows an empty state until a central selection is made. The
-commit workspace lives in the inspector under the Working Tree selection as
-commit composer → working tree → history, with the composer fixed above the
-workspace's single scroll owner. `NavigationSplitView` owns the Projects
-sidebar's width, selection, and collapse behavior, while `HSplitView` owns the
-center/inspector divider. While visible, the sidebar is always present and
+Contextual details open in a trailing **side panel** overlay hosted on the
+detail column (VoiceInk-inspired; independent reimplementation). The panel is
+absent until a central selection exists; there is no permanent empty third
+column and no compact sheet fallback. The commit workspace lives in the side
+panel under the Working Tree selection as commit composer → working tree →
+history, with the composer fixed above the workspace's single scroll owner.
+`NavigationSplitView` owns the Projects sidebar's width, selection, and
+collapse behavior. While visible, the sidebar is always present and
 user-resizable between `WorkbenchMetrics.projectsMinimumWidth` and
 `WorkbenchMetrics.projectsMaximumWidth`; only the native visibility control
 (toolbar toggle or sidebar hide action) collapses it. The center pane keeps a
-minimum of `WorkbenchMetrics.centralMinimumWidth` and a maximum of
-`WorkbenchMetrics.centralMaximumWidth`, so extra window width flows to the
-inspector. The sidebar footer concentrates the quota summary,
-Settings access, and collapse toggle in one bottom surface; the window toolbar
-keeps the sidebar toggle and centered title only.
+minimum of `WorkbenchMetrics.centralMinimumWidth` and grows with the window
+(no max-width cap feeding a third column). The sidebar footer concentrates the
+quota summary, Settings access, and collapse toggle in one bottom surface; the
+window toolbar keeps the sidebar toggle and centered title only.
 
-When the window content width drops below
-`WorkbenchMetrics.compactInspectorThresholdWidth`, the inspector leaves the
-split and renders the same selection in a sheet; it returns inline once the
-width clears the threshold plus `WorkbenchMetrics.compactInspectorHysteresis`.
-The sheet opens only while a contextual selection exists and dismissing it
-clears that selection, matching the Escape-clears-selection-first contract.
-The compact flag is owned by the presentation model and driven by the
-`NSWindow` content width, never by SwiftUI layout measurements. The window
-minimum swaps with the mode: `mainWindowMinimumWidth` for three inline
-columns, `mainWindowCompactMinimumWidth` while the inspector is sheeted.
-
-The inspector's `HSplitView` divider remains user-resizable. Its default width
-is owned by `WorkbenchMetrics.inspectorDefaultWidth`; an existing value under
-`AppPreferences.Keys.inspectorColumnWidth` is used only as the initial ideal
-width. SwiftUI layout must not write measured geometry back to state or
-defaults, because doing so can recurse through AppKit constraint updates. The
-current divider position is session-local. The window frame uses its existing
-stable autosave name for the same session/version continuity.
+The side panel uses fixed `WorkbenchMetrics.sidePanelWidth`. Dismiss with the
+explicit close control, Escape (clears selection first), and outside tap —
+except Working Tree, which disables outside tap. Draft commit text on
+`MainMenuView` survives dismiss. The window minimum is the two-column floor
+(`mainWindowMinimumWidth`). SwiftUI layout must not write measured geometry
+back to state or defaults. The window frame uses its existing stable autosave
+name for session/version continuity.
 Stage/Unstage section actions stay visible; per-file actions remain hover-revealed
 where the product policy permits. Preserve keyboard actions, context menus, and
 confirmation for destructive work.
 
 Each scroll surface has exactly one native vertical `ScrollView` or `List`
 owner. Keep the composer and footer outside their scroll owner, including in
-the inspector workspace. Do not hide and
+the side-panel workspace. Do not hide and
 redraw native indicators, add edge masks, or add a parallel custom scrollbar.
 
 Settings uses the native grouped Form hierarchy, one scroll owner per pane,
@@ -100,31 +89,25 @@ and no nested workbench panel plates. The multi-project window keeps a
 collapsible Projects sidebar beside the selected-project detail column; the
 system owns its divider and width.
 
-## Three-surface workbench
+## Contextual side panel workbench
 
-The main workbench has three surfaces with one selection owner:
+The main workbench has two inline surfaces plus one contextual overlay:
 
 - Projects remains the compact navigation and attention surface on the left.
-- The selected repository workbench remains in the center.
-- A trailing inspector is always present as the third split surface.
+- The selected repository overview remains in the center.
+- A trailing side panel overlays the detail column only while a
+  `MainMenuSidePanelSelection` exists.
 
-The selected-project detail owner presents a resizable `HSplitView` inspector
-using the same `MainMenuInspectorSelection` value that identifies the central
-item. The inspector remains visible when that selection is nil and renders the
-existing empty state, so resizing never changes presentation or creates a
-duplicate panel or a fourth `NavigationSplitView` column. Below the compact
-width threshold the same selection value drives a sheet instead of the split
-column, so there is still exactly one inspector surface.
-
-The inspector owns one scroll surface, keeps the project selection separate
-from contextual selection, and clears contextual selection first on Escape
-while staying open. It does not add an automatic fetch, duplicate repository
-query, custom AppKit panel, or status-item lifecycle change. Durable rationale
-is recorded in [`ADR 0012`](adr/0012-always-open-inspector.md).
+One optional selection drives the panel. Nil selection means no panel. Escape
+clears contextual selection before other transient presentations or the
+window. Changing repositories or leaving the main route clears selection. The
+shell does not add an automatic fetch, duplicate repository query, custom
+AppKit panel, or status-item lifecycle change. Durable rationale is recorded
+in [`ADR 0015`](adr/0015-contextual-side-panel.md).
 
 ## Branch Health cleanup
 
-Inspector Branch Health → Cleanup is the primary surface for safe local
+Side Panel Branch Health → Cleanup is the primary surface for safe local
 cleanup. Show eligible merged local branches first with empty default
 selection, per-row Clean, and Clean Selected. Both actions use the shared
 cleanup confirmation (including the extra worktree acknowledgement). Keep

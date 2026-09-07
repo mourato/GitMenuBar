@@ -55,7 +55,7 @@ enum MainMenuSyncExecutionResult: Equatable {
     }
 }
 
-enum MainMenuInspectorActionResult: Equatable {
+enum MainMenuSidePanelActionResult: Equatable {
     case skipped
     case succeeded
     case failed
@@ -394,13 +394,13 @@ final class MainMenuActionCoordinator: ObservableObject {
         alert = MainMenuActionAlert(title: title, message: message)
     }
 
-    func prepareInspectorSelection(_ selection: MainMenuInspectorSelection?) async {
+    func prepareSidePanelSelection(_ selection: MainMenuSidePanelSelection?) async {
         switch selection {
         case .stashes, .stash:
             await gitManager.loadSelectedStashesAsync()
         case .branches, .branch:
             await gitManager.loadSelectedUnmergedLocalBranchesAsync()
-            await reloadInspectorBranchData()
+            await reloadSidePanelBranchData()
         case .unpushedCommits:
             await gitManager.fetchSelectedBranchesAsync()
         default:
@@ -410,45 +410,45 @@ final class MainMenuActionCoordinator: ObservableObject {
 
     /// Refreshes the branch list and worktree snapshot backing the inspector's
     /// Branch Health section. Runs sessionless so it always publishes.
-    func reloadInspectorBranchData() async {
+    func reloadSidePanelBranchData() async {
         _ = await gitManager.resolveBranchInfoAsync()
         _ = await gitManager.resolveWorktreeSnapshotAsync()
     }
 
-    func pushInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+    func pushSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
         await executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.pushNamedLocalBranchAsync(branchName: branchName, context: context)
-            await finishInspectorMutation(result, context: context, failureTitle: "Push Failed")
+            await finishSidePanelMutation(result, context: context, failureTitle: "Push Failed")
             if gitManager.isCurrent(context) {
-                await reloadInspectorBranchData()
+                await reloadSidePanelBranchData()
             }
             return result.inspectorActionResult
         }
     }
 
-    func publishInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+    func publishSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
         await executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.publishBranchAsync(branchName: branchName, context: context)
-            await finishInspectorMutation(result, context: context, failureTitle: "Publish Failed")
+            await finishSidePanelMutation(result, context: context, failureTitle: "Publish Failed")
             if gitManager.isCurrent(context) {
-                await reloadInspectorBranchData()
+                await reloadSidePanelBranchData()
             }
             return result.inspectorActionResult
         }
     }
 
-    func pullInspectorBranch(rebase: Bool) async -> MainMenuInspectorActionResult {
+    func pullSidePanelBranch(rebase: Bool) async -> MainMenuSidePanelActionResult {
         await executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.pullFromRemoteAsync(rebase: rebase, context: context)
-            await finishInspectorMutation(result, context: context, failureTitle: "Pull Failed")
+            await finishSidePanelMutation(result, context: context, failureTitle: "Pull Failed")
             return result.inspectorActionResult
         }
     }
 
-    func applyInspectorStash(hash: String) async -> MainMenuInspectorActionResult {
+    func applySidePanelStash(hash: String) async -> MainMenuSidePanelActionResult {
         await executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.applyStashAsync(hash: hash, context: context)
-            await finishInspectorMutation(result, context: context, failureTitle: "Apply Stash Failed")
+            await finishSidePanelMutation(result, context: context, failureTitle: "Apply Stash Failed")
             if gitManager.isCurrent(context) {
                 await gitManager.loadSelectedStashesAsync()
             }
@@ -459,10 +459,10 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
-    func dropInspectorStash(hash: String) async -> MainMenuInspectorActionResult {
+    func dropSidePanelStash(hash: String) async -> MainMenuSidePanelActionResult {
         await executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.dropStashAsync(hash: hash, context: context)
-            await finishInspectorMutation(result, context: context, failureTitle: "Drop Stash Failed")
+            await finishSidePanelMutation(result, context: context, failureTitle: "Drop Stash Failed")
             if gitManager.isCurrent(context) {
                 await gitManager.loadSelectedStashesAsync()
             }
@@ -470,10 +470,10 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
-    func saveInspectorStash(message: String = "GitMenuBar stash") async -> MainMenuInspectorActionResult {
+    func saveSidePanelStash(message: String = "GitMenuBar stash") async -> MainMenuSidePanelActionResult {
         await executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.saveStashAsync(message: message, context: context)
-            await finishInspectorMutation(result, context: context, failureTitle: "Stash Failed")
+            await finishSidePanelMutation(result, context: context, failureTitle: "Stash Failed")
             if gitManager.isCurrent(context) {
                 await gitManager.loadSelectedStashesAsync()
             }
@@ -481,21 +481,21 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
-    func popInspectorStash(hash: String) async -> MainMenuInspectorActionResult {
+    func popSidePanelStash(hash: String) async -> MainMenuSidePanelActionResult {
         await executeContextualMutation(allowsRepositorySwitch: true) { context in
             let applied = await gitManager.applyStashAsync(hash: hash, context: context)
             switch applied {
             case .success:
                 break
             case let .failure(error):
-                await finishInspectorMutation(.failure(error), context: context, failureTitle: "Apply Stash Failed")
+                await finishSidePanelMutation(.failure(error), context: context, failureTitle: "Apply Stash Failed")
                 if gitManager.isCurrent(context) {
                     await gitManager.loadSelectedStashesAsync()
                 }
                 return .failed
             }
             let dropped = await gitManager.dropStashAsync(hash: hash, context: context)
-            await finishInspectorMutation(dropped, context: context, failureTitle: "Drop Stash Failed")
+            await finishSidePanelMutation(dropped, context: context, failureTitle: "Drop Stash Failed")
             if gitManager.isCurrent(context) {
                 await gitManager.loadSelectedStashesAsync()
             }
@@ -506,31 +506,31 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
-    func switchInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+    func switchSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
         let result = await executeCallbackMutation(failureTitle: "Branch Switch Failed") { completion in
             gitManager.switchBranch(branchName: branchName, completion: completion)
         }
-        await reloadInspectorBranchData()
+        await reloadSidePanelBranchData()
         return result
     }
 
-    func checkoutRemoteInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+    func checkoutRemoteSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
         let result = await executeCallbackMutation(failureTitle: "Checkout Failed") { completion in
             gitManager.switchBranch(branchName: "origin/\(branchName)", completion: completion)
         }
-        await reloadInspectorBranchData()
+        await reloadSidePanelBranchData()
         return result
     }
 
-    func mergeInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+    func mergeSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
         let result = await executeCallbackMutation(failureTitle: "Merge Failed") { completion in
             gitManager.mergeBranch(fromBranch: branchName, completion: completion)
         }
-        await reloadInspectorBranchData()
+        await reloadSidePanelBranchData()
         return result
     }
 
-    func deleteInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+    func deleteSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
         let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return .skipped
@@ -538,26 +538,26 @@ final class MainMenuActionCoordinator: ObservableObject {
         let result = await executeCallbackMutation(failureTitle: "Delete Failed") { completion in
             gitManager.deleteBranch(branchName: trimmed, completion: completion)
         }
-        await reloadInspectorBranchData()
+        await reloadSidePanelBranchData()
         return result
     }
 
-    func deleteRemoteInspectorBranch(_ branchName: String) async -> MainMenuInspectorActionResult {
+    func deleteRemoteSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
         let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return .skipped
         }
         return await executeContextualMutation(allowsRepositorySwitch: false) { context in
             let result = await gitManager.deleteRemoteBranchAsync(branchName: trimmed)
-            await finishInspectorMutation(result, context: context, failureTitle: "Delete Remote Failed")
+            await finishSidePanelMutation(result, context: context, failureTitle: "Delete Remote Failed")
             if gitManager.isCurrent(context) {
-                await reloadInspectorBranchData()
+                await reloadSidePanelBranchData()
             }
             return result.inspectorActionResult
         }
     }
 
-    func performInspectorCleanup(units: [GitCleanupUnit], snapshot: GitWorktreeSnapshot) async -> MainMenuInspectorActionResult {
+    func performSidePanelCleanup(units: [GitCleanupUnit], snapshot: GitWorktreeSnapshot) async -> MainMenuSidePanelActionResult {
         guard !units.isEmpty else {
             return .skipped
         }
@@ -565,13 +565,13 @@ final class MainMenuActionCoordinator: ObservableObject {
             let result = await gitManager.performCleanupAsync(units: units, snapshot: snapshot)
             switch result {
             case let .success(batch):
-                await finishInspectorMutation(.success(()), context: context, failureTitle: "Cleanup Failed")
+                await finishSidePanelMutation(.success(()), context: context, failureTitle: "Cleanup Failed")
                 publishSuccess(title: "Cleanup complete", message: batchSummary(batch))
             case let .failure(error):
-                await finishInspectorMutation(.failure(error), context: context, failureTitle: "Cleanup Failed")
+                await finishSidePanelMutation(.failure(error), context: context, failureTitle: "Cleanup Failed")
             }
             if gitManager.isCurrent(context) {
-                await reloadInspectorBranchData()
+                await reloadSidePanelBranchData()
             }
             switch result {
             case .success:
@@ -598,34 +598,34 @@ final class MainMenuActionCoordinator: ObservableObject {
         }.joined(separator: "\n")
     }
 
-    func stageInspectorFile(path: String) async -> MainMenuInspectorActionResult {
+    func stageSidePanelFile(path: String) async -> MainMenuSidePanelActionResult {
         await executeCallbackMutation(failureTitle: "Stage Failed") { completion in
             gitManager.stageFile(path: path, completion: completion)
         }
     }
 
-    func unstageInspectorFile(path: String) async -> MainMenuInspectorActionResult {
+    func unstageSidePanelFile(path: String) async -> MainMenuSidePanelActionResult {
         await executeCallbackMutation(failureTitle: "Unstage Failed") { completion in
             gitManager.unstageFile(path: path, completion: completion)
         }
     }
 
-    func stageAllInspectorFiles() async -> MainMenuInspectorActionResult {
+    func stageAllSidePanelFiles() async -> MainMenuSidePanelActionResult {
         await executeCallbackMutation(failureTitle: "Stage Failed") { completion in
             gitManager.stageAllChanges(completion: completion)
         }
     }
 
-    func unstageAllInspectorFiles() async -> MainMenuInspectorActionResult {
+    func unstageAllSidePanelFiles() async -> MainMenuSidePanelActionResult {
         await executeCallbackMutation(failureTitle: "Unstage Failed") { completion in
             gitManager.unstageAllChanges(completion: completion)
         }
     }
 
-    func discardInspectorFile(
+    func discardSidePanelFile(
         path: String,
         status: WorkingTreeFileStatus
-    ) async -> MainMenuInspectorActionResult {
+    ) async -> MainMenuSidePanelActionResult {
         await executeCallbackMutation(failureTitle: "Discard Failed") { completion in
             gitManager.discardFileChanges(path: path, status: status, completion: completion)
         }
@@ -634,18 +634,18 @@ final class MainMenuActionCoordinator: ObservableObject {
     /// Hard-resets the captured repository to `hash`. Blocks project switching for
     /// the full operation because the underlying reset path is not yet a fully
     /// selected-refresh-generation-bound UI transaction.
-    func resetInspectorCommit(hash: String) async -> MainMenuInspectorActionResult {
+    func resetSidePanelCommit(hash: String) async -> MainMenuSidePanelActionResult {
         await executeContextualMutation(allowsRepositorySwitch: false) { context in
             let result = await gitManager.resetToCommitAsync(hash: hash, context: context)
-            await finishInspectorMutation(result, context: context, failureTitle: "Reset Failed")
+            await finishSidePanelMutation(result, context: context, failureTitle: "Reset Failed")
             return result.inspectorActionResult
         }
     }
 
     private func executeContextualMutation(
         allowsRepositorySwitch: Bool,
-        operation: (RepositoryOperationContext) async -> MainMenuInspectorActionResult
-    ) async -> MainMenuInspectorActionResult {
+        operation: (RepositoryOperationContext) async -> MainMenuSidePanelActionResult
+    ) async -> MainMenuSidePanelActionResult {
         guard !isBusy else {
             return .skipped
         }
@@ -660,19 +660,19 @@ final class MainMenuActionCoordinator: ObservableObject {
     private func executeCallbackMutation(
         failureTitle: String,
         start: (@escaping (Result<Void, Error>) -> Void) -> Void
-    ) async -> MainMenuInspectorActionResult {
+    ) async -> MainMenuSidePanelActionResult {
         await executeContextualMutation(allowsRepositorySwitch: false) { context in
             let result: Result<Void, Error> = await withCheckedContinuation { continuation in
                 start { value in
                     continuation.resume(returning: value)
                 }
             }
-            await finishInspectorMutation(result, context: context, failureTitle: failureTitle)
+            await finishSidePanelMutation(result, context: context, failureTitle: failureTitle)
             return result.inspectorActionResult
         }
     }
 
-    private func finishInspectorMutation(
+    private func finishSidePanelMutation(
         _ result: Result<Void, Error>,
         context: RepositoryOperationContext,
         failureTitle: String
@@ -879,7 +879,7 @@ final class MainMenuActionCoordinator: ObservableObject {
 }
 
 private extension Result where Success == Void, Failure == Error {
-    var inspectorActionResult: MainMenuInspectorActionResult {
+    var inspectorActionResult: MainMenuSidePanelActionResult {
         switch self {
         case .success:
             .succeeded
