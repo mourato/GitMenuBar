@@ -7,7 +7,7 @@ struct CleanupConfirmationView: View {
     @State private var didReviewRisk = false
 
     private var branchOnly: [GitCleanupUnit] {
-        units.filter { !$0.isPaired }
+        units.filter { !$0.isPaired && !$0.isWorktreeOnlyAction }
     }
 
     private var paired: [GitCleanupUnit] {
@@ -18,17 +18,30 @@ struct CleanupConfirmationView: View {
         units.filter(\.isForceWorktreeRemoval)
     }
 
+    private var worktreeOnly: [GitCleanupUnit] {
+        units.filter { $0.isWorktreeOnlyAction && !$0.isForceWorktreeRemoval }
+    }
+
+    private var unmergedBranches: [GitCleanupUnit] {
+        units.filter(\.isDangerousBranchDeletion)
+    }
+
     private var requiresRiskReview: Bool {
-        !paired.isEmpty || !forced.isEmpty
+        !paired.isEmpty || !forced.isEmpty || !worktreeOnly.isEmpty || !unmergedBranches.isEmpty
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(didReviewRisk || !requiresRiskReview ? "Confirm Cleanup" : "Review Cleanup")
                 .font(.headline.weight(.semibold))
-            Text("\(branchOnly.count) branch-only, \(paired.count) paired, \(forced.count) forced worktree unit\(forced.count == 1 ? "" : "s") selected.")
+            Text("\(branchOnly.count) branch-only, \(paired.count) paired, \(worktreeOnly.count) worktree-only, \(forced.count) forced unit\(forced.count == 1 ? "" : "s") selected.")
                 .font(WorkbenchTypography.detail)
                 .foregroundStyle(.secondary)
+            if !unmergedBranches.isEmpty, !didReviewRisk {
+                Label("Deleting an unmerged branch permanently removes its branch reference and may make its commits harder to recover.", systemImage: "exclamationmark.triangle.fill")
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.red)
+            }
             if !forced.isEmpty, !didReviewRisk {
                 Label("Force removal permanently deletes this worktree directory and all uncommitted changes. The branch will be kept.", systemImage: "exclamationmark.triangle.fill")
                     .font(WorkbenchTypography.caption)
@@ -43,6 +56,7 @@ struct CleanupConfirmationView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     section("Branch-only cleanup", branchOnly)
                     section("Paired worktree and branch cleanup", paired)
+                    section("Worktree-only removal", worktreeOnly)
                     section("Forced worktree removal", forced)
                 }
             }
@@ -50,7 +64,7 @@ struct CleanupConfirmationView: View {
             HStack {
                 Button("Cancel", action: onCancel).keyboardShortcut(.cancelAction)
                 Spacer()
-                Button(didReviewRisk || !requiresRiskReview ? "Confirm Cleanup" : forced.isEmpty ? "Review Worktree Removal" : "Review Forced Removal") {
+                Button(didReviewRisk || !requiresRiskReview ? "Confirm Cleanup" : "Review Cleanup Risk") {
                     if !requiresRiskReview || didReviewRisk {
                         onConfirm()
                     } else {

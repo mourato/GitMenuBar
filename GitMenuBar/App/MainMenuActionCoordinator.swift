@@ -514,9 +514,9 @@ final class MainMenuActionCoordinator: ObservableObject {
         return result
     }
 
-    func checkoutRemoteSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
+    func checkoutRemoteSidePanelBranch(_ branchName: String, remoteName: String = "origin") async -> MainMenuSidePanelActionResult {
         let result = await executeCallbackMutation(failureTitle: "Checkout Failed") { completion in
-            gitManager.switchBranch(branchName: "origin/\(branchName)", completion: completion)
+            gitManager.switchBranch(branchName: "\(remoteName)/\(branchName)", completion: completion)
         }
         await reloadSidePanelBranchData()
         return result
@@ -542,13 +542,13 @@ final class MainMenuActionCoordinator: ObservableObject {
         return result
     }
 
-    func deleteRemoteSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
+    func deleteRemoteSidePanelBranch(_ branchName: String, remoteName: String = "origin") async -> MainMenuSidePanelActionResult {
         let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return .skipped
         }
         return await executeContextualMutation(allowsRepositorySwitch: false) { context in
-            let result = await gitManager.deleteRemoteBranchAsync(branchName: trimmed)
+            let result = await gitManager.deleteRemoteBranchAsync(branchName: trimmed, remoteName: remoteName)
             await finishSidePanelMutation(result, context: context, failureTitle: "Delete Remote Failed")
             if gitManager.isCurrent(context) {
                 await reloadSidePanelBranchData()

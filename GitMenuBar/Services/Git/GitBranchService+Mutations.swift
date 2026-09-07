@@ -69,14 +69,14 @@ extension GitBranchService {
         return .success(())
     }
 
-    func deleteRemoteBranchAsync(branchName: String) async -> Result<Void, Error> {
+    func deleteRemoteBranchAsync(branchName: String, remoteName: String = "origin") async -> Result<Void, Error> {
         let repositoryPath = storedRepoPath
         guard !repositoryPath.isEmpty else {
             return .failure(GitExecution.missingRepositoryError())
         }
 
         let result = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["push", "origin", "--delete", branchName], useAuth: true)
+            self.executeGitCommand(in: repositoryPath, args: ["push", remoteName, "--delete", branchName], useAuth: true)
         }
 
         guard !result.failure else {
@@ -84,7 +84,7 @@ extension GitBranchService {
                 domain: "GitManager",
                 code: 41,
                 userInfo: [
-                    NSLocalizedDescriptionKey: "Failed to delete remote branch '\(branchName)': \(result.output)"
+                    NSLocalizedDescriptionKey: "Failed to delete remote branch '\(remoteName)/\(branchName)': \(result.output)"
                 ]
             ))
         }

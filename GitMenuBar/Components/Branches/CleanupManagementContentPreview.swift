@@ -33,7 +33,9 @@ import SwiftUI
         onReveal: { _ in },
         onCopyPath: { _ in },
         onForceRemove: { _ in },
-        onCleanUnit: { _ in }
+        onCleanUnit: { _ in },
+        onDeleteBranch: { _ in },
+        onRemoveWorktree: { _ in }
     )
     .frame(width: 560)
 }

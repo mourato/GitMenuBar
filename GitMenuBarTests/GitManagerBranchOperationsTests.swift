@@ -286,7 +286,8 @@ final class GitManagerBranchOperationsTests: XCTestCase {
             "refs/heads/origin", "", "105", "",
             "refs/remotes/origin/remote-only", "", "106", "",
             "refs/remotes/origin/HEAD", "", "107", "",
-            "refs/heads/malformed", "origin/malformed", "108", "wat"
+            "refs/remotes/upstream/upstream-only", "", "108", "",
+            "refs/heads/malformed", "origin/malformed", "109", "wat"
         ]
         let output = stride(from: 0, to: fields.count, by: 4)
             .map { fields[$0 ..< $0 + 4].joined(separator: "\0") + "\0" }
@@ -302,6 +303,8 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertEqual(infos.first { $0.name == "none" }?.trackingStatus, .noRemote)
         XCTAssertEqual(infos.first { $0.name == "malformed" }?.trackingStatus, .unknown)
         XCTAssertEqual(infos.first { $0.name == "remote-only" }?.displayName, "origin/remote-only")
+        XCTAssertEqual(infos.first { $0.name == "upstream-only" }?.displayName, "upstream/upstream-only")
+        XCTAssertEqual(infos.first { $0.name == "upstream-only" }?.remoteName, "upstream")
         XCTAssertTrue(infos.first { $0.name == "origin" }?.isLocal == true)
         XCTAssertFalse(infos.contains { $0.name == "HEAD" })
         XCTAssertTrue(infos.first { $0.name == "main" }?.isCurrent == true)

@@ -1882,8 +1882,8 @@ class GitManager: ObservableObject {
         }
     }
 
-    func deleteRemoteBranchAsync(branchName: String) async -> Result<Void, Error> {
-        await branchService.deleteRemoteBranchAsync(branchName: branchName)
+    func deleteRemoteBranchAsync(branchName: String, remoteName: String = "origin") async -> Result<Void, Error> {
+        await branchService.deleteRemoteBranchAsync(branchName: branchName, remoteName: remoteName)
     }
 
     func getDefaultBranchNameAsync() async -> String {
