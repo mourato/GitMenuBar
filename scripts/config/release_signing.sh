@@ -1,8 +1,8 @@
 #!/bin/bash
 # Shared release signing configuration for GitMenuBar packaging and install workflows.
 
-GITMENUBAR_RELEASE_SIGNING_MODE="${GITMENUBAR_RELEASE_SIGNING_MODE:-adhoc}"
-GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY="${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY:-${GITMENUBAR_CODE_SIGN_IDENTITY:-Prisma Local Code Signing}}"
+GITMENUBAR_RELEASE_SIGNING_MODE="${GITMENUBAR_RELEASE_SIGNING_MODE:-identity}"
+GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY="${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY:-${GITMENUBAR_CODE_SIGN_IDENTITY:-Apple Development}}"
 
 gitmenubar_list_user_keychains() {
   local login_keychain="${HOME}/Library/Keychains/login.keychain-db"
@@ -16,35 +16,64 @@ gitmenubar_list_user_keychains() {
 
 gitmenubar_validate_release_signing_mode() {
   case "${GITMENUBAR_RELEASE_SIGNING_MODE}" in
-    adhoc|self-signed)
+    adhoc|identity|self-signed)
       return 0
       ;;
     *)
-      echo "Invalid GITMENUBAR_RELEASE_SIGNING_MODE='${GITMENUBAR_RELEASE_SIGNING_MODE}'. Use 'adhoc' or 'self-signed'." >&2
+      echo "Invalid GITMENUBAR_RELEASE_SIGNING_MODE='${GITMENUBAR_RELEASE_SIGNING_MODE}'. Use 'adhoc' or 'identity'." >&2
       return 1
       ;;
   esac
 }
 
 gitmenubar_release_signing_description() {
-  if [ "${GITMENUBAR_RELEASE_SIGNING_MODE}" = "self-signed" ]; then
-    printf 'self-signed (%s)' "${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}"
-  else
-    printf 'adhoc'
-  fi
+  case "${GITMENUBAR_RELEASE_SIGNING_MODE}" in
+    identity) printf 'keychain identity (%s)' "${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}" ;;
+    self-signed) printf 'legacy self-signed (%s)' "${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}" ;;
+    *) printf 'adhoc' ;;
+  esac
 }
 
 gitmenubar_release_effective_identity() {
-  if [ "${GITMENUBAR_RELEASE_SIGNING_MODE}" = "self-signed" ]; then
+  if gitmenubar_release_uses_keychain_identity; then
     printf '%s' "${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}"
   else
     printf '%s' "-"
   fi
 }
 
+gitmenubar_release_uses_keychain_identity() {
+  case "${GITMENUBAR_RELEASE_SIGNING_MODE}" in
+    identity|self-signed) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+gitmenubar_resolve_codesign_identity() {
+  local requested="$1"
+  local hash=""
+  local name=""
+
+  if [[ "${requested}" =~ ^[[:xdigit:]]{40}$ ]]; then
+    printf '%s\n' "${requested}"
+    return 0
+  fi
+
+  while IFS=$'\t' read -r hash name; do
+    if [ "${name}" = "${requested}" ] || {
+      [ "${requested}" = "Apple Development" ] && [[ "${name}" == "Apple Development:"* ]]
+    }; then
+      printf '%s\n' "${hash}"
+      return 0
+    fi
+  done < <(security find-identity -v -p codesigning 2>/dev/null | sed -nE 's/^[[:space:]]*[0-9]+\) ([[:xdigit:]]{40}) "([^"]+)".*/\1\t\2/p')
+
+  printf '%s\n' "${requested}"
+}
+
 gitmenubar_autodetect_release_signing_mode() {
   if gitmenubar_codesign_identity_is_stable "${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}" 2 0.10; then
-    printf '%s' "self-signed"
+    printf '%s' "identity"
   else
     printf '%s' "adhoc"
   fi
@@ -53,13 +82,16 @@ gitmenubar_autodetect_release_signing_mode() {
 gitmenubar_codesign_identity_exists() {
   local identity="$1"
   local kc=""
+  local available_identity=""
 
   while IFS= read -r kc; do
-    if security find-identity -v -p codesigning "${kc}" 2>/dev/null \
-      | awk -F'"' '/"/ { print $2 }' \
-      | grep -Fx "${identity}" >/dev/null 2>&1; then
-      return 0
-    fi
+    while IFS= read -r available_identity; do
+      if [ "${available_identity}" = "${identity}" ] || {
+        [ "${identity}" = "Apple Development" ] && [[ "${available_identity}" == "Apple Development:"* ]]
+      }; then
+        return 0
+      fi
+    done < <(security find-identity -v -p codesigning "${kc}" 2>/dev/null | awk -F'"' '/"/ { print $2 }')
   done < <(gitmenubar_list_user_keychains | awk '!seen[$0]++')
 
   return 1
@@ -121,8 +153,8 @@ EOF
   fi
 }
 
-gitmenubar_require_self_signed_identity() {
-  if [ "${GITMENUBAR_RELEASE_SIGNING_MODE}" != "self-signed" ]; then
+gitmenubar_require_release_identity() {
+  if ! gitmenubar_release_uses_keychain_identity; then
     return 0
   fi
 
@@ -148,12 +180,13 @@ EOF
   cat >&2 <<EOF
 Missing code signing identity '${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}' in keychain.
 
-Create it with:
-  ./scripts/setup-self-signed-cert.sh --name "${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}"
-
-Or list available identities:
+Use an available Apple Development identity or set GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY to its exact name.
   security find-identity -v -p codesigning
 EOF
+  if [ "${GITMENUBAR_RELEASE_SIGNING_MODE}" = "self-signed" ]; then
+    printf '%s\n' "For the legacy self-signed mode, create it with:" >&2
+    printf '  ./scripts/setup-self-signed-cert.sh --name "%s"\n' "${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}" >&2
+  fi
   gitmenubar_print_codesign_identity_diagnostics "${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}"
   return 1
 }

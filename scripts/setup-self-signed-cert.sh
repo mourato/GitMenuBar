@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/config/release_signing.sh
 source "${SCRIPT_DIR}/config/release_signing.sh"
 
-CERT_NAME="${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}"
+CERT_NAME="${GITMENUBAR_SELF_SIGNED_IDENTITY:-GitMenuBar Local Self-Signed}"
 VALID_DAYS="${GITMENUBAR_SELF_SIGNED_VALID_DAYS:-3650}"
 KEYCHAIN_PATH="${HOME}/Library/Keychains/login.keychain-db"
 if [ -x "/usr/bin/openssl" ]; then
@@ -23,12 +23,12 @@ usage() {
 Usage: scripts/setup-self-signed-cert.sh [options]
 
 Options:
-  --name <common-name>   Certificate name (default: GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY)
+  --name <common-name>   Certificate name (default: GITMENUBAR_SELF_SIGNED_IDENTITY)
   --days <n>             Validity in days (default: 3650)
   --help                 Show help
 
 Environment:
-  GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY   Default common name
+  GITMENUBAR_SELF_SIGNED_IDENTITY         Default common name
   GITMENUBAR_SELF_SIGNED_VALID_DAYS       Default validity in days
 USAGE
 }
