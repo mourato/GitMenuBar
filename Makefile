@@ -25,7 +25,7 @@ help:
 	@echo "make guidance-check Validate agent guidance, plans, and skill references"
 	@echo "make install-app   Build Release and replace the installed app interactively"
 	@echo "make dmg           Build and package DMG"
-	@echo "make setup-self-signed-cert Create or import local code-signing cert"
+	@echo "make setup-self-signed-cert Create/import legacy self-signed cert"
 	@echo "make clean         Remove generated artifacts"
 	@echo "make setup         Install local dev dependencies"
 

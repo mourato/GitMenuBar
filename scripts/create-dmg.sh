@@ -60,7 +60,7 @@ prompt_select_keychain_identity() {
     if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#identities[@]}" ]; then
         local selected_idx=$((choice - 1))
         GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY="${identities[$selected_idx]}"
-        GITMENUBAR_RELEASE_SIGNING_MODE="self-signed"
+        GITMENUBAR_RELEASE_SIGNING_MODE="identity"
         echo -e "${GREEN}Selected:${NC} ${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}"
     else
         echo -e "${RED}Invalid selection. Using adhoc.${NC}"
@@ -76,12 +76,12 @@ prompt_release_signing_mode() {
     detected_mode="$(gitmenubar_autodetect_release_signing_mode)"
 
     echo -e "${YELLOW}Select DMG signing mode:${NC}"
-    if [ "${detected_mode}" = "self-signed" ]; then
-        echo "  1) Auto (default): use self-signed because '${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}' is available"
+    if [ "${detected_mode}" = "identity" ]; then
+        echo "  1) Auto (default): use keychain identity because '${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}' is available"
     else
         echo "  1) Auto (default): use adhoc because '${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}' is not available"
     fi
-    echo "  2) Self-signed (${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY})"
+    echo "  2) Keychain identity (${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY})"
     echo "  3) Choose from available Keychain certificates"
     echo "  4) Adhoc"
     printf "Choose [1/2/3/4] (default: %s): " "${default_choice}"
@@ -93,7 +93,7 @@ prompt_release_signing_mode() {
             GITMENUBAR_RELEASE_SIGNING_MODE="${detected_mode}"
             ;;
         2)
-            GITMENUBAR_RELEASE_SIGNING_MODE="self-signed"
+            GITMENUBAR_RELEASE_SIGNING_MODE="identity"
             ;;
         3)
             prompt_select_keychain_identity
@@ -141,7 +141,7 @@ Options:
   --ci                          Run in CI mode (no prompts)
   --no-interactive              Run without interactive prompts
   --auto-signing                Auto-detect signing mode from keychain identity
-  --signing-mode MODE           Explicit mode: 'adhoc' or 'self-signed'
+  --signing-mode MODE           Explicit mode: 'adhoc' or 'identity'
   --sign-identity IDENTITY      Custom signing identity name
   --help                        Show this help
 USAGE
@@ -160,6 +160,10 @@ else
     INTERACTIVE=1
 fi
 
+if [ "${CI_MODE}" -eq 1 ] && [ "${GITMENUBAR_RELEASE_SIGNING_MODE_WAS_SET}" -eq 0 ]; then
+    GITMENUBAR_RELEASE_SIGNING_MODE="adhoc"
+fi
+
 if [ "${GITMENUBAR_RELEASE_SIGNING_MODE_WAS_SET}" -eq 0 ]; then
     if [ "${INTERACTIVE}" -eq 1 ]; then
         if ! prompt_release_signing_mode; then
@@ -174,7 +178,7 @@ if ! gitmenubar_validate_release_signing_mode; then
     exit 1
 fi
 
-if ! gitmenubar_require_self_signed_identity; then
+if ! gitmenubar_require_release_identity; then
     exit 1
 fi
 
@@ -195,9 +199,10 @@ if [[ ! -d "${APP_BUNDLE}" ]]; then
 fi
 
 echo -e "${YELLOW}Code signing app bundle...${NC}"
-if [ "${GITMENUBAR_RELEASE_SIGNING_MODE}" = "self-signed" ]; then
-    echo "Signing app with '${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}'..."
-    codesign --force --deep --keychain "${HOME}/Library/Keychains/login.keychain-db" --timestamp=none --sign "${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}" "${APP_BUNDLE}"
+if gitmenubar_release_uses_keychain_identity; then
+    resolved_identity="$(gitmenubar_resolve_codesign_identity "${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}")"
+    echo "Signing app with Apple Development identity..."
+    codesign --force --deep --keychain "${HOME}/Library/Keychains/login.keychain-db" --timestamp=none --sign "${resolved_identity}" "${APP_BUNDLE}"
 else
     echo "Signing app ad-hoc for local DMG installation."
     codesign --force --deep --sign - "${APP_BUNDLE}"
@@ -220,8 +225,8 @@ hdiutil create \
 rm -rf "${STAGING_DIR}"
 
 echo -e "${YELLOW}Code signing DMG...${NC}"
-if [ "${GITMENUBAR_RELEASE_SIGNING_MODE}" = "self-signed" ]; then
-    codesign --force --keychain "${HOME}/Library/Keychains/login.keychain-db" --timestamp=none --sign "${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}" "${DMG_PATH}"
+if gitmenubar_release_uses_keychain_identity; then
+    codesign --force --keychain "${HOME}/Library/Keychains/login.keychain-db" --timestamp=none --sign "${resolved_identity}" "${DMG_PATH}"
 else
     codesign --force --sign - "${DMG_PATH}"
 fi

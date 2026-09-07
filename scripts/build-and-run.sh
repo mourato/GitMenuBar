@@ -102,6 +102,7 @@ sign_candidate_if_needed() {
     local candidate="$1"
 
     if [ -n "$SIGNING_IDENTITY" ]; then
+        SIGNING_IDENTITY="$(gitmenubar_resolve_codesign_identity "$SIGNING_IDENTITY")"
         echo "Signing Release candidate with: ${SIGNING_IDENTITY}"
         codesign --force --deep --keychain "${HOME}/Library/Keychains/login.keychain-db" --timestamp=none --sign "$SIGNING_IDENTITY" "$candidate"
     elif ! codesign --verify --deep --strict "$candidate" >/dev/null 2>&1; then
@@ -190,7 +191,7 @@ install_release() {
     backup="${target}.backup.$$"
 
     [ -d "$candidate" ] || fail "Release candidate not found at: $candidate"
-    if [ -z "$SIGNING_IDENTITY" ] && [ "$(gitmenubar_autodetect_release_signing_mode)" = "self-signed" ]; then
+    if [ -z "$SIGNING_IDENTITY" ] && [ "$(gitmenubar_autodetect_release_signing_mode)" = "identity" ]; then
         SIGNING_IDENTITY="${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}"
     fi
     sign_candidate_if_needed "$candidate"
