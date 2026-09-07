@@ -1361,7 +1361,7 @@ in the same unit; register VoiceInk in `.agents/overlays/reference-apps.md`.
 
 | Plan | Title | Priority | Effort | Depends on | Status | Commit | Review | Integration | Main validation |
 |---|---|---:|---:|---|---|---|---|---|---|
-| [081](081-contextual-side-panel.md) | Replace inspector with contextual side panel | P0 | L | 076–080 | IMPLEMENTED | pending-commit | — | — | — |
+| [081](081-contextual-side-panel.md) | Replace inspector with contextual side panel | P0 | L | 076–080 | IMPLEMENTED | 6c055c6 | — | — | — |
 
 ### Dependency notes
 
