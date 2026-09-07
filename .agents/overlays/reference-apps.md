@@ -75,6 +75,22 @@ quota strip.
 | **Reuse decision** | OpenRouter credits parsing and three provider icons are adapted under MIT; preserve the copyright and license notice in `THIRD-PARTY-NOTICES.md` and credit the source in `README.md`. Other UI and provider code remains inspiration-only. |
 | **Description** | Benchmark menu-bar usage monitor for Codex, Claude, Cursor, and many other AI providers. Multi-window rate limits (`limit_window_seconds`), reset-credit inventory, pace tracking, tokenized status-item layouts, and provider-card density without cognitive overload |
 
+### Orchard
+
+| Attribute | Value |
+|-----------|-------|
+| **Canonical name** | Orchard |
+| **Classification** | UI/UX + Same-domain + Engineering |
+| **Local path** | ~/Documents/Projects/References/Orchard |
+| **Cloned?** | No |
+| **Remote** | https://github.com/prakashkurup/orchard |
+| **Reference revision** | `main` (`7a07070d9fa3`) |
+| **License** | MIT (`LICENSE`; copyright Prakash Kurup, 2026) |
+| **License URL** | https://opensource.org/license/mit |
+| **Reuse decision** | Inspiration and independent reimplementation only; do not copy source, assets, or brand identity. No README credit required. |
+| **Consultation** | Remote GitHub README and LICENSE consulted because the canonical local clone is absent. |
+| **Description** | Keyboard-driven, agent-aware multi-repo dashboard. One-screen branch and dirty/ahead/behind status, multi-select fetch/pull/branch actions, cross-repo search, worklog, and local Claude/Codex activity footprints. Primary reference for monitoring multiple Git projects simultaneously and surfacing uncommitted AI work. |
+
 ## Relevant GitMenuBar touchpoints
 
 When studying T3Code, cross-reference:
