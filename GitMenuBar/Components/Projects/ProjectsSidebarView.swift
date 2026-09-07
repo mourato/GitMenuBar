@@ -39,6 +39,7 @@ struct ProjectsSidebarView: View {
 
                     sidebarBottomActions
                 }
+                .background(Color(nsColor: .windowBackgroundColor))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
