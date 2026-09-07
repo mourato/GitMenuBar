@@ -22,8 +22,8 @@ struct KeyboardShortcutsSection: View {
 
     private func shortcutRow(_ title: String, name: KeyboardShortcuts.Name) -> some View {
         LabeledContent(title) {
-            KeyboardShortcuts.Recorder(for: name)
-                .labelsHidden()
+            ShortcutRecorderControl(name: name)
+                .accessibilityLabel(title)
         }
     }
 }
