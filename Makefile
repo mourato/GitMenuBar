@@ -1,4 +1,4 @@
-.PHONY: help build build-release test test-focused lint lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command guidance-check install-app dmg setup-self-signed-cert clean setup
+.PHONY: help build build-release runtime-smoke test test-focused lint lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command guidance-check install-app dmg setup-self-signed-cert clean setup
 
 PROJECT_DIR := $(shell pwd)
 AGENT_CONFIG_HOME ?= $(HOME)/.agents
@@ -12,6 +12,7 @@ help:
 	@echo "==============================="
 	@echo "make build         Build Debug app"
 	@echo "make build-release Build Release app"
+	@echo "make runtime-smoke Launch with persisted window defaults and verify stability"
 	@echo "make test          Run XCTest suite (TEST_FILTER=... for one target)"
 	@echo "make test-focused  Run one XCTest target (TEST_FILTER=... required)"
 	@echo "make lint          Run SwiftFormat/SwiftLint checks"
@@ -33,6 +34,9 @@ build:
 
 build-release:
 	@./scripts/run-build.sh --configuration Release
+
+runtime-smoke:
+	@./scripts/runtime-smoke.sh
 
 test:
 	@TEST_FILTER="$(TEST_FILTER)" ./scripts/run-tests-xcode.sh
