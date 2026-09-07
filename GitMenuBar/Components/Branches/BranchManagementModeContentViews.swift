@@ -220,6 +220,7 @@ struct CleanupManagementContentView: View {
                         Button("Delete Branch", role: .destructive) {
                             onDeleteBranch(unit.deletingBranchOnly())
                         }
+                        .disabled(!unit.canPrimaryClean)
                     } else {
                         Button("Delete Branch") {}
                             .disabled(true)
@@ -250,19 +251,23 @@ struct CleanupManagementContentView: View {
     }
 
     private func detail(for unit: GitCleanupUnit) -> String {
+        let branchDetail: String = switch unit.branch.status {
+        case .protected, .current, .unknown:
+            statusDetail(for: unit.branch.status) ?? "Branch status is unavailable."
+        default:
+            unit.branch.isMergedIntoDefault
+                ? "Merged or cherry-picked into \(defaultBranchName)."
+                : statusDetail(for: unit.branch.status) ?? "Branch is not eligible for cleanup."
+        }
+
         if let worktree = unit.worktree {
+            let worktreeDetail = worktreeStatusDetail(for: worktree.status)
             if unit.isWorktreeOnlyAction {
-                return "Worktree: \(worktree.worktree.path). Branch is kept."
+                return "\(worktreeDetail) Branch is kept."
             }
-            if unit.branch.isMergedIntoDefault {
-                return "Merged or cherry-picked into \(defaultBranchName). Removes \(worktree.worktree.path) first."
-            }
-            return "Not merged into \(defaultBranchName). Removing this unit deletes the branch too."
+            return "\(branchDetail) \(worktreeDetail) Removes \(worktree.worktree.path) first."
         }
-        if unit.branch.isMergedIntoDefault {
-            return "Merged or cherry-picked into \(defaultBranchName)."
-        }
-        return "Not merged into \(defaultBranchName). Deleting this branch discards its branch reference."
+        return branchDetail
     }
 
     private func primaryActionLabel(for unit: GitCleanupUnit) -> String {

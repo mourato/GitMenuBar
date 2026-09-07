@@ -33,6 +33,72 @@ final class GitManagerWorktreeCleanupUnitTests: XCTestCase {
         XCTAssertFalse(try runGit(["branch", "--format=%(refname:short)"], in: repositoryURL).contains("feature/cherry-picked"))
     }
 
+    func testSafeCleanupSkipsBranchThatBecomesUnmerged() async throws {
+        let repositoryURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["checkout", "-b", "feature/safe-race"], in: repositoryURL)
+        try "safe race\n".write(
+            to: repositoryURL.appendingPathComponent("safe-race.txt"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try runGit(["add", "."], in: repositoryURL)
+        try runGit(["commit", "-m", "feat: safe race"], in: repositoryURL)
+        try runGit(["checkout", "main"], in: repositoryURL)
+        try runGit(["merge", "--no-ff", "feature/safe-race", "-m", "merge safe race"], in: repositoryURL)
+
+        let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
+        let snapshot = try await resolvedSnapshot(from: gitManager)
+        let unit = try XCTUnwrap(snapshot.cleanupUnits.first {
+            $0.branch.reference.name == "feature/safe-race"
+        })
+        try runGit(["reset", "--hard", "HEAD~1"], in: repositoryURL)
+
+        let result = await gitManager.performCleanupAsync(units: [unit], snapshot: snapshot)
+        guard case let .success(batch) = result else {
+            XCTFail("Expected cleanup batch success, got \(result)")
+            return
+        }
+
+        XCTAssertEqual(
+            batch.items.first?.status,
+            .skipped(reason: "The branch is no longer merged into the default branch.")
+        )
+        XCTAssertTrue(
+            try runGit(["show-ref", "--verify", "refs/heads/feature/safe-race"], in: repositoryURL)
+                .contains("feature/safe-race")
+        )
+    }
+
+    func testCleanupRejectsUnitFromAnotherRepository() async throws {
+        let repositoryA = try createTemporaryGitRepository(testName: #function + "-a")
+        let repositoryB = try createTemporaryGitRepository(testName: #function + "-b")
+        try runGit(["branch", "feature/shared"], in: repositoryA)
+        try runGit(["branch", "feature/shared"], in: repositoryB)
+
+        let managerA = GitManager(repositoryPathOverride: repositoryA.path)
+        let snapshotA = try await resolvedSnapshot(from: managerA)
+        let managerB = GitManager(repositoryPathOverride: repositoryB.path)
+        let snapshotB = try await resolvedSnapshot(from: managerB)
+        let foreignUnit = try XCTUnwrap(snapshotB.managementUnits.first {
+            $0.branch.reference.name == "feature/shared"
+        })
+
+        let result = await managerA.performCleanupAsync(units: [foreignUnit], snapshot: snapshotA)
+        guard case let .success(batch) = result else {
+            XCTFail("Expected cleanup batch success, got \(result)")
+            return
+        }
+
+        XCTAssertEqual(
+            batch.items.first?.status,
+            .skipped(reason: "The cleanup unit belongs to another repository; it was skipped.")
+        )
+        XCTAssertTrue(
+            try runGit(["show-ref", "--verify", "refs/heads/feature/shared"], in: repositoryA)
+                .contains("feature/shared")
+        )
+    }
+
     func testUnmergedBranchCleanupUsesExplicitForceDeletePath() async throws {
         let repositoryURL = try createTemporaryGitRepository(testName: #function)
         try runGit(["checkout", "-b", "feature/unmerged-cleanup"], in: repositoryURL)

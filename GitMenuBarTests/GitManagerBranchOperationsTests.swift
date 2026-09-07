@@ -84,6 +84,34 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertFalse(remoteBranches.contains(where: { $0.contains("origin/") }))
     }
 
+    func testFetchRemoteBranchesAsyncIncludesConfiguredNonOriginRemote() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["remote", "add", "company", repoURL.path], in: repoURL)
+        let headSHA = try runGit(["rev-parse", "HEAD"], in: repoURL)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        try runGit(["update-ref", "refs/remotes/company/feature/shared", headSHA], in: repoURL)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let remoteBranches = await gitManager.fetchRemoteBranchesAsync()
+
+        XCTAssertTrue(remoteBranches.contains("company/feature/shared"), "Expected all configured remotes, got: \(remoteBranches)")
+    }
+
+    func testGetDefaultBranchNameAsyncUsesConfiguredRemoteHead() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["branch", "-m", "trunk"], in: repoURL)
+        try runGit(["remote", "add", "company", repoURL.path], in: repoURL)
+        let headSHA = try runGit(["rev-parse", "refs/heads/trunk"], in: repoURL)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        try runGit(["update-ref", "refs/remotes/company/trunk", headSHA], in: repoURL)
+        try runGit(["symbolic-ref", "refs/remotes/company/HEAD", "refs/remotes/company/trunk"], in: repoURL)
+
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+
+        let defaultBranch = await gitManager.getDefaultBranchNameAsync()
+        XCTAssertEqual(defaultBranch, "trunk")
+    }
+
     func testResolveBranchInfoAsyncMarksCurrentBranch() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)

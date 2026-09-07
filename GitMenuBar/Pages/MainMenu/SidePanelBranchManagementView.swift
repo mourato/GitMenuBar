@@ -14,6 +14,7 @@ struct SidePanelBranchManagementView: View {
     @EnvironmentObject private var actionCoordinator: MainMenuActionCoordinator
     @State private var branchQuery = ""
     @State private var branchesExpanded = true
+    @State private var worktreesExpanded = false
     @State private var cleanupExpanded = true
     @State private var deleteRemoteBranch: BranchInfo?
     @State private var selectedCleanupIDs: Set<String> = []
@@ -23,6 +24,7 @@ struct SidePanelBranchManagementView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
             branchesGroup
+            worktreesGroup
             cleanupGroup
         }
         .alert("Delete Remote Branch?", isPresented: Binding(
@@ -133,6 +135,29 @@ struct SidePanelBranchManagementView: View {
             }
         } label: {
             Text("Cleanup")
+                .font(WorkbenchTypography.sectionLabel)
+        }
+    }
+
+    private var worktreesGroup: some View {
+        DisclosureGroup(isExpanded: $worktreesExpanded) {
+            if let snapshot = gitManager.worktreeSnapshot {
+                WorktreeManagementContentView(
+                    snapshot: snapshot,
+                    errorMessage: nil,
+                    query: branchQuery,
+                    onReveal: revealWorktree,
+                    onCopyPath: copyPath,
+                    onForceRemove: forceRemoveWorktree,
+                    onDismissError: {}
+                )
+            } else {
+                Text("No cleanup analysis is available.")
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } label: {
+            Text("Worktrees (\(gitManager.worktreeSnapshot?.worktrees.count ?? 0))")
                 .font(WorkbenchTypography.sectionLabel)
         }
     }

@@ -75,6 +75,7 @@ struct WorktreeCleanupAnalyzer {
                 reference: reference,
                 status: branchStatus(
                     for: reference,
+                    defaultBranchName: input.defaultBranchName,
                     currentBranchName: input.currentBranchName,
                     worktreePath: worktreeByBranch[reference.name],
                     mergedNames: input.mergedLocalBranchNames
@@ -89,6 +90,7 @@ struct WorktreeCleanupAnalyzer {
                 reference: reference,
                 status: branchStatus(
                     for: reference,
+                    defaultBranchName: input.defaultBranchName,
                     currentBranchName: nil,
                     worktreePath: nil,
                     mergedNames: mergedNames,
@@ -146,12 +148,13 @@ struct WorktreeCleanupAnalyzer {
 
     private func branchStatus(
         for reference: GitBranchReference,
+        defaultBranchName: String,
         currentBranchName: String?,
         worktreePath: String?,
         mergedNames: Set<String>?,
         unknownReason: String = "Merge status is unavailable."
     ) -> GitBranchCleanupStatus {
-        if Self.protectedBranchNames.contains(reference.name) {
+        if Self.protectedBranchNames.contains(reference.name) || reference.name == defaultBranchName {
             return .protected
         }
         if !reference.isRemote, reference.name == currentBranchName {

@@ -225,10 +225,9 @@ struct MainMenuView: View {
             },
             onDeleteBranch: {
                 let name = branchNameToDelete
-                let force = gitManager.unmergedIntoDefaultBranches.contains(name)
                 branchNameToDelete = ""
                 Task {
-                    _ = await actionCoordinator.deleteSidePanelBranch(name, force: force)
+                    _ = await actionCoordinator.deleteSidePanelBranch(name)
                 }
             },
             onCancelDeleteBranch: {

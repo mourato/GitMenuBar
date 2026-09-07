@@ -40,9 +40,9 @@ extension GitBranchService {
                 .components(separatedBy: .newlines)
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
-                .filter { $0 != "HEAD" && $0 != "origin/HEAD" }
-                .compactMap { branch in
-                    branch.hasPrefix("origin/") ? String(branch.dropFirst(7)) : nil
+                .filter { $0 != "HEAD" && !$0.hasSuffix("/HEAD") }
+                .map { branch in
+                    branch.hasPrefix("origin/") ? String(branch.dropFirst(7)) : branch
                 }
         }
     }
@@ -56,16 +56,7 @@ extension GitBranchService {
         guard !repositoryPath.isEmpty else { return "main" }
 
         let detected: String? = await runOnBackground { () -> String? in
-            for remote in ["origin", "upstream"] {
-                let result = self.executeGitCommand(
-                    in: repositoryPath,
-                    args: ["symbolic-ref", "refs/remotes/\(remote)/HEAD"]
-                )
-                if !result.failure, let last = result.output.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "/").last {
-                    return last
-                }
-            }
-            return nil
+            GitCleanupRepository(runner: self.commandRunner).defaultBranchName(in: repositoryPath)
         }
 
         if let detected, !detected.isEmpty {
