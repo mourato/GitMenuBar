@@ -41,7 +41,7 @@ enum WorkbenchMetrics {
     static let projectsMaximumWidth: CGFloat = 360
     static let centralMinimumWidth: CGFloat = 360
     /// Fixed trailing side-panel overlay width (contextual details).
-    static let sidePanelWidth: CGFloat = 560
+    static let sidePanelWidth: CGFloat = 360
     static let splitDividerThickness: CGFloat = 8
     /// Two-column floor: Projects sidebar + overview (side panel overlays detail).
     static let mainWindowMinimumWidth: CGFloat = projectsMinimumWidth
