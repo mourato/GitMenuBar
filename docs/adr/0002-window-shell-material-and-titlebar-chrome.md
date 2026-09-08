@@ -6,7 +6,7 @@ The main panel and Settings window use a **window-level material/vibrancy shell*
 
 **Status:** accepted (2026-07-25); native toolbar adoption and compatibility-key removal recorded 2026-09-02
 
-**Update (sidebar bottom bar):** the Settings gear moved from the window toolbar to the Projects sidebar footer, alongside the quota summary and a collapse toggle. The toolbar keeps the sidebar toggle and a centered title (`centeredItemIdentifier`). Rationale: concentrate sidebar actions in one native bottom surface, keep the toolbar to navigation/title only, and preserve Settings access via the sidebar, status-item menu, and command palette when the sidebar is collapsed.
+**Update (native sidebar toggle and sidebar footer):** following Cue's native split view and unified compact chrome pattern, the sidebar collapse toggle is integrated natively via AppKit's standard `NSToolbarItem.Identifier.toggleSidebar` in the unified compact toolbar, placing the toggle at the top leading chrome aligned directly above the sidebar column. The manual toolbar toggle button (`MainWindowToolbarItemIdentifier.sidebarToggle`) and the redundant collapse button in the sidebar footer have been removed. The sidebar footer now hosts only the quota strip and Settings gear.
 
 ## Considered options
 
