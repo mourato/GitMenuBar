@@ -15,6 +15,8 @@ enum AppPreferences {
         static let isUsageQuotaSectionCollapsed = "isUsageQuotaSectionCollapsed"
         static let autoHideMainWindowOnBlur = "autoHideMainWindowOnBlur"
         static let toggleShortcutUsesMouseMonitor = "toggleShortcutUsesMouseMonitor"
+        static let showDockIcon = "showDockIcon"
+        static let showMenuBarIcon = "showMenuBarIcon"
         static let hideCommitMessageField = "hideCommitMessageField"
         static let commitButtonAction = "commitButtonAction"
         static let appearanceMode = "appearanceMode"

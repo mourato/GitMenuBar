@@ -17,6 +17,7 @@ struct GitMenuBarApp: App {
         }
         .commands {
             GitMenuBarCommandMenus(commandCenter: appDelegate.appCommandCenter)
+            SidebarCommands()
         }
     }
 }
@@ -40,8 +41,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Migrate non-AI credentials and preferences without touching AI keychain data.
         KeychainMigrator.migrateToUnifiedDomain(migrateAI: false)
 
-        // Hide the dock icon immediately
-        NSApp.setActivationPolicy(.accessory)
+        // Configure activation policy based on preferences
+        let showDockIcon = MainWindowPreferences.isShowDockIconEnabled()
+        NSApp.setActivationPolicy(showDockIcon ? .regular : .accessory)
 
         // Create GitHub auth manager
         let authManager = GitHubAuthManager()

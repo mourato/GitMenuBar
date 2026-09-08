@@ -2,6 +2,10 @@ import AppKit
 import SwiftUI
 
 struct GeneralSettingsPaneView: View {
+    @AppStorage(AppPreferences.Keys.showDockIcon) private var showDockIcon =
+        MainWindowPreferences.defaultShowDockIcon
+    @AppStorage(AppPreferences.Keys.showMenuBarIcon) private var showMenuBarIcon =
+        MainWindowPreferences.defaultShowMenuBarIcon
     @AppStorage(AppPreferences.Keys.autoHideMainWindowOnBlur) private var autoHideMainWindowOnBlur =
         MainWindowPreferences.defaultAutoHideOnBlur
     @AppStorage(AppPreferences.Keys.toggleShortcutUsesMouseMonitor)
@@ -26,6 +30,36 @@ struct GeneralSettingsPaneView: View {
                 )
                 .toggleStyle(.switch)
 
+                Toggle(
+                    "Show icon in Dock",
+                    isOn: Binding(
+                        get: { showDockIcon },
+                        set: { newValue in
+                            if !newValue && !showMenuBarIcon {
+                                return
+                            }
+                            showDockIcon = newValue
+                        }
+                    )
+                )
+                .toggleStyle(.switch)
+                .disabled(!showMenuBarIcon && showDockIcon)
+
+                Toggle(
+                    "Show icon in Menu Bar",
+                    isOn: Binding(
+                        get: { showMenuBarIcon },
+                        set: { newValue in
+                            if !newValue && !showDockIcon {
+                                return
+                            }
+                            showMenuBarIcon = newValue
+                        }
+                    )
+                )
+                .toggleStyle(.switch)
+                .disabled(!showDockIcon && showMenuBarIcon)
+
                 Toggle("Auto-hide window when focus is lost", isOn: $autoHideMainWindowOnBlur)
                     .toggleStyle(.switch)
 
@@ -33,6 +67,8 @@ struct GeneralSettingsPaneView: View {
                     .toggleStyle(.switch)
             } header: {
                 SettingsFormSectionHeader(title: "App Behavior", icon: "app.badge")
+            } footer: {
+                Text("At least one icon (Dock or Menu Bar) must remain enabled so you can access GitMenuBar.")
             }
 
             Section {

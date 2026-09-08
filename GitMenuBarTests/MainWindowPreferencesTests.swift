@@ -54,6 +54,34 @@ final class MainWindowPreferencesTests: XCTestCase {
             MainWindowPreferences.isToggleShortcutUsingMouseMonitorEnabled(userDefaults: userDefaults)
         )
     }
+
+    func testShowDockIconDefaultsToEnabledWhenPreferenceIsMissing() {
+        let isEnabled = MainWindowPreferences.isShowDockIconEnabled(userDefaults: userDefaults)
+
+        XCTAssertTrue(isEnabled)
+    }
+
+    func testShowDockIconPreferenceRoundTrip() {
+        MainWindowPreferences.setShowDockIconEnabled(false, userDefaults: userDefaults)
+        XCTAssertFalse(MainWindowPreferences.isShowDockIconEnabled(userDefaults: userDefaults))
+
+        MainWindowPreferences.setShowDockIconEnabled(true, userDefaults: userDefaults)
+        XCTAssertTrue(MainWindowPreferences.isShowDockIconEnabled(userDefaults: userDefaults))
+    }
+
+    func testShowMenuBarIconDefaultsToEnabledWhenPreferenceIsMissing() {
+        let isEnabled = MainWindowPreferences.isShowMenuBarIconEnabled(userDefaults: userDefaults)
+
+        XCTAssertTrue(isEnabled)
+    }
+
+    func testShowMenuBarIconPreferenceRoundTrip() {
+        MainWindowPreferences.setShowMenuBarIconEnabled(false, userDefaults: userDefaults)
+        XCTAssertFalse(MainWindowPreferences.isShowMenuBarIconEnabled(userDefaults: userDefaults))
+
+        MainWindowPreferences.setShowMenuBarIconEnabled(true, userDefaults: userDefaults)
+        XCTAssertTrue(MainWindowPreferences.isShowMenuBarIconEnabled(userDefaults: userDefaults))
+    }
 }
 
 @MainActor

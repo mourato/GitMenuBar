@@ -16,7 +16,7 @@ final class StatusBarController: NSObject, ObservableObject {
     private enum Constants {
         static let statusIconPointSize = NSSize(width: 16, height: 16)
         static let windowInitialSize = NSSize(width: WorkbenchMetrics.mainWindowInitialWidth, height: 720)
-        static let windowMinimumHeight: CGFloat = 640
+        static let windowMinimumHeight: CGFloat = 420
         static let windowMinimumSize = NSSize(width: WorkbenchMetrics.mainWindowMinimumWidth, height: windowMinimumHeight)
         static let autoHideBlurEvaluationDelay: TimeInterval = 0.08
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
@@ -137,7 +137,10 @@ final class StatusBarController: NSObject, ObservableObject {
             self?.performAppCommand(invocation)
         }
 
-        setupStatusItem()
+        if MainWindowPreferences.isShowMenuBarIconEnabled() {
+            setupStatusItem()
+        }
+        setupVisibilityPreferencesObservation()
         setupShortcutHandlers()
         setupContextMenu()
         setupMainWindow()
@@ -155,6 +158,7 @@ final class StatusBarController: NSObject, ObservableObject {
     }
 
     private func setupStatusItem() {
+        guard statusItem == nil else { return }
         statusItem = NSStatusBar.system.statusItem(withLength: 20)
         baseStatusImage = StatusItemBadgeRenderer.makeBaseStatusImage(iconSize: Constants.statusIconPointSize)
 
@@ -189,6 +193,37 @@ final class StatusBarController: NSObject, ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updateStatusItemBadge(count: self?.projectMonitor.attentionCount ?? 0) }
             .store(in: &cancellables)
+    }
+
+    private func setupVisibilityPreferencesObservation() {
+        NotificationCenter.default.publisher(
+            for: UserDefaults.didChangeNotification,
+            object: UserDefaults.standard
+        )
+        .receive(on: RunLoop.main)
+        .sink { [weak self] _ in
+            self?.syncVisibilityPreferences()
+        }
+        .store(in: &cancellables)
+    }
+
+    private func syncVisibilityPreferences() {
+        let showDock = MainWindowPreferences.isShowDockIconEnabled()
+        let targetPolicy: NSApplication.ActivationPolicy = showDock ? .regular : .accessory
+        if NSApp.activationPolicy() != targetPolicy {
+            NSApp.setActivationPolicy(targetPolicy)
+            if showDock {
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        }
+
+        let showMenuBar = MainWindowPreferences.isShowMenuBarIconEnabled()
+        if showMenuBar, statusItem == nil {
+            setupStatusItem()
+        } else if !showMenuBar, let currentItem = statusItem {
+            NSStatusBar.system.removeStatusItem(currentItem)
+            statusItem = nil
+        }
     }
 
     private func setupShortcutHandlers() {
@@ -318,6 +353,9 @@ final class StatusBarController: NSObject, ObservableObject {
             backing: .buffered,
             defer: false
         )
+
+        window.collectionBehavior.insert([.fullScreenPrimary, .participatesInCycle])
+        window.tabbingMode = .disallowed
 
         configureMainWindowAppearance(window)
         window.title = "GitMenuBar"
@@ -680,6 +718,10 @@ final class StatusBarController: NSObject, ObservableObject {
 
     private func presentMainWindow(trace: WindowOpenTrace, placementStrategy: WindowPlacementStrategy) {
         guard let mainWindow else { return }
+
+        if mainWindow.isMiniaturized {
+            mainWindow.deminiaturize(nil)
+        }
 
         if mainWindow.isVisible {
             NSApp.activate(ignoringOtherApps: true)
@@ -1298,5 +1340,3 @@ private final class MainWindowLifecycleDelegate: NSObject, NSWindowDelegate {
         onDidMoveOrResize?()
     }
 }
-
-// swiftlint:enable file_length
