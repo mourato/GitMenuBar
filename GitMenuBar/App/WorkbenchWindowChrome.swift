@@ -109,7 +109,7 @@ final class WorkbenchWindowShellView: NSView {
     }
 }
 
-private final class WorkbenchHostedContentViewController: NSViewController {
+private final class WorkbenchHostedContentViewController: NSViewController, NSUserInterfaceValidations {
     private let hostingController: NSHostingController<AnyView>
 
     init(rootView: AnyView) {
@@ -155,5 +155,19 @@ private final class WorkbenchHostedContentViewController: NSViewController {
         if !(hostingController.view is NSHostingView<AnyView>) {
             assertionFailure("Expected NSHostingView<AnyView> for hosted window content")
         }
+    }
+
+    @objc
+    func toggleSidebar(_: Any?) {
+        let key = AppPreferences.Keys.isProjectsSidebarCollapsed
+        let isCollapsed = UserDefaults.standard.bool(forKey: key)
+        UserDefaults.standard.set(!isCollapsed, forKey: key)
+    }
+
+    func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
+        if item.action == #selector(NSSplitViewController.toggleSidebar(_:)) {
+            return true
+        }
+        return true
     }
 }
