@@ -24,6 +24,8 @@ enum AppPreferences {
         static let showCodexUsageQuota = "showCodexUsageQuota"
         static let showCursorUsageQuota = "showCursorUsageQuota"
         static let showOpenRouterUsageQuota = "showOpenRouterUsageQuota"
+        static let showGeminiUsageQuota = "showGeminiUsageQuota"
+        static let showAntigravityUsageQuota = "showAntigravityUsageQuota"
     }
 
     enum AppearanceMode: String, CaseIterable, Identifiable {
