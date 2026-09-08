@@ -1,4 +1,5 @@
 @testable import GitMenuBar
+import SwiftUI
 import XCTest
 
 final class MainWindowPreferencesTests: XCTestCase {
@@ -52,5 +53,27 @@ final class MainWindowPreferencesTests: XCTestCase {
         XCTAssertFalse(
             MainWindowPreferences.isToggleShortcutUsingMouseMonitorEnabled(userDefaults: userDefaults)
         )
+    }
+}
+
+@MainActor
+final class WorkbenchWindowChromeTests: XCTestCase {
+    func testHostedContentControllerRespondsToToggleSidebar() {
+        let controller = WorkbenchWindowChrome.makeHostedContentController(rootView: EmptyView())
+        XCTAssertTrue(controller.responds(to: #selector(NSSplitViewController.toggleSidebar(_:))))
+    }
+
+    func testToggleSidebarTogglesPreference() {
+        let controller = WorkbenchWindowChrome.makeHostedContentController(rootView: EmptyView())
+        let key = AppPreferences.Keys.isProjectsSidebarCollapsed
+        let initial = UserDefaults.standard.bool(forKey: key)
+        defer { UserDefaults.standard.set(initial, forKey: key) }
+
+        UserDefaults.standard.set(false, forKey: key)
+        controller.perform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: key))
+
+        controller.perform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: key))
     }
 }
