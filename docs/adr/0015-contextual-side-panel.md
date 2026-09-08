@@ -1,6 +1,6 @@
 # ADR 0015: Contextual side panel overlay
 
-Status: Accepted
+Status: Superseded by ADR 0017
 Date: 2026-09-07
 
 ## Context

@@ -33,8 +33,8 @@ final class MainMenuSidePanelSelectionTests: XCTestCase {
         )
     }
 
-    func testSidePanelDefaultsToLargestWorkbenchColumn() {
-        XCTAssertGreaterThan(
+    func testSidePanelFitsMinimumWorkbenchColumn() {
+        XCTAssertGreaterThanOrEqual(
             WorkbenchMetrics.sidePanelWidth,
             WorkbenchMetrics.centralMinimumWidth
         )
