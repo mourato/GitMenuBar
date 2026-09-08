@@ -2,6 +2,8 @@
 //  StatusBarController.swift
 //  GitMenuBar
 //
+//  Created by Gabriel on 12/28/24.
+//
 
 import AppKit
 import Combine
@@ -366,16 +368,14 @@ final class StatusBarController: NSObject, ObservableObject {
     fileprivate func makeMainWindowToolbarItem(
         identifier: NSToolbarItem.Identifier
     ) -> NSToolbarItem? {
+        if identifier == .toggleSidebar {
+            return NSToolbarItem(itemIdentifier: .toggleSidebar)
+        }
+
         let item = NSToolbarItem(itemIdentifier: identifier)
         item.target = self
 
         switch identifier {
-        case MainWindowToolbarItemIdentifier.sidebarToggle:
-            item.label = "Projects"
-            item.paletteLabel = "Projects"
-            item.toolTip = "Show or hide Projects sidebar"
-            item.action = #selector(toggleProjectsSidebarFromToolbar(_:))
-            item.image = toolbarSidebarImage()
         case MainWindowToolbarItemIdentifier.back:
             item.label = "Back"
             item.paletteLabel = "Back"
@@ -418,16 +418,11 @@ final class StatusBarController: NSObject, ObservableObject {
         } else {
             true
         }
-        let hasSidebarItem = toolbar.items.contains { $0.itemIdentifier == MainWindowToolbarItemIdentifier.sidebarToggle }
+        let hasSidebarItem = toolbar.items.contains { $0.itemIdentifier == .toggleSidebar }
         if shouldShowSidebarItem, !hasSidebarItem {
-            toolbar.insertItem(withItemIdentifier: MainWindowToolbarItemIdentifier.sidebarToggle, at: 0)
-        } else if !shouldShowSidebarItem, let sidebarIndex = toolbar.items.firstIndex(where: { $0.itemIdentifier == MainWindowToolbarItemIdentifier.sidebarToggle }) {
+            toolbar.insertItem(withItemIdentifier: .toggleSidebar, at: 0)
+        } else if !shouldShowSidebarItem, let sidebarIndex = toolbar.items.firstIndex(where: { $0.itemIdentifier == .toggleSidebar }) {
             toolbar.removeItem(at: sidebarIndex)
-        }
-
-        if let sidebarItem = toolbar.items.first(where: { $0.itemIdentifier == MainWindowToolbarItemIdentifier.sidebarToggle }) {
-            sidebarItem.image = toolbarSidebarImage()
-            sidebarItem.toolTip = isProjectsSidebarCollapsed ? "Show Projects sidebar" : "Hide Projects sidebar"
         }
 
         let needsBackItem = switch presentationModel.route {
@@ -456,26 +451,6 @@ final class StatusBarController: NSObject, ObservableObject {
         case .projectCleanup:
             return "Project Cleanup"
         }
-    }
-
-    private var isProjectsSidebarCollapsed: Bool {
-        UserDefaults.standard.bool(forKey: AppPreferences.Keys.isProjectsSidebarCollapsed)
-    }
-
-    private func toolbarSidebarImage() -> NSImage? {
-        NSImage(
-            systemSymbolName: isProjectsSidebarCollapsed ? "sidebar.right" : "sidebar.left",
-            accessibilityDescription: isProjectsSidebarCollapsed ? "Show Projects sidebar" : "Hide Projects sidebar"
-        )
-    }
-
-    @objc
-    private func toggleProjectsSidebarFromToolbar(_: NSToolbarItem) {
-        if case .createRepo = presentationModel.route {
-            return
-        }
-        let key = AppPreferences.Keys.isProjectsSidebarCollapsed
-        UserDefaults.standard.set(!UserDefaults.standard.bool(forKey: key), forKey: key)
     }
 
     @objc
@@ -1257,7 +1232,6 @@ final class StatusBarController: NSObject, ObservableObject {
 }
 
 private enum MainWindowToolbarItemIdentifier {
-    static let sidebarToggle = NSToolbarItem.Identifier("GitMenuBar.sidebarToggle")
     static let back = NSToolbarItem.Identifier("GitMenuBar.back")
     static let title = NSToolbarItem.Identifier("GitMenuBar.title")
 }
@@ -1272,7 +1246,7 @@ private final class MainWindowToolbarDelegate: NSObject, NSToolbarDelegate {
 
     func toolbarAllowedItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
-            MainWindowToolbarItemIdentifier.sidebarToggle,
+            .toggleSidebar,
             MainWindowToolbarItemIdentifier.back,
             .flexibleSpace,
             MainWindowToolbarItemIdentifier.title
@@ -1281,7 +1255,7 @@ private final class MainWindowToolbarDelegate: NSObject, NSToolbarDelegate {
 
     func toolbarDefaultItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
-            MainWindowToolbarItemIdentifier.sidebarToggle,
+            .toggleSidebar,
             .flexibleSpace,
             MainWindowToolbarItemIdentifier.title,
             .flexibleSpace
