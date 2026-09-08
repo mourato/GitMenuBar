@@ -49,6 +49,22 @@ final class UsageQuotaStore: ObservableObject {
         }
     }
 
+    @Published var showGeminiUsageQuota: Bool {
+        didSet {
+            guard showGeminiUsageQuota != oldValue else { return }
+            defaults.set(showGeminiUsageQuota, forKey: AppPreferences.Keys.showGeminiUsageQuota)
+            handlePreferenceChange()
+        }
+    }
+
+    @Published var showAntigravityUsageQuota: Bool {
+        didSet {
+            guard showAntigravityUsageQuota != oldValue else { return }
+            defaults.set(showAntigravityUsageQuota, forKey: AppPreferences.Keys.showAntigravityUsageQuota)
+            handlePreferenceChange()
+        }
+    }
+
     private let defaults: UserDefaults
     private let snapshotStore: UsageQuotaSnapshotStore
     private let providers: [any UsageQuotaProviding]
@@ -62,7 +78,13 @@ final class UsageQuotaStore: ObservableObject {
     init(
         defaults: UserDefaults = .standard,
         snapshotStore: UsageQuotaSnapshotStore = UsageQuotaSnapshotStore(),
-        providers: [any UsageQuotaProviding] = [CodexUsageProvider(), CursorUsageProvider(), OpenRouterUsageProvider()],
+        providers: [any UsageQuotaProviding] = [
+            CodexUsageProvider(),
+            CursorUsageProvider(),
+            OpenRouterUsageProvider(),
+            GeminiUsageProvider(),
+            AntigravityUsageProvider()
+        ],
         now: @escaping () -> Date = Date.init
     ) {
         self.defaults = defaults
@@ -73,6 +95,8 @@ final class UsageQuotaStore: ObservableObject {
         showCodexUsageQuota = defaults.object(forKey: AppPreferences.Keys.showCodexUsageQuota) as? Bool ?? true
         showCursorUsageQuota = defaults.object(forKey: AppPreferences.Keys.showCursorUsageQuota) as? Bool ?? true
         showOpenRouterUsageQuota = defaults.object(forKey: AppPreferences.Keys.showOpenRouterUsageQuota) as? Bool ?? true
+        showGeminiUsageQuota = defaults.object(forKey: AppPreferences.Keys.showGeminiUsageQuota) as? Bool ?? true
+        showAntigravityUsageQuota = defaults.object(forKey: AppPreferences.Keys.showAntigravityUsageQuota) as? Bool ?? true
         handlePreferenceChange(loadCachedOnly: true)
     }
 
@@ -152,6 +176,10 @@ final class UsageQuotaStore: ObservableObject {
             showCursorUsageQuota
         case .openrouter:
             showOpenRouterUsageQuota
+        case .gemini:
+            showGeminiUsageQuota
+        case .antigravity:
+            showAntigravityUsageQuota
         }
     }
 
