@@ -4,6 +4,8 @@ enum UsageProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
     case codex
     case cursor
     case openrouter
+    case gemini
+    case antigravity
 
     var id: String {
         rawValue
@@ -17,6 +19,10 @@ enum UsageProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
             "Cursor"
         case .openrouter:
             "OpenRouter"
+        case .gemini:
+            "Gemini"
+        case .antigravity:
+            "Antigravity"
         }
     }
 }
