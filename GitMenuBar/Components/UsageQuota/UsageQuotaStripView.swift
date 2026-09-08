@@ -115,7 +115,7 @@ private struct UsageQuotaProviderCard: View {
             ProviderIconView(providerID: snapshot.providerID)
 
             Text(snapshot.displayName)
-                .font(WorkbenchTypography.captionStrong)
+                .font(WorkbenchTypography.body)
                 .foregroundStyle(snapshot.isStale ? .secondary : .primary)
 
             if let window = snapshot.primaryDisplayWindow {
