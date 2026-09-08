@@ -28,9 +28,9 @@ struct UsageQuotaSettingsSection: View {
             .disabled(!usageQuotaStore.showAIUsageQuotas)
 
         Text(
-            "Quota data stays on this Mac. GitMenuBar reads your local Codex, Cursor, Gemini, and Antigravity sessions "
-                + "and calls provider usage endpoints only when refreshing — it never stores OAuth tokens. "
-                + "OpenRouter quota uses the OpenRouter provider credential configured in AI settings."
+            "Quota data stays on this Mac. GitMenuBar uses credentials already stored by each provider "
+                + "and refreshes them in place when needed. It never creates a separate OAuth token store. "
+                + "OpenRouter quota uses the provider credential configured in AI settings."
         )
         .font(WorkbenchTypography.caption)
         .foregroundStyle(.secondary)

@@ -13,24 +13,29 @@ private struct GeminiCredentialsFile: Codable {
         case idToken = "id_token"
     }
 
-    var isExpired: Bool {
+    func isExpired(at now: Date, safetyWindow: TimeInterval = 300) -> Bool {
         guard let expiryDate else { return false }
         // expiryDate in ~/.gemini/oauth_creds.json is either ms or seconds
         let seconds = expiryDate > 10_000_000_000 ? expiryDate / 1000 : expiryDate
-        return Date(timeIntervalSince1970: seconds) <= Date()
+        return Date(timeIntervalSince1970: seconds) <= now.addingTimeInterval(safetyWindow)
     }
-}
-
-private struct GeminiCodeAssistResponse: Decodable {
-    let projectId: String?
 }
 
 private struct GeminiTokenRefreshResponse: Decodable {
     let accessToken: String?
+    let expiresIn: Double?
+    let idToken: String?
 
     enum CodingKeys: String, CodingKey {
         case accessToken = "access_token"
+        case expiresIn = "expires_in"
+        case idToken = "id_token"
     }
+}
+
+private struct GeminiOAuthClient {
+    let id: String
+    let secret: String
 }
 
 final class GeminiUsageProvider: UsageQuotaProviding, Sendable {
@@ -38,6 +43,7 @@ final class GeminiUsageProvider: UsageQuotaProviding, Sendable {
 
     private static let loadCodeAssistEndpoint = "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist"
     private static let retrieveUserQuotaEndpoint = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota"
+    private static let projectsEndpoint = "https://cloudresourcemanager.googleapis.com/v1/projects"
     private static let tokenRefreshEndpoint = "https://oauth2.googleapis.com/token"
 
     struct Configuration: Sendable {
@@ -80,9 +86,10 @@ final class GeminiUsageProvider: UsageQuotaProviding, Sendable {
         }
 
         var accessToken = creds.accessToken
-        if creds.isExpired || accessToken == nil || accessToken?.isEmpty == true {
-            if let refreshedToken = await refreshAccessToken(refreshToken: creds.refreshToken) {
-                accessToken = refreshedToken
+        if creds.isExpired(at: now()) || accessToken == nil || accessToken?.isEmpty == true {
+            if let refreshed = await refreshAccessToken(refreshToken: creds.refreshToken) {
+                accessToken = refreshed.accessToken
+                persist(refreshed)
             } else if accessToken == nil || accessToken?.isEmpty == true {
                 return .unavailable(providerID: .gemini, statusNote: "token expired — open Gemini")
             }
@@ -93,7 +100,11 @@ final class GeminiUsageProvider: UsageQuotaProviding, Sendable {
         }
 
         do {
-            let projectId = await loadProjectId(accessToken: activeToken)
+            let projectId: String? = if let loadedProjectId = await loadProjectId(accessToken: activeToken) {
+                loadedProjectId
+            } else {
+                await discoverProjectId(accessToken: activeToken)
+            }
             let quotas = try await requestQuota(accessToken: activeToken, projectId: projectId)
             return GeminiUsageParsing.snapshot(from: quotas, now: now())
         } catch let error as URLError where error.code == .cancelled {
@@ -116,8 +127,7 @@ final class GeminiUsageProvider: UsageQuotaProviding, Sendable {
 
         let body: [String: Any] = [
             "metadata": [
-                "ideType": "GEMINI",
-                "platform": "PLATFORM_UNSPECIFIED",
+                "ideType": "GEMINI_CLI",
                 "pluginType": "GEMINI"
             ]
         ]
@@ -129,8 +139,41 @@ final class GeminiUsageProvider: UsageQuotaProviding, Sendable {
             return nil
         }
 
-        let decoded = try? JSONDecoder().decode(GeminiCodeAssistResponse.self, from: data)
-        return decoded?.projectId
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+
+        if let project = json["cloudaicompanionProject"] as? String {
+            return project.nonEmptyTrimmed
+        }
+        if let project = json["cloudaicompanionProject"] as? [String: Any] {
+            return (project["id"] as? String)?.nonEmptyTrimmed
+                ?? (project["projectId"] as? String)?.nonEmptyTrimmed
+        }
+        return (json["projectId"] as? String)?.nonEmptyTrimmed
+    }
+
+    private func discoverProjectId(accessToken: String) async -> String? {
+        // Cloud Resource Manager is only a fallback for accounts where
+        // loadCodeAssist does not return the managed Gemini project.
+        guard let url = URL(string: Self.projectsEndpoint) else { return nil }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = configuration.timeout
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let projects = json["projects"] as? [[String: Any]]
+        else { return nil }
+
+        let candidates = projects.compactMap { project -> (String, Bool)? in
+            guard let id = (project["projectId"] as? String)?.nonEmptyTrimmed else { return nil }
+            let labels = project["labels"] as? [String: String] ?? [:]
+            return (id, id.hasPrefix("gen-lang-client") || labels["generative-language"] != nil)
+        }
+        return candidates.first(where: { $0.1 })?.0 ?? candidates.first?.0
     }
 
     private func requestQuota(accessToken: String, projectId: String?) async throws -> [GeminiUsageParsing.ModelQuota] {
@@ -163,15 +206,10 @@ final class GeminiUsageProvider: UsageQuotaProviding, Sendable {
         return try GeminiUsageParsing.parseAPIResponse(data)
     }
 
-    private func refreshAccessToken(refreshToken: String?) async -> String? {
+    private func refreshAccessToken(refreshToken: String?) async -> GeminiTokenRefreshResponse? {
         guard let refreshToken, !refreshToken.isEmpty else { return nil }
 
-        let env = ProcessInfo.processInfo.environment
-        guard let clientID = env["GEMINI_OAUTH_CLIENT_ID"],
-              let clientSecret = env["GEMINI_OAUTH_CLIENT_SECRET"]
-        else {
-            return nil
-        }
+        guard let client = resolveOAuthClient() else { return nil }
 
         guard let url = URL(string: Self.tokenRefreshEndpoint) else { return nil }
 
@@ -180,13 +218,12 @@ final class GeminiUsageProvider: UsageQuotaProviding, Sendable {
         request.timeoutInterval = configuration.timeout
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
-        let body = [
-            "client_id=\(clientID)",
-            "client_secret=\(clientSecret)",
-            "refresh_token=\(refreshToken)",
-            "grant_type=refresh_token"
-        ].joined(separator: "&")
-        request.httpBody = body.data(using: .utf8)
+        request.httpBody = formEncoded([
+            "client_id": client.id,
+            "client_secret": client.secret,
+            "refresh_token": refreshToken,
+            "grant_type": "refresh_token"
+        ])
 
         guard let (data, response) = try? await session.data(for: request),
               let http = response as? HTTPURLResponse, http.statusCode == 200
@@ -194,7 +231,90 @@ final class GeminiUsageProvider: UsageQuotaProviding, Sendable {
             return nil
         }
 
-        let decoded = try? JSONDecoder().decode(GeminiTokenRefreshResponse.self, from: data)
-        return decoded?.accessToken
+        guard let response = try? JSONDecoder().decode(GeminiTokenRefreshResponse.self, from: data),
+              let accessToken = response.accessToken,
+              !accessToken.isEmpty
+        else { return nil }
+        return response
+    }
+
+    private func persist(_ refreshed: GeminiTokenRefreshResponse) {
+        guard let accessToken = refreshed.accessToken,
+              let data = try? Data(contentsOf: configuration.credentialsURL),
+              var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return }
+
+        json["access_token"] = accessToken
+        if let expiresIn = refreshed.expiresIn {
+            json["expiry_date"] = (now().timeIntervalSince1970 + expiresIn) * 1000
+        }
+        if let idToken = refreshed.idToken {
+            json["id_token"] = idToken
+        }
+        guard let updated = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted]) else {
+            return
+        }
+        try? updated.write(to: configuration.credentialsURL, options: .atomic)
+    }
+
+    private func resolveOAuthClient() -> GeminiOAuthClient? {
+        let environment = ProcessInfo.processInfo.environment
+        if let id = environment["GEMINI_OAUTH_CLIENT_ID"],
+           let secret = environment["GEMINI_OAUTH_CLIENT_SECRET"],
+           !id.isEmpty, !secret.isEmpty
+        {
+            return GeminiOAuthClient(id: id, secret: secret)
+        }
+
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let oauthRelativePath = "dist/src/code_assist/oauth2.js"
+        var paths = [
+            "/opt/homebrew/lib/node_modules/@google/gemini-cli-core/\(oauthRelativePath)",
+            "/usr/local/lib/node_modules/@google/gemini-cli-core/\(oauthRelativePath)",
+            "\(home)/.npm-global/lib/node_modules/@google/gemini-cli-core/\(oauthRelativePath)"
+        ]
+
+        for prefix in ["/opt/homebrew", "/usr/local"] {
+            let optRoot = "\(prefix)/opt/gemini-cli/libexec/lib/node_modules/@google/gemini-cli"
+            paths.append("\(optRoot)/\(oauthRelativePath)")
+            let cellarRoot = "\(prefix)/Cellar/gemini-cli"
+            if let versions = try? FileManager.default.contentsOfDirectory(atPath: cellarRoot) {
+                paths.append(contentsOf: versions.map {
+                    "\(cellarRoot)/\($0)/libexec/lib/node_modules/@google/gemini-cli/\(oauthRelativePath)"
+                })
+            }
+        }
+
+        for path in paths {
+            guard let source = try? String(contentsOfFile: path, encoding: .utf8) else { continue }
+            let id = matchOAuthValue(named: "OAUTH_CLIENT_ID", in: source)
+            let secret = matchOAuthValue(named: "OAUTH_CLIENT_SECRET", in: source)
+            if let id, let secret {
+                return GeminiOAuthClient(id: id, secret: secret)
+            }
+        }
+        return nil
+    }
+
+    private func matchOAuthValue(named name: String, in source: String) -> String? {
+        let pattern = #"(?:const|let|var)?\s*\#(name)\s*=\s*['"]([\w\-.]+)['"]\s*;"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: source, range: NSRange(source.startIndex..., in: source)),
+              let range = Range(match.range(at: 1), in: source)
+        else { return nil }
+        return String(source[range])
+    }
+
+    private func formEncoded(_ values: [String: String]) -> Data? {
+        var components = URLComponents()
+        components.queryItems = values.map { URLQueryItem(name: $0.key, value: $0.value) }
+        return components.percentEncodedQuery?.data(using: .utf8)
+    }
+}
+
+private extension String {
+    var nonEmptyTrimmed: String? {
+        let value = trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
     }
 }
