@@ -19,8 +19,16 @@ struct UsageQuotaSettingsSection: View {
             .toggleStyle(.switch)
             .disabled(!usageQuotaStore.showAIUsageQuotas)
 
+        providerToggle("Gemini", providerID: .gemini, isOn: $usageQuotaStore.showGeminiUsageQuota)
+            .toggleStyle(.switch)
+            .disabled(!usageQuotaStore.showAIUsageQuotas)
+
+        providerToggle("Antigravity", providerID: .antigravity, isOn: $usageQuotaStore.showAntigravityUsageQuota)
+            .toggleStyle(.switch)
+            .disabled(!usageQuotaStore.showAIUsageQuotas)
+
         Text(
-            "Quota data stays on this Mac. GitMenuBar reads your local Codex and Cursor sessions "
+            "Quota data stays on this Mac. GitMenuBar reads your local Codex, Cursor, Gemini, and Antigravity sessions "
                 + "and calls provider usage endpoints only when refreshing — it never stores OAuth tokens. "
                 + "OpenRouter quota uses the OpenRouter provider credential configured in AI settings."
         )
@@ -55,7 +63,9 @@ struct UsageQuotaSettingsSection: View {
     let providers: [any UsageQuotaProviding] = [
         CodexUsageProvider(),
         CursorUsageProvider(),
-        OpenRouterUsageProvider(keyStore: credentialStore)
+        OpenRouterUsageProvider(keyStore: credentialStore),
+        GeminiUsageProvider(),
+        AntigravityUsageProvider()
     ]
 
     Form {
