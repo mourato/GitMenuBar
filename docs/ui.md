@@ -62,11 +62,12 @@ history, with the composer fixed above the workspace's single scroll owner.
 collapse behavior. While visible, the sidebar is always present and
 user-resizable between `WorkbenchMetrics.projectsMinimumWidth` and
 `WorkbenchMetrics.projectsMaximumWidth`; only the native visibility control
-(toolbar toggle or sidebar hide action) collapses it. The center pane keeps a
+(the native toolbar item `.toggleSidebar` in the unified compact toolbar, aligned
+above the sidebar column) collapses it. The center pane keeps a
 minimum of `WorkbenchMetrics.centralMinimumWidth` and grows with the window
 (no max-width cap feeding a third column). The sidebar footer concentrates the
-quota summary, Settings access, and collapse toggle in one bottom surface; the
-window toolbar keeps the sidebar toggle and centered title only.
+quota summary and Settings access in one bottom surface; the window toolbar keeps
+the native sidebar toggle and centered title.
 
 The side panel uses fixed `WorkbenchMetrics.sidePanelWidth`. Dismiss with the
 explicit close control, Escape (clears selection first), and outside tap —
@@ -79,7 +80,7 @@ Stage/Unstage section actions stay visible; per-file actions remain hover-reveal
 where the product policy permits. Preserve keyboard actions, context menus, and
 confirmation for destructive work.
 
-Each scroll surface has exactly one native vertical `ScrollView` or `List`
+Each scroll surface has exactly one vertical `ScrollView` or `List`
 owner. Keep the composer and footer outside their scroll owner, including in
 the side-panel workspace. Do not hide and
 redraw native indicators, add edge masks, or add a parallel custom scrollbar.
