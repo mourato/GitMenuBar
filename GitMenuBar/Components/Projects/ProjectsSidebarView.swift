@@ -3,7 +3,6 @@ import SwiftUI
 struct ProjectsSidebarView: View {
     @EnvironmentObject private var monitor: ProjectMonitorStore
     @AppStorage(AppPreferences.Keys.isCleanProjectsGroupCollapsed) private var isCleanGroupCollapsed = false
-    @AppStorage(AppPreferences.Keys.isProjectsSidebarCollapsed) private var isProjectsSidebarCollapsed = false
     @State private var renameProject: ProjectReference?
     @State private var renameDraft = ""
 
@@ -108,13 +107,6 @@ struct ProjectsSidebarView: View {
             )
 
             Spacer(minLength: 0)
-
-            sidebarButton(
-                systemImage: "sidebar.left",
-                accessibilityLabel: "Hide Projects sidebar",
-                accessibilityHint: "Hides the Projects sidebar. Use the toolbar button to show it again.",
-                action: { isProjectsSidebarCollapsed = true }
-            )
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
