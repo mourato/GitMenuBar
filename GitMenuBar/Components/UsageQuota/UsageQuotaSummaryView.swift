@@ -75,6 +75,10 @@ private enum ProviderIconRenderer {
             "ProviderIcon-cursor"
         case .openrouter:
             "ProviderIcon-openrouter"
+        case .gemini:
+            "ProviderIcon-gemini"
+        case .antigravity:
+            "ProviderIcon-antigravity"
         }
 
         let cacheKey = resourceName as NSString
