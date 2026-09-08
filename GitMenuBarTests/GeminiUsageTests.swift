@@ -2,6 +2,11 @@
 import XCTest
 
 final class GeminiUsageTests: XCTestCase {
+    override func tearDown() {
+        MockURLProtocol.requestHandler = nil
+        super.tearDown()
+    }
+
     func testParseAPIResponseExtractsBucketsAndGroupsByModel() throws {
         let json = """
         {
@@ -103,5 +108,71 @@ final class GeminiUsageTests: XCTestCase {
         XCTAssertEqual(snapshot.providerID, .gemini)
         XCTAssertFalse(snapshot.isAvailable)
         XCTAssertEqual(snapshot.statusNote, "invalid Gemini credentials")
+    }
+
+    func testGeminiUsageProviderUsesCLIProjectAndQuotaEndpoint() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let credentialsURL = tempDir.appendingPathComponent("oauth_creds.json")
+        let credentials = #"{"access_token":"access-token","expiry_date":4102444800000}"#
+        try credentials.write(to: credentialsURL, atomically: true, encoding: .utf8)
+
+        let paths = PromptListCapture()
+        let bodies = PromptListCapture()
+        MockURLProtocol.requestHandler = { request in
+            paths.append(request.url?.path ?? "")
+            bodies.append(String(data: requestBodyData(from: request), encoding: .utf8) ?? "")
+
+            switch request.url?.path {
+            case "/v1internal:loadCodeAssist":
+                return try (
+                    makeMockHTTPResponse(for: request),
+                    Data(#"{"cloudaicompanionProject":{"id":"gen-lang-client-project"}}"#.utf8)
+                )
+            case "/v1internal:retrieveUserQuota":
+                return try (
+                    makeMockHTTPResponse(for: request),
+                    Data(#"{"buckets":[{"modelId":"gemini-2.5-pro","remainingFraction":0.72,"resetTime":"2026-03-08T18:00:00Z"}]}"#.utf8)
+                )
+            default:
+                return try (
+                    XCTUnwrap(try HTTPURLResponse(
+                        url: XCTUnwrap(request.url),
+                        statusCode: 404,
+                        httpVersion: nil,
+                        headerFields: nil
+                    )),
+                    Data()
+                )
+            }
+        }
+
+        let provider = GeminiUsageProvider(
+            configuration: GeminiUsageProvider.Configuration(credentialsURL: credentialsURL),
+            session: makeMockedURLSession(),
+            now: { Date(timeIntervalSince1970: 1_700_000_000) }
+        )
+
+        let snapshot = await provider.fetchSnapshot()
+
+        XCTAssertTrue(snapshot.isAvailable)
+        XCTAssertEqual(snapshot.sessionWindow?.remainingPercent, 72)
+        XCTAssertEqual(paths.values, [
+            "/v1internal:loadCodeAssist",
+            "/v1internal:retrieveUserQuota"
+        ])
+
+        let loadBody = try XCTUnwrap(bodies.values.first.flatMap { $0.data(using: .utf8) })
+        let loadJSON = try XCTUnwrap(JSONSerialization.jsonObject(with: loadBody) as? [String: Any])
+        let metadata = try XCTUnwrap(loadJSON["metadata"] as? [String: String])
+        XCTAssertEqual(metadata["ideType"], "GEMINI_CLI")
+        XCTAssertEqual(metadata["pluginType"], "GEMINI")
+
+        let quotaBody = try XCTUnwrap(bodies.values.last.flatMap { $0.data(using: .utf8) })
+        let quotaJSON = try XCTUnwrap(JSONSerialization.jsonObject(with: quotaBody) as? [String: String])
+        XCTAssertEqual(quotaJSON["project"], "gen-lang-client-project")
     }
 }

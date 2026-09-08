@@ -8,6 +8,22 @@ enum AntigravityProcessDetector {
         let pid: Int
         let port: Int
         let csrfToken: String?
+        let extensionPort: Int?
+        let extensionCSRFToken: String?
+
+        init(
+            pid: Int,
+            port: Int,
+            csrfToken: String?,
+            extensionPort: Int? = nil,
+            extensionCSRFToken: String? = nil
+        ) {
+            self.pid = pid
+            self.port = port
+            self.csrfToken = csrfToken
+            self.extensionPort = extensionPort
+            self.extensionCSRFToken = extensionCSRFToken
+        }
     }
 
     /// Finds running Antigravity instances (IDE, App, or CLI) and their listening localhost ports.
@@ -29,13 +45,19 @@ enum AntigravityProcessDetector {
                 }
 
                 let csrfToken = extractCSRFToken(from: cmdLine)
+                let extensionPort = extractPort("--extension_server_port", from: cmdLine)
+                    ?? extractPort("--extension-server-port", from: cmdLine)
+                let extensionCSRFToken = extractFlag("--extension_server_csrf_token", from: cmdLine)
+                    ?? extractFlag("--extension-server-csrf-token", from: cmdLine)
                 let ports = listeningTCPPorts(pid: pid)
 
                 for port in ports {
                     servers.append(DetectedServer(
                         pid: Int(pid),
                         port: port,
-                        csrfToken: csrfToken
+                        csrfToken: csrfToken,
+                        extensionPort: extensionPort,
+                        extensionCSRFToken: extensionCSRFToken
                     ))
                 }
             }
@@ -73,23 +95,26 @@ enum AntigravityProcessDetector {
     }
 
     static func extractCSRFToken(from commandLine: String) -> String? {
-        let patterns = [
-            #"--csrf_token\s+([A-Za-z0-9\-_]+)"#,
-            #"--csrf-token\s+([A-Za-z0-9\-_]+)"#,
-            #"--csrf_token=([A-Za-z0-9\-_]+)"#,
-            #"--csrf-token=([A-Za-z0-9\-_]+)"#
-        ]
+        extractFlag("--csrf_token", from: commandLine)
+            ?? extractFlag("--csrf-token", from: commandLine)
+    }
 
-        for pattern in patterns {
-            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
-            let range = NSRange(commandLine.startIndex..., in: commandLine)
-            if let match = regex.firstMatch(in: commandLine, range: range),
-               let tokenRange = Range(match.range(at: 1), in: commandLine)
-            {
-                return String(commandLine[tokenRange])
-            }
-        }
-        return nil
+    static func extractFlag(_ name: String, from commandLine: String) -> String? {
+        let escapedName = NSRegularExpression.escapedPattern(for: name)
+        let pattern = "\(escapedName)(?:\\s+|=)([^\\s]+)"
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(
+                  in: commandLine,
+                  range: NSRange(commandLine.startIndex..., in: commandLine)
+              ),
+              let valueRange = Range(match.range(at: 1), in: commandLine)
+        else { return nil }
+        return String(commandLine[valueRange])
+    }
+
+    static func extractPort(_ name: String, from commandLine: String) -> Int? {
+        guard let value = extractFlag(name, from: commandLine) else { return nil }
+        return Int(value)
     }
 
     #if canImport(Darwin)

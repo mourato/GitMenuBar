@@ -112,7 +112,13 @@ final class StatusBarController: NSObject, ObservableObject {
             let cachedStore = CachedAIAPIKeyStore.shared
             aiKeychainStore = cachedStore
         }
-        usageQuotaStore = UsageQuotaStore(providers: [CodexUsageProvider(), CursorUsageProvider(), OpenRouterUsageProvider(keyStore: aiKeychainStore)])
+        usageQuotaStore = UsageQuotaStore(providers: [
+            CodexUsageProvider(),
+            CursorUsageProvider(),
+            OpenRouterUsageProvider(keyStore: aiKeychainStore),
+            GeminiUsageProvider(),
+            AntigravityUsageProvider()
+        ])
         repositorySelectionCoordinator = RepositorySelectionCoordinator(
             gitManager: gitManager,
             projectMonitor: projectMonitor
