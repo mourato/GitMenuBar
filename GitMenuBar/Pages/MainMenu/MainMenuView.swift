@@ -259,6 +259,7 @@ struct MainMenuView: View {
             mainWindowOverlayContent
         }
         .focusable()
+        .focusEffectDisabled()
         .focused($isMainKeyboardNavigationFocused)
         .onKeyPress(keys: [.upArrow, .downArrow, .return, .delete, .deleteForward]) { keyPress in
             handleMainKeyPress(keyPress)
