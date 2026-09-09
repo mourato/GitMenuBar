@@ -17,6 +17,7 @@ struct ProjectsSidebarView: View {
     let onRefreshAll: () -> Void
     let onFetchAll: () -> Void
     let onOpenSettings: () -> Void
+    let onToggleSidebar: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,7 +39,6 @@ struct ProjectsSidebarView: View {
 
                     sidebarBottomActions
                 }
-                .background(Color(nsColor: .windowBackgroundColor))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -107,6 +107,13 @@ struct ProjectsSidebarView: View {
             )
 
             Spacer(minLength: 0)
+
+            sidebarButton(
+                systemImage: "sidebar.left",
+                accessibilityLabel: "Hide Projects sidebar",
+                accessibilityHint: "Hides the Projects sidebar. The toolbar button shows it again.",
+                action: onToggleSidebar
+            )
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -329,7 +336,8 @@ struct ProjectsSidebarView: View {
         onAddProject: {},
         onRefreshAll: {},
         onFetchAll: {},
-        onOpenSettings: {}
+        onOpenSettings: {},
+        onToggleSidebar: {}
     )
     .environmentObject(ProjectMonitorStore())
     .environmentObject(UsageQuotaStore())

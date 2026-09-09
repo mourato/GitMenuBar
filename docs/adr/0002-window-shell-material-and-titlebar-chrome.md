@@ -8,6 +8,11 @@ The main panel and Settings window use a **window-level material/vibrancy shell*
 
 **Update (native sidebar toggle and sidebar footer):** following Cue's native split view and unified compact chrome pattern, the sidebar collapse toggle is integrated natively via AppKit's standard `NSToolbarItem.Identifier.toggleSidebar` in the unified compact toolbar, placing the toggle at the top leading chrome aligned directly above the sidebar column. The manual toolbar toggle button (`MainWindowToolbarItemIdentifier.sidebarToggle`) and the redundant collapse button in the sidebar footer have been removed. The sidebar footer now hosts only the quota strip and Settings gear.
 
+**Update (sidebar-local toggle):** the visible sidebar now owns the collapse control
+in its footer beside Settings. The native `.toggleSidebar` toolbar item remains
+only while the sidebar is collapsed, providing the re-entry control without
+duplicating the visible-state affordance.
+
 ## Considered options
 
 - SwiftUI-only padding to fake traffic-light alignment — rejected; vertical mismatch remains on transparent titlebars.

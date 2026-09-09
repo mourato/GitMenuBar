@@ -61,13 +61,14 @@ history, with the composer fixed above the workspace's single scroll owner.
 `NavigationSplitView` owns the Projects sidebar's width, selection, and
 collapse behavior. While visible, the sidebar is always present and
 user-resizable between `WorkbenchMetrics.projectsMinimumWidth` and
-`WorkbenchMetrics.projectsMaximumWidth`; only the native visibility control
-(the native toolbar item `.toggleSidebar` in the unified compact toolbar, aligned
-above the sidebar column) collapses it. The center pane keeps a
+`WorkbenchMetrics.projectsMaximumWidth`; its footer contains the visibility
+control beside Settings. When the sidebar is collapsed, the native toolbar item
+`.toggleSidebar` remains available as the re-entry control. The center pane keeps a
 minimum of `WorkbenchMetrics.centralMinimumWidth` and grows with the window
 (no max-width cap feeding a third column). The sidebar footer concentrates the
-quota summary and Settings access in one bottom surface; the window toolbar keeps
-the native sidebar toggle and centered title.
+quota summary, sidebar visibility, and Settings access in one bottom surface;
+the window toolbar keeps the centered title and only shows the native sidebar
+toggle while the sidebar is collapsed.
 
 The side panel uses fixed `WorkbenchMetrics.sidePanelWidth`. Dismiss with the
 explicit close control, Escape (clears selection first), and outside tap —

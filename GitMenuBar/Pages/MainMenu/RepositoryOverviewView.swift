@@ -89,7 +89,7 @@ struct RepositoryOverviewView: View {
         } label: {
             HStack(spacing: WorkbenchMetrics.compactSpacing) {
                 Image(systemName: visual.systemImage)
-                    .font(WorkbenchTypography.detail.weight(.semibold))
+                    .font(WorkbenchTypography.overviewIcon)
                     .foregroundStyle(visual.tint)
                     .frame(width: WorkbenchMetrics.iconHitTarget, alignment: .center)
                     .accessibilityHidden(true)
