@@ -1,20 +1,11 @@
-import AppKit
 import SwiftUI
 
 extension MainMenuView {
-    private enum MainViewKeyCode: UInt16 {
-        case returnKey = 36
-        case downArrow = 125
-        case upArrow = 126
-        case deleteKey = 51
-        case forwardDelete = 117
-    }
-
     private var shouldHandleMainKeyboardShortcuts: Bool {
         guard presentationModel.route == .main,
               // When the command palette is presented, MainMenuCommandPaletteView
-              // installs its own local key monitor that handles arrow/enter/escape.
-              // This guard prevents the main monitor from competing with it.
+              // owns arrow/enter/escape via onKeyPress on its focused search field.
+              // This guard prevents the main list handler from competing with it.
               !isCommandPalettePresented,
               !showProjectSelector,
               !showBranchSelector,
@@ -27,42 +18,31 @@ extension MainMenuView {
             return false
         }
 
-        return !isTextInputFocused
+        return !isCommentFieldFocused
     }
 
-    private var isTextInputFocused: Bool {
-        if isCommentFieldFocused {
-            return true
-        }
-
-        guard let textView = NSApp.keyWindow?.firstResponder as? NSTextView else {
-            return false
-        }
-
-        return textView.isEditable
-    }
-
-    func installMainKeyboardMonitor() {
-        guard mainKeyboardMonitor == nil else {
+    func synchronizeMainKeyboardNavigationFocus() {
+        guard shouldHandleMainKeyboardShortcuts else {
             return
         }
 
-        mainKeyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            if handleMainKeyboardEvent(event) {
-                return nil
-            }
-
-            return event
-        }
+        isMainKeyboardNavigationFocused = true
     }
 
-    func removeMainKeyboardMonitor() {
-        guard let mainKeyboardMonitor else {
-            return
-        }
-
-        NSEvent.removeMonitor(mainKeyboardMonitor)
-        self.mainKeyboardMonitor = nil
+    /// Collapses overlay/focus distractors so MainMenuView can resync keyboard focus in one onChange.
+    var mainKeyboardFocusSyncToken: String {
+        [
+            presentationModel.route == .main ? "main" : "other",
+            isCommandPalettePresented ? "1" : "0",
+            showProjectSelector ? "1" : "0",
+            showBranchSelector ? "1" : "0",
+            showCreateBranch ? "1" : "0",
+            showPullToNewBranch ? "1" : "0",
+            showRenameBranch ? "1" : "0",
+            commitHistoryEditCoordinator.isEditorPresented ? "1" : "0",
+            showRepositoryOptionsPopover ? "1" : "0",
+            isCommentFieldFocused ? "1" : "0"
+        ].joined(separator: "|")
     }
 
     func synchronizeSelectedMainItem() {
@@ -131,33 +111,27 @@ extension MainMenuView {
         showDiscardConfirmation = true
     }
 
-    func handleMainKeyboardEvent(_ event: NSEvent) -> Bool {
-        let modifiers = event.modifierFlags
-            .intersection(.deviceIndependentFlagsMask)
-            .subtracting(.numericPad)
-
+    func handleMainKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
         guard shouldHandleMainKeyboardShortcuts,
               !keyboardSelectableItems.isEmpty,
-              modifiers.isEmpty
+              keyPress.modifiers.isEmpty
         else {
-            return false
+            return .ignored
         }
 
-        guard let keyCode = MainViewKeyCode(rawValue: event.keyCode) else {
-            return false
-        }
-
-        switch keyCode {
+        switch keyPress.key {
         case .downArrow:
             moveMainSelection(.down)
         case .upArrow:
             moveMainSelection(.up)
-        case .returnKey:
+        case .return:
             activateSelectedMainItem()
-        case .deleteKey, .forwardDelete:
+        case .delete, .deleteForward:
             discardSelectedMainItemIfPossible()
+        default:
+            return .ignored
         }
 
-        return true
+        return .handled
     }
 }

@@ -1549,29 +1549,14 @@ class GitManager: ObservableObject {
     }
 
     func resetToLastCommit() {
-        guard !storedRepoPath.isEmpty else {
-            print("Error: No repository path configured")
-            return
-        }
-
         Task { @MainActor in
-            let repositoryPath = storedRepoPath
-            // Reset to last commit (discard all changes)
-            let resetResult = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["reset", "--hard", "HEAD"])
-            }
-
-            if resetResult.failure {
-                print("Error resetting to last commit: \(resetResult.output)")
-                return
-            }
-
-            // Update status
-            self.updateLocalCommitCount()
-            self.updateUncommittedFiles()
-            self.updateBranchInfo()
-            print("Reset to last commit")
+            _ = await resetToLastCommitAsync()
         }
+    }
+
+    func resetToLastCommitAsync() async -> Result<Void, Error> {
+        let context = makeRepositoryOperationContext()
+        return await resetToCommitAsync(hash: "HEAD", context: context)
     }
 
     private nonisolated func amendHeadCommitMessage(_ newMessage: String) -> Result<Void, Error> {

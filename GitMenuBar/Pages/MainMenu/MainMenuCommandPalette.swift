@@ -120,7 +120,6 @@ struct MainMenuCommandPaletteView: View {
     let onSelectItem: (MainMenuCommandPaletteItem) -> Void
 
     @FocusState private var isSearchFieldFocused: Bool
-    @State private var localKeyEventMonitor: Any?
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -133,6 +132,18 @@ struct MainMenuCommandPaletteView: View {
                 .focused($isSearchFieldFocused)
                 .onSubmit {
                     executeSelectedOrFirstVisibleItem()
+                }
+                .onKeyPress(.upArrow) {
+                    moveSelection(direction: -1)
+                    return .handled
+                }
+                .onKeyPress(.downArrow) {
+                    moveSelection(direction: 1)
+                    return .handled
+                }
+                .onKeyPress(.escape) {
+                    onClose()
+                    return .handled
                 }
 
             if items.isEmpty {
@@ -171,10 +182,6 @@ struct MainMenuCommandPaletteView: View {
         .onAppear {
             selectedItemID = MainMenuCommandPaletteResolver.defaultSelectionID(for: items)
             isSearchFieldFocused = true
-            installLocalKeyMonitor()
-        }
-        .onDisappear {
-            removeLocalKeyMonitor()
         }
         .onChange(of: items.map(\.id)) { _ in
             synchronizeSelectionWithVisibleItems()
@@ -304,57 +311,11 @@ struct MainMenuCommandPaletteView: View {
         }
     }
 
-    private func installLocalKeyMonitor() {
-        guard localKeyEventMonitor == nil else {
-            return
-        }
-
-        localKeyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            handleKeyEvent(event) ? nil : event
-        }
-    }
-
-    private func removeLocalKeyMonitor() {
-        guard let localKeyEventMonitor else {
-            return
-        }
-
-        NSEvent.removeMonitor(localKeyEventMonitor)
-        self.localKeyEventMonitor = nil
-    }
-
-    private enum KeyCode: UInt16 {
-        case escape = 53
-        case downArrow = 125
-        case upArrow = 126
-        case `return` = 36
-        case enter = 76
-    }
-
-    private func handleKeyEvent(_ event: NSEvent) -> Bool {
-        guard let keyCode = KeyCode(rawValue: event.keyCode) else {
-            return false
-        }
-
-        switch keyCode {
-        case .escape:
-            onClose()
-        case .downArrow:
-            selectedItemID = MainMenuCommandPaletteResolver.nextSelectionID(
-                currentID: selectedItemID,
-                items: items,
-                direction: 1
-            )
-        case .upArrow:
-            selectedItemID = MainMenuCommandPaletteResolver.nextSelectionID(
-                currentID: selectedItemID,
-                items: items,
-                direction: -1
-            )
-        case .return, .enter:
-            executeSelectedOrFirstVisibleItem()
-        }
-
-        return true
+    private func moveSelection(direction: Int) {
+        selectedItemID = MainMenuCommandPaletteResolver.nextSelectionID(
+            currentID: selectedItemID,
+            items: items,
+            direction: direction
+        )
     }
 }
