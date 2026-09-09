@@ -79,7 +79,7 @@ struct WorktreeManagementRowView: View {
                     .foregroundStyle(.secondary)
             }
             .menuStyle(.borderlessButton)
-            .opacity(isHovered ? 1 : 0.4)
+            .opacity(isHovered ? 1 : 0.75)
             .accessibilityLabel("Actions for \(info.worktree.branchName ?? "detached worktree")")
         }
         .padding(.horizontal, 12)

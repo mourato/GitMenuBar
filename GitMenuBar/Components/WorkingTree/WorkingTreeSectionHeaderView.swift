@@ -22,7 +22,7 @@ struct WorkingTreeSectionHeaderView: View {
             accessibilityLabel: "\(title) section",
             accessibilityHintExpanded: "Expands the section.",
             accessibilityHintCollapsed: "Collapses the section."
-        ) { isHovered in
+        ) { _ in
             HStack(spacing: WorkbenchMetrics.compactSpacing) {
                 HStack(spacing: WorkbenchMetrics.microSpacing) {
                     WorkingTreeLineDiffView(
@@ -48,8 +48,6 @@ struct WorkingTreeSectionHeaderView: View {
                         .workbenchIcon()
                         .help(allDirectoriesExpanded ? "Collapse all folders" : "Expand all folders")
                         .accessibilityLabel(allDirectoriesExpanded ? "Collapse all folders" : "Expand all folders")
-                        .opacity(isHovered ? 1 : 0)
-                        .allowsHitTesting(isHovered)
                     }
 
                     if showsAction {
@@ -67,8 +65,6 @@ struct WorkingTreeSectionHeaderView: View {
                             .workbenchIcon()
                             .help("Discard All")
                             .accessibilityLabel("Discard all files in \(title)")
-                            .opacity(isHovered ? 1 : 0)
-                            .allowsHitTesting(isHovered)
                         }
 
                         Button(action: onAction) {

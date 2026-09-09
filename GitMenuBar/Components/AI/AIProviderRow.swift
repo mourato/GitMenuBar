@@ -5,16 +5,17 @@ struct AIProviderRowView: View {
     let isDefault: Bool
     let onEdit: () -> Void
     let onDelete: () -> Void
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
                 Text(provider.name)
-                    .font(.caption.weight(.semibold))
+                    .font(WorkbenchTypography.detail.weight(.semibold))
 
                 Text("\(provider.type.displayName) · \(provider.selectedModel)")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
@@ -23,12 +24,14 @@ struct AIProviderRowView: View {
 
             if isDefault {
                 Text("Default")
-                    .font(.caption2.weight(.medium))
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(4)
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.horizontal, WorkbenchMetrics.chipSpacing)
+                    .padding(.vertical, WorkbenchMetrics.microSpacing)
+                    .background(
+                        WorkbenchPalette.accentFill(contrast: colorSchemeContrast),
+                        in: Capsule()
+                    )
             }
 
             Button("Edit \(provider.name)", action: onEdit)
@@ -42,8 +45,8 @@ struct AIProviderRowView: View {
                 .foregroundStyle(.red)
                 .accessibilityLabel("Delete \(provider.name)")
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+        .padding(.vertical, WorkbenchMetrics.chipSpacing)
     }
 }
 

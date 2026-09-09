@@ -156,9 +156,7 @@ private struct ProjectSelectorRowView: View {
                 }
                 .menuIndicator(.hidden)
                 .workbenchIcon()
-                .opacity(isHovered ? 1 : 0)
-                .allowsHitTesting(isHovered)
-                .accessibilityHidden(!isHovered)
+                .opacity(showsActions ? 1 : 0.55)
                 .accessibilityLabel("Project actions for \(project.name)")
             }
         }
@@ -176,6 +174,10 @@ private struct ProjectSelectorRowView: View {
                 }
             }
         }
+    }
+
+    private var showsActions: Bool {
+        isHovered || isCurrent
     }
 
     private var displayContent: some View {

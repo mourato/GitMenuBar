@@ -31,6 +31,7 @@ struct MainMenuView: View {
     @EnvironmentObject var repositorySelectionCoordinator: RepositorySelectionCoordinator
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Environment(\.accessibilityReduceTransparency) var reduceTransparency
+    @Environment(\.colorSchemeContrast) var colorSchemeContrast
     @AppStorage(AppPreferences.Keys.isStagedSectionCollapsed) var isStagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isUnstagedSectionCollapsed) var isUnstagedSectionCollapsed = false
     @AppStorage(AppPreferences.Keys.isProjectsSidebarCollapsed) var isProjectsSidebarCollapsed = false
@@ -117,7 +118,7 @@ struct MainMenuView: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: WorkbenchMetrics.compactSpacing) {
             switch presentationModel.route {
             case let .createRepo(path):
                 CreateRepositoryPageView(

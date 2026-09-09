@@ -2,13 +2,13 @@ import SwiftUI
 
 extension MainMenuView {
     func createRepoSuggestionBanner(path: String) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
 
             Text("GitHub remote not found for this repository.")
                 .font(WorkbenchTypography.detail)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
             Spacer()
 
@@ -17,9 +17,11 @@ extension MainMenuView {
             }
             .workbenchGhost()
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.orange.opacity(0.12))
-        .cornerRadius(8)
+        .padding(.horizontal, WorkbenchMetrics.panelPadding)
+        .padding(.vertical, WorkbenchMetrics.compactSpacing)
+        .background(
+            WorkbenchPalette.warningFill(contrast: colorSchemeContrast),
+            in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
+        )
     }
 }

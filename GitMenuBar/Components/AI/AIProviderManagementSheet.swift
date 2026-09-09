@@ -1,64 +1,94 @@
 import SwiftUI
 
 struct AIProviderManagementSheet: View {
+    private enum EditorPresentation: Identifiable {
+        case add
+        case edit(AIProviderConfig)
+
+        var id: String {
+            switch self {
+            case .add:
+                "add"
+            case let .edit(provider):
+                "edit-\(provider.id.uuidString)"
+            }
+        }
+
+        var existingProvider: AIProviderConfig? {
+            switch self {
+            case .add:
+                nil
+            case let .edit(provider):
+                provider
+            }
+        }
+    }
+
     @EnvironmentObject private var aiProviderStore: AIProviderStore
     @EnvironmentObject private var aiCommitCoordinator: AICommitCoordinator
     @Environment(\.dismiss) private var dismiss
 
-    @State private var editingProvider: AIProviderConfig?
-    @State private var showingEditor = false
+    @State private var editorPresentation: EditorPresentation?
     @State private var providerToDelete: AIProviderConfig?
     @State private var showingDeleteConfirmation = false
     @State private var errorMessage: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("AI Providers")
-                    .font(.headline)
-                Spacer()
-                Button("Done") { dismiss() }
-            }
-
-            if aiProviderStore.providers.isEmpty {
-                ContentUnavailableView {
-                    Label("No AI providers", systemImage: "sparkles")
-                } description: {
-                    Text("Add a provider to generate commit messages.")
-                } actions: {
-                    Button("Add Provider") { addProvider() }
-                        .buttonStyle(.borderedProminent)
-                }
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(aiProviderStore.providers) { provider in
-                        AIProviderRowView(
-                            provider: provider,
-                            isDefault: aiProviderStore.preferences.defaultProviderId == provider.id,
-                            onEdit: { edit(provider) },
-                            onDelete: { confirmDelete(provider) }
-                        )
-                        if provider.id != aiProviderStore.providers.last?.id {
-                            Divider()
+        NavigationStack {
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
+                if aiProviderStore.providers.isEmpty {
+                    ContentUnavailableView {
+                        Label("No AI providers", systemImage: "sparkles")
+                    } description: {
+                        Text("Add a provider to generate commit messages.")
+                    } actions: {
+                        Button("Add Provider", action: addProvider)
+                            .workbenchPrimary()
+                    }
+                } else {
+                    List {
+                        ForEach(aiProviderStore.providers) { provider in
+                            AIProviderRowView(
+                                provider: provider,
+                                isDefault: aiProviderStore.preferences.defaultProviderId == provider.id,
+                                onEdit: { edit(provider) },
+                                onDelete: { confirmDelete(provider) }
+                            )
+                            .listRowInsets(EdgeInsets(
+                                top: WorkbenchMetrics.microSpacing,
+                                leading: 0,
+                                bottom: WorkbenchMetrics.microSpacing,
+                                trailing: 0
+                            ))
                         }
                     }
+                    .listStyle(.inset)
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 80, maxHeight: 320)
+
+                    Button("Add Provider", action: addProvider)
+                        .workbenchSecondary()
                 }
-                .background(.quaternary.opacity(0.35), in: .rect(cornerRadius: 8))
 
-                Button("Add Provider") { addProvider() }
-                    .buttonStyle(.bordered)
+                if let errorMessage {
+                    InlineStatusBannerView(
+                        banner: InlineStatusBanner(title: nil, message: errorMessage, style: .error),
+                        onDismiss: { self.errorMessage = nil }
+                    )
+                }
             }
-
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+            .padding(WorkbenchMetrics.panelPadding)
+            .navigationTitle("AI Providers")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", action: dismiss.callAsFunction)
+                }
             }
         }
-        .padding(16)
         .frame(width: 500)
-        .sheet(isPresented: $showingEditor) {
-            AIProviderEditorSheet(existingProvider: editingProvider) { provider, apiKey in
+        .frame(minHeight: 300)
+        .sheet(item: $editorPresentation) { presentation in
+            AIProviderEditorSheet(existingProvider: presentation.existingProvider) { provider, apiKey in
                 save(provider, apiKey: apiKey)
             }
             .environmentObject(aiCommitCoordinator)
@@ -72,15 +102,13 @@ struct AIProviderManagementSheet: View {
     }
 
     private func addProvider() {
-        editingProvider = nil
         errorMessage = nil
-        showingEditor = true
+        editorPresentation = .add
     }
 
     private func edit(_ provider: AIProviderConfig) {
-        editingProvider = provider
         errorMessage = nil
-        showingEditor = true
+        editorPresentation = .edit(provider)
     }
 
     private func save(_ provider: AIProviderConfig, apiKey: String) -> Result<Void, Error> {

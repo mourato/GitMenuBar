@@ -118,46 +118,47 @@ struct CommitDetailPageView: View {
 
     private func statsSection(commit: Commit) -> some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-            VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-                HStack(spacing: WorkbenchMetrics.sectionSpacing) {
-                    Button("Open on GitHub") {
-                        if let commitURL = actionSet?.commitURL {
-                            NSWorkspace.shared.open(commitURL)
-                        }
+            HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                Button("Open on GitHub") {
+                    if let commitURL = actionSet?.commitURL {
+                        NSWorkspace.shared.open(commitURL)
                     }
-                    .workbenchGhost()
-                    .disabled(!(actionSet?.canOpenOnGitHub ?? false))
+                }
+                .workbenchSecondary()
+                .disabled(!(actionSet?.canOpenOnGitHub ?? false))
 
+                Menu {
                     Button("Copy Hash") {
                         copyToPasteboard(commit.id)
                     }
-                    .workbenchGhost()
 
                     Button("Copy Message") {
                         copyToPasteboard(commit.subject)
                     }
-                    .workbenchGhost()
+                } label: {
+                    Label("Copy", systemImage: "doc.on.doc")
                 }
-
-                HStack(spacing: WorkbenchMetrics.sectionSpacing) {
-                    Button("Generate Message with AI") {
-                        onGenerateCommitMessage(commit)
-                    }
-                    .workbenchGhost()
-                    .disabled(!(actionSet?.canGenerateMessage ?? false))
-
-                    Button("Edit Message Manually") {
-                        onEditCommitMessage(commit)
-                    }
-                    .workbenchGhost()
-                    .disabled(!(actionSet?.canEditMessage ?? false))
-                }
-
-                Button("Reset to Here", role: .destructive) {
-                    onRestoreCommit(commit)
-                }
-                .disabled(!(actionSet?.canRestore ?? false))
+                .workbenchGhost()
             }
+
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                Button("Generate Message with AI") {
+                    onGenerateCommitMessage(commit)
+                }
+                .workbenchGhost()
+                .disabled(!(actionSet?.canGenerateMessage ?? false))
+
+                Button("Edit Message Manually") {
+                    onEditCommitMessage(commit)
+                }
+                .workbenchGhost()
+                .disabled(!(actionSet?.canEditMessage ?? false))
+            }
+
+            Button("Reset to Here", role: .destructive) {
+                onRestoreCommit(commit)
+            }
+            .disabled(!(actionSet?.canRestore ?? false))
 
             if commit.isMergeCommit {
                 Text("Editing merge commits is not supported yet.")

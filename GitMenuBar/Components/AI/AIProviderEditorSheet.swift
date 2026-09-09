@@ -37,83 +37,90 @@ struct AIProviderEditorSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(existingProvider == nil ? "Add AI Provider" : "Edit AI Provider")
-                .font(.headline)
+        NavigationStack {
+            Form {
+                Section("Provider") {
+                    TextField("Name", text: $providerName)
 
-            TextField("Provider name", text: $providerName)
-                .textFieldStyle(.roundedBorder)
+                    Picker("Type", selection: $providerType) {
+                        ForEach(AIProviderType.allCases) { type in
+                            Text(type.displayName).tag(type)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
 
-            Picker("Provider Type", selection: $providerType) {
-                ForEach(AIProviderType.allCases) { type in
-                    Text(type.displayName).tag(type)
+                Section("Connection") {
+                    TextField("Endpoint URL", text: $endpointURL)
+                        .onChange(of: providerType) { _, type in
+                            let currentEndpoint = endpointURL.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if currentEndpoint.isEmpty || currentEndpoint == previousProviderType.defaultEndpoint {
+                                endpointURL = type.defaultEndpoint
+                            }
+                            previousProviderType = type
+                        }
+
+                    SecureField("API Key", text: $apiKey)
+                        .onAppear {
+                            if let existingProvider {
+                                apiKey = aiCommitCoordinator.apiKey(for: existingProvider.id)
+                            }
+                        }
+
+                    Button {
+                        Task {
+                            await testConnection()
+                        }
+                    } label: {
+                        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                            if isTestingConnection {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .accessibilityHidden(true)
+                            }
+                            Text(isTestingConnection ? "Testing Connection" : "Test Connection")
+                        }
+                    }
+                    .workbenchSecondary()
+                    .disabled(isTestConnectionDisabled)
+                }
+
+                Section("Model") {
+                    if !availableModels.isEmpty {
+                        Picker("Model", selection: $selectedModel) {
+                            ForEach(availableModels, id: \.self) { model in
+                                Text(model).tag(model)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    } else {
+                        TextField("Model", text: $selectedModel)
+                    }
+                }
+
+                if let validationError {
+                    Section {
+                        Label(validationError, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.red)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
-            .pickerStyle(.menu)
-
-            TextField("Endpoint URL", text: $endpointURL)
-                .textFieldStyle(.roundedBorder)
-                .onChange(of: providerType) { _, type in
-                    let currentEndpoint = endpointURL.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if currentEndpoint.isEmpty || currentEndpoint == previousProviderType.defaultEndpoint {
-                        endpointURL = type.defaultEndpoint
-                    }
-                    previousProviderType = type
+            .formStyle(.grouped)
+            .navigationTitle(existingProvider == nil ? "Add AI Provider" : "Edit AI Provider")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: dismiss.callAsFunction)
                 }
 
-            SecureField("API Key", text: $apiKey)
-                .textFieldStyle(.roundedBorder)
-                .onAppear {
-                    if let existingProvider {
-                        apiKey = aiCommitCoordinator.apiKey(for: existingProvider.id)
-                    }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save", action: saveProvider)
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(isTestingConnection)
                 }
-
-            HStack {
-                Button(isTestingConnection ? "Testing" : "Test Connection") {
-                    Task {
-                        await testConnection()
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(isTestConnectionDisabled)
-
-                Spacer()
-            }
-
-            if !availableModels.isEmpty {
-                Picker("Model", selection: $selectedModel) {
-                    ForEach(availableModels, id: \.self) { model in
-                        Text(model).tag(model)
-                    }
-                }
-                .pickerStyle(.menu)
-            } else {
-                TextField("Model", text: $selectedModel)
-                    .textFieldStyle(.roundedBorder)
-            }
-
-            if let validationError {
-                Text(validationError)
-                    .font(.caption)
-                    .foregroundColor(.red)
-            }
-
-            HStack {
-                Spacer()
-
-                Button("Cancel") {
-                    dismiss()
-                }
-
-                Button("Save") {
-                    saveProvider()
-                }
-                .buttonStyle(.borderedProminent)
             }
         }
-        .padding(14)
-        .frame(width: 420)
+        .frame(minWidth: 420, idealWidth: 480, minHeight: 360, idealHeight: 440)
     }
 
     func testConnection() async {

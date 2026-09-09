@@ -41,45 +41,35 @@ struct CreateRepoContentView: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: WorkbenchMetrics.sectionSpacing) {
             // Folder info section
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Image(systemName: "folder")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundColor(.secondary)
-                    Text("Folder")
-                        .font(.subheadline.weight(.medium))
-                }
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+                SettingsFormSectionHeader(title: "Folder", icon: "folder")
 
                 HStack {
                     Image(systemName: "folder.fill")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
                     Text(URL(fileURLWithPath: folderPath).lastPathComponent)
-                        .font(.caption)
-                        .foregroundColor(.primary)
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.primary)
                     Spacer()
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(4)
+                .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+                .padding(.vertical, WorkbenchMetrics.chipSpacing)
+                .background(
+                    .quaternary.opacity(0.16),
+                    in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
+                )
             }
 
             // Repository name section
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Image(systemName: "text.cursor")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundColor(.secondary)
-                    Text("Repository Name")
-                        .font(.subheadline.weight(.medium))
-                }
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+                SettingsFormSectionHeader(title: "Repository Name", icon: "text.cursor")
 
                 TextField("my-awesome-project", text: $repoName)
                     .textFieldStyle(.roundedBorder)
-                    .font(.subheadline)
+                    .font(WorkbenchTypography.detail)
             }
 
             // Visibility section
@@ -87,23 +77,14 @@ struct CreateRepoContentView: View {
 
             // Error message
             if showError {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundColor(.red)
-                    Spacer()
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .background(Color.red.opacity(0.1))
-                .cornerRadius(4)
+                InlineStatusBannerView(
+                    banner: InlineStatusBanner(title: nil, message: errorMessage, style: .error),
+                    onDismiss: {
+                        showError = false
+                        errorMessage = ""
+                    }
+                )
             }
-
-            Spacer()
-                .frame(height: 4)
 
             // Create button - full width, prominent
             Button(action: createRepository) {
@@ -120,8 +101,7 @@ struct CreateRepoContentView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .workbenchPrimary()
             .keyboardShortcut(.defaultAction)
             .disabled(repoName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCreating)
         }

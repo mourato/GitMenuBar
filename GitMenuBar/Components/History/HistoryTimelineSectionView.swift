@@ -116,6 +116,7 @@ private struct HistoryTimelineRowView: View {
 
     @State private var isHovered = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
@@ -133,10 +134,10 @@ private struct HistoryTimelineRowView: View {
                     if isFutureCommit {
                         Text("Future")
                             .font(WorkbenchTypography.captionStrong)
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.12))
+                            .foregroundStyle(Color.accentColor)
+                            .padding(.horizontal, WorkbenchMetrics.chipSpacing)
+                            .padding(.vertical, WorkbenchMetrics.microSpacing)
+                            .background(WorkbenchPalette.accentFill(contrast: colorSchemeContrast))
                             .clipShape(Capsule())
                     }
 
@@ -264,7 +265,7 @@ private struct HistoryTimelineRowView: View {
 
     private var titleColor: Color {
         if isFutureCommit {
-            return .blue
+            return .accentColor
         }
 
         return .primary
@@ -311,7 +312,7 @@ private struct HistoryTimelineRowView: View {
     }
 
     private var connectorColor: Color {
-        isFutureCommit ? Color.blue.opacity(0.65) : Color.secondary.opacity(0.35)
+        isFutureCommit ? Color.accentColor.opacity(0.65) : Color.secondary.opacity(0.35)
     }
 
     private var circleFillColor: Color {
@@ -320,7 +321,7 @@ private struct HistoryTimelineRowView: View {
         }
 
         if isFutureCommit {
-            return .blue
+            return .accentColor
         }
 
         return Color(nsColor: .windowBackgroundColor)

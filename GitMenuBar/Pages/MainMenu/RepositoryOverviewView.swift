@@ -2,27 +2,22 @@ import SwiftUI
 
 private struct RepositoryOverviewCardVisual {
     let systemImage: String
-    let color: Color
+    let tint: Color
     let metric: String
 }
 
 struct RepositoryOverviewView: View {
     let overview: RepositoryOverviewSnapshot
     let onSelectSection: (MainMenuSidePanelSelection) -> Void
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
-        LazyVGrid(
-            columns: [
-                GridItem(.flexible(), spacing: WorkbenchMetrics.sectionSpacing),
-                GridItem(.flexible(), spacing: WorkbenchMetrics.sectionSpacing)
-            ],
-            spacing: WorkbenchMetrics.sectionSpacing
-        ) {
-            overviewCard(
+        VStack(spacing: 0) {
+            overviewRow(
                 title: "Working Tree",
                 visual: RepositoryOverviewCardVisual(
                     systemImage: overview.isCleanWorkingTree ? "checkmark.circle.fill" : "exclamationmark.circle.fill",
-                    color: overview.isCleanWorkingTree ? .green : .orange,
+                    tint: overview.isCleanWorkingTree ? .green : .orange,
                     metric: "\(overview.totalWorkingTreeCount)"
                 ),
                 selection: .workingTree,
@@ -30,36 +25,58 @@ struct RepositoryOverviewView: View {
                 content: workingTreeContent,
                 accessibilityValue: workingTreeContent
             )
-            overviewCard(
+            Divider()
+                .padding(.leading, WorkbenchMetrics.panelPadding)
+
+            overviewRow(
                 title: "Push and Sync",
-                visual: RepositoryOverviewCardVisual(systemImage: "arrow.up.arrow.down.circle.fill", color: .blue, metric: pushSyncMetric),
+                visual: RepositoryOverviewCardVisual(systemImage: "arrow.up.arrow.down.circle.fill", tint: .accentColor, metric: pushSyncMetric),
                 selection: .unpushedCommits,
                 isLoading: overview.aheadCount.isLoading || overview.behindCount.isLoading,
                 content: pushSyncContent,
                 accessibilityValue: pushSyncAccessibilityValue
             )
-            overviewCard(
+            Divider()
+                .padding(.leading, WorkbenchMetrics.panelPadding)
+
+            overviewRow(
                 title: "Branch Health",
-                visual: RepositoryOverviewCardVisual(systemImage: "arrow.triangle.branch", color: .purple, metric: branchHealthMetric),
+                visual: RepositoryOverviewCardVisual(systemImage: "arrow.triangle.branch", tint: .secondary, metric: branchHealthMetric),
                 selection: .branches,
                 isLoading: overview.unmergedBranches.isLoading || overview.unpushedBranches.isLoading,
                 content: branchHealthContent,
                 accessibilityValue: branchHealthAccessibilityValue
             )
-            overviewCard(
+            Divider()
+                .padding(.leading, WorkbenchMetrics.panelPadding)
+
+            overviewRow(
                 title: "Stashes",
-                visual: RepositoryOverviewCardVisual(systemImage: "archivebox.fill", color: .orange, metric: stashMetric),
+                visual: RepositoryOverviewCardVisual(systemImage: "archivebox.fill", tint: .secondary, metric: stashMetric),
                 selection: .stashes,
                 isLoading: overview.stashCount.isLoading,
                 content: stashContent,
                 accessibilityValue: stashAccessibilityValue
             )
         }
+        .padding(.vertical, WorkbenchMetrics.microSpacing)
+        .background(
+            .quaternary.opacity(0.16),
+            in: RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous)
+                .strokeBorder(
+                    WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast),
+                    lineWidth: colorSchemeContrast == .increased ? 1 : 0.5
+                )
+                .allowsHitTesting(false)
+        }
         .adaptiveMotion()
     }
 
     // swiftlint:disable:next function_parameter_count
-    private func overviewCard(
+    private func overviewRow(
         title: String,
         visual: RepositoryOverviewCardVisual,
         selection: MainMenuSidePanelSelection,
@@ -67,63 +84,53 @@ struct RepositoryOverviewView: View {
         content: String,
         accessibilityValue: String
     ) -> some View {
-        let shape = RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
-        return Button {
+        Button {
             onSelectSection(selection)
         } label: {
-            VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-                HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
-                    Image(systemName: visual.systemImage)
-                        .font(.title3.weight(.medium))
-                        .accessibilityHidden(true)
+            HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                Image(systemName: visual.systemImage)
+                    .font(WorkbenchTypography.detail.weight(.semibold))
+                    .foregroundStyle(visual.tint)
+                    .frame(width: WorkbenchMetrics.iconHitTarget, alignment: .center)
+                    .accessibilityHidden(true)
 
-                    Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                    Text(title)
+                        .font(WorkbenchTypography.windowTitle)
+                        .lineLimit(1)
 
-                    if isLoading {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(.white)
-                            .accessibilityHidden(true)
-                    } else {
-                        Text(visual.metric)
-                            .font(.title2.weight(.semibold))
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .layoutPriority(1)
-                    }
+                    Text(content)
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(2)
                 }
 
-                Spacer(minLength: WorkbenchMetrics.microSpacing)
+                Spacer(minLength: WorkbenchMetrics.compactSpacing)
 
-                Text(title)
-                    .font(WorkbenchTypography.windowTitle)
-                    .lineLimit(1)
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(.accentColor)
+                        .accessibilityHidden(true)
+                } else {
+                    Text(visual.metric)
+                        .font(WorkbenchTypography.field)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .layoutPriority(1)
+                }
 
-                Text(content)
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.white.opacity(0.86))
-                    .monospacedDigit()
-                    .lineLimit(2)
+                Image(systemName: "chevron.right")
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
-            .foregroundStyle(.white)
             .padding(WorkbenchMetrics.panelPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(shape)
         }
         .buttonStyle(.plain)
-        .background(
-            LinearGradient(
-                colors: [visual.color, visual.color.opacity(0.82)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: shape
-        )
-        .overlay {
-            shape
-                .stroke(Color.white.opacity(0.24), lineWidth: 1)
-                .allowsHitTesting(false)
-        }
         .help(accessibilityValue)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)

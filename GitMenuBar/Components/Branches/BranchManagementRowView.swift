@@ -68,7 +68,7 @@ struct BranchManagementRowView: View {
                         .foregroundStyle(.secondary)
                 }
                 .menuStyle(.borderlessButton)
-                .opacity(isHovered ? 1 : 0.4)
+                .opacity(isHovered ? 1 : 0.75)
             } else {
                 Menu {
                     Button("Checkout Locally") { onCheckoutLocally?() }
@@ -82,7 +82,7 @@ struct BranchManagementRowView: View {
                         .foregroundStyle(.secondary)
                 }
                 .menuStyle(.borderlessButton)
-                .opacity(isHovered ? 1 : 0.4)
+                .opacity(isHovered ? 1 : 0.75)
             }
         }
         .padding(.horizontal, 12)

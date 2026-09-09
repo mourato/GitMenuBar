@@ -291,7 +291,7 @@ struct WorkingTreeDiffTreeFileRowView: View {
                         addedCount: stat.additions,
                         removedCount: stat.deletions
                     )
-                    .opacity(isHovered ? 0 : 1)
+                    .opacity(showsActions ? 0 : 1)
                 }
 
                 HStack(spacing: 0) {
@@ -320,8 +320,8 @@ struct WorkingTreeDiffTreeFileRowView: View {
                         action: onAction
                     )
                 }
-                .opacity(isHovered ? 1 : 0)
-                .allowsHitTesting(isHovered)
+                .opacity(showsActions ? 1 : 0)
+                .allowsHitTesting(showsActions)
             }
             .layoutPriority(2)
         }
@@ -341,6 +341,10 @@ struct WorkingTreeDiffTreeFileRowView: View {
         }
         value += ", status \(file.status.symbol)"
         return value
+    }
+
+    private var showsActions: Bool {
+        isHovered || isSelected
     }
 
     private var backgroundColor: Color {
