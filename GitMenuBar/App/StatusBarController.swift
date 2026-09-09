@@ -359,6 +359,9 @@ final class StatusBarController: NSObject, ObservableObject {
         windowDelegate.onDidMoveOrResize = { [weak self] in
             self?.persistMainWindowFrameIfPossible()
         }
+        windowDelegate.onDidEndLiveResize = { [weak self] in
+            self?.mainWindow?.invalidateShadow()
+        }
 
         window.delegate = windowDelegate
 
@@ -1302,6 +1305,7 @@ private final class MainWindowLifecycleDelegate: NSObject, NSWindowDelegate {
     var onShouldClose: (() -> Bool)?
     var onDidResignKey: (() -> Void)?
     var onDidMoveOrResize: (() -> Void)?
+    var onDidEndLiveResize: (() -> Void)?
 
     func windowShouldClose(_: NSWindow) -> Bool {
         onShouldClose?() ?? true
@@ -1316,6 +1320,7 @@ private final class MainWindowLifecycleDelegate: NSObject, NSWindowDelegate {
     }
 
     func windowDidEndLiveResize(_: Notification) {
+        onDidEndLiveResize?()
         onDidMoveOrResize?()
     }
 }

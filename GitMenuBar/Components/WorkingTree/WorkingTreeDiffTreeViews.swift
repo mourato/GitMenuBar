@@ -12,12 +12,36 @@ struct WorkingTreeDiffTreeView: View {
     @Binding var allDirectoriesExpanded: Bool
     @Binding var directoryExpansionOverrides: [String: Bool]
 
-    private var treeNodes: [DiffTreeNode] {
-        DiffTreeBuilder.buildDiffTree(files.map(\.file.diffTreeFileInput))
-    }
+    private let treeNodes: [DiffTreeNode]
+    private let hasDirectoryNodes: Bool
+    private let adaptersByPath: [String: WorkingTreeRowAdapter]
 
-    private var hasDirectoryNodes: Bool {
-        files.contains { !$0.file.directoryPath.isEmpty }
+    init(
+        files: [WorkingTreeRowAdapter],
+        actionIcon: String,
+        selectedItemID: MainMenuSelectableItem?,
+        onSelect: @escaping (MainMenuSelectableItem) -> Void,
+        onStageToggle: @escaping (String) -> Void,
+        onOpen: @escaping (String) -> Void,
+        onDiscard: @escaping (String, WorkingTreeFileStatus) -> Void,
+        onReveal: @escaping (String) -> Void,
+        allDirectoriesExpanded: Binding<Bool>,
+        directoryExpansionOverrides: Binding<[String: Bool]>
+    ) {
+        self.files = files
+        self.actionIcon = actionIcon
+        self.selectedItemID = selectedItemID
+        self.onSelect = onSelect
+        self.onStageToggle = onStageToggle
+        self.onOpen = onOpen
+        self.onDiscard = onDiscard
+        self.onReveal = onReveal
+        _allDirectoriesExpanded = allDirectoriesExpanded
+        _directoryExpansionOverrides = directoryExpansionOverrides
+
+        treeNodes = DiffTreeBuilder.buildDiffTree(files.map(\.file.diffTreeFileInput))
+        hasDirectoryNodes = files.contains { !$0.file.directoryPath.isEmpty }
+        adaptersByPath = Dictionary(files.map { ($0.file.path, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     var body: some View {
@@ -44,7 +68,7 @@ struct WorkingTreeDiffTreeView: View {
     }
 
     private func adapter(for path: String) -> WorkingTreeRowAdapter? {
-        files.first { $0.file.path == path }
+        adaptersByPath[path]
     }
 
     private func toggleDirectory(_ path: String) {

@@ -13,6 +13,11 @@ struct ChangedFilesSummaryView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private let aggregateStat: DiffTreeStat
+    private let treeNodes: [DiffTreeNode]
+    private let directoryPaths: [String]
+    private let hasDirectoryNodes: Bool
+
     init(
         changedFiles: [CommitFileChange],
         commitSHA: String,
@@ -34,26 +39,17 @@ struct ChangedFilesSummaryView: View {
         )
         _isCollapsed = State(initialValue: !shouldAutoExpand)
         _allDirectoriesExpanded = State(initialValue: shouldAutoExpand)
+
+        let nodes = DiffTreeBuilder.buildDiffTree(changedFiles.map(\.diffTreeFileInput))
+        let dirPaths = Self.collectDirectoryPaths(in: nodes)
+        treeNodes = nodes
+        directoryPaths = dirPaths
+        hasDirectoryNodes = !dirPaths.isEmpty
+        aggregateStat = DiffTreeBuilder.summarizeDiffTreeStats(changedFiles.map(\.diffTreeFileInput))
     }
 
     private var paths: [String] {
         changedFiles.map(\.path)
-    }
-
-    private var aggregateStat: DiffTreeStat {
-        DiffTreeBuilder.summarizeDiffTreeStats(changedFiles.map(\.diffTreeFileInput))
-    }
-
-    private var treeNodes: [DiffTreeNode] {
-        DiffTreeBuilder.buildDiffTree(changedFiles.map(\.diffTreeFileInput))
-    }
-
-    private var directoryPaths: [String] {
-        Self.collectDirectoryPaths(in: treeNodes)
-    }
-
-    private var hasDirectoryNodes: Bool {
-        !directoryPaths.isEmpty
     }
 
     private var commitURL: URL? {
@@ -299,9 +295,9 @@ struct ChangedFilesSummaryView: View {
         nodes.flatMap { node -> [String] in
             switch node {
             case let .directory(_, path, _, children):
-                return [path] + collectDirectoryPaths(in: children)
+                [path] + collectDirectoryPaths(in: children)
             case .file:
-                return []
+                []
             }
         }
     }

@@ -104,4 +104,31 @@ final class WorkbenchWindowChromeTests: XCTestCase {
         controller.perform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
         XCTAssertFalse(UserDefaults.standard.bool(forKey: key))
     }
+
+    func testHostedContentControllerDoesNotMaskRootViewToBounds() {
+        let controller = WorkbenchWindowChrome.makeHostedContentController(rootView: EmptyView())
+        _ = controller.view
+        XCTAssertFalse(controller.view.layer?.masksToBounds ?? false)
+    }
+
+    func testShellRespondsToLiveResizeNotifications() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
+            styleMask: [.titled, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        let shell = WorkbenchWindowShellView()
+        window.contentView?.addSubview(shell)
+
+        NotificationCenter.default.post(
+            name: NSWindow.willStartLiveResizeNotification,
+            object: window
+        )
+
+        NotificationCenter.default.post(
+            name: NSWindow.didEndLiveResizeNotification,
+            object: window
+        )
+    }
 }

@@ -52,6 +52,7 @@ final class WorkbenchWindowShellView: NSView {
 
     deinit {
         NSWorkspace.shared.notificationCenter.removeObserver(self)
+        NotificationCenter.default.removeObserver(self)
     }
 
     func updateAppearance() {
@@ -63,10 +64,12 @@ final class WorkbenchWindowShellView: NSView {
 
     private func setUpViews() {
         wantsLayer = true
+        layer?.cornerRadius = WorkbenchMetrics.largeCornerRadius
+        layer?.masksToBounds = true
 
         visualEffectView.material = .windowBackground
         visualEffectView.blendingMode = .behindWindow
-        visualEffectView.state = .active
+        visualEffectView.state = .followsWindowActiveState
         visualEffectView.translatesAutoresizingMaskIntoConstraints = false
 
         solidBackgroundView.wantsLayer = true
@@ -93,6 +96,20 @@ final class WorkbenchWindowShellView: NSView {
             object: NSWorkspace.shared
         )
 
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleWindowWillStartLiveResize(_:)),
+            name: NSWindow.willStartLiveResizeNotification,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleWindowDidEndLiveResize(_:)),
+            name: NSWindow.didEndLiveResizeNotification,
+            object: nil
+        )
+
         updateAppearance()
     }
 
@@ -106,6 +123,18 @@ final class WorkbenchWindowShellView: NSView {
         DispatchQueue.main.async { [weak self] in
             self?.updateAppearance()
         }
+    }
+
+    @objc
+    private func handleWindowWillStartLiveResize(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === self.window else { return }
+        visualEffectView.state = .inactive
+    }
+
+    @objc
+    private func handleWindowDidEndLiveResize(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === self.window else { return }
+        visualEffectView.state = .followsWindowActiveState
     }
 }
 
@@ -125,8 +154,6 @@ private final class WorkbenchHostedContentViewController: NSViewController, NSUs
     override func loadView() {
         let container = NSView()
         container.wantsLayer = true
-        container.layer?.cornerRadius = WorkbenchMetrics.largeCornerRadius
-        container.layer?.masksToBounds = true
         view = container
 
         let shell = WorkbenchWindowShellView()
