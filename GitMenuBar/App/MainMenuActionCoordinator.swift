@@ -599,26 +599,34 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     func stageSidePanelFile(path: String) async -> MainMenuSidePanelActionResult {
-        await executeCallbackMutation(failureTitle: "Stage Failed") { completion in
-            gitManager.stageFile(path: path, completion: completion)
+        await executeContextualMutation(allowsRepositorySwitch: false) { context in
+            let result = await gitManager.stageFileAsync(path: path, context: context)
+            await finishSidePanelMutation(result, context: context, failureTitle: "Stage Failed")
+            return result.inspectorActionResult
         }
     }
 
     func unstageSidePanelFile(path: String) async -> MainMenuSidePanelActionResult {
-        await executeCallbackMutation(failureTitle: "Unstage Failed") { completion in
-            gitManager.unstageFile(path: path, completion: completion)
+        await executeContextualMutation(allowsRepositorySwitch: false) { context in
+            let result = await gitManager.unstageFileAsync(path: path, context: context)
+            await finishSidePanelMutation(result, context: context, failureTitle: "Unstage Failed")
+            return result.inspectorActionResult
         }
     }
 
     func stageAllSidePanelFiles() async -> MainMenuSidePanelActionResult {
-        await executeCallbackMutation(failureTitle: "Stage Failed") { completion in
-            gitManager.stageAllChanges(completion: completion)
+        await executeContextualMutation(allowsRepositorySwitch: false) { context in
+            let result = await gitManager.stageAllChangesAsync(context: context)
+            await finishSidePanelMutation(result, context: context, failureTitle: "Stage Failed")
+            return result.inspectorActionResult
         }
     }
 
     func unstageAllSidePanelFiles() async -> MainMenuSidePanelActionResult {
-        await executeCallbackMutation(failureTitle: "Unstage Failed") { completion in
-            gitManager.unstageAllChanges(completion: completion)
+        await executeContextualMutation(allowsRepositorySwitch: false) { context in
+            let result = await gitManager.unstageAllChangesAsync(context: context)
+            await finishSidePanelMutation(result, context: context, failureTitle: "Unstage Failed")
+            return result.inspectorActionResult
         }
     }
 
@@ -626,8 +634,14 @@ final class MainMenuActionCoordinator: ObservableObject {
         path: String,
         status: WorkingTreeFileStatus
     ) async -> MainMenuSidePanelActionResult {
-        await executeCallbackMutation(failureTitle: "Discard Failed") { completion in
-            gitManager.discardFileChanges(path: path, status: status, completion: completion)
+        await executeContextualMutation(allowsRepositorySwitch: false) { context in
+            let result = await gitManager.discardFileChangesAsync(
+                path: path,
+                status: status,
+                context: context
+            )
+            await finishSidePanelMutation(result, context: context, failureTitle: "Discard Failed")
+            return result.inspectorActionResult
         }
     }
 

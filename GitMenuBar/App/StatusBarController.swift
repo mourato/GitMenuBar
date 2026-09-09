@@ -51,88 +51,66 @@ final class StatusBarController: NSObject, ObservableObject {
 
     private let windowDelegate = MainWindowLifecycleDelegate()
 
-    let gitManager = GitManager()
-    let loginItemManager = LoginItemManager()
+    let dependencies: AppDependencies
+    let gitManager: GitManager
+    let loginItemManager: LoginItemManager
     let githubAuthManager: GitHubAuthManager
     let appCommandCenter: AppCommandCenter
-    let aiProviderStore = AIProviderStore()
+    let aiProviderStore: AIProviderStore
     let aiKeychainStore: any AIAPIKeyStore
-    let aiCommitMessageService = AICommitMessageService()
-    let shortcutActionBridge = MainMenuShortcutActionBridge()
-    let presentationModel = MainMenuPresentationModel()
+    let aiCommitMessageService: AICommitMessageService
+    let shortcutActionBridge: MainMenuShortcutActionBridge
+    let presentationModel: MainMenuPresentationModel
     let usageQuotaStore: UsageQuotaStore
-    let projectMonitor = ProjectMonitorStore()
+    let projectMonitor: ProjectMonitorStore
     let repositorySelectionCoordinator: RepositorySelectionCoordinator
-    lazy var projectCleanupStore = ProjectCleanupStore(
-        projectMonitor: projectMonitor,
-        onAffectedPaths: { [weak self] paths in
-            guard let self else { return }
-            let selectedPath = repositorySelectionCoordinator.selectedPath
-            guard !selectedPath.isEmpty,
-                  paths.contains(GitRepositoryContext.normalizedPath(selectedPath)) else { return }
-            gitManager.refresh(includeReflogHistory: false)
-        }
-    )
 
-    lazy var aiCommitCoordinator = AICommitCoordinator(
-        providerStore: aiProviderStore,
-        keychainStore: aiKeychainStore,
-        messageService: aiCommitMessageService,
-        gitManager: gitManager
-    )
-    lazy var actionCoordinator = MainMenuActionCoordinator(
-        gitManager: gitManager,
+    lazy var projectCleanupStore = dependencies.makeProjectCleanupStore { [weak self] paths in
+        guard let self else { return }
+        let selectedPath = repositorySelectionCoordinator.selectedPath
+        guard !selectedPath.isEmpty,
+              paths.contains(GitRepositoryContext.normalizedPath(selectedPath)) else { return }
+        Task { await self.gitManager.refreshAsync(includeReflogHistory: false) }
+    }
+
+    lazy var aiCommitCoordinator = dependencies.makeAICommitCoordinator()
+    lazy var actionCoordinator = dependencies.makeActionCoordinator(
         aiCommitCoordinator: aiCommitCoordinator,
         onCommitCompleted: { [weak self] path in
             self?.projectMonitor.refresh(path: path)
         }
     )
-    lazy var commitHistoryEditCoordinator = CommitHistoryEditCoordinator(
-        gitManager: gitManager,
+    lazy var commitHistoryEditCoordinator = dependencies.makeCommitHistoryEditCoordinator(
         aiCommitCoordinator: aiCommitCoordinator
     )
-    private lazy var settingsWindowController = AppSettingsWindowController(
-        gitManager: gitManager,
-        loginItemManager: loginItemManager,
-        githubAuthManager: githubAuthManager,
-        aiProviderStore: aiProviderStore,
+    private lazy var settingsWindowController = dependencies.makeSettingsWindowController(
         aiCommitCoordinator: aiCommitCoordinator,
-        usageQuotaStore: usageQuotaStore,
         onSetAutoHideSuspended: { [weak self] suspended in
             self?.setAutoHideSuspended(suspended)
         }
     )
 
     init(githubAuthManager: GitHubAuthManager, appCommandCenter: AppCommandCenter) {
-        self.githubAuthManager = githubAuthManager
-        self.appCommandCenter = appCommandCenter
-        if AppExecutionContext.usesEphemeralCredentialStores {
-            aiKeychainStore = InMemoryAIAPIKeyStore()
-        } else {
-            let cachedStore = CachedAIAPIKeyStore.shared
-            aiKeychainStore = cachedStore
-        }
-        usageQuotaStore = UsageQuotaStore(providers: [
-            CodexUsageProvider(),
-            CursorUsageProvider(),
-            OpenRouterUsageProvider(keyStore: aiKeychainStore),
-            GeminiUsageProvider(),
-            AntigravityUsageProvider()
-        ])
-        repositorySelectionCoordinator = RepositorySelectionCoordinator(
-            gitManager: gitManager,
-            projectMonitor: projectMonitor
+        let dependencies = AppDependencies(
+            githubAuthManager: githubAuthManager,
+            appCommandCenter: appCommandCenter
         )
+        self.dependencies = dependencies
+        gitManager = dependencies.gitManager
+        loginItemManager = dependencies.loginItemManager
+        self.githubAuthManager = dependencies.githubAuthManager
+        self.appCommandCenter = dependencies.appCommandCenter
+        aiProviderStore = dependencies.aiProviderStore
+        aiKeychainStore = dependencies.aiKeychainStore
+        aiCommitMessageService = dependencies.aiCommitMessageService
+        shortcutActionBridge = dependencies.shortcutActionBridge
+        presentationModel = dependencies.presentationModel
+        usageQuotaStore = dependencies.usageQuotaStore
+        projectMonitor = dependencies.projectMonitor
+        repositorySelectionCoordinator = dependencies.repositorySelectionCoordinator
 
         super.init()
 
-        // Wire up token provider for git push operations
-        gitManager.tokenProvider = { [weak githubAuthManager] in
-            githubAuthManager?.storedTokenSnapshot()
-        }
-
-        // Wire up GitHub API client for checking repo existence
-        gitManager.githubAPIClient = GitHubAPIClient(authManager: githubAuthManager)
         appCommandCenter.performInvocation = { [weak self] invocation in
             self?.performAppCommand(invocation)
         }

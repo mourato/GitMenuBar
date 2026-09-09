@@ -135,7 +135,7 @@ struct MainMenuView: View {
                         }
                         presentationModel.showMain(requestCommitFocus: true)
                         gitManager.updateRemoteUrl()
-                        gitManager.refresh(includeReflogHistory: false)
+                        Task { await gitManager.refreshAsync(includeReflogHistory: false) }
                     }
                 )
                 .environmentObject(gitManager)

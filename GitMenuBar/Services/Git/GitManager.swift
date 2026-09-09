@@ -375,7 +375,7 @@ class GitManager: ObservableObject {
         )
     }
 
-    func commitLocallyAsync(
+    private func commitLocallyAsync(
         _ message: String,
         skipUIUpdates: Bool = false
     ) async -> Result<Void, Error> {
@@ -562,7 +562,7 @@ class GitManager: ObservableObject {
         }
     }
 
-    func commitLocallyWithFallbackAsync(
+    private func commitLocallyWithFallbackAsync(
         _ message: String,
         skipUIUpdates: Bool = false
     ) async -> Result<Void, Error> {
@@ -752,17 +752,7 @@ class GitManager: ObservableObject {
         )
     }
 
-    func pushToBranch(branchName: String, force: Bool, completion: ((Result<Void, Error>) -> Void)? = nil) {
-        Task { [weak self] in
-            guard let self else { return }
-            let result = await pushToBranchAsync(branchName: branchName, force: force)
-            await publishOnMainActor {
-                completion?(result)
-            }
-        }
-    }
-
-    func pushToBranchAsync(branchName: String, force: Bool) async -> Result<Void, Error> {
+    private func pushToBranchAsync(branchName: String, force: Bool) async -> Result<Void, Error> {
         let repositoryPath = storedRepoPath
         let currentBranchName = currentBranch
 
@@ -999,46 +989,52 @@ class GitManager: ObservableObject {
     }
 
     func stageFile(path: String, completion: ((Result<Void, Error>) -> Void)? = nil) {
-        guard !storedRepoPath.isEmpty else {
-            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
-        }
-
         Task { @MainActor in
-            let repositoryPath = storedRepoPath
-            let result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["add", "--", path])
-            }
-            if result.failure {
-                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to stage '\(path)': \(result.output)"])))
-                return
-            }
-
-            await updateUncommittedFiles {
-                completion?(.success(()))
-            }
+            let result = await stageFileAsync(path: path)
+            completion?(result)
         }
     }
 
-    func stageAllChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
-        guard !storedRepoPath.isEmpty else {
-            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
+    func stageFileAsync(path: String) async -> Result<Void, Error> {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
         }
 
-        Task { @MainActor in
-            let repositoryPath = storedRepoPath
-            let result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["add", "-A"])
-            }
-            if result.failure {
-                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to stage all changes: \(result.output)"])))
-                return
-            }
+        let result = await runOnBackground {
+            self.executeGitCommand(in: repositoryPath, args: ["add", "--", path])
+        }
+        guard !result.failure else {
+            return .failure(NSError(
+                domain: "GitManager",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to stage '\(path)': \(result.output)"]
+            ))
+        }
+        await updateUncommittedFilesAsync()
+        return .success(())
+    }
 
-            await updateUncommittedFiles {
-                completion?(.success(()))
-            }
+    func stageFileAsync(path: String, context: RepositoryOperationContext) async -> Result<Void, Error> {
+        guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
+        guard await branchMatches(context) else { return .failure(staleOperationError()) }
+        let result = await runOnBackground {
+            self.executeGitCommand(in: context.repositoryPath, args: ["add", "--", path])
+        }
+        guard !result.failure else {
+            return .failure(NSError(
+                domain: "GitManager",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to stage '\(path)': \(result.output)"]
+            ))
+        }
+        return .success(())
+    }
+
+    func stageAllChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
+        Task { @MainActor in
+            let result = await stageAllChangesAsync()
+            completion?(result)
         }
     }
 
@@ -1083,61 +1079,109 @@ class GitManager: ObservableObject {
     }
 
     func unstageAllChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
-        guard !storedRepoPath.isEmpty else {
-            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
-        }
-
         Task { @MainActor in
-            let repositoryPath = storedRepoPath
-            var result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--", "."])
-            }
-            if result.failure {
-                // Fallback for environments where restore is unavailable.
-                result = await runOnBackground {
-                    self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--", "."])
-                }
-            }
-
-            if result.failure {
-                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to unstage all changes: \(result.output)"])))
-                return
-            }
-
-            await updateUncommittedFiles {
-                completion?(.success(()))
-            }
+            let result = await unstageAllChangesAsync()
+            completion?(result)
         }
     }
 
+    func unstageAllChangesAsync() async -> Result<Void, Error> {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+
+        var result = await runOnBackground {
+            self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--", "."])
+        }
+        if result.failure {
+            result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--", "."])
+            }
+        }
+        guard !result.failure else {
+            return .failure(NSError(
+                domain: "GitManager",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to unstage all changes: \(result.output)"]
+            ))
+        }
+        await updateUncommittedFilesAsync()
+        return .success(())
+    }
+
+    func unstageAllChangesAsync(context: RepositoryOperationContext) async -> Result<Void, Error> {
+        guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
+        guard await branchMatches(context) else { return .failure(staleOperationError()) }
+        var result = await runOnBackground {
+            self.executeGitCommand(in: context.repositoryPath, args: ["restore", "--staged", "--", "."])
+        }
+        if result.failure {
+            result = await runOnBackground {
+                self.executeGitCommand(in: context.repositoryPath, args: ["reset", "HEAD", "--", "."])
+            }
+        }
+        guard !result.failure else {
+            return .failure(NSError(
+                domain: "GitManager",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to unstage all changes: \(result.output)"]
+            ))
+        }
+        return .success(())
+    }
+
     func unstageFile(path: String, completion: ((Result<Void, Error>) -> Void)? = nil) {
-        guard !storedRepoPath.isEmpty else {
-            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
-        }
-
         Task { @MainActor in
-            let repositoryPath = storedRepoPath
-            var result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--", path])
-            }
-            if result.failure {
-                // Fallback for environments where restore is unavailable.
-                result = await runOnBackground {
-                    self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--", path])
-                }
-            }
+            let result = await unstageFileAsync(path: path)
+            completion?(result)
+        }
+    }
 
-            if result.failure {
-                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to unstage '\(path)': \(result.output)"])))
-                return
-            }
+    func unstageFileAsync(path: String) async -> Result<Void, Error> {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
 
-            await updateUncommittedFiles {
-                completion?(.success(()))
+        var result = await runOnBackground {
+            self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--", path])
+        }
+        if result.failure {
+            result = await runOnBackground {
+                self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--", path])
             }
         }
+        guard !result.failure else {
+            return .failure(NSError(
+                domain: "GitManager",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to unstage '\(path)': \(result.output)"]
+            ))
+        }
+        await updateUncommittedFilesAsync()
+        return .success(())
+    }
+
+    func unstageFileAsync(path: String, context: RepositoryOperationContext) async -> Result<Void, Error> {
+        guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
+        guard await branchMatches(context) else { return .failure(staleOperationError()) }
+        var result = await runOnBackground {
+            self.executeGitCommand(in: context.repositoryPath, args: ["restore", "--staged", "--", path])
+        }
+        if result.failure {
+            result = await runOnBackground {
+                self.executeGitCommand(in: context.repositoryPath, args: ["reset", "HEAD", "--", path])
+            }
+        }
+        guard !result.failure else {
+            return .failure(NSError(
+                domain: "GitManager",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to unstage '\(path)': \(result.output)"]
+            ))
+        }
+        return .success(())
     }
 
     // MARK: - File Operations
@@ -1152,64 +1196,101 @@ class GitManager: ObservableObject {
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: fullPath)])
     }
 
-    func discardFileChanges(path: String, status: WorkingTreeFileStatus, completion: ((Result<Void, Error>) -> Void)? = nil) {
-        guard !storedRepoPath.isEmpty else {
-            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
-        }
-
+    func discardFileChanges(
+        path: String,
+        status: WorkingTreeFileStatus,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
         Task { @MainActor in
-            let repositoryPath = storedRepoPath
-            let fullPath = (repositoryPath as NSString).appendingPathComponent(path)
-            var result: (output: String, failure: Bool)
+            let result = await discardFileChangesAsync(path: path, status: status)
+            completion?(result)
+        }
+    }
 
-            if status == .untracked {
-                // Untracked file: just remove it
-                do {
-                    if FileManager.default.fileExists(atPath: fullPath) {
-                        try FileManager.default.removeItem(atPath: fullPath)
-                    }
-                    result = ("", false)
-                } catch {
-                    result = (error.localizedDescription, true)
-                }
-            } else {
-                // If it's staged, we should unstage it and then discard it
-                // Using git checkout -- path or git restore --staged --worktree
-                result = await runOnBackground {
-                    self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--worktree", "--", path])
-                }
-                if result.failure {
-                    // Fallback
-                    _ = await runOnBackground {
-                        self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--", path])
-                    }
-                    result = await runOnBackground {
-                        self.executeGitCommand(in: repositoryPath, args: ["checkout", "--", path])
-                    }
+    func discardFileChangesAsync(
+        path: String,
+        status: WorkingTreeFileStatus
+    ) async -> Result<Void, Error> {
+        let repositoryPath = storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            return .failure(makeMissingRepositoryError())
+        }
+        let result = await discardFileChangesOnDisk(
+            path: path,
+            status: status,
+            repositoryPath: repositoryPath
+        )
+        guard case .success = result else { return result }
+        await updateUncommittedFilesAsync()
+        return .success(())
+    }
 
-                    // If it was a newly added file but already tracked in index (A), check if we need to remove it
-                    if FileManager.default.fileExists(atPath: fullPath) {
-                        let lsResult = await runOnBackground {
-                            self.executeGitCommand(in: repositoryPath, args: ["ls-files", "--error-unmatch", path])
-                        }
-                        if lsResult.failure {
-                            try? FileManager.default.removeItem(atPath: fullPath)
-                            result = ("", false)
-                        }
-                    }
+    func discardFileChangesAsync(
+        path: String,
+        status: WorkingTreeFileStatus,
+        context: RepositoryOperationContext
+    ) async -> Result<Void, Error> {
+        guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
+        guard await branchMatches(context) else { return .failure(staleOperationError()) }
+        return await discardFileChangesOnDisk(
+            path: path,
+            status: status,
+            repositoryPath: context.repositoryPath
+        )
+    }
+
+    private func discardFileChangesOnDisk(
+        path: String,
+        status: WorkingTreeFileStatus,
+        repositoryPath: String
+    ) async -> Result<Void, Error> {
+        let fullPath = (repositoryPath as NSString).appendingPathComponent(path)
+        var result: (output: String, failure: Bool)
+
+        if status == .untracked {
+            do {
+                if FileManager.default.fileExists(atPath: fullPath) {
+                    try FileManager.default.removeItem(atPath: fullPath)
                 }
+                result = ("", false)
+            } catch {
+                result = (error.localizedDescription, true)
             }
-
+        } else {
+            result = await runOnBackground {
+                self.executeGitCommand(
+                    in: repositoryPath,
+                    args: ["restore", "--staged", "--worktree", "--", path]
+                )
+            }
             if result.failure {
-                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to discard '\(path)': \(result.output)"])))
-                return
-            }
+                _ = await runOnBackground {
+                    self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--", path])
+                }
+                result = await runOnBackground {
+                    self.executeGitCommand(in: repositoryPath, args: ["checkout", "--", path])
+                }
 
-            await updateUncommittedFiles {
-                completion?(.success(()))
+                if FileManager.default.fileExists(atPath: fullPath) {
+                    let lsResult = await runOnBackground {
+                        self.executeGitCommand(in: repositoryPath, args: ["ls-files", "--error-unmatch", path])
+                    }
+                    if lsResult.failure {
+                        try? FileManager.default.removeItem(atPath: fullPath)
+                        result = ("", false)
+                    }
+                }
             }
         }
+
+        guard !result.failure else {
+            return .failure(NSError(
+                domain: "GitManager",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to discard '\(path)': \(result.output)"]
+            ))
+        }
+        return .success(())
     }
 
     func discardAllUnstagedChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
@@ -1239,60 +1320,6 @@ class GitManager: ObservableObject {
                 let errorMsg = result.failure ? result.output : cleanResult.output
                 completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to discard untracked changes: \(errorMsg)"])))
                 return
-            }
-
-            await updateUncommittedFiles {
-                completion?(.success(()))
-            }
-        }
-    }
-
-    func discardAllStagedChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
-        guard !storedRepoPath.isEmpty else {
-            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
-            return
-        }
-
-        Task { @MainActor in
-            let repositoryPath = storedRepoPath
-            // First get all staged files
-            let diffResult = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["diff", "--cached", "--name-only"])
-            }
-            if diffResult.failure {
-                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to get staged files: \(diffResult.output)"])))
-                return
-            }
-
-            let files = diffResult.output.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-
-            guard !files.isEmpty else {
-                completion?(.success(()))
-                return
-            }
-
-            // Restore those files from index and worktree
-            var result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--worktree", "--"] + files)
-            }
-            if result.failure {
-                _ = await runOnBackground {
-                    self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--"] + files)
-                }
-                result = await runOnBackground {
-                    self.executeGitCommand(in: repositoryPath, args: ["checkout", "--"] + files)
-                }
-
-                // For files that were 'Added' but didn't exist in HEAD, 'checkout' will fail or just complain. We should carefully delete them.
-                for file in files {
-                    let fullPath = (repositoryPath as NSString).appendingPathComponent(file)
-                    let lsResult = await runOnBackground {
-                        self.executeGitCommand(in: repositoryPath, args: ["ls-files", "--error-unmatch", file])
-                    }
-                    if lsResult.failure, FileManager.default.fileExists(atPath: fullPath) {
-                        try? FileManager.default.removeItem(atPath: fullPath)
-                    }
-                }
             }
 
             await updateUncommittedFiles {
@@ -1387,10 +1414,6 @@ class GitManager: ObservableObject {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .isEmpty
         }
-    }
-
-    func isMergeCommit(_ hash: String, completion: @escaping (Result<Bool, Error>) -> Void) {
-        commitHistoryService.isMergeCommit(hash, completion: completion)
     }
 
     func isCommitPublishedToUpstream(_ hash: String, completion: @escaping (Result<Bool, Error>) -> Void) {
@@ -2109,10 +2132,6 @@ class GitManager: ObservableObject {
                 }
             }
         }
-    }
-
-    func createBranchFromCurrentHead(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        branchService.createBranchFromCurrentHead(branchName: branchName, completion: completion)
     }
 
     func switchBranch(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {

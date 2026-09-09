@@ -28,7 +28,7 @@ extension MainMenuView {
         if RecentProjectsStore.normalize(path) == RecentProjectsStore.normalize(currentRepositoryPath) {
             clearCurrentRepositoryPath()
             dismissTransientPresentations()
-            gitManager.refresh(includeReflogHistory: false)
+            Task { await gitManager.refreshAsync(includeReflogHistory: false) }
             refreshRenderSnapshot()
         }
     }
