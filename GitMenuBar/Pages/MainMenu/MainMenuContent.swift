@@ -250,8 +250,7 @@ extension MainMenuView {
                     onAddProject: selectDirectory,
                     onRefreshAll: projectMonitor.refreshAll,
                     onFetchAll: projectMonitor.fetchAll,
-                    onOpenSettings: openSettingsWindow,
-                    onToggleSidebar: { isProjectsSidebarCollapsed.toggle() }
+                    onOpenSettings: openSettingsWindow
                 )
                 .navigationSplitViewColumnWidth(
                     min: WorkbenchMetrics.projectsMinimumWidth,

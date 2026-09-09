@@ -17,25 +17,26 @@ struct ProjectsSidebarView: View {
     let onRefreshAll: () -> Void
     let onFetchAll: () -> Void
     let onOpenSettings: () -> Void
-    let onToggleSidebar: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             sidebarControls
 
-            List {
+            List(selection: selectionBinding) {
                 ForEach(groupedProjects, id: \.0) { title, snapshots in
                     groupSection(title: title, snapshots: snapshots)
                 }
             }
             .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(spacing: 0) {
                     UsageQuotaStripView()
-                        .padding(.horizontal, 8)
-                        .padding(.bottom, 4)
+                        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+                        .padding(.bottom, WorkbenchMetrics.microSpacing)
 
                     Divider()
+                        .padding(.horizontal, WorkbenchMetrics.windowPadding)
 
                     sidebarBottomActions
                 }
@@ -61,78 +62,76 @@ struct ProjectsSidebarView: View {
         }
     }
 
+    private var selectionBinding: Binding<String?> {
+        Binding(
+            get: { normalizedCurrentPath },
+            set: { newPath in
+                guard let newPath, !newPath.isEmpty, newPath != normalizedCurrentPath else { return }
+                onSelect(newPath)
+            }
+        )
+    }
+
     private var sidebarControls: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
             Text("Projects")
                 .font(.headline)
+                .fontWeight(.semibold)
 
             Spacer(minLength: 0)
 
-            sidebarButton(
-                systemImage: "wand.and.stars",
-                accessibilityLabel: "Project Cleanup",
-                accessibilityHint: "Review safe branch and worktree cleanup across monitored projects.",
-                action: onProjectCleanup
-            )
-            sidebarButton(
-                systemImage: "plus",
-                accessibilityLabel: "Add Project",
-                accessibilityHint: "Choose a local Git repository to monitor.",
-                action: onAddProject
-            )
-            sidebarButton(
-                systemImage: "arrow.clockwise",
-                accessibilityLabel: "Refresh All Projects",
-                accessibilityHint: "Refreshes the Git status for every monitored project.",
-                action: onRefreshAll
-            )
-            sidebarButton(
-                systemImage: "arrow.down.circle",
-                accessibilityLabel: "Fetch All Projects",
-                accessibilityHint: "Fetches remotes for every monitored project.",
-                action: onFetchAll
-            )
+            Button(action: onAddProject) {
+                Image(systemName: "plus")
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.small)
+            .frame(minWidth: WorkbenchMetrics.iconHitTarget, minHeight: WorkbenchMetrics.iconHitTarget)
+            .help("Add Project")
+            .accessibilityLabel("Add Project")
+            .accessibilityHint("Choose a local Git repository to monitor.")
+
+            Menu {
+                Button(action: onRefreshAll) {
+                    Label("Refresh All Projects", systemImage: "arrow.clockwise")
+                }
+                Button(action: onFetchAll) {
+                    Label("Fetch All Projects", systemImage: "arrow.down.circle")
+                }
+                Divider()
+                Button(action: onProjectCleanup) {
+                    Label("Project Cleanup…", systemImage: "wand.and.stars")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .controlSize(.small)
+            .frame(minWidth: WorkbenchMetrics.iconHitTarget, minHeight: WorkbenchMetrics.iconHitTarget)
+            .help("More Actions")
+            .accessibilityLabel("More Project Actions")
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+        .padding(.vertical, WorkbenchMetrics.compactSpacing)
     }
 
     private var sidebarBottomActions: some View {
-        HStack(spacing: 4) {
-            sidebarButton(
-                systemImage: "gearshape",
-                accessibilityLabel: "Settings",
-                accessibilityHint: "Open GitMenuBar settings.",
-                action: onOpenSettings
-            )
+        HStack {
+            Button(action: onOpenSettings) {
+                Image(systemName: "gearshape")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.small)
+            .frame(minWidth: WorkbenchMetrics.iconHitTarget, minHeight: WorkbenchMetrics.iconHitTarget)
+            .help("Settings")
+            .accessibilityLabel("Settings")
+            .accessibilityHint("Open GitMenuBar settings.")
 
             Spacer(minLength: 0)
-
-            sidebarButton(
-                systemImage: "sidebar.left",
-                accessibilityLabel: "Hide Projects sidebar",
-                accessibilityHint: "Hides the Projects sidebar. The toolbar button shows it again.",
-                action: onToggleSidebar
-            )
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-    }
-
-    private func sidebarButton(
-        systemImage: String,
-        accessibilityLabel: String,
-        accessibilityHint: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-        }
-        .buttonStyle(.borderless)
-        .controlSize(.small)
-        .frame(minWidth: WorkbenchMetrics.iconHitTarget, minHeight: WorkbenchMetrics.iconHitTarget)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityHint(accessibilityHint)
+        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+        .padding(.vertical, WorkbenchMetrics.microSpacing)
     }
 
     @ViewBuilder
@@ -153,9 +152,9 @@ struct ProjectsSidebarView: View {
     }
 
     private func projectRows(_ snapshots: [ProjectStatusSnapshot]) -> some View {
-        let selectedPath = normalizedCurrentPath
-        return ForEach(snapshots) { snapshot in
-            projectRow(snapshot, isSelected: snapshot.project.path == selectedPath)
+        ForEach(snapshots) { snapshot in
+            projectRow(snapshot)
+                .tag(snapshot.project.path)
         }
     }
 
@@ -169,35 +168,31 @@ struct ProjectsSidebarView: View {
         }
     }
 
-    private func projectRow(_ snapshot: ProjectStatusSnapshot, isSelected: Bool) -> some View {
-        Button {
-            guard !isSelected else { return }
-            onSelect(snapshot.project.path)
-        } label: {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(snapshot.classification == .clean ? .green : .orange)
-                    .frame(width: 7, height: 7)
+    private func projectRow(_ snapshot: ProjectStatusSnapshot) -> some View {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+            Circle()
+                .fill(snapshot.classification == .clean ? .green : .orange)
+                .frame(width: 7, height: 7)
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(snapshot.project.name)
-                        .lineLimit(1)
-                    Text(statusSummary(for: snapshot))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(snapshot.project.name)
+                    .lineLimit(1)
+                Text(statusSummary(for: snapshot))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
 
-                Spacer(minLength: 0)
+            Spacer(minLength: 0)
 
-                if snapshot.hasWorkingTreeChanges {
-                    Text(changeCountSummary(for: snapshot))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            if snapshot.hasWorkingTreeChanges {
+                Text(changeCountSummary(for: snapshot))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
-        .workbenchRow(isSelected: isSelected)
+        .padding(.vertical, 2)
+        .contentShape(Rectangle())
         .contextMenu {
             Button("Rename Project") {
                 renameDraft = snapshot.project.name
@@ -209,7 +204,6 @@ struct ProjectsSidebarView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(for: snapshot))
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var cleanGroupExpanded: Binding<Bool> {
@@ -336,8 +330,7 @@ struct ProjectsSidebarView: View {
         onAddProject: {},
         onRefreshAll: {},
         onFetchAll: {},
-        onOpenSettings: {},
-        onToggleSidebar: {}
+        onOpenSettings: {}
     )
     .environmentObject(ProjectMonitorStore())
     .environmentObject(UsageQuotaStore())

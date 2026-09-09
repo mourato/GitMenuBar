@@ -39,7 +39,6 @@ struct UsageQuotaStripView: View {
                 }
             }
             .padding(.vertical, WorkbenchMetrics.microSpacing)
-            .background(Color(nsColor: .windowBackgroundColor))
             .animation(
                 WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
                 value: isCollapsed
@@ -67,7 +66,7 @@ struct UsageQuotaStripView: View {
         .padding(.horizontal, WorkbenchMetrics.compactSpacing)
         .background(
             RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
-                .fill(Color(nsColor: .windowBackgroundColor))
+                .fill(Color.primary.opacity(0.04))
         )
         .overlay {
             RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
