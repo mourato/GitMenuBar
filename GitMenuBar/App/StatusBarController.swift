@@ -435,10 +435,14 @@ final class StatusBarController: NSObject, ObservableObject {
             titleField.stringValue = mainWindowTitle
         }
 
-        let shouldShowSidebarItem = if case .createRepo = presentationModel.route {
+        let isProjectsSidebarCollapsed = UserDefaults.standard.bool(
+            forKey: AppPreferences.Keys.isProjectsSidebarCollapsed
+        )
+        let shouldShowSidebarItem = switch presentationModel.route {
+        case .createRepo:
             false
-        } else {
-            true
+        case .main, .projectCleanup:
+            isProjectsSidebarCollapsed
         }
         let hasSidebarItem = toolbar.items.contains { $0.itemIdentifier == .toggleSidebar }
         if shouldShowSidebarItem, !hasSidebarItem {
