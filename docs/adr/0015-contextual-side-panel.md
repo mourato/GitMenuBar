@@ -65,7 +65,7 @@ transient dismissals. Close is labeled for VoiceOver (“Close details”).
 ## References
 
 - [`docs/ui.md`](../ui.md)
-- Plan 081 (`plans/081-contextual-side-panel.md`)
+- Plan 081 (`plans/archive/081-contextual-side-panel.md`)
 - VoiceInk catalog entry in `.agents/overlays/reference-apps.md`
 
 ## Affected surfaces
