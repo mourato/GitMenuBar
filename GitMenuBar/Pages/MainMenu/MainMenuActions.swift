@@ -210,11 +210,14 @@ extension MainMenuView {
     }
 
     func resetToLastCommit() {
-        gitManager.resetToLastCommit()
         commentText = ""
 
-        // Wait for reset to complete, then hide the main window
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        Task {
+            let result = await gitManager.resetToLastCommitAsync()
+            guard case .success = result else {
+                return
+            }
+
             closeWindow()
         }
     }

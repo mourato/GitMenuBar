@@ -83,9 +83,7 @@ struct CommitMessageEditorSheet: View {
         .padding(20)
         .frame(width: 420)
         .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isMessageEditorFocused = true
-            }
+            isMessageEditorFocused = true
         }
     }
 }

@@ -18,6 +18,7 @@ struct MainMenuView: View {
     @State var isTogglingVisibility = false
     @State var toggleVisibilityError: String?
     @FocusState var isCommentFieldFocused: Bool
+    @FocusState var isMainKeyboardNavigationFocused: Bool
     @EnvironmentObject var gitManager: GitManager
     @EnvironmentObject var githubAuthManager: GitHubAuthManager
     @EnvironmentObject var aiCommitCoordinator: AICommitCoordinator
@@ -47,7 +48,6 @@ struct MainMenuView: View {
     @State var selectedSidePanelSelection: MainMenuSidePanelSelection?
     @State var lastHandledCommandPaletteToken = 0
     @State var lastHandledRepositoryOptionsToken = 0
-    @State var mainKeyboardMonitor: Any?
     @State var selectedPushBranch: String = ""
     @State var showPullToNewBranch = false
     @State var pullToNewBranchName = ""
@@ -257,16 +257,18 @@ struct MainMenuView: View {
         .overlay {
             mainWindowOverlayContent
         }
+        .focusable()
+        .focused($isMainKeyboardNavigationFocused)
+        .onKeyPress(keys: [.upArrow, .downArrow, .return, .delete, .deleteForward]) { keyPress in
+            handleMainKeyPress(keyPress)
+        }
         .onAppear {
             reloadRepositorySelectionSnapshot()
             refreshRenderSnapshot()
-            installMainKeyboardMonitor()
+            synchronizeMainKeyboardNavigationFocus()
             handleCommandPalettePresentationRequest(presentationModel.showCommandPaletteToken)
             handleRepositoryOptionsPresentationRequest(presentationModel.showRepositoryOptionsToken)
             synchronizeSelectedMainItem()
-        }
-        .onDisappear {
-            removeMainKeyboardMonitor()
         }
         .onChange(of: presentationModel.showCommandPaletteToken) { token in
             handleCommandPalettePresentationRequest(token)
@@ -294,6 +296,12 @@ struct MainMenuView: View {
                     isCommitFieldTemporarilyVisible = false
                 }
             }
+        }
+        .onChange(of: mainKeyboardFocusSyncToken) { _ in
+            synchronizeMainKeyboardNavigationFocus()
+        }
+        .onChange(of: selectedMainItemID) { _ in
+            synchronizeMainKeyboardNavigationFocus()
         }
         .onChange(of: hideCommitMessageField) { isHidden in
             if !isHidden || commentText.isEmpty {
@@ -347,6 +355,7 @@ struct MainMenuView: View {
         }
         .onChange(of: keyboardSelectableItems) { _ in
             synchronizeSelectedMainItem()
+            synchronizeMainKeyboardNavigationFocus()
         }
         .onChange(of: projectMonitor.snapshots) { _ in
             refreshRenderSnapshot()
