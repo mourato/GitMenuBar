@@ -70,7 +70,7 @@ final class StatusBarController: NSObject, ObservableObject {
             let selectedPath = repositorySelectionCoordinator.selectedPath
             guard !selectedPath.isEmpty,
                   paths.contains(GitRepositoryContext.normalizedPath(selectedPath)) else { return }
-            gitManager.refresh(includeReflogHistory: false)
+            Task { await self.gitManager.refreshAsync(includeReflogHistory: false) }
         }
     )
 

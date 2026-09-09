@@ -146,8 +146,8 @@ struct CreateRepoContentView: View {
             try configureRemote(with: repository.cloneUrl)
             try pushRepository()
 
+            await gitManager.refreshAsync(includeReflogHistory: false)
             await MainActor.run {
-                gitManager.refresh(includeReflogHistory: false)
                 onSuccess(folderPath)
             }
         } catch let error as CreateRepositoryFlowError {
