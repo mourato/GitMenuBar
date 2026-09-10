@@ -24,7 +24,12 @@ extension MainMenuView {
                     overview: renderSnapshot.overview,
                     onSelectSection: { selection in
                         selectedSidePanelSelection = selection
-                    }
+                    },
+                    commitActionTitle: resolvedCommitButtonAction.buttonTitle,
+                    canCommit: actionCoordinator.canAutoCommit,
+                    onCommit: performQuickCommit,
+                    canSync: actionCoordinator.canSync,
+                    onSync: syncRepository
                 )
             }
         }

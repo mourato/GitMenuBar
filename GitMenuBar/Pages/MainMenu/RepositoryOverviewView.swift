@@ -9,33 +9,34 @@ private struct RepositoryOverviewCardVisual {
 struct RepositoryOverviewView: View {
     let overview: RepositoryOverviewSnapshot
     let onSelectSection: (MainMenuSidePanelSelection) -> Void
+    let commitActionTitle: String
+    let canCommit: Bool
+    let onCommit: () -> Void
+    let canSync: Bool
+    let onSync: () -> Void
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    init(
+        overview: RepositoryOverviewSnapshot,
+        onSelectSection: @escaping (MainMenuSidePanelSelection) -> Void,
+        commitActionTitle: String = "Commit",
+        canCommit: Bool = false,
+        onCommit: @escaping () -> Void = {},
+        canSync: Bool = false,
+        onSync: @escaping () -> Void = {}
+    ) {
+        self.overview = overview
+        self.onSelectSection = onSelectSection
+        self.commitActionTitle = commitActionTitle
+        self.canCommit = canCommit
+        self.onCommit = onCommit
+        self.canSync = canSync
+        self.onSync = onSync
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            overviewRow(
-                title: "Working Tree",
-                visual: RepositoryOverviewCardVisual(
-                    systemImage: overview.isCleanWorkingTree ? "checkmark.circle.fill" : "exclamationmark.circle.fill",
-                    tint: overview.isCleanWorkingTree ? .green : .orange,
-                    metric: "\(overview.totalWorkingTreeCount)"
-                ),
-                selection: .workingTree,
-                isLoading: false,
-                content: workingTreeContent,
-                accessibilityValue: workingTreeContent
-            )
-            Divider()
-                .padding(.leading, WorkbenchMetrics.panelPadding)
-
-            overviewRow(
-                title: "Push and Sync",
-                visual: RepositoryOverviewCardVisual(systemImage: "arrow.up.arrow.down.circle.fill", tint: .accentColor, metric: pushSyncMetric),
-                selection: .unpushedCommits,
-                isLoading: overview.aheadCount.isLoading || overview.behindCount.isLoading,
-                content: pushSyncContent,
-                accessibilityValue: pushSyncAccessibilityValue
-            )
+            workingTreeRow
             Divider()
                 .padding(.leading, WorkbenchMetrics.panelPadding)
 
@@ -139,6 +140,88 @@ struct RepositoryOverviewView: View {
         .accessibilityAddTraits(.isButton)
     }
 
+    private var workingTreeRow: some View {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+            Button {
+                onSelectSection(.workingTree)
+            } label: {
+                overviewRowLabel(
+                    title: "Working Tree",
+                    visual: RepositoryOverviewCardVisual(
+                        systemImage: overview.isCleanWorkingTree ? "checkmark.circle.fill" : "exclamationmark.circle.fill",
+                        tint: overview.isCleanWorkingTree ? .green : .orange,
+                        metric: "\(overview.totalWorkingTreeCount)"
+                    ),
+                    content: workingTreeContent
+                )
+            }
+            .buttonStyle(.plain)
+            .help(workingTreeContent)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Working Tree")
+            .accessibilityValue(workingTreeContent)
+            .accessibilityHint("Opens Working Tree in the inspector")
+            .accessibilityAddTraits(.isButton)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text("\(overview.totalWorkingTreeCount)")
+                .font(WorkbenchTypography.field)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .layoutPriority(1)
+
+            HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                Button {
+                    onCommit()
+                } label: {
+                    Label(commitActionTitle, systemImage: "checkmark")
+                }
+                .workbenchSecondary()
+                .disabled(!canCommit)
+                .help(commitActionTitle)
+                .accessibilityHint("Creates an automatic commit")
+
+                Button {
+                    onSync()
+                } label: {
+                    Label("Sync", systemImage: "arrow.2.circlepath")
+                }
+                .workbenchSecondary()
+                .disabled(!canSync)
+                .help("Sync Changes")
+                .accessibilityHint("Synchronizes local and remote changes")
+            }
+        }
+        .padding(WorkbenchMetrics.panelPadding)
+    }
+
+    private func overviewRowLabel(
+        title: String,
+        visual: RepositoryOverviewCardVisual,
+        content: String
+    ) -> some View {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+            Image(systemName: visual.systemImage)
+                .font(WorkbenchTypography.overviewIcon)
+                .foregroundStyle(visual.tint)
+                .frame(width: WorkbenchMetrics.iconHitTarget, alignment: .center)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                Text(title)
+                    .font(WorkbenchTypography.windowTitle)
+                    .lineLimit(1)
+
+                Text(content)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(2)
+            }
+        }
+    }
+
     private var workingTreeContent: String {
         if overview.isCleanWorkingTree {
             return "Clean"
@@ -157,32 +240,6 @@ struct RepositoryOverviewView: View {
             parts.append("+\(overview.addedLineCount) −\(overview.removedLineCount)")
         }
         return parts.joined(separator: ", ")
-    }
-
-    private var pushSyncContent: String {
-        composedMetricText(
-            (overview.aheadCount, "ahead"),
-            (overview.behindCount, "behind"),
-            emptyKnown: "Up to date"
-        )
-    }
-
-    private var pushSyncMetric: String {
-        guard
-            case let .known(ahead) = overview.aheadCount,
-            case let .known(behind) = overview.behindCount
-        else {
-            return "—"
-        }
-        return "↑\(ahead) ↓\(behind)"
-    }
-
-    private var pushSyncAccessibilityValue: String {
-        composedMetricText(
-            (overview.aheadCount, "commits ahead"),
-            (overview.behindCount, "commits behind"),
-            emptyKnown: "Up to date"
-        )
     }
 
     private var branchHealthContent: String {

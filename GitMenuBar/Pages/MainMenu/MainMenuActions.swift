@@ -31,6 +31,19 @@ extension MainMenuView {
         }
     }
 
+    func performQuickCommit() {
+        Task {
+            let result = await actionCoordinator.performCommit(
+                commentText: "",
+                forceAutomaticMessage: true,
+                shouldPushAfterCommit: resolvedCommitButtonAction == .commitAndPush
+            )
+            if result.didCommit {
+                HapticFeedback.actionSucceeded()
+            }
+        }
+    }
+
     func performPrimaryAction() async {
         if showsCommitAction {
             await submitComment()
