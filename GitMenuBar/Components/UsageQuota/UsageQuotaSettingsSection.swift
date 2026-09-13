@@ -5,8 +5,16 @@ struct UsageQuotaSettingsSection: View {
     @EnvironmentObject private var preferences: UsageQuotaPresentationPreferences
 
     var body: some View {
-        Toggle("Show usage figures in the menu bar", isOn: $usageQuotaStore.showAIUsageQuotas)
+        Toggle("Show AI usage quotas", isOn: $usageQuotaStore.showAIUsageQuotas)
             .toggleStyle(.switch)
+
+        Picker("Status item", selection: $preferences.menuBarVisibility) {
+            ForEach(UsageQuotaPresentationPreferences.MenuBarVisibility.allCases) { visibility in
+                Text(visibility.title).tag(visibility)
+            }
+        }
+        .pickerStyle(.segmented)
+        .disabled(!usageQuotaStore.showAIUsageQuotas)
 
         Picker("Figures", selection: $preferences.meterStyle) {
             ForEach(UsageQuotaPresentationPreferences.MeterStyle.allCases) { style in

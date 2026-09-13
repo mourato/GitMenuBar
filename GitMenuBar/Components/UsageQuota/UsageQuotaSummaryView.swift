@@ -46,18 +46,26 @@ private struct UsageQuotaSummaryItem: View {
 
 struct ProviderIconView: View {
     let providerID: UsageProviderID
+    var tint: Color?
+
+    init(providerID: UsageProviderID, tint: Color? = nil) {
+        self.providerID = providerID
+        self.tint = tint
+    }
 
     var body: some View {
         if let image = ProviderIconRenderer.image(for: providerID) {
             Image(nsImage: image)
+                .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 18, height: 18)
+                .foregroundStyle(tint ?? Color(nsColor: .labelColor))
                 .accessibilityHidden(true)
         } else {
             Image(systemName: fallbackSymbol)
                 .font(WorkbenchTypography.captionStrong)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(tint ?? .secondary)
                 .frame(width: 18, height: 18)
                 .accessibilityHidden(true)
         }

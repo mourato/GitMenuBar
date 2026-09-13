@@ -13,14 +13,30 @@ extension StatusBarController {
         let style = usageQuotaPresentationPreferences.meterStyle == .bars && groups.flatMap(\.fractions).isEmpty
             ? .text
             : usageQuotaPresentationPreferences.meterStyle
-        let usageImage = groups.isEmpty ? nil : makeUsageStatusImage(groups: groups, style: style)
+        let showsUsageInStatusItem = usageQuotaStore.showAIUsageQuotas
+            && usageQuotaPresentationPreferences.menuBarVisibility == .always
+        let usageImage = showsUsageInStatusItem && !groups.isEmpty
+            ? makeUsageStatusImage(
+                groups: groups,
+                style: style,
+                isTemplate: attentionCount == 0,
+                appearance: button.effectiveAppearance
+            )
+            : nil
         button.image = StatusItemBadgeRenderer.makeCompositeImage(
             baseStatusImage: baseStatusImage,
             usageImage: usageImage,
             count: attentionCount,
-            iconSize: Constants.statusIconPointSize
+            iconSize: Constants.statusIconPointSize,
+            appearance: button.effectiveAppearance
         )
-        button.toolTip = groups.isEmpty ? "GitMenuBar" : groups.map(\.spokenLabel).joined(separator: ", ")
+        button.toolTip = if showsUsageInStatusItem, !groups.isEmpty {
+            groups.map(\.spokenLabel).joined(separator: ", ")
+        } else if usageQuotaStore.showAIUsageQuotas {
+            "GitMenuBar — open usage quotas menu"
+        } else {
+            "GitMenuBar"
+        }
         button.setAccessibilityLabel(button.toolTip ?? "GitMenuBar")
     }
 
@@ -62,12 +78,31 @@ extension StatusBarController {
 
     private func makeUsageStatusImage(
         groups: [UsageQuotaMenuBarGroup],
-        style: UsageQuotaPresentationPreferences.MeterStyle
+        style: UsageQuotaPresentationPreferences.MeterStyle,
+        isTemplate: Bool,
+        appearance: NSAppearance?
     ) -> NSImage? {
-        let renderer = ImageRenderer(content: UsageQuotaMenuBarStrip(groups: groups, style: style))
-        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
-        guard let image = renderer.nsImage else { return nil }
-        image.isTemplate = true
+        var renderedImage: NSImage?
+        let render = {
+            let renderer = ImageRenderer(
+                content: UsageQuotaMenuBarStrip(
+                    groups: groups,
+                    style: style,
+                    tint: Color(nsColor: .labelColor)
+                )
+            )
+            renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
+            renderedImage = renderer.nsImage
+        }
+
+        if let appearance {
+            appearance.performAsCurrentDrawingAppearance(render)
+        } else {
+            render()
+        }
+
+        guard let image = renderedImage else { return nil }
+        image.isTemplate = isTemplate
         image.accessibilityDescription = groups.map(\.spokenLabel).joined(separator: ", ")
         return image
     }

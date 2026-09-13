@@ -39,6 +39,24 @@ final class UsageQuotaPresentationPreferences: ObservableObject {
         }
     }
 
+    enum MenuBarVisibility: String, CaseIterable, Identifiable {
+        case always
+        case menuOnly
+
+        var id: String {
+            rawValue
+        }
+
+        var title: String {
+            switch self {
+            case .always:
+                "Always"
+            case .menuOnly:
+                "Menu only"
+            }
+        }
+    }
+
     enum Metric: String, CaseIterable, Identifiable {
         case session
         case weekly
@@ -68,6 +86,10 @@ final class UsageQuotaPresentationPreferences: ObservableObject {
         didSet { defaults.set(valueStyle.rawValue, forKey: AppPreferences.Keys.usageQuotaValueStyle) }
     }
 
+    @Published var menuBarVisibility: MenuBarVisibility {
+        didSet { defaults.set(menuBarVisibility.rawValue, forKey: AppPreferences.Keys.usageQuotaMenuBarVisibility) }
+    }
+
     @Published private(set) var providerOrder: [UsageProviderID] {
         didSet { saveProviderOrder() }
     }
@@ -81,6 +103,8 @@ final class UsageQuotaPresentationPreferences: ObservableObject {
             .flatMap(MeterStyle.init(rawValue:)) ?? .text
         valueStyle = defaults.string(forKey: AppPreferences.Keys.usageQuotaValueStyle)
             .flatMap(ValueStyle.init(rawValue:)) ?? .left
+        menuBarVisibility = defaults.string(forKey: AppPreferences.Keys.usageQuotaMenuBarVisibility)
+            .flatMap(MenuBarVisibility.init(rawValue:)) ?? .always
 
         let storedOrder = (defaults.array(forKey: AppPreferences.Keys.usageQuotaProviderOrder) as? [String] ?? [])
             .compactMap(UsageProviderID.init(rawValue:))
