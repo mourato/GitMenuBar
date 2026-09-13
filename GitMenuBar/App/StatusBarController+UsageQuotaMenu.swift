@@ -41,13 +41,7 @@ extension StatusBarController {
                 .environmentObject(usageQuotaStore)
                 .environmentObject(usageQuotaPresentationPreferences)
         )
-        hostedView.layoutSubtreeIfNeeded()
-        hostedView.frame = NSRect(
-            x: 0,
-            y: 0,
-            width: UsageQuotaMenuView.width,
-            height: max(1, hostedView.fittingSize.height)
-        )
+        hostedView.frame = NSRect(origin: .zero, size: hostedView.fittingSize)
         quotaItem.view = hostedView
         quotaItem.isEnabled = false
         menu.addItem(quotaItem)
