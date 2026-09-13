@@ -15,12 +15,13 @@ extension StatusBarController {
             : usageQuotaPresentationPreferences.meterStyle
         let showsUsageInStatusItem = usageQuotaStore.showAIUsageQuotas
             && usageQuotaPresentationPreferences.menuBarVisibility == .always
+        let menuBarAppearance = button.window?.effectiveAppearance ?? button.effectiveAppearance
         let usageImage = showsUsageInStatusItem && !groups.isEmpty
             ? makeUsageStatusImage(
                 groups: groups,
                 style: style,
                 isTemplate: attentionCount == 0,
-                appearance: button.effectiveAppearance
+                appearance: menuBarAppearance
             )
             : nil
         button.image = StatusItemBadgeRenderer.makeCompositeImage(
@@ -28,7 +29,7 @@ extension StatusBarController {
             usageImage: usageImage,
             count: attentionCount,
             iconSize: Constants.statusIconPointSize,
-            appearance: button.effectiveAppearance
+            appearance: menuBarAppearance
         )
         button.toolTip = if showsUsageInStatusItem, !groups.isEmpty {
             groups.map(\.spokenLabel).joined(separator: ", ")
