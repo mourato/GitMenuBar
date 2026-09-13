@@ -2,35 +2,37 @@ import SwiftUI
 
 struct UsageQuotaSettingsSection: View {
     @EnvironmentObject private var usageQuotaStore: UsageQuotaStore
+    @EnvironmentObject private var preferences: UsageQuotaPresentationPreferences
 
     var body: some View {
-        Toggle("Show AI usage in menu", isOn: $usageQuotaStore.showAIUsageQuotas)
+        Toggle("Show usage figures in the menu bar", isOn: $usageQuotaStore.showAIUsageQuotas)
             .toggleStyle(.switch)
 
-        providerToggle("Codex", providerID: .codex, isOn: $usageQuotaStore.showCodexUsageQuota)
-            .toggleStyle(.switch)
-            .disabled(!usageQuotaStore.showAIUsageQuotas)
+        Picker("Figures", selection: $preferences.meterStyle) {
+            ForEach(UsageQuotaPresentationPreferences.MeterStyle.allCases) { style in
+                Text(style.title).tag(style)
+            }
+        }
+        .pickerStyle(.segmented)
+        .disabled(!usageQuotaStore.showAIUsageQuotas)
 
-        providerToggle("Cursor", providerID: .cursor, isOn: $usageQuotaStore.showCursorUsageQuota)
-            .toggleStyle(.switch)
-            .disabled(!usageQuotaStore.showAIUsageQuotas)
+        Picker("Count", selection: $preferences.valueStyle) {
+            ForEach(UsageQuotaPresentationPreferences.ValueStyle.allCases) { style in
+                Text(style.title).tag(style)
+            }
+        }
+        .pickerStyle(.segmented)
+        .disabled(!usageQuotaStore.showAIUsageQuotas)
 
-        providerToggle("OpenRouter", providerID: .openrouter, isOn: $usageQuotaStore.showOpenRouterUsageQuota)
-            .toggleStyle(.switch)
-            .disabled(!usageQuotaStore.showAIUsageQuotas)
-
-        providerToggle("Gemini", providerID: .gemini, isOn: $usageQuotaStore.showGeminiUsageQuota)
-            .toggleStyle(.switch)
-            .disabled(!usageQuotaStore.showAIUsageQuotas)
-
-        providerToggle("Antigravity", providerID: .antigravity, isOn: $usageQuotaStore.showAntigravityUsageQuota)
-            .toggleStyle(.switch)
-            .disabled(!usageQuotaStore.showAIUsageQuotas)
+        ForEach(Array(preferences.orderedProviderIDs.enumerated()), id: \.element) { index, providerID in
+            providerRow(providerID, index: index)
+        }
 
         Text(
             "Quota data stays on this Mac. GitMenuBar uses credentials already stored by each provider "
                 + "and refreshes them in place when needed. It never creates a separate OAuth token store. "
-                + "OpenRouter quota uses the provider credential configured in AI settings."
+                + "OpenRouter quota uses the provider credential configured in AI settings. Claude Code "
+                + "is read from local session events when available."
         )
         .font(WorkbenchTypography.caption)
         .foregroundStyle(.secondary)
@@ -44,23 +46,80 @@ struct UsageQuotaSettingsSection: View {
         .disabled(!usageQuotaStore.showAIUsageQuotas)
     }
 
-    private func providerToggle(
-        _ title: String,
-        providerID: UsageProviderID,
-        isOn: Binding<Bool>
-    ) -> some View {
-        Toggle(isOn: isOn) {
+    private func providerRow(_ providerID: UsageProviderID, index: Int) -> some View {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
             HStack(spacing: WorkbenchMetrics.compactSpacing) {
                 ProviderIconView(providerID: providerID)
-                Text(title)
+                Text(providerID.displayName)
+                Spacer(minLength: 0)
+                Button {
+                    preferences.moveProvider(providerID, by: -1)
+                } label: {
+                    Image(systemName: "chevron.up")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Move \(providerID.displayName) up")
+                .disabled(index == 0)
+
+                Button {
+                    preferences.moveProvider(providerID, by: 1)
+                } label: {
+                    Image(systemName: "chevron.down")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Move \(providerID.displayName) down")
+                .disabled(index == preferences.orderedProviderIDs.count - 1)
+
+                Toggle(
+                    "Show \(providerID.displayName)",
+                    isOn: Binding(
+                        get: { usageQuotaStore.isProviderEnabled(providerID) },
+                        set: { usageQuotaStore.setProviderEnabled($0, for: providerID) }
+                    )
+                )
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
             }
+
+            Menu {
+                ForEach(UsageQuotaPresentationPreferences.Metric.allCases) { metric in
+                    Button {
+                        preferences.toggleMetric(metric, for: providerID)
+                    } label: {
+                        Label(
+                            metric.title,
+                            systemImage: preferences.selectedMetrics(for: providerID).contains(metric)
+                                ? "checkmark"
+                                : ""
+                        )
+                    }
+                }
+            } label: {
+                HStack {
+                    Text("Menu bar")
+                    Spacer()
+                    Text(selectedMetricsLabel(for: providerID))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .menuStyle(.borderlessButton)
+            .disabled(!usageQuotaStore.showAIUsageQuotas || !usageQuotaStore.isProviderEnabled(providerID))
         }
+        .opacity(usageQuotaStore.isProviderEnabled(providerID) ? 1 : 0.55)
+        .disabled(!usageQuotaStore.showAIUsageQuotas)
+    }
+
+    private func selectedMetricsLabel(for providerID: UsageProviderID) -> String {
+        let metrics = preferences.selectedMetrics(for: providerID)
+        return metrics.isEmpty ? "Mark only" : metrics.map(\.title).joined(separator: ", ")
     }
 }
 
 #Preview("Usage Quota Settings") {
     let credentialStore = InMemoryAIAPIKeyStore()
     let providers: [any UsageQuotaProviding] = [
+        ClaudeCodeUsageProvider(),
         CodexUsageProvider(),
         CursorUsageProvider(),
         OpenRouterUsageProvider(keyStore: credentialStore),
@@ -80,5 +139,6 @@ struct UsageQuotaSettingsSection: View {
     }
     .formStyle(.grouped)
     .environmentObject(UsageQuotaStore(providers: providers))
+    .environmentObject(UsageQuotaPresentationPreferences())
     .frame(width: 560, height: 280)
 }

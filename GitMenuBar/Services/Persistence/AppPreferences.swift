@@ -23,11 +23,16 @@ enum AppPreferences {
         static let hasMigratedKeychainDomain = "hasMigratedKeychainDomain"
         static let aiCredentialMigrationVersion = "aiCredentialMigrationVersion"
         static let showAIUsageQuotas = "showAIUsageQuotas"
+        static let showClaudeCodeUsageQuota = "showClaudeCodeUsageQuota"
         static let showCodexUsageQuota = "showCodexUsageQuota"
         static let showCursorUsageQuota = "showCursorUsageQuota"
         static let showOpenRouterUsageQuota = "showOpenRouterUsageQuota"
         static let showGeminiUsageQuota = "showGeminiUsageQuota"
         static let showAntigravityUsageQuota = "showAntigravityUsageQuota"
+        static let usageQuotaMenuBarStyle = "usageQuotaMenuBarStyle"
+        static let usageQuotaValueStyle = "usageQuotaValueStyle"
+        static let usageQuotaProviderOrder = "usageQuotaProviderOrder"
+        static let usageQuotaMetrics = "usageQuotaMetrics"
     }
 
     enum AppearanceMode: String, CaseIterable, Identifiable {

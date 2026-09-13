@@ -70,6 +70,15 @@ quota summary, sidebar visibility, and Settings access in one bottom surface;
 the window toolbar keeps the centered title and only shows the native sidebar
 toggle while the sidebar is collapsed.
 
+The status item remains the single app-shell owner. When AI usage figures are
+enabled, left click opens a native `NSMenu` containing the provider quota cards
+and actions to open GitMenuBar, refresh quotas, open Settings, or quit. The
+status item may render up to two selected quota figures per provider as compact
+text or bars, in the user's persisted provider order. Right click and
+Control-click retain the existing Git command menu. Unavailable provider data
+does not create an empty meter; cached stale readings stay visible and marked
+Outdated in the quota menu.
+
 The side panel uses fixed `WorkbenchMetrics.sidePanelWidth`. Dismiss with the
 explicit close control, Escape (clears selection first), and outside tap —
 except Working Tree, which disables outside tap. Draft commit text on

@@ -16,6 +16,7 @@ final class AppDependencies {
     let shortcutActionBridge = MainMenuShortcutActionBridge()
     let presentationModel = MainMenuPresentationModel()
     let usageQuotaStore: UsageQuotaStore
+    let usageQuotaPresentationPreferences = UsageQuotaPresentationPreferences()
     let projectMonitor = ProjectMonitorStore()
     let repositorySelectionCoordinator: RepositorySelectionCoordinator
 
@@ -30,6 +31,7 @@ final class AppDependencies {
         }
 
         usageQuotaStore = UsageQuotaStore(providers: [
+            ClaudeCodeUsageProvider(),
             CodexUsageProvider(),
             CursorUsageProvider(),
             OpenRouterUsageProvider(keyStore: aiKeychainStore),
@@ -96,6 +98,7 @@ final class AppDependencies {
             aiProviderStore: aiProviderStore,
             aiCommitCoordinator: aiCommitCoordinator,
             usageQuotaStore: usageQuotaStore,
+            usageQuotaPresentationPreferences: usageQuotaPresentationPreferences,
             onSetAutoHideSuspended: onSetAutoHideSuspended
         )
     }

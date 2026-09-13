@@ -35,7 +35,7 @@ struct GeneralSettingsPaneView: View {
                     isOn: Binding(
                         get: { showDockIcon },
                         set: { newValue in
-                            if !newValue && !showMenuBarIcon {
+                            if !newValue, !showMenuBarIcon {
                                 return
                             }
                             showDockIcon = newValue
@@ -50,7 +50,7 @@ struct GeneralSettingsPaneView: View {
                     isOn: Binding(
                         get: { showMenuBarIcon },
                         set: { newValue in
-                            if !newValue && !showDockIcon {
+                            if !newValue, !showDockIcon {
                                 return
                             }
                             showMenuBarIcon = newValue
@@ -251,6 +251,7 @@ private enum SettingsAppearance {
         .environmentObject(providerStore)
         .environmentObject(coordinator)
         .environmentObject(UsageQuotaStore())
+        .environmentObject(UsageQuotaPresentationPreferences())
 }
 
 #Preview("Shortcuts Settings Pane") {

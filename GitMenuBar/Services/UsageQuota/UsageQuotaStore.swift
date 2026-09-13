@@ -25,6 +25,14 @@ final class UsageQuotaStore: ObservableObject {
         }
     }
 
+    @Published var showClaudeCodeUsageQuota: Bool {
+        didSet {
+            guard showClaudeCodeUsageQuota != oldValue else { return }
+            defaults.set(showClaudeCodeUsageQuota, forKey: AppPreferences.Keys.showClaudeCodeUsageQuota)
+            handlePreferenceChange()
+        }
+    }
+
     @Published var showCodexUsageQuota: Bool {
         didSet {
             guard showCodexUsageQuota != oldValue else { return }
@@ -79,6 +87,7 @@ final class UsageQuotaStore: ObservableObject {
         defaults: UserDefaults = .standard,
         snapshotStore: UsageQuotaSnapshotStore = UsageQuotaSnapshotStore(),
         providers: [any UsageQuotaProviding] = [
+            ClaudeCodeUsageProvider(),
             CodexUsageProvider(),
             CursorUsageProvider(),
             OpenRouterUsageProvider(),
@@ -92,6 +101,7 @@ final class UsageQuotaStore: ObservableObject {
         self.providers = providers
         self.now = now
         showAIUsageQuotas = defaults.object(forKey: AppPreferences.Keys.showAIUsageQuotas) as? Bool ?? false
+        showClaudeCodeUsageQuota = defaults.object(forKey: AppPreferences.Keys.showClaudeCodeUsageQuota) as? Bool ?? true
         showCodexUsageQuota = defaults.object(forKey: AppPreferences.Keys.showCodexUsageQuota) as? Bool ?? true
         showCursorUsageQuota = defaults.object(forKey: AppPreferences.Keys.showCursorUsageQuota) as? Bool ?? true
         showOpenRouterUsageQuota = defaults.object(forKey: AppPreferences.Keys.showOpenRouterUsageQuota) as? Bool ?? true
@@ -168,8 +178,10 @@ final class UsageQuotaStore: ObservableObject {
         providers.filter { isProviderEnabled($0.id) }
     }
 
-    private func isProviderEnabled(_ providerID: UsageProviderID) -> Bool {
+    func isProviderEnabled(_ providerID: UsageProviderID) -> Bool {
         switch providerID {
+        case .claudeCode:
+            showClaudeCodeUsageQuota
         case .codex:
             showCodexUsageQuota
         case .cursor:
@@ -180,6 +192,23 @@ final class UsageQuotaStore: ObservableObject {
             showGeminiUsageQuota
         case .antigravity:
             showAntigravityUsageQuota
+        }
+    }
+
+    func setProviderEnabled(_ isEnabled: Bool, for providerID: UsageProviderID) {
+        switch providerID {
+        case .claudeCode:
+            showClaudeCodeUsageQuota = isEnabled
+        case .codex:
+            showCodexUsageQuota = isEnabled
+        case .cursor:
+            showCursorUsageQuota = isEnabled
+        case .openrouter:
+            showOpenRouterUsageQuota = isEnabled
+        case .gemini:
+            showGeminiUsageQuota = isEnabled
+        case .antigravity:
+            showAntigravityUsageQuota = isEnabled
         }
     }
 

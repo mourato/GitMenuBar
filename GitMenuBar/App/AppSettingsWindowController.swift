@@ -25,6 +25,7 @@ final class AppSettingsWindowController {
         aiProviderStore: AIProviderStore,
         aiCommitCoordinator: AICommitCoordinator,
         usageQuotaStore: UsageQuotaStore,
+        usageQuotaPresentationPreferences: UsageQuotaPresentationPreferences,
         onSetAutoHideSuspended: @escaping (Bool) -> Void
     ) {
         let generalPane = Settings.Pane(
@@ -61,6 +62,7 @@ final class AppSettingsWindowController {
                     .environmentObject(aiProviderStore)
                     .environmentObject(aiCommitCoordinator)
                     .environmentObject(usageQuotaStore)
+                    .environmentObject(usageQuotaPresentationPreferences)
             }
         )
         let shortcutsPane = Settings.Pane(
