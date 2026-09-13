@@ -20,9 +20,8 @@ coexist without adding a second status item owner or a new credential path.
 - Show quota figures in the existing status item only when the quota preference
   is enabled and its visibility is `Always`. `Menu only` keeps the quota menu
   available while hiding the figures from the status item.
-- Use left click for the native quota menu, with an explicit Open GitMenuBar
-  action. Preserve right click and Control-click for the existing Git command
-  menu.
+- Use left click to open the GitMenuBar window. Add an `AI Usage Quotas`
+  submenu to the existing right-click and Control-click Git command menu.
 - Reuse `UsageQuotaStore`, its snapshot cache, provider toggles, and existing
   provider icons. Persist only presentation choices: provider order, up to two
   selected metrics per provider, text/bars, left/used, and status-item
@@ -36,11 +35,11 @@ coexist without adding a second status item owner or a new credential path.
 ## Consequences
 
 The quota feature has one data source and two views: the existing sidebar
-cards and the status-item workflow. Status-item clicks no longer open the main
-window directly while quota figures are enabled, so the menu includes a direct
-main-window action. The status item remains readable in light and dark menu
-bars, including when the Git attention badge is present. No provider
-credentials or tokens are duplicated.
+cards and the status-item workflow. Left-click behavior remains a direct main
+window action, while the right-click menu exposes the quota cards without
+duplicating its Settings and Quit actions. The status item remains readable in
+light and dark menu bars, including when the Git attention badge is present. No
+provider credentials or tokens are duplicated.
 
 Claude Code contributes local rate-limit events when available; it remains
 unavailable for accounts that do not expose such events.

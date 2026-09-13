@@ -70,17 +70,16 @@ quota summary, sidebar visibility, and Settings access in one bottom surface;
 the window toolbar keeps the centered title and only shows the native sidebar
 toggle while the sidebar is collapsed.
 
-The status item remains the single app-shell owner. When AI usage quotas are
-enabled, left click opens a native `NSMenu` containing the provider quota cards
-and actions to open GitMenuBar, refresh quotas, open Settings, or quit. The
-user can choose whether the status item always renders up to two selected quota
-figures per provider or keeps them only inside that menu; the menu remains
-available in both modes. The status-item strip uses template/semantic AppKit
-label color so it follows the menu bar's appearance, while the Git attention
-badge retains its red/white contrast. Right click and Control-click retain the
-existing Git command menu. Unavailable provider data does not create an empty
-meter; cached stale readings stay visible and marked Outdated in the quota
-menu.
+The status item remains the single app-shell owner. Left click opens the main
+GitMenuBar window. When AI usage quotas are enabled, right click and
+Control-click retain the Git command menu and add an `AI Usage Quotas` submenu
+with the provider quota cards and refresh action. The user can choose whether
+the status item always renders up to two selected quota figures per provider
+or keeps them only inside that submenu; the submenu remains available in both
+modes. The status-item strip uses template/semantic AppKit label color so it
+follows the menu bar's appearance, while the Git attention badge retains its
+red/white contrast. Unavailable provider data does not create an empty meter;
+cached stale readings stay visible and marked Outdated in the quota submenu.
 
 The side panel uses fixed `WorkbenchMetrics.sidePanelWidth`. Dismiss with the
 explicit close control, Escape (clears selection first), and outside tap —
