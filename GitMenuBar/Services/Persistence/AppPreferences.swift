@@ -31,6 +31,7 @@ enum AppPreferences {
         static let showAntigravityUsageQuota = "showAntigravityUsageQuota"
         static let usageQuotaMenuBarStyle = "usageQuotaMenuBarStyle"
         static let usageQuotaValueStyle = "usageQuotaValueStyle"
+        static let usageQuotaMenuBarVisibility = "usageQuotaMenuBarVisibility"
         static let usageQuotaProviderOrder = "usageQuotaProviderOrder"
         static let usageQuotaMetrics = "usageQuotaMetrics"
     }

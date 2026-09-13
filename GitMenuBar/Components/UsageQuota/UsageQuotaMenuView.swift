@@ -243,6 +243,17 @@ private struct UsageQuotaMenuMeter: View {
 struct UsageQuotaMenuBarStrip: View {
     let groups: [UsageQuotaMenuBarGroup]
     let style: UsageQuotaPresentationPreferences.MeterStyle
+    let tint: Color
+
+    init(
+        groups: [UsageQuotaMenuBarGroup],
+        style: UsageQuotaPresentationPreferences.MeterStyle,
+        tint: Color = Color(nsColor: .labelColor)
+    ) {
+        self.groups = groups
+        self.style = style
+        self.tint = tint
+    }
 
     var body: some View {
         switch style {
@@ -250,7 +261,7 @@ struct UsageQuotaMenuBarStrip: View {
             HStack(spacing: 11) {
                 ForEach(groups) { group in
                     HStack(spacing: 4) {
-                        ProviderIconView(providerID: group.providerID)
+                        ProviderIconView(providerID: group.providerID, tint: tint)
                             .frame(width: 16, height: 16)
                         if group.values.count == 1 {
                             Text(group.values[0])
@@ -266,7 +277,7 @@ struct UsageQuotaMenuBarStrip: View {
                     }
                 }
             }
-            .foregroundStyle(.black)
+            .foregroundStyle(tint)
             .monospacedDigit()
             .padding(.horizontal, 2)
             .padding(.vertical, 1)
@@ -287,10 +298,10 @@ struct UsageQuotaMenuBarStrip: View {
                 for (index, fraction) in fractions.enumerated() {
                     let barOriginY = top + CGFloat(index) * (trackHeight + gap)
                     let track = CGRect(x: pad, y: barOriginY, width: trackWidth, height: trackHeight)
-                    context.fill(Path(roundedRect: track, cornerRadius: radius), with: .color(.black.opacity(0.24)))
+                    context.fill(Path(roundedRect: track, cornerRadius: radius), with: .color(tint.opacity(0.24)))
                     let filled = max(1, trackWidth * CGFloat(min(max(fraction, 0), 1)))
                     let fill = CGRect(x: pad, y: barOriginY, width: filled, height: trackHeight)
-                    context.fill(Path(roundedRect: fill, cornerRadius: radius), with: .color(.black))
+                    context.fill(Path(roundedRect: fill, cornerRadius: radius), with: .color(tint))
                 }
             }
             .frame(width: 18, height: 18)

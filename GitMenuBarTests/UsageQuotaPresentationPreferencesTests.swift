@@ -32,6 +32,15 @@ final class UsageQuotaPresentationPreferencesTests: XCTestCase {
         XCTAssertEqual(restored.orderedProviderIDs.first, .cursor)
     }
 
+    func testPersistsMenuBarVisibility() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.menuBarVisibility = .menuOnly
+
+        let restored = UsageQuotaPresentationPreferences(defaults: defaults)
+
+        XCTAssertEqual(restored.menuBarVisibility, .menuOnly)
+    }
+
     func testPersistsAtMostTwoSelectedMetrics() {
         let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
         preferences.setSelectedMetrics([.credits, .weekly, .session], for: .codex)
