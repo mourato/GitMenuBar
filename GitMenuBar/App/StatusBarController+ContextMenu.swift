@@ -19,6 +19,12 @@ extension StatusBarController {
 
         appendRecentProjectsMenu(to: menu)
         addCommandMenuItem(.chooseRepository, to: menu)
+
+        if let usageQuotaMenuItem = makeUsageQuotaMenuItem() {
+            menu.addItem(.separator())
+            menu.addItem(usageQuotaMenuItem)
+        }
+
         menu.addItem(NSMenuItem.separator())
 
         addCommandMenuItem(.showSettings, to: menu)

@@ -32,25 +32,20 @@ extension StatusBarController {
             appearance: menuBarAppearance
         )
         button.toolTip = if showsUsageInStatusItem, !groups.isEmpty {
-            groups.map(\.spokenLabel).joined(separator: ", ")
+            "\(groups.map(\.spokenLabel).joined(separator: ", ")). Right-click for usage quotas and Git commands"
         } else if usageQuotaStore.showAIUsageQuotas {
-            "GitMenuBar — open usage quotas menu"
+            "GitMenuBar — right-click for usage quotas and Git commands"
         } else {
             "GitMenuBar"
         }
         button.setAccessibilityLabel(button.toolTip ?? "GitMenuBar")
     }
 
-    func showUsageMenu() {
-        guard let button = statusItem?.button else {
-            openMainWindow()
-            return
-        }
+    func makeUsageQuotaMenuItem() -> NSMenuItem? {
+        guard usageQuotaStore.showAIUsageQuotas else { return nil }
 
-        usageQuotaStore.refresh(reason: .manual)
-
-        let menu = NSMenu()
-        menu.autoenablesItems = false
+        let submenu = NSMenu(title: "AI Usage Quotas")
+        submenu.autoenablesItems = false
 
         let quotaItem = NSMenuItem()
         let hostedView = NSHostingView(
@@ -61,20 +56,13 @@ extension StatusBarController {
         hostedView.frame = NSRect(origin: .zero, size: hostedView.fittingSize)
         quotaItem.view = hostedView
         quotaItem.isEnabled = false
-        menu.addItem(quotaItem)
-        menu.addItem(.separator())
+        submenu.addItem(quotaItem)
+        submenu.addItem(.separator())
+        submenu.addItem(menuItem(title: "Atualizar cotas", action: #selector(refreshUsageFromMenu)))
 
-        menu.addItem(menuItem(title: "Abrir GitMenuBar", action: #selector(openMainWindowFromUsageMenu)))
-        menu.addItem(menuItem(title: "Atualizar cotas", action: #selector(refreshUsageFromMenu)))
-        menu.addItem(.separator())
-        menu.addItem(menuItem(title: "Configurações", action: #selector(openSettingsFromUsageMenu)))
-        menu.addItem(menuItem(title: "Sair do GitMenuBar", action: #selector(quitFromUsageMenu)))
-
-        usageMenu = menu
-        statusItem?.menu = menu
-        button.performClick(nil)
-        statusItem?.menu = nil
-        usageMenu = nil
+        let menuItem = NSMenuItem(title: "AI Usage Quotas", action: nil, keyEquivalent: "")
+        menuItem.submenu = submenu
+        return menuItem
     }
 
     private func makeUsageStatusImage(
@@ -121,20 +109,8 @@ extension StatusBarController {
         return item
     }
 
-    @objc private func openMainWindowFromUsageMenu() {
-        openMainWindow()
-    }
-
     @objc private func refreshUsageFromMenu() {
         usageQuotaStore.refresh(reason: .manual)
-    }
-
-    @objc private func openSettingsFromUsageMenu() {
-        showSettingsWindow()
-    }
-
-    @objc private func quitFromUsageMenu() {
-        NSApplication.shared.terminate(nil)
     }
 }
 

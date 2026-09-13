@@ -43,7 +43,6 @@ final class StatusBarController: NSObject, ObservableObject {
     var contextMenu: NSMenu?
     private var cancellables = Set<AnyCancellable>()
     var baseStatusImage: NSImage?
-    var usageMenu: NSMenu?
     private var remoteExistenceByPath: [String: RemoteExistenceState] = [:]
     private var nextWindowOpenTraceID = 0
     private var hasPositionedWindowInitially = false
@@ -619,17 +618,16 @@ final class StatusBarController: NSObject, ObservableObject {
         case .leftMouseUp where currentEvent.modifierFlags.contains(.control):
             showContextMenu()
         default:
-            if usageQuotaStore.showAIUsageQuotas {
-                showUsageMenu()
-            } else {
-                toggleMainWindow(nil)
-            }
+            toggleMainWindow(nil)
         }
     }
 
     private func showContextMenu() {
         guard let contextMenu, let button = statusItem?.button else { return }
 
+        if usageQuotaStore.showAIUsageQuotas {
+            usageQuotaStore.refresh(reason: .manual)
+        }
         rebuildContextMenu()
         statusItem?.menu = contextMenu
         button.performClick(nil)
