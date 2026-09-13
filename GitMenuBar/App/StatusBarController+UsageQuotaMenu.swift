@@ -83,29 +83,36 @@ extension StatusBarController {
         isTemplate: Bool,
         appearance: NSAppearance?
     ) -> NSImage? {
-        var renderedImage: NSImage?
-        let render = {
-            let renderer = ImageRenderer(
-                content: UsageQuotaMenuBarStrip(
-                    groups: groups,
-                    style: style,
-                    tint: Color(nsColor: .labelColor)
-                )
-            )
-            renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
-            renderedImage = renderer.nsImage
-        }
-
-        if let appearance {
-            appearance.performAsCurrentDrawingAppearance(render)
+        // ponytail: ImageRenderer ignora NSAppearance.current, então resolve labelColor
+        // para cor fixa antes de renderizar; template usa preto (só alpha importa).
+        let tint: Color = if isTemplate {
+            .black
+        } else if let appearance {
+            resolvedMenuBarTint(for: appearance)
         } else {
-            render()
+            Color(nsColor: .labelColor)
         }
 
-        guard let image = renderedImage else { return nil }
+        let renderer = ImageRenderer(
+            content: UsageQuotaMenuBarStrip(
+                groups: groups,
+                style: style,
+                tint: tint
+            )
+        )
+        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
+        guard let image = renderer.nsImage else { return nil }
         image.isTemplate = isTemplate
         image.accessibilityDescription = groups.map(\.spokenLabel).joined(separator: ", ")
         return image
+    }
+
+    private func resolvedMenuBarTint(for appearance: NSAppearance) -> Color {
+        var resolved = NSColor.labelColor
+        appearance.performAsCurrentDrawingAppearance {
+            resolved = NSColor.labelColor.usingColorSpace(.sRGB) ?? NSColor.labelColor
+        }
+        return Color(nsColor: resolved)
     }
 
     private func menuItem(title: String, action: Selector) -> NSMenuItem {
