@@ -1,6 +1,7 @@
 import Foundation
 
-enum UsageProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
+enum UsageProviderID: String, Codable, CaseIterable, Hashable, Identifiable, Sendable {
+    case claudeCode
     case codex
     case cursor
     case openrouter
@@ -13,6 +14,8 @@ enum UsageProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var displayName: String {
         switch self {
+        case .claudeCode:
+            "Claude Code"
         case .codex:
             "Codex"
         case .cursor:

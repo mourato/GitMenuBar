@@ -55,11 +55,20 @@ struct ProviderIconView: View {
                 .frame(width: 18, height: 18)
                 .accessibilityHidden(true)
         } else {
-            Image(systemName: "sparkles")
+            Image(systemName: fallbackSymbol)
                 .font(WorkbenchTypography.captionStrong)
                 .foregroundStyle(.secondary)
                 .frame(width: 18, height: 18)
                 .accessibilityHidden(true)
+        }
+    }
+
+    private var fallbackSymbol: String {
+        switch providerID {
+        case .claudeCode:
+            "cloud.fill"
+        default:
+            "sparkles"
         }
     }
 }
@@ -69,6 +78,8 @@ private enum ProviderIconRenderer {
 
     static func image(for providerID: UsageProviderID) -> NSImage? {
         let resourceName = switch providerID {
+        case .claudeCode:
+            "ProviderIcon-claude-code"
         case .codex:
             "ProviderIcon-codex"
         case .cursor:

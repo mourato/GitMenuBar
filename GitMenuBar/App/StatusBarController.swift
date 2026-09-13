@@ -13,7 +13,7 @@ import SwiftUI
 // swiftlint:disable file_length
 @MainActor
 final class StatusBarController: NSObject, ObservableObject {
-    private enum Constants {
+    enum Constants {
         static let statusIconPointSize = NSSize(width: 16, height: 16)
         static let windowInitialSize = NSSize(width: WorkbenchMetrics.mainWindowInitialWidth, height: 720)
         static let windowMinimumHeight: CGFloat = 420
@@ -42,7 +42,8 @@ final class StatusBarController: NSObject, ObservableObject {
     private var mainWindowToolbarDelegate: MainWindowToolbarDelegate?
     var contextMenu: NSMenu?
     private var cancellables = Set<AnyCancellable>()
-    private var baseStatusImage: NSImage?
+    var baseStatusImage: NSImage?
+    var usageMenu: NSMenu?
     private var remoteExistenceByPath: [String: RemoteExistenceState] = [:]
     private var nextWindowOpenTraceID = 0
     private var hasPositionedWindowInitially = false
@@ -62,6 +63,7 @@ final class StatusBarController: NSObject, ObservableObject {
     let shortcutActionBridge: MainMenuShortcutActionBridge
     let presentationModel: MainMenuPresentationModel
     let usageQuotaStore: UsageQuotaStore
+    let usageQuotaPresentationPreferences: UsageQuotaPresentationPreferences
     let projectMonitor: ProjectMonitorStore
     let repositorySelectionCoordinator: RepositorySelectionCoordinator
 
@@ -106,6 +108,7 @@ final class StatusBarController: NSObject, ObservableObject {
         shortcutActionBridge = dependencies.shortcutActionBridge
         presentationModel = dependencies.presentationModel
         usageQuotaStore = dependencies.usageQuotaStore
+        usageQuotaPresentationPreferences = dependencies.usageQuotaPresentationPreferences
         projectMonitor = dependencies.projectMonitor
         repositorySelectionCoordinator = dependencies.repositorySelectionCoordinator
 
@@ -137,7 +140,7 @@ final class StatusBarController: NSObject, ObservableObject {
 
     private func setupStatusItem() {
         guard statusItem == nil else { return }
-        statusItem = NSStatusBar.system.statusItem(withLength: 20)
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         baseStatusImage = StatusItemBadgeRenderer.makeBaseStatusImage(iconSize: Constants.statusIconPointSize)
 
         guard let button = statusItem?.button else { return }
@@ -152,25 +155,20 @@ final class StatusBarController: NSObject, ObservableObject {
     }
 
     private func updateStatusItemBadge(count: Int) {
-        guard let button = statusItem?.button else { return }
-
-        guard count > 0 else {
-            button.image = baseStatusImage
-            return
-        }
-
-        button.image = StatusItemBadgeRenderer.makeBadgedImage(
-            count: count,
-            baseStatusImage: baseStatusImage,
-            iconSize: Constants.statusIconPointSize
-        )
+        updateStatusItemAppearance(attentionCount: count)
     }
 
     private func setupBadgeObservation() {
-        projectMonitor.$snapshots
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.updateStatusItemBadge(count: self?.projectMonitor.attentionCount ?? 0) }
-            .store(in: &cancellables)
+        let quotaChanges = usageQuotaStore.objectWillChange.map { _ in () }
+        let presentationChanges = usageQuotaPresentationPreferences.objectWillChange.map { _ in () }
+        Publishers.Merge3(
+            projectMonitor.$snapshots.map { _ in () },
+            quotaChanges,
+            presentationChanges
+        )
+        .receive(on: RunLoop.main)
+        .sink { [weak self] _ in self?.updateStatusItemBadge(count: self?.projectMonitor.attentionCount ?? 0) }
+        .store(in: &cancellables)
     }
 
     private func setupVisibilityPreferencesObservation() {
@@ -506,6 +504,7 @@ final class StatusBarController: NSObject, ObservableObject {
         .environmentObject(shortcutActionBridge)
         .environmentObject(presentationModel)
         .environmentObject(usageQuotaStore)
+        .environmentObject(usageQuotaPresentationPreferences)
         .environmentObject(projectMonitor)
         .environmentObject(repositorySelectionCoordinator)
         .environmentObject(projectCleanupStore)
@@ -620,7 +619,11 @@ final class StatusBarController: NSObject, ObservableObject {
         case .leftMouseUp where currentEvent.modifierFlags.contains(.control):
             showContextMenu()
         default:
-            toggleMainWindow(nil)
+            if usageQuotaStore.showAIUsageQuotas {
+                showUsageMenu()
+            } else {
+                toggleMainWindow(nil)
+            }
         }
     }
 

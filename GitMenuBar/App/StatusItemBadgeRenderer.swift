@@ -50,4 +50,34 @@ enum StatusItemBadgeRenderer {
         image.isTemplate = false
         return image
     }
+
+    static func makeCompositeImage(
+        baseStatusImage: NSImage?,
+        usageImage: NSImage?,
+        count: Int,
+        iconSize: NSSize
+    ) -> NSImage? {
+        guard let baseStatusImage else { return usageImage }
+        let badgedImage = count > 0
+            ? makeBadgedImage(count: count, baseStatusImage: baseStatusImage, iconSize: iconSize)
+            : baseStatusImage
+        let usageWidth = usageImage?.size.width ?? 0
+        let gap: CGFloat = usageImage == nil ? 0 : 6
+        let image = NSImage(size: NSSize(width: iconSize.width + gap + usageWidth, height: max(iconSize.height, usageImage?.size.height ?? 0)))
+
+        image.lockFocus()
+        badgedImage?.draw(in: NSRect(origin: .zero, size: iconSize))
+        if let usageImage {
+            let usageRect = NSRect(
+                x: iconSize.width + gap,
+                y: (image.size.height - usageImage.size.height) / 2,
+                width: usageImage.size.width,
+                height: usageImage.size.height
+            )
+            usageImage.draw(in: usageRect)
+        }
+        image.unlockFocus()
+        image.isTemplate = count == 0
+        return image
+    }
 }
