@@ -3,9 +3,7 @@ import Foundation
 @MainActor
 final class AICommitCoordinator: ObservableObject {
     private struct GenerationDependencies {
-        let provider: AIProviderConfig
-        let apiKey: String
-        let model: String
+        let configuration: AICommitGenerationConfiguration
     }
 
     @Published private(set) var isGenerating: Bool = false
@@ -17,18 +15,21 @@ final class AICommitCoordinator: ObservableObject {
     private let messageService: AICommitMessageService
     private let gitManager: GitManager
     private let grouper: AICommitGrouperService
+    private let chatGPTSubscription: ChatGPTSubscriptionManager?
     private var messageGenerationFailureCount = 0
 
     init(
         providerStore: AIProviderStore,
         keychainStore: any AIAPIKeyStore,
         messageService: AICommitMessageService,
-        gitManager: GitManager
+        gitManager: GitManager,
+        chatGPTSubscription: ChatGPTSubscriptionManager? = nil
     ) {
         self.providerStore = providerStore
         self.keychainStore = keychainStore
         self.messageService = messageService
         self.gitManager = gitManager
+        self.chatGPTSubscription = chatGPTSubscription
         grouper = AICommitGrouperService(aiService: messageService)
     }
 
@@ -49,9 +50,7 @@ final class AICommitCoordinator: ObservableObject {
         do {
             return try await messageService.generateCommitMessage(
                 request: AICommitMessageService.GenerationRequest(
-                    provider: dependencies.provider,
-                    apiKey: dependencies.apiKey,
-                    model: dependencies.model,
+                    generation: dependencies.configuration,
                     preferredScopeMode: providerStore.preferences.defaultScopeMode,
                     overrideScope: scopeOverride,
                     gitManager: gitManager
@@ -68,10 +67,7 @@ final class AICommitCoordinator: ObservableObject {
 
         let dependencies: GenerationDependencies
         do {
-            dependencies = try resolvedGenerationDependencies(
-                providerOverride: providerStore.fallbackProvider,
-                modelOverride: providerStore.effectiveFallbackModel()
-            )
+            dependencies = try resolvedGenerationDependencies(isFallback: true)
         } catch {
             recordMessageGenerationFailure(error, allowsAutomaticRetry: false)
             throw error
@@ -83,9 +79,7 @@ final class AICommitCoordinator: ObservableObject {
         do {
             return try await messageService.generateCommitMessage(
                 request: AICommitMessageService.GenerationRequest(
-                    provider: dependencies.provider,
-                    apiKey: dependencies.apiKey,
-                    model: dependencies.model,
+                    generation: dependencies.configuration,
                     preferredScopeMode: providerStore.preferences.defaultScopeMode,
                     overrideScope: scopeOverride,
                     gitManager: gitManager
@@ -110,9 +104,7 @@ final class AICommitCoordinator: ObservableObject {
 
         do {
             return try await messageService.generateCommitMessage(
-                provider: dependencies.provider,
-                apiKey: dependencies.apiKey,
-                model: dependencies.model,
+                generation: dependencies.configuration,
                 rawDiff: rawDiff,
                 scopeDescription: scopeDescription
             )
@@ -148,9 +140,7 @@ final class AICommitCoordinator: ObservableObject {
             return try await grouper.generateAtomicGroups(
                 changedFiles: changedFiles,
                 diffPerFile: diffPerFile,
-                provider: dependencies.provider,
-                apiKey: dependencies.apiKey,
-                model: dependencies.model
+                generation: dependencies.configuration
             )
         } catch {
             generationError = error.localizedDescription
@@ -166,9 +156,7 @@ final class AICommitCoordinator: ObservableObject {
         do {
             return try await grouper.generateAtomicHunkGroups(
                 snapshot: snapshot,
-                provider: dependencies.provider,
-                apiKey: dependencies.apiKey,
-                model: dependencies.model
+                generation: dependencies.configuration
             )
         } catch {
             generationError = error.localizedDescription
@@ -235,6 +223,14 @@ final class AICommitCoordinator: ObservableObject {
     }
 
     var isReadyForGeneration: Bool {
+        if providerStore.preferences.defaultUsesChatGPT {
+            guard providerStore.preferences.chatGPTEnabled,
+                  let chatGPTSubscription,
+                  chatGPTSubscription.isConnected else { return false }
+            let model = providerStore.effectiveDefaultModel()
+            return !model.isEmpty && chatGPTSubscription.models.contains { $0.id == model }
+        }
+
         guard let provider = providerStore.defaultProvider else {
             return false
         }
@@ -246,6 +242,29 @@ final class AICommitCoordinator: ObservableObject {
     }
 
     var generationDisabledReason: String {
+        if providerStore.preferences.defaultUsesChatGPT {
+            guard providerStore.preferences.chatGPTEnabled else {
+                return AIError.chatGPTDisabled.localizedDescription
+            }
+            guard let chatGPTSubscription else {
+                return AIError.chatGPTUnavailable.localizedDescription
+            }
+            if case let .unavailable(message) = chatGPTSubscription.phase {
+                return message
+            }
+            if case let .failed(message) = chatGPTSubscription.phase {
+                return message
+            }
+            if chatGPTSubscription.phase == .signedOut {
+                return AIError.chatGPTUnavailable.localizedDescription
+            }
+            let model = providerStore.effectiveDefaultModel()
+            if model.isEmpty || !chatGPTSubscription.models.contains(where: { $0.id == model }) {
+                return "Choose a model offered by your ChatGPT subscription in Settings."
+            }
+            return ""
+        }
+
         guard let provider = providerStore.defaultProvider else {
             return "Configure at least one AI provider in Settings to enable commit generation."
         }
@@ -263,6 +282,14 @@ final class AICommitCoordinator: ObservableObject {
     }
 
     var isReadyForFallbackGeneration: Bool {
+        if providerStore.usesChatGPTForFallback {
+            guard providerStore.preferences.chatGPTEnabled,
+                  let chatGPTSubscription,
+                  chatGPTSubscription.isConnected else { return false }
+            let model = providerStore.effectiveFallbackModel()
+            return !model.isEmpty && chatGPTSubscription.models.contains { $0.id == model }
+        }
+
         guard let provider = providerStore.fallbackProvider else {
             return false
         }
@@ -289,24 +316,45 @@ final class AICommitCoordinator: ObservableObject {
     }
 
     private func resolvedGenerationDependencies(
-        providerOverride: AIProviderConfig? = nil,
-        modelOverride: String? = nil
+        isFallback: Bool = false
     ) throws -> GenerationDependencies {
-        guard let provider = providerOverride ?? providerStore.defaultProvider else {
-            throw AIError.providerNotConfigured
+        let usesChatGPT = isFallback ? providerStore.usesChatGPTForFallback : providerStore.preferences.defaultUsesChatGPT
+        let model = isFallback ? providerStore.effectiveFallbackModel() : providerStore.effectiveDefaultModel()
+        let modelError: AIError = isFallback ? .fallbackModelNotConfigured : .modelNotConfigured
+
+        if usesChatGPT {
+            guard providerStore.preferences.chatGPTEnabled else {
+                throw AIError.chatGPTDisabled
+            }
+            guard chatGPTSubscription != nil else {
+                throw AIError.chatGPTUnavailable
+            }
+            guard !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw modelError
+            }
+            return GenerationDependencies(configuration: .chatGPT(
+                model: model,
+                reasoningEffort: providerStore.chatGPTReasoningEffort(for: model)
+            ))
         }
 
+        guard let provider = isFallback ? providerStore.fallbackProvider : providerStore.defaultProvider else {
+            throw AIError.providerNotConfigured
+        }
         let apiKey = resolvedAPIKey(for: provider)
         guard !apiKey.isEmpty else {
             throw AIError.apiKeyMissing
         }
 
-        let model = modelOverride ?? providerStore.effectiveDefaultModel()
         guard !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw modelOverride == nil ? AIError.modelNotConfigured : AIError.fallbackModelNotConfigured
+            throw modelError
         }
 
-        return GenerationDependencies(provider: provider, apiKey: apiKey, model: model)
+        return GenerationDependencies(configuration: .api(
+            provider: provider,
+            apiKey: apiKey,
+            model: model
+        ))
     }
 
     private func beginMessageGeneration() {

@@ -24,6 +24,7 @@ final class AppSettingsWindowController {
         githubAuthManager: GitHubAuthManager,
         aiProviderStore: AIProviderStore,
         aiCommitCoordinator: AICommitCoordinator,
+        chatGPTSubscription: ChatGPTSubscriptionManager,
         usageQuotaStore: UsageQuotaStore,
         usageQuotaPresentationPreferences: UsageQuotaPresentationPreferences,
         onSetAutoHideSuspended: @escaping (Bool) -> Void
@@ -61,6 +62,7 @@ final class AppSettingsWindowController {
                 AISettingsPaneView()
                     .environmentObject(aiProviderStore)
                     .environmentObject(aiCommitCoordinator)
+                    .environmentObject(chatGPTSubscription)
                     .environmentObject(usageQuotaStore)
                     .environmentObject(usageQuotaPresentationPreferences)
             }

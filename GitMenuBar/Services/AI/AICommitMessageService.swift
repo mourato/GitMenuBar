@@ -31,12 +31,53 @@ final class AICommitMessageService: @unchecked Sendable {
     }
 
     struct GenerationRequest {
-        let provider: AIProviderConfig
-        let apiKey: String
-        let model: String
+        let generation: AICommitGenerationConfiguration
         let preferredScopeMode: AICommitDefaultScopeMode
         let overrideScope: DiffScope?
         let gitManager: GitManager
+
+        init(
+            generation: AICommitGenerationConfiguration,
+            preferredScopeMode: AICommitDefaultScopeMode,
+            overrideScope: DiffScope?,
+            gitManager: GitManager
+        ) {
+            self.generation = generation
+            self.preferredScopeMode = preferredScopeMode
+            self.overrideScope = overrideScope
+            self.gitManager = gitManager
+        }
+
+        init(
+            provider: AIProviderConfig,
+            apiKey: String,
+            model: String,
+            preferredScopeMode: AICommitDefaultScopeMode,
+            overrideScope: DiffScope?,
+            gitManager: GitManager
+        ) {
+            self.init(
+                generation: .api(provider: provider, apiKey: apiKey, model: model),
+                preferredScopeMode: preferredScopeMode,
+                overrideScope: overrideScope,
+                gitManager: gitManager
+            )
+        }
+
+        init(
+            chatGPTModel: String,
+            reasoningEffort: String?,
+            preferredScopeMode: AICommitDefaultScopeMode,
+            overrideScope: DiffScope?,
+            gitManager: GitManager
+        ) {
+            self.init(
+                generation: .chatGPT(model: chatGPTModel, reasoningEffort: reasoningEffort),
+                preferredScopeMode: preferredScopeMode,
+                overrideScope: overrideScope,
+                gitManager: gitManager
+            )
+        }
     }
 
     private struct SnippetAllocation {
@@ -47,15 +88,18 @@ final class AICommitMessageService: @unchecked Sendable {
     private let maxDiffCharacters: Int
     private let session: URLSession
     private let messagePolicy: CommitMessagePolicy
+    private let chatGPTGenerator: (any ChatGPTCommitGenerating)?
 
     init(
         maxDiffCharacters: Int = 40000,
         session: URLSession = .shared,
-        messagePolicy: CommitMessagePolicy = .shared
+        messagePolicy: CommitMessagePolicy = .shared,
+        chatGPTGenerator: (any ChatGPTCommitGenerating)? = nil
     ) {
         self.maxDiffCharacters = maxDiffCharacters
         self.session = session
         self.messagePolicy = messagePolicy
+        self.chatGPTGenerator = chatGPTGenerator
     }
 
     func testConnection(
@@ -89,9 +133,7 @@ final class AICommitMessageService: @unchecked Sendable {
         )
 
         return try await generateCommitMessage(
-            provider: request.provider,
-            apiKey: request.apiKey,
-            model: request.model,
+            generation: request.generation,
             payload: payload
         )
     }
@@ -114,11 +156,27 @@ final class AICommitMessageService: @unchecked Sendable {
             rawDiff: normalizedDiff
         )
         return try await generateCommitMessage(
-            provider: provider,
-            apiKey: apiKey,
-            model: model,
+            generation: .api(provider: provider, apiKey: apiKey, model: model),
             payload: payload
         )
+    }
+
+    func generateCommitMessage(
+        generation: AICommitGenerationConfiguration,
+        rawDiff: String,
+        scopeDescription: String = "Selected commit"
+    ) async throws -> String {
+        let normalizedDiff = rawDiff.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedDiff.isEmpty else {
+            throw AIError.noDiffAvailable
+        }
+
+        let payload = assemblePayload(
+            scope: .all,
+            scopeDescription: scopeDescription,
+            rawDiff: normalizedDiff
+        )
+        return try await generateCommitMessage(generation: generation, payload: payload)
     }
 
     /// Generate a raw AI response for an arbitrary prompt (no commit-message sanitizing).
@@ -128,32 +186,42 @@ final class AICommitMessageService: @unchecked Sendable {
         apiKey: String,
         model: String
     ) async throws -> String {
-        let adapter = AIProviderAdapterFactory.makeAdapter(for: provider.type)
-        return try await adapter.generateCommitMessage(
-            config: provider,
-            apiKey: apiKey,
-            model: model,
+        try await generateRawResponse(
             prompt: prompt,
-            session: session
+            generation: .api(provider: provider, apiKey: apiKey, model: model)
         )
     }
 
+    func generateRawResponse(
+        prompt: String,
+        generation: AICommitGenerationConfiguration
+    ) async throws -> String {
+        switch generation.source {
+        case let .api(provider, apiKey):
+            let adapter = AIProviderAdapterFactory.makeAdapter(for: provider.type)
+            return try await adapter.generateCommitMessage(
+                config: provider,
+                apiKey: apiKey,
+                model: generation.model,
+                prompt: prompt,
+                session: session
+            )
+        case let .chatGPT(reasoningEffort):
+            guard let chatGPTGenerator else { throw AIError.chatGPTUnavailable }
+            return try await chatGPTGenerator.generateCommitResponse(
+                prompt: prompt,
+                model: generation.model,
+                reasoningEffort: reasoningEffort
+            )
+        }
+    }
+
     private func generateCommitMessage(
-        provider: AIProviderConfig,
-        apiKey: String,
-        model: String,
+        generation: AICommitGenerationConfiguration,
         payload: StructuredDiffPayload
     ) async throws -> String {
         let prompt = buildPrompt(payload: payload)
-
-        let adapter = AIProviderAdapterFactory.makeAdapter(for: provider.type)
-        let rawResponse = try await adapter.generateCommitMessage(
-            config: provider,
-            apiKey: apiKey,
-            model: model,
-            prompt: prompt,
-            session: session
-        )
+        let rawResponse = try await generateRawResponse(prompt: prompt, generation: generation)
 
         let cleanedResponse = cleanCommitMessage(rawResponse)
         guard !cleanedResponse.isEmpty else {

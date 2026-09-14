@@ -7,6 +7,28 @@ protocol AtomicGroupingAIProviding {
         apiKey: String,
         model: String
     ) async throws -> String
+
+    func generateRawResponse(
+        prompt: String,
+        generation: AICommitGenerationConfiguration
+    ) async throws -> String
+}
+
+extension AtomicGroupingAIProviding {
+    func generateRawResponse(
+        prompt: String,
+        generation: AICommitGenerationConfiguration
+    ) async throws -> String {
+        guard case let .api(provider, apiKey) = generation.source else {
+            throw AIError.chatGPTUnavailable
+        }
+        return try await generateRawResponse(
+            prompt: prompt,
+            provider: provider,
+            apiKey: apiKey,
+            model: generation.model
+        )
+    }
 }
 
 extension AICommitMessageService: AtomicGroupingAIProviding {}
@@ -33,14 +55,24 @@ final class AICommitGrouperService: ObservableObject, @unchecked Sendable {
         apiKey: String,
         model: String
     ) async throws -> [AtomicCommitGroup] {
+        try await generateAtomicGroups(
+            changedFiles: changedFiles,
+            diffPerFile: diffPerFile,
+            generation: .api(provider: provider, apiKey: apiKey, model: model)
+        )
+    }
+
+    func generateAtomicGroups(
+        changedFiles: [WorkingTreeFile],
+        diffPerFile: [String: String],
+        generation: AICommitGenerationConfiguration
+    ) async throws -> [AtomicCommitGroup] {
         let prompt = buildGroupingPrompt(changedFiles: changedFiles, diffPerFile: diffPerFile)
 
         do {
             let response = try await aiService.generateRawResponse(
                 prompt: prompt,
-                provider: provider,
-                apiKey: apiKey,
-                model: model
+                generation: generation
             )
             let groups = try parseGroupsFromResponse(response)
             guard !groups.isEmpty else {
@@ -63,9 +95,19 @@ final class AICommitGrouperService: ObservableObject, @unchecked Sendable {
         apiKey: String,
         model: String
     ) async throws -> [AtomicCommitGroup] {
+        try await generateAtomicHunkGroups(
+            snapshot: snapshot,
+            generation: .api(provider: provider, apiKey: apiKey, model: model)
+        )
+    }
+
+    func generateAtomicHunkGroups(
+        snapshot: AtomicCommitSnapshot,
+        generation: AICommitGenerationConfiguration
+    ) async throws -> [AtomicCommitGroup] {
         let prompt = buildHunkGroupingPrompt(snapshot: snapshot)
         do {
-            let response = try await aiService.generateRawResponse(prompt: prompt, provider: provider, apiKey: apiKey, model: model)
+            let response = try await aiService.generateRawResponse(prompt: prompt, generation: generation)
             let groups = try parseHunkGroupsFromResponse(response, snapshot: snapshot)
             guard !groups.isEmpty else { return AtomicCommitGroup.fallbackGroups(for: snapshot.files) }
             return groups

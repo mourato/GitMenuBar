@@ -74,6 +74,40 @@ final class AIProviderStoreTests: XCTestCase {
         XCTAssertEqual(store.preferences.defaultModel, "model-2")
     }
 
+    func testPersistsChatGPTSelectionAndReasoningPerModel() {
+        let store = AIProviderStore(dataStore: dataStore)
+
+        store.updateChatGPTEnabled(true)
+        store.updateDefaultSelection(.chatGPT)
+        store.updateDefaultModel("gpt-5")
+        store.updateChatGPTReasoningEffort("high", for: "gpt-5")
+        store.updateChatGPTReasoningEffort("minimal", for: "gpt-5-mini")
+        store.updateFallbackSelection(.chatGPT)
+        store.updateFallbackModel("gpt-5-mini")
+
+        let reloadedStore = AIProviderStore(dataStore: dataStore)
+
+        XCTAssertTrue(reloadedStore.preferences.chatGPTEnabled)
+        XCTAssertEqual(reloadedStore.defaultProviderSelection, .chatGPT)
+        XCTAssertEqual(reloadedStore.fallbackProviderSelection, .chatGPT)
+        XCTAssertEqual(reloadedStore.effectiveDefaultModel(), "gpt-5")
+        XCTAssertEqual(reloadedStore.effectiveFallbackModel(), "gpt-5-mini")
+        XCTAssertEqual(reloadedStore.chatGPTReasoningEffort(for: "gpt-5"), "high")
+        XCTAssertEqual(reloadedStore.chatGPTReasoningEffort(for: "gpt-5-mini"), "minimal")
+    }
+
+    func testDisablingChatGPTKeepsSelectionWithoutMakingItReady() {
+        let store = AIProviderStore(dataStore: dataStore)
+
+        store.updateDefaultSelection(.chatGPT)
+        store.updateDefaultModel("gpt-5")
+        store.updateChatGPTEnabled(false)
+
+        XCTAssertEqual(store.defaultProviderSelection, .chatGPT)
+        XCTAssertNil(store.defaultProvider)
+        XCTAssertEqual(store.effectiveDefaultModel(), "gpt-5")
+    }
+
     func testSwitchingDefaultProviderReplacesUnsupportedModelWithSelectedModel() {
         let store = AIProviderStore(dataStore: dataStore)
         let firstProvider = makeProvider(name: "First")

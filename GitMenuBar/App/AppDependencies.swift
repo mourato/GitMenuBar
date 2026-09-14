@@ -12,7 +12,8 @@ final class AppDependencies {
     let appCommandCenter: AppCommandCenter
     let aiProviderStore = AIProviderStore()
     let aiKeychainStore: any AIAPIKeyStore
-    let aiCommitMessageService = AICommitMessageService()
+    let chatGPTSubscription = ChatGPTSubscriptionManager()
+    let aiCommitMessageService: AICommitMessageService
     let shortcutActionBridge = MainMenuShortcutActionBridge()
     let presentationModel = MainMenuPresentationModel()
     let usageQuotaStore: UsageQuotaStore
@@ -28,6 +29,10 @@ final class AppDependencies {
             aiKeychainStore = InMemoryAIAPIKeyStore()
         } else {
             aiKeychainStore = CachedAIAPIKeyStore.shared
+        }
+        aiCommitMessageService = AICommitMessageService(chatGPTGenerator: chatGPTSubscription)
+        if aiProviderStore.preferences.chatGPTEnabled {
+            _ = chatGPTSubscription.refresh()
         }
 
         usageQuotaStore = UsageQuotaStore(providers: [
@@ -54,7 +59,8 @@ final class AppDependencies {
             providerStore: aiProviderStore,
             keychainStore: aiKeychainStore,
             messageService: aiCommitMessageService,
-            gitManager: gitManager
+            gitManager: gitManager,
+            chatGPTSubscription: chatGPTSubscription
         )
     }
 
@@ -97,6 +103,7 @@ final class AppDependencies {
             githubAuthManager: githubAuthManager,
             aiProviderStore: aiProviderStore,
             aiCommitCoordinator: aiCommitCoordinator,
+            chatGPTSubscription: chatGPTSubscription,
             usageQuotaStore: usageQuotaStore,
             usageQuotaPresentationPreferences: usageQuotaPresentationPreferences,
             onSetAutoHideSuspended: onSetAutoHideSuspended

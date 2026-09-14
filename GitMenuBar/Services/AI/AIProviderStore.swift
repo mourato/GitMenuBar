@@ -97,7 +97,24 @@ final class AIProviderStore: ObservableObject {
     }
 
     func updateDefaultProvider(_ providerId: UUID?) {
+        preferences.defaultUsesChatGPT = false
         preferences.defaultProviderId = providerId
+        normalizeDefaults()
+        persistPreferences()
+    }
+
+    func updateDefaultSelection(_ selection: AICommitProviderSelection?) {
+        switch selection {
+        case .chatGPT:
+            preferences.defaultUsesChatGPT = true
+            preferences.defaultProviderId = nil
+        case let .api(providerId):
+            preferences.defaultUsesChatGPT = false
+            preferences.defaultProviderId = providerId
+        case .defaultProvider, nil:
+            preferences.defaultUsesChatGPT = false
+            preferences.defaultProviderId = nil
+        }
         normalizeDefaults()
         persistPreferences()
     }
@@ -113,8 +130,41 @@ final class AIProviderStore: ObservableObject {
     }
 
     func updateFallbackProvider(_ providerId: UUID?) {
+        preferences.fallbackUsesChatGPT = false
         preferences.fallbackProviderId = providerId
         normalizeDefaults()
+        persistPreferences()
+    }
+
+    func updateFallbackSelection(_ selection: AICommitProviderSelection) {
+        switch selection {
+        case .chatGPT:
+            preferences.fallbackUsesChatGPT = true
+            preferences.fallbackProviderId = nil
+        case let .api(providerId):
+            preferences.fallbackUsesChatGPT = false
+            preferences.fallbackProviderId = providerId
+        case .defaultProvider:
+            preferences.fallbackUsesChatGPT = false
+            preferences.fallbackProviderId = nil
+        }
+        normalizeDefaults()
+        persistPreferences()
+    }
+
+    func updateChatGPTEnabled(_ enabled: Bool) {
+        preferences.chatGPTEnabled = enabled
+        persistPreferences()
+    }
+
+    func updateChatGPTReasoningEffort(_ effort: String?, for model: String) {
+        let model = model.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !model.isEmpty else { return }
+        if let effort, !effort.isEmpty {
+            preferences.chatGPTReasoningEfforts[model] = effort
+        } else {
+            preferences.chatGPTReasoningEfforts.removeValue(forKey: model)
+        }
         persistPreferences()
     }
 
@@ -134,6 +184,9 @@ final class AIProviderStore: ObservableObject {
     }
 
     var defaultProvider: AIProviderConfig? {
+        guard !preferences.defaultUsesChatGPT else {
+            return nil
+        }
         guard let id = preferences.defaultProviderId else {
             return providers.first
         }
@@ -142,6 +195,9 @@ final class AIProviderStore: ObservableObject {
     }
 
     var fallbackProvider: AIProviderConfig? {
+        guard !usesChatGPTForFallback else {
+            return nil
+        }
         guard let fallbackProviderId = preferences.fallbackProviderId else {
             return defaultProvider
         }
@@ -162,61 +218,102 @@ final class AIProviderStore: ObservableObject {
         preferences.fallbackModel.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    var defaultProviderSelection: AICommitProviderSelection? {
+        if preferences.defaultUsesChatGPT {
+            return .chatGPT
+        }
+        guard let provider = defaultProvider else { return nil }
+        return .api(provider.id)
+    }
+
+    var fallbackProviderSelection: AICommitProviderSelection {
+        if usesChatGPTForFallback {
+            return .chatGPT
+        }
+        if let fallbackProviderId = preferences.fallbackProviderId {
+            return .api(fallbackProviderId)
+        }
+        return .defaultProvider
+    }
+
+    var usesChatGPTForFallback: Bool {
+        preferences.fallbackUsesChatGPT
+            || (preferences.fallbackProviderId == nil && preferences.defaultUsesChatGPT)
+    }
+
+    func chatGPTReasoningEffort(for model: String) -> String? {
+        preferences.chatGPTReasoningEfforts[model]
+    }
+
     private func normalizeDefaults() {
-        if providers.isEmpty {
+        if providers.isEmpty, !preferences.defaultUsesChatGPT {
             preferences.defaultProviderId = nil
             preferences.defaultModel = ""
-            preferences.fallbackProviderId = nil
-            preferences.fallbackModel = ""
+        }
+
+        normalizeDefaultProvider()
+        normalizeFallbackProvider()
+        normalizeFallbackModel()
+    }
+
+    private func normalizeDefaultProvider() {
+        guard !preferences.defaultUsesChatGPT, !providers.isEmpty else {
+            if preferences.defaultUsesChatGPT {
+                preferences.defaultProviderId = nil
+            }
             return
         }
 
-        let hasValidDefaultProvider = preferences.defaultProviderId.map { selectedId in
-            providers.contains(where: { $0.id == selectedId })
+        let hasValidProvider = preferences.defaultProviderId.map { id in
+            providers.contains { $0.id == id }
         } ?? false
-        if preferences.defaultProviderId != nil, !hasValidDefaultProvider {
+        if !hasValidProvider {
             preferences.defaultProviderId = providers.first?.id
         }
-
-        if preferences.defaultProviderId == nil {
-            preferences.defaultProviderId = providers.first?.id
-        }
-
-        guard let provider = defaultProvider else {
-            preferences.defaultModel = ""
-            return
-        }
-
-        let hasValidFallbackProvider = preferences.fallbackProviderId.map { selectedId in
-            providers.contains(where: { $0.id == selectedId })
-        } ?? true
-        if !hasValidFallbackProvider {
-            preferences.fallbackProviderId = nil
-        }
-        if preferences.fallbackProviderId == provider.id {
-            preferences.fallbackProviderId = nil
-        }
+        guard let provider = defaultProvider else { return }
 
         let currentModel = preferences.defaultModel.trimmingCharacters(in: .whitespacesAndNewlines)
-        let availableModels = provider.availableModels.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        if currentModel.isEmpty || (!availableModels.isEmpty && !availableModels.contains(currentModel)) {
-            preferences.defaultModel = provider.selectedModel.trimmingCharacters(in: .whitespacesAndNewlines)
-            if preferences.defaultModel.isEmpty || (!availableModels.isEmpty && !availableModels.contains(preferences.defaultModel)) {
-                preferences.defaultModel = availableModels.first ?? ""
-            }
+        let availableModels = provider.availableModels.filter {
+            !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        guard currentModel.isEmpty || (!availableModels.isEmpty && !availableModels.contains(currentModel)) else {
+            return
+        }
+        preferences.defaultModel = provider.selectedModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        if preferences.defaultModel.isEmpty || (!availableModels.isEmpty && !availableModels.contains(preferences.defaultModel)) {
+            preferences.defaultModel = availableModels.first ?? ""
+        }
+    }
+
+    private func normalizeFallbackProvider() {
+        guard !preferences.fallbackUsesChatGPT else {
+            preferences.fallbackProviderId = nil
+            return
         }
 
+        let hasValidProvider = preferences.fallbackProviderId.map { id in
+            providers.contains { $0.id == id }
+        } ?? true
+        if !hasValidProvider {
+            preferences.fallbackProviderId = nil
+        }
+        if let provider = defaultProvider, preferences.fallbackProviderId == provider.id {
+            preferences.fallbackProviderId = nil
+        }
+    }
+
+    private func normalizeFallbackModel() {
+        guard !usesChatGPTForFallback else { return }
         guard let fallbackProvider else {
             preferences.fallbackModel = ""
             return
         }
 
-        let fallbackAvailableModels = fallbackProvider.availableModels.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        let fallbackModel = preferences.fallbackModel.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !fallbackModel.isEmpty,
-           !fallbackAvailableModels.isEmpty,
-           !fallbackAvailableModels.contains(fallbackModel)
-        {
+        let availableModels = fallbackProvider.availableModels.filter {
+            !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        let model = preferences.fallbackModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !model.isEmpty, !availableModels.isEmpty, !availableModels.contains(model) {
             preferences.fallbackModel = ""
         }
     }

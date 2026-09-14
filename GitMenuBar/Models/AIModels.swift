@@ -99,6 +99,30 @@ enum DiffScope: String, CaseIterable, Codable, Identifiable {
     }
 }
 
+enum AICommitProviderSelection: Hashable {
+    case chatGPT
+    case api(UUID)
+    case defaultProvider
+}
+
+struct AICommitGenerationConfiguration {
+    enum Source {
+        case api(provider: AIProviderConfig, apiKey: String)
+        case chatGPT(reasoningEffort: String?)
+    }
+
+    let source: Source
+    let model: String
+
+    static func api(provider: AIProviderConfig, apiKey: String, model: String) -> Self {
+        Self(source: .api(provider: provider, apiKey: apiKey), model: model)
+    }
+
+    static func chatGPT(model: String, reasoningEffort: String?) -> Self {
+        Self(source: .chatGPT(reasoningEffort: reasoningEffort), model: model)
+    }
+}
+
 enum AICommitDefaultScopeMode: String, Codable {
     case stagedWithFallbackAll
 }
@@ -181,6 +205,10 @@ struct AICommitPreferences: Codable, Equatable {
     var fallbackProviderId: UUID?
     var fallbackModel: String
     var defaultScopeMode: AICommitDefaultScopeMode
+    var chatGPTEnabled: Bool
+    var defaultUsesChatGPT: Bool
+    var fallbackUsesChatGPT: Bool
+    var chatGPTReasoningEfforts: [String: String]
 
     private enum CodingKeys: String, CodingKey {
         case defaultProviderId
@@ -188,6 +216,10 @@ struct AICommitPreferences: Codable, Equatable {
         case fallbackProviderId
         case fallbackModel
         case defaultScopeMode
+        case chatGPTEnabled
+        case defaultUsesChatGPT
+        case fallbackUsesChatGPT
+        case chatGPTReasoningEfforts
     }
 
     init(
@@ -195,13 +227,21 @@ struct AICommitPreferences: Codable, Equatable {
         defaultModel: String,
         fallbackProviderId: UUID? = nil,
         fallbackModel: String = "",
-        defaultScopeMode: AICommitDefaultScopeMode
+        defaultScopeMode: AICommitDefaultScopeMode,
+        chatGPTEnabled: Bool = false,
+        defaultUsesChatGPT: Bool = false,
+        fallbackUsesChatGPT: Bool = false,
+        chatGPTReasoningEfforts: [String: String] = [:]
     ) {
         self.defaultProviderId = defaultProviderId
         self.defaultModel = defaultModel
         self.fallbackProviderId = fallbackProviderId
         self.fallbackModel = fallbackModel
         self.defaultScopeMode = defaultScopeMode
+        self.chatGPTEnabled = chatGPTEnabled
+        self.defaultUsesChatGPT = defaultUsesChatGPT
+        self.fallbackUsesChatGPT = fallbackUsesChatGPT
+        self.chatGPTReasoningEfforts = chatGPTReasoningEfforts
     }
 
     init(from decoder: Decoder) throws {
@@ -211,6 +251,10 @@ struct AICommitPreferences: Codable, Equatable {
         fallbackProviderId = try container.decodeIfPresent(UUID.self, forKey: .fallbackProviderId)
         fallbackModel = try container.decodeIfPresent(String.self, forKey: .fallbackModel) ?? ""
         defaultScopeMode = try container.decode(AICommitDefaultScopeMode.self, forKey: .defaultScopeMode)
+        chatGPTEnabled = try container.decodeIfPresent(Bool.self, forKey: .chatGPTEnabled) ?? false
+        defaultUsesChatGPT = try container.decodeIfPresent(Bool.self, forKey: .defaultUsesChatGPT) ?? false
+        fallbackUsesChatGPT = try container.decodeIfPresent(Bool.self, forKey: .fallbackUsesChatGPT) ?? false
+        chatGPTReasoningEfforts = try container.decodeIfPresent([String: String].self, forKey: .chatGPTReasoningEfforts) ?? [:]
     }
 
     static let `default` = AICommitPreferences(
@@ -218,7 +262,11 @@ struct AICommitPreferences: Codable, Equatable {
         defaultModel: "",
         fallbackProviderId: nil,
         fallbackModel: "",
-        defaultScopeMode: .stagedWithFallbackAll
+        defaultScopeMode: .stagedWithFallbackAll,
+        chatGPTEnabled: false,
+        defaultUsesChatGPT: false,
+        fallbackUsesChatGPT: false,
+        chatGPTReasoningEfforts: [:]
     )
 }
 
@@ -227,6 +275,8 @@ enum AIError: LocalizedError, Equatable {
     case apiKeyMissing
     case modelNotConfigured
     case fallbackModelNotConfigured
+    case chatGPTDisabled
+    case chatGPTUnavailable
     case noDiffAvailable
     case invalidEndpoint
     case invalidResponse
@@ -244,6 +294,10 @@ enum AIError: LocalizedError, Equatable {
             "Select a model for the selected AI provider in Settings."
         case .fallbackModelNotConfigured:
             "Select a fallback model for the selected fallback provider in Settings."
+        case .chatGPTDisabled:
+            "Enable the ChatGPT account in Settings to use it for commit generation."
+        case .chatGPTUnavailable:
+            "The local ChatGPT account is unavailable. Sign in with `codex login`, then try again."
         case .noDiffAvailable:
             "No diff found for the selected scope."
         case .invalidEndpoint:

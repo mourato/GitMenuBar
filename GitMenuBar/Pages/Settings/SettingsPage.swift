@@ -240,16 +240,19 @@ private enum SettingsAppearance {
 #Preview("AI Settings Pane") {
     let gitManager = GitManager(repositoryPathOverride: "/tmp")
     let providerStore = AIProviderStore()
+    let chatGPTSubscription = ChatGPTSubscriptionManager()
     let coordinator = AICommitCoordinator(
         providerStore: providerStore,
         keychainStore: InMemoryAIAPIKeyStore(),
-        messageService: AICommitMessageService(),
-        gitManager: gitManager
+        messageService: AICommitMessageService(chatGPTGenerator: chatGPTSubscription),
+        gitManager: gitManager,
+        chatGPTSubscription: chatGPTSubscription
     )
 
     return AISettingsPaneView()
         .environmentObject(providerStore)
         .environmentObject(coordinator)
+        .environmentObject(chatGPTSubscription)
         .environmentObject(UsageQuotaStore())
         .environmentObject(UsageQuotaPresentationPreferences())
 }
