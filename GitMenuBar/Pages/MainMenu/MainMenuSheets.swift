@@ -3,12 +3,12 @@ import SwiftUI
 extension MainMenuView {
     func renameBranchSheet() -> some View {
         RenameBranchSheet(
-            oldBranchName: oldBranchName,
-            newBranchName: $renameBranchNewName,
+            oldBranchName: branchDialogs.oldBranchName,
+            newBranchName: $branchDialogs.renameBranchNewName,
             errorMessage: errorCenter.renameBranch,
             onCancel: {
-                showRenameBranch = false
-                renameBranchNewName = ""
+                branchDialogs.showRenameBranch = false
+                branchDialogs.renameBranchNewName = ""
                 errorCenter.renameBranch = nil
             },
             onRename: renameBranch
@@ -52,7 +52,7 @@ extension MainMenuView {
                     subtitle: "Safe: Creates a merge commit",
                     tone: .accent
                 ) {
-                    useRebase = false
+                    sync.useRebase = false
                     syncWithRemote()
                 }
 
@@ -61,7 +61,7 @@ extension MainMenuView {
                     subtitle: "Clean: Replays your commits on top",
                     tone: .warning
                 ) {
-                    useRebase = true
+                    sync.useRebase = true
                     syncWithRemote()
                 }
 
@@ -71,8 +71,8 @@ extension MainMenuView {
                     tone: .success
                 ) {
                     actionCoordinator.dismissSyncOptions()
-                    pullToNewBranchName = "\(gitManager.currentBranch)-remote"
-                    showPullToNewBranch = true
+                    sync.pullToNewBranchName = "\(gitManager.currentBranch)-remote"
+                    sync.showPullToNewBranch = true
                 }
             }
 
@@ -93,13 +93,13 @@ extension MainMenuView {
 
     func createBranchSheet() -> some View {
         CreateBranchSheet(
-            branchName: $newBranchName,
+            branchName: $branchDialogs.newBranchName,
             currentBranch: gitManager.currentBranch,
-            errorMessage: createBranchError,
+            errorMessage: branchDialogs.createBranchError,
             onCancel: {
-                showCreateBranch = false
-                newBranchName = ""
-                createBranchError = nil
+                branchDialogs.showCreateBranch = false
+                branchDialogs.newBranchName = ""
+                branchDialogs.createBranchError = nil
             },
             onCreate: createNewBranch
         )
@@ -107,11 +107,11 @@ extension MainMenuView {
 
     func pullToNewBranchSheet() -> some View {
         PullToNewBranchSheet(
-            branchName: $pullToNewBranchName,
+            branchName: $sync.pullToNewBranchName,
             errorMessage: errorCenter.sync,
             onCancel: {
-                showPullToNewBranch = false
-                pullToNewBranchName = ""
+                sync.showPullToNewBranch = false
+                sync.pullToNewBranchName = ""
                 errorCenter.sync = nil
             },
             onPull: pullToNewBranch
@@ -131,10 +131,10 @@ extension MainMenuView {
                 return try await coordinator.generateAtomicHunkGroups(snapshot: snapshot)
             },
             onCancel: {
-                showAtomicCommitSheet = false
+                workspace.showAtomicCommitSheet = false
             },
             onCommit: { executionPlan in
-                showAtomicCommitSheet = false
+                workspace.showAtomicCommitSheet = false
                 Task {
                     let result = await actionCoordinator.performReviewedAtomicCommits(plan: executionPlan)
                     if result.didCommit {

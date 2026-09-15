@@ -8,14 +8,11 @@ import SwiftUI
 struct MainMenuView: View {
     @Namespace var animationNamespace
     @State var errorCenter = MainMenuErrorCenter()
-    @State var commentText = ""
-    @State var showDeleteConfirmation = false
-    @State var isDeleting = false
-    @State var showProjectSelector = false
-    @State var showRepositoryOptionsPopover = false
-    @State var pendingRepositoryOptionsPresentation = false
-    @State var showVisibilityConfirmation = false
-    @State var isTogglingVisibility = false
+    @State var branchDialogs = MainMenuBranchDialogs()
+    @State var workspace = MainMenuWorkspaceState()
+    @State var repoOptions = MainMenuRepositoryOptionsState()
+    @State var sync = MainMenuSyncSheetState()
+    @State var repoConfirm = MainMenuRepositoryConfirmations()
     @FocusState var isCommentFieldFocused: Bool
     @FocusState var isMainKeyboardNavigationFocused: Bool
     @EnvironmentObject var gitManager: GitManager
@@ -38,55 +35,18 @@ struct MainMenuView: View {
     @AppStorage(AppPreferences.Keys.commitButtonAction)
     var commitButtonAction = AppPreferences.CommitButtonAction.defaultAction.rawValue
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
-    @State var showBranchSelector = false
-    @State var showAtomicCommitSheet = false
-    @State var isCommitFieldTemporarilyVisible = false
-    @State var isCommandPalettePresented = false
-    @State var commandPaletteQuery = ""
-    @State var selectedCommandPaletteItemID: String?
-    @State var selectedMainItemID: MainMenuSelectableItem?
-    @State var selectedSidePanelSelection: MainMenuSidePanelSelection?
-    @State var lastHandledCommandPaletteToken = 0
-    @State var lastHandledRepositoryOptionsToken = 0
-    @State var selectedPushBranch: String = ""
-    @State var showPullToNewBranch = false
-    @State var pullToNewBranchName = ""
-    @State var useRebase = false
-    @State var showRestartConfirmation = false
-    @State var showCreateBranch = false
-    @State var newBranchName: String = ""
-    @State var createBranchError: String?
+    @State var palette = MainMenuCommandPaletteState()
 
     // Rename branch states
-    @State var showRenameBranch = false
-    @State var oldBranchName = ""
-    @State var renameBranchNewName = ""
 
     // Merge confirmation states
-    @State var showMergeConfirmation = false
-    @State var mergeBranchName = ""
-    @State var mergeTargetBranch = ""
 
     // Merge-to-default states
-    @State var showMergeToDefaultConfirmation = false
-    @State var showMergeCleanupDialog = false
-    @State var showRemoteCleanupConfirmation = false
-    @State var pendingCleanupOption: BranchCleanupOption?
-    @State var featureBranchName = ""
-    @State var defaultBranchName = ""
 
     // Switch confirmation states
-    @State var showDirtySwitchConfirmation = false
-    @State var pendingSwitchBranch = ""
 
     // Delete confirmation states
-    @State var showBranchDeleteConfirmation = false
-    @State var branchNameToDelete = ""
 
-    @State var showDiscardConfirmation = false
-    @State var discardFilePath: String?
-    @State var discardFileStatus: WorkingTreeFileStatus?
-    @State var showDiscardAllConfirmation = false
     @State var recentProjectReferences = RecentProjectsStore().recentProjects()
     @State var renderSnapshot = MainMenuRenderSnapshot.empty
 
@@ -147,43 +107,31 @@ struct MainMenuView: View {
         )
         .animation(
             WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
-            value: isCommandPalettePresented
+            value: palette.isPresented
         )
         .confirmationDialogs(
-            showDeleteConfirmation: $showDeleteConfirmation,
-            showVisibilityConfirmation: $showVisibilityConfirmation,
-            showDiscardConfirmation: $showDiscardConfirmation,
-            showDiscardAllConfirmation: $showDiscardAllConfirmation,
-            showRestartConfirmation: $showRestartConfirmation,
-            showMergeConfirmation: $showMergeConfirmation,
-            showDirtySwitchConfirmation: $showDirtySwitchConfirmation,
-            showBranchDeleteConfirmation: $showBranchDeleteConfirmation,
-            showMergeToDefaultConfirmation: $showMergeToDefaultConfirmation,
-            showMergeCleanupDialog: $showMergeCleanupDialog,
-            showRemoteCleanupConfirmation: $showRemoteCleanupConfirmation,
-            isDeleting: isDeleting,
-            isTogglingVisibility: isTogglingVisibility,
+            dialogs: branchDialogs,
+            showDeleteConfirmation: $repoConfirm.showDeleteConfirmation,
+            showVisibilityConfirmation: $repoConfirm.showVisibilityConfirmation,
+            showDiscardConfirmation: $workspace.showDiscardConfirmation,
+            showDiscardAllConfirmation: $workspace.showDiscardAllConfirmation,
+            showRestartConfirmation: $repoConfirm.showRestartConfirmation,
+            isDeleting: repoConfirm.isDeleting,
+            isTogglingVisibility: repoConfirm.isTogglingVisibility,
             visibilityConfirmationTitle: repositoryActionSet.visibilityConfirmationTitle,
             visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
             visibilityConfirmationMessage: repositoryActionSet.visibilityConfirmationMessage,
-            mergeBranchName: mergeBranchName,
-            mergeTargetBranch: mergeTargetBranch,
-            pendingSwitchBranch: pendingSwitchBranch,
-            branchNameToDelete: branchNameToDelete,
             deleteBranchWarningMessage: deleteBranchWarningMessage,
-            featureBranchName: featureBranchName,
-            defaultBranchName: defaultBranchName,
-            pendingCleanupOption: pendingCleanupOption,
             onDeleteRepository: deleteRepository,
             onToggleVisibility: toggleRepoVisibility,
             onDiscardConfirm: {
-                if let path = discardFilePath, let status = discardFileStatus {
+                if let path = workspace.discardFilePath, let status = workspace.discardFileStatus {
                     Task {
                         _ = await actionCoordinator.discardSidePanelFile(path: path, status: status)
                     }
                 }
-                discardFilePath = nil
-                discardFileStatus = nil
+                workspace.discardFilePath = nil
+                workspace.discardFileStatus = nil
             },
             onDiscardAll: {
                 gitManager.discardAllUnstagedChanges { result in
@@ -194,54 +142,54 @@ struct MainMenuView: View {
             },
             onRestart: restartApplication,
             onMerge: {
-                gitManager.mergeBranch(fromBranch: mergeBranchName) { result in
+                gitManager.mergeBranch(fromBranch: branchDialogs.mergeBranchName) { result in
                     if case let .failure(error) = result {
                         errorCenter.merge = error.localizedDescription
                     }
                 }
             },
             onCancelMerge: {
-                mergeBranchName = ""
-                mergeTargetBranch = ""
+                branchDialogs.mergeBranchName = ""
+                branchDialogs.mergeTargetBranch = ""
             },
             onDirtySwitch: {
-                let branch = pendingSwitchBranch
-                pendingSwitchBranch = ""
+                let branch = branchDialogs.pendingSwitchBranch
+                branchDialogs.pendingSwitchBranch = ""
                 guard !branch.isEmpty else { return }
                 Task {
                     _ = await actionCoordinator.switchSidePanelBranch(branch)
                 }
             },
             onCancelDirtySwitch: {
-                pendingSwitchBranch = ""
+                branchDialogs.pendingSwitchBranch = ""
             },
             onDeleteBranch: {
-                let name = branchNameToDelete
-                branchNameToDelete = ""
+                let name = branchDialogs.branchNameToDelete
+                branchDialogs.branchNameToDelete = ""
                 Task {
                     _ = await actionCoordinator.deleteSidePanelBranch(name)
                 }
             },
             onCancelDeleteBranch: {
-                branchNameToDelete = ""
+                branchDialogs.branchNameToDelete = ""
             },
             onMergeToDefault: performMergeToDefault,
             onCancelMergeToDefault: {
-                featureBranchName = ""
-                defaultBranchName = ""
+                branchDialogs.featureBranchName = ""
+                branchDialogs.defaultBranchName = ""
             },
             onMergeCleanupDeleteLocal: { performMergeCleanup(option: .deleteLocal) },
             onMergeCleanupDeleteLocalAndRemote: { requestRemoteCleanupConfirmation(option: .deleteLocalAndRemote) },
             onMergeCleanupDeleteRemoteOnly: { requestRemoteCleanupConfirmation(option: .deleteRemoteOnly) },
             onMergeCleanupKeep: dismissMergeCleanup,
             onRemoteCleanupDelete: {
-                if let option = pendingCleanupOption {
+                if let option = branchDialogs.pendingCleanupOption {
                     performMergeCleanup(option: option)
                 }
-                pendingCleanupOption = nil
+                branchDialogs.pendingCleanupOption = nil
             },
             onRemoteCleanupCancel: {
-                pendingCleanupOption = nil
+                branchDialogs.pendingCleanupOption = nil
             }
         )
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
@@ -269,13 +217,13 @@ struct MainMenuView: View {
         .onChange(of: presentationModel.showRepositoryOptionsToken) { _, token in
             handleRepositoryOptionsPresentationRequest(token)
         }
-        .onChange(of: showProjectSelector) {
+        .onChange(of: repoOptions.showProjectSelector) {
             presentPendingRepositoryOptionsIfPossible()
         }
-        .onChange(of: showBranchSelector) {
+        .onChange(of: branchDialogs.showBranchSelector) {
             presentPendingRepositoryOptionsIfPossible()
         }
-        .onChange(of: isCommandPalettePresented) { _, isPresented in
+        .onChange(of: palette.isPresented) { _, isPresented in
             if !isPresented {
                 presentPendingRepositoryOptionsIfPossible()
             }
@@ -285,20 +233,20 @@ struct MainMenuView: View {
                 clearSidePanelSelection()
                 closeCommandPalette()
                 dismissTransientPresentations()
-                if commentText.isEmpty {
-                    isCommitFieldTemporarilyVisible = false
+                if workspace.commentText.isEmpty {
+                    workspace.isCommitFieldTemporarilyVisible = false
                 }
             }
         }
         .onChange(of: mainKeyboardFocusSyncToken) {
             synchronizeMainKeyboardNavigationFocus()
         }
-        .onChange(of: selectedMainItemID) {
+        .onChange(of: workspace.selectedMainItemID) {
             synchronizeMainKeyboardNavigationFocus()
         }
         .onChange(of: hideCommitMessageField) { _, isHidden in
-            if !isHidden || commentText.isEmpty {
-                isCommitFieldTemporarilyVisible = false
+            if !isHidden || workspace.commentText.isEmpty {
+                workspace.isCommitFieldTemporarilyVisible = false
             }
         }
         .onChange(of: gitManager.stagedFiles) {
@@ -332,7 +280,7 @@ struct MainMenuView: View {
             refreshRenderSnapshot()
         }
         .onChange(of: currentRepositoryPath) {
-            selectedMainItemID = nil
+            workspace.selectedMainItemID = nil
             clearSidePanelSelection()
             reloadRepositorySelectionSnapshot()
             refreshRenderSnapshot()
@@ -353,7 +301,7 @@ struct MainMenuView: View {
         .onChange(of: projectMonitor.snapshots) {
             refreshRenderSnapshot()
         }
-        .onChange(of: selectedSidePanelSelection) { _, selection in
+        .onChange(of: workspace.selectedSidePanelSelection) { _, selection in
             Task {
                 await actionCoordinator.prepareSidePanelSelection(selection)
             }

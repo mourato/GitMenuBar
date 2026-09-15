@@ -6,14 +6,14 @@ extension MainMenuView {
               // When the command palette is presented, MainMenuCommandPaletteView
               // owns arrow/enter/escape via onKeyPress on its focused search field.
               // This guard prevents the main list handler from competing with it.
-              !isCommandPalettePresented,
-              !showProjectSelector,
-              !showBranchSelector,
-              !showCreateBranch,
-              !showPullToNewBranch,
-              !showRenameBranch,
+              !palette.isPresented,
+              !repoOptions.showProjectSelector,
+              !branchDialogs.showBranchSelector,
+              !branchDialogs.showCreateBranch,
+              !sync.showPullToNewBranch,
+              !branchDialogs.showRenameBranch,
               !commitHistoryEditCoordinator.isEditorPresented,
-              !showRepositoryOptionsPopover
+              !repoOptions.showRepositoryOptionsPopover
         else {
             return false
         }
@@ -33,20 +33,20 @@ extension MainMenuView {
     var mainKeyboardFocusSyncToken: String {
         [
             presentationModel.route == .main ? "main" : "other",
-            isCommandPalettePresented ? "1" : "0",
-            showProjectSelector ? "1" : "0",
-            showBranchSelector ? "1" : "0",
-            showCreateBranch ? "1" : "0",
-            showPullToNewBranch ? "1" : "0",
-            showRenameBranch ? "1" : "0",
+            palette.isPresented ? "1" : "0",
+            repoOptions.showProjectSelector ? "1" : "0",
+            branchDialogs.showBranchSelector ? "1" : "0",
+            branchDialogs.showCreateBranch ? "1" : "0",
+            sync.showPullToNewBranch ? "1" : "0",
+            branchDialogs.showRenameBranch ? "1" : "0",
             commitHistoryEditCoordinator.isEditorPresented ? "1" : "0",
-            showRepositoryOptionsPopover ? "1" : "0",
+            repoOptions.showRepositoryOptionsPopover ? "1" : "0",
             isCommentFieldFocused ? "1" : "0"
         ].joined(separator: "|")
     }
 
     func synchronizeSelectedMainItem() {
-        guard let selectedMainItemID else {
+        guard let selectedMainItemID = workspace.selectedMainItemID else {
             clearSidePanelSelection()
             return
         }
@@ -55,26 +55,26 @@ extension MainMenuView {
             return
         }
 
-        self.selectedMainItemID = nil
+        workspace.selectedMainItemID = nil
         clearSidePanelSelection()
     }
 
     func clearSidePanelSelection() {
-        selectedSidePanelSelection = nil
+        workspace.selectedSidePanelSelection = nil
     }
 
     func selectMainItem(_ itemID: MainMenuSelectableItem) {
-        selectedMainItemID = itemID
-        selectedSidePanelSelection = MainMenuSidePanelSelection(mainMenuItem: itemID)
+        workspace.selectedMainItemID = itemID
+        workspace.selectedSidePanelSelection = MainMenuSidePanelSelection(mainMenuItem: itemID)
     }
 
     func moveMainSelection(_ direction: MoveCommandDirection) {
         guard let nextSelection = MainMenuSelectionNavigator.moveSelection(
-            currentSelection: selectedMainItemID,
+            currentSelection: workspace.selectedMainItemID,
             items: keyboardSelectableItems,
             direction: direction
         ) else {
-            selectedMainItemID = nil
+            workspace.selectedMainItemID = nil
             clearSidePanelSelection()
             return
         }
@@ -83,7 +83,7 @@ extension MainMenuView {
     }
 
     func activateSelectedMainItem() {
-        guard let selectedMainItemID else {
+        guard let selectedMainItemID = workspace.selectedMainItemID else {
             return
         }
 
@@ -91,12 +91,12 @@ extension MainMenuView {
         case let .stagedFile(path), let .unstagedFile(path):
             gitManager.openFile(path: path)
         case let .historyCommit(id):
-            selectedSidePanelSelection = .commit(id: id)
+            workspace.selectedSidePanelSelection = .commit(id: id)
         }
     }
 
     func discardSelectedMainItemIfPossible() {
-        guard let selectedMainItemID else {
+        guard let selectedMainItemID = workspace.selectedMainItemID else {
             return
         }
 
@@ -106,9 +106,9 @@ extension MainMenuView {
             return
         }
 
-        discardFilePath = file.path
-        discardFileStatus = file.status
-        showDiscardConfirmation = true
+        workspace.discardFilePath = file.path
+        workspace.discardFileStatus = file.status
+        workspace.showDiscardConfirmation = true
     }
 
     func handleMainKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {

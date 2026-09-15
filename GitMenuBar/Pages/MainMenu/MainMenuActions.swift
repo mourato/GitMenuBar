@@ -9,7 +9,7 @@ import SwiftUI
 
 extension MainMenuView {
     private var shouldRevealCommitFieldBeforeSubmitting: Bool {
-        hideCommitMessageField && !isCommitFieldTemporarilyVisible && !aiCommitCoordinator.isReadyForGeneration
+        hideCommitMessageField && !workspace.isCommitFieldTemporarilyVisible && !aiCommitCoordinator.isReadyForGeneration
     }
 
     func submitComment() async {
@@ -19,14 +19,14 @@ extension MainMenuView {
         }
 
         let result = await actionCoordinator.performCommit(
-            commentText: commentText,
+            commentText: workspace.commentText,
             shouldPushAfterCommit: resolvedCommitButtonAction == .commitAndPush
         )
         if result.didCommit {
             HapticFeedback.actionSucceeded()
-            commentText = ""
+            workspace.commentText = ""
             if hideCommitMessageField {
-                isCommitFieldTemporarilyVisible = false
+                workspace.isCommitFieldTemporarilyVisible = false
             }
         }
     }
@@ -60,7 +60,7 @@ extension MainMenuView {
 
     func syncWithRemote() {
         Task {
-            await handleSyncResult(actionCoordinator.syncWithRemote(rebase: useRebase))
+            await handleSyncResult(actionCoordinator.syncWithRemote(rebase: sync.useRebase))
         }
     }
 
@@ -73,14 +73,14 @@ extension MainMenuView {
     }
 
     var hasTransientPresentation: Bool {
-        showRepositoryOptionsPopover || presentationModel.quotaInfoSnapshot != nil
+        repoOptions.showRepositoryOptionsPopover || presentationModel.quotaInfoSnapshot != nil
     }
 
     func dismissTransientPresentations() {
-        showRepositoryOptionsPopover = false
-        showBranchSelector = false
+        repoOptions.showRepositoryOptionsPopover = false
+        branchDialogs.showBranchSelector = false
         presentationModel.clearQuotaInfo()
-        pendingRepositoryOptionsPresentation = false
+        repoOptions.pendingPresentation = false
         isCommentFieldFocused = false
         NSApp.keyWindow?.makeFirstResponder(nil)
     }
@@ -90,12 +90,12 @@ extension MainMenuView {
             return
         }
 
-        let shouldPresent = !showProjectSelector
-        if isCommandPalettePresented {
+        let shouldPresent = !repoOptions.showProjectSelector
+        if palette.isPresented {
             closeCommandPalette()
         }
         dismissTransientPresentations()
-        showProjectSelector = shouldPresent
+        repoOptions.showProjectSelector = shouldPresent
     }
 
     func toggleBranchSelectorPresentation() {
@@ -103,12 +103,12 @@ extension MainMenuView {
             return
         }
 
-        let shouldPresent = !showBranchSelector
-        if isCommandPalettePresented {
+        let shouldPresent = !branchDialogs.showBranchSelector
+        if palette.isPresented {
             closeCommandPalette()
         }
         dismissTransientPresentations()
-        showBranchSelector = shouldPresent
+        branchDialogs.showBranchSelector = shouldPresent
         if shouldPresent, gitManager.availableBranches.isEmpty {
             Task { await gitManager.fetchSelectedBranchesAsync() }
         }
@@ -119,38 +119,38 @@ extension MainMenuView {
             return
         }
 
-        if isCommandPalettePresented {
+        if palette.isPresented {
             closeCommandPalette()
         }
         dismissTransientPresentations()
-        showBranchSelector = true
+        branchDialogs.showBranchSelector = true
         if gitManager.availableBranches.isEmpty {
             Task { await gitManager.fetchSelectedBranchesAsync() }
         }
     }
 
     func createNewBranch() {
-        createBranchError = nil
-        gitManager.createBranch(branchName: newBranchName) { result in
+        branchDialogs.createBranchError = nil
+        gitManager.createBranch(branchName: branchDialogs.newBranchName) { result in
             switch result {
             case .success:
-                showCreateBranch = false
-                newBranchName = ""
+                branchDialogs.showCreateBranch = false
+                branchDialogs.newBranchName = ""
                 Task { await actionCoordinator.reloadSidePanelBranchData() }
             case let .failure(error):
-                createBranchError = error.localizedDescription
+                branchDialogs.createBranchError = error.localizedDescription
             }
         }
     }
 
     func renameBranch() {
         errorCenter.renameBranch = nil
-        gitManager.renameBranch(oldName: oldBranchName, newName: renameBranchNewName) { result in
+        gitManager.renameBranch(oldName: branchDialogs.oldBranchName, newName: branchDialogs.renameBranchNewName) { result in
             switch result {
             case .success:
-                showRenameBranch = false
-                renameBranchNewName = ""
-                oldBranchName = ""
+                branchDialogs.showRenameBranch = false
+                branchDialogs.renameBranchNewName = ""
+                branchDialogs.oldBranchName = ""
                 Task { await actionCoordinator.reloadSidePanelBranchData() }
             case let .failure(error):
                 errorCenter.renameBranch = error.localizedDescription
@@ -159,15 +159,15 @@ extension MainMenuView {
     }
 
     func pullToNewBranch() {
-        let name = pullToNewBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = sync.pullToNewBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
 
         gitManager.pullToNewBranch(newBranchName: name) { result in
             Task { @MainActor in
                 switch result {
                 case .success:
-                    showPullToNewBranch = false
-                    pullToNewBranchName = ""
+                    sync.showPullToNewBranch = false
+                    sync.pullToNewBranchName = ""
                 case let .failure(error):
                     errorCenter.sync = error.localizedDescription
                 }
@@ -204,7 +204,7 @@ extension MainMenuView {
 
         actionCoordinator.resetForRepositorySwitch()
         GitPerformanceTrace.event("selection.accepted", id: trace)
-        showProjectSelector = false
+        repoOptions.showProjectSelector = false
         dismissTransientPresentations()
         presentationModel.showMain()
         let refreshGeneration = presentationModel.startRefresh()
@@ -223,7 +223,7 @@ extension MainMenuView {
     }
 
     func resetToLastCommit() {
-        commentText = ""
+        workspace.commentText = ""
 
         Task {
             let result = await gitManager.resetToLastCommitAsync()
@@ -236,7 +236,7 @@ extension MainMenuView {
     }
 
     func deleteRepository() {
-        isDeleting = true
+        repoConfirm.isDeleting = true
 
         Task {
             do {
@@ -244,7 +244,7 @@ extension MainMenuView {
                 try await repositoryService.deleteRepository(remoteURL: gitManager.remoteUrl)
 
                 await MainActor.run {
-                    isDeleting = false
+                    repoConfirm.isDeleting = false
                     // Clear the remote URL since repo is deleted
                     gitManager.remoteUrl = ""
                     presentationModel.clearCreateRepoSuggestion()
@@ -252,7 +252,7 @@ extension MainMenuView {
                 }
             } catch {
                 await MainActor.run {
-                    isDeleting = false
+                    repoConfirm.isDeleting = false
                     errorCenter.deleteRepository = error.localizedDescription
                 }
             }
@@ -260,7 +260,7 @@ extension MainMenuView {
     }
 
     func toggleRepoVisibility() {
-        isTogglingVisibility = true
+        repoConfirm.isTogglingVisibility = true
         let newStatus = !gitManager.isPrivate
 
         Task {
@@ -272,12 +272,12 @@ extension MainMenuView {
                 )
 
                 await MainActor.run {
-                    isTogglingVisibility = false
+                    repoConfirm.isTogglingVisibility = false
                     gitManager.checkRepoVisibility()
                 }
             } catch {
                 await MainActor.run {
-                    isTogglingVisibility = false
+                    repoConfirm.isTogglingVisibility = false
                     errorCenter.toggleVisibility = error.localizedDescription
                 }
             }
@@ -300,36 +300,30 @@ extension MainMenuView {
             return
         }
 
-        commandPaletteQuery = ""
-        selectedCommandPaletteItemID = MainMenuCommandPaletteResolver.defaultSelectionID(
-            for: commandPaletteVisibleItems
-        )
         dismissTransientPresentations()
-        isCommandPalettePresented = true
+        palette.open(defaultSelectionID: MainMenuCommandPaletteResolver.defaultSelectionID(
+            for: commandPaletteVisibleItems
+        ))
     }
 
     func handleCommandPalettePresentationRequest(_ token: Int) {
-        guard token > lastHandledCommandPaletteToken else {
+        guard palette.claimPresentationRequest(token) else {
             return
         }
 
-        lastHandledCommandPaletteToken = token
         presentCommandPaletteIfPossible()
     }
 
     func handleRepositoryOptionsPresentationRequest(_ token: Int) {
-        guard token > lastHandledRepositoryOptionsToken else {
+        guard repoOptions.claimPresentationRequest(token) else {
             return
         }
 
-        lastHandledRepositoryOptionsToken = token
         requestRepositoryOptionsPopoverPresentation()
     }
 
     func closeCommandPalette() {
-        isCommandPalettePresented = false
-        commandPaletteQuery = ""
-        selectedCommandPaletteItemID = nil
+        palette.close()
     }
 
     func startAtomicCommitFlow() {
@@ -347,7 +341,7 @@ extension MainMenuView {
             return
         }
 
-        showAtomicCommitSheet = true
+        workspace.showAtomicCommitSheet = true
     }
 
     private func generateAutomaticAtomicCommitPlan() async -> AtomicCommitExecutionPlan? {
@@ -376,7 +370,7 @@ extension MainMenuView {
     }
 
     func revealCommitFieldForManualEntry() {
-        isCommitFieldTemporarilyVisible = true
+        workspace.isCommitFieldTemporarilyVisible = true
         presentationModel.requestCommitFocus()
     }
 
@@ -438,9 +432,9 @@ extension MainMenuView {
             )
             if result.didCommit {
                 HapticFeedback.actionSucceeded()
-                commentText = ""
+                workspace.commentText = ""
                 if hideCommitMessageField {
-                    isCommitFieldTemporarilyVisible = false
+                    workspace.isCommitFieldTemporarilyVisible = false
                 }
             }
         }
@@ -454,9 +448,9 @@ extension MainMenuView {
             )
             if result.didCommit {
                 HapticFeedback.actionSucceeded()
-                commentText = ""
+                workspace.commentText = ""
                 if hideCommitMessageField {
-                    isCommitFieldTemporarilyVisible = false
+                    workspace.isCommitFieldTemporarilyVisible = false
                 }
             }
         }

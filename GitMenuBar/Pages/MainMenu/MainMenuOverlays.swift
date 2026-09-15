@@ -15,7 +15,7 @@ extension MainMenuView {
     var transientPresentationOverlayContent: some View {
         MainMenuTransientOverlay(
             isPresented: presentationModel.route == .main && hasTransientPresentation,
-            showsRepositoryOptions: showRepositoryOptionsPopover,
+            showsRepositoryOptions: repoOptions.showRepositoryOptionsPopover,
             visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
             visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
             quotaSnapshot: presentationModel.quotaInfoSnapshot,
@@ -38,11 +38,11 @@ extension MainMenuView {
             currentBranch: gitManager.currentBranch,
             onCreateBranchFromDetached: {
                 dismissTransientPresentations()
-                showCreateBranch = true
+                branchDialogs.showCreateBranch = true
             },
             onQuickPull: {
                 dismissTransientPresentations()
-                useRebase = false
+                sync.useRebase = false
                 syncWithRemote()
             },
             onSelectBranch: { branch in
@@ -50,8 +50,8 @@ extension MainMenuView {
                 guard branch != gitManager.currentBranch else { return }
 
                 if hasWorkingTreeChanges {
-                    pendingSwitchBranch = branch
-                    showDirtySwitchConfirmation = true
+                    branchDialogs.pendingSwitchBranch = branch
+                    branchDialogs.showDirtySwitchConfirmation = true
                 } else {
                     gitManager.switchBranch(branchName: branch) { result in
                         if case let .failure(error) = result {
@@ -63,9 +63,9 @@ extension MainMenuView {
             onMergeBranch: { branch in
                 dismissTransientPresentations()
                 if gitManager.currentBranch == "main" || gitManager.currentBranch == "master" {
-                    mergeBranchName = branch
-                    mergeTargetBranch = gitManager.currentBranch
-                    showMergeConfirmation = true
+                    branchDialogs.mergeBranchName = branch
+                    branchDialogs.mergeTargetBranch = gitManager.currentBranch
+                    branchDialogs.showMergeConfirmation = true
                 } else {
                     gitManager.mergeBranch(fromBranch: branch) { result in
                         if case let .failure(error) = result {
@@ -76,37 +76,37 @@ extension MainMenuView {
             },
             onDeleteBranch: { branch in
                 dismissTransientPresentations()
-                branchNameToDelete = branch
-                showBranchDeleteConfirmation = true
+                branchDialogs.branchNameToDelete = branch
+                branchDialogs.showBranchDeleteConfirmation = true
             },
             onRenameBranch: { branch in
                 dismissTransientPresentations()
-                oldBranchName = branch
-                renameBranchNewName = branch
-                showRenameBranch = true
+                branchDialogs.oldBranchName = branch
+                branchDialogs.renameBranchNewName = branch
+                branchDialogs.showRenameBranch = true
             },
             onMergeToDefaultBranch: { branch in
                 dismissTransientPresentations()
                 Task {
                     guard let detectedDefaultBranch = await gitManager.getSelectedDefaultBranchNameAsync() else { return }
-                    featureBranchName = branch
-                    defaultBranchName = detectedDefaultBranch
-                    showMergeToDefaultConfirmation = true
+                    branchDialogs.featureBranchName = branch
+                    branchDialogs.defaultBranchName = detectedDefaultBranch
+                    branchDialogs.showMergeToDefaultConfirmation = true
                 }
             },
             onNewBranch: {
                 dismissTransientPresentations()
-                showCreateBranch = true
+                branchDialogs.showCreateBranch = true
             }
         )
     }
 
     var commandPaletteOverlayContent: some View {
         MainMenuCommandPaletteOverlay(
-            isPresented: isCommandPalettePresented && presentationModel.route == .main,
-            query: $commandPaletteQuery,
+            isPresented: palette.isPresented && presentationModel.route == .main,
+            query: $palette.query,
             items: commandPaletteVisibleItems,
-            selectedItemID: $selectedCommandPaletteItemID,
+            selectedItemID: $palette.selectedItemID,
             onClose: closeCommandPalette,
             onSelectItem: executeCommandPaletteItem
         )
@@ -114,7 +114,7 @@ extension MainMenuView {
 
     private func applySheets(to view: some View) -> some View {
         view
-            .sheet(isPresented: $showRenameBranch, content: renameBranchSheet)
+            .sheet(isPresented: $branchDialogs.showRenameBranch, content: renameBranchSheet)
             .sheet(
                 isPresented: .init(
                     get: { commitHistoryEditCoordinator.isEditorPresented },
@@ -126,18 +126,18 @@ extension MainMenuView {
                 )
             ) { commitMessageEditorSheet() }
             .sheet(isPresented: $actionCoordinator.showSyncOptions, content: syncOptionsSheet)
-            .sheet(isPresented: $showCreateBranch, content: createBranchSheet)
-            .sheet(isPresented: $showPullToNewBranch, content: pullToNewBranchSheet)
-            .sheet(isPresented: $showAtomicCommitSheet, content: atomicCommitSheet)
+            .sheet(isPresented: $branchDialogs.showCreateBranch, content: createBranchSheet)
+            .sheet(isPresented: $sync.showPullToNewBranch, content: pullToNewBranchSheet)
+            .sheet(isPresented: $workspace.showAtomicCommitSheet, content: atomicCommitSheet)
     }
 
     var deleteBranchWarningMessage: String {
         let protectedBranches = ["main", "master", "develop"]
-        if gitManager.unmergedIntoDefaultBranches.contains(branchNameToDelete) {
+        if gitManager.unmergedIntoDefaultBranches.contains(branchDialogs.branchNameToDelete) {
             return "This branch is not merged into the default branch. Git will keep it unless you review its removal in Cleanup."
         }
-        if protectedBranches.contains(branchNameToDelete) {
-            return "WARNING: '\(branchNameToDelete)' is a primary branch. Deleting it may cause serious issues."
+        if protectedBranches.contains(branchDialogs.branchNameToDelete) {
+            return "WARNING: '\(branchDialogs.branchNameToDelete)' is a primary branch. Deleting it may cause serious issues."
         }
 
         return "Are you sure you want to delete this branch? This action cannot be undone."

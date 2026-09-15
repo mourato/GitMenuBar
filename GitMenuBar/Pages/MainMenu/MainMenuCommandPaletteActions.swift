@@ -13,7 +13,7 @@ extension MainMenuView {
             executeCommandPaletteItemImmediately(item)
         case .requiresConfirmation:
             closeCommandPalette()
-            showRestartConfirmation = true
+            repoConfirm.showRestartConfirmation = true
         }
     }
 
@@ -32,7 +32,7 @@ extension MainMenuView {
         case .fetchAllProjects:
             projectMonitor.fetchAll()
         case .restartApp:
-            showRestartConfirmation = true
+            repoConfirm.showRestartConfirmation = true
         case .quitApp:
             NSApplication.shared.terminate(nil)
         }
@@ -61,7 +61,7 @@ extension MainMenuView {
             }
         case .pull:
             Task {
-                _ = await actionCoordinator.syncWithRemote(rebase: useRebase)
+                _ = await actionCoordinator.syncWithRemote(rebase: sync.useRebase)
             }
         default:
             break
@@ -73,15 +73,15 @@ extension MainMenuView {
         case .atomicCommits:
             startAtomicCommitFlow()
         case .branchManagement:
-            selectedSidePanelSelection = .branches
+            workspace.selectedSidePanelSelection = .branches
         case .createBranch:
-            showCreateBranch = true
+            branchDialogs.showCreateBranch = true
         case let .mergeToDefault(featureBranch):
             Task {
                 guard let detectedDefaultBranch = await gitManager.getSelectedDefaultBranchNameAsync() else { return }
-                featureBranchName = featureBranch
-                defaultBranchName = detectedDefaultBranch
-                showMergeCleanupDialog = true
+                branchDialogs.featureBranchName = featureBranch
+                branchDialogs.defaultBranchName = detectedDefaultBranch
+                branchDialogs.showMergeCleanupDialog = true
             }
         case .switchToBranchList:
             presentBranchSelector()

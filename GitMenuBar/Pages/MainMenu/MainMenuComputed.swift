@@ -427,15 +427,15 @@ extension MainMenuView {
     }
 
     var hasVisibleCommitMessage: Bool {
-        !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !workspace.commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var hasWhitespaceOnlyCommitInput: Bool {
-        !commentText.isEmpty && !hasVisibleCommitMessage
+        !workspace.commentText.isEmpty && !hasVisibleCommitMessage
     }
 
     var showsCommentField: Bool {
-        !hideCommitMessageField || isCommitFieldTemporarilyVisible
+        !hideCommitMessageField || workspace.isCommitFieldTemporarilyVisible
     }
 
     var automaticMessageHint: String? {
@@ -547,7 +547,7 @@ extension MainMenuView {
     var commandPaletteVisibleItems: [MainMenuCommandPaletteItem] {
         MainMenuCommandPaletteResolver.filteredItems(
             from: commandPaletteAllItems,
-            query: commandPaletteQuery
+            query: palette.query
         )
     }
 

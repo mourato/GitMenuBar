@@ -7,8 +7,8 @@ import SwiftUI
 
 extension MainMenuView {
     func performMergeToDefault() {
-        let featureBranch = featureBranchName
-        showMergeToDefaultConfirmation = false
+        let featureBranch = branchDialogs.featureBranchName
+        branchDialogs.showMergeToDefaultConfirmation = false
 
         guard !featureBranch.isEmpty else { return }
 
@@ -17,10 +17,10 @@ extension MainMenuView {
             await MainActor.run {
                 switch result {
                 case .success:
-                    showMergeCleanupDialog = true
+                    branchDialogs.showMergeCleanupDialog = true
                 case let .failure(error):
-                    featureBranchName = ""
-                    defaultBranchName = ""
+                    branchDialogs.featureBranchName = ""
+                    branchDialogs.defaultBranchName = ""
                     errorCenter.merge = error.localizedDescription
                 }
             }
@@ -28,24 +28,24 @@ extension MainMenuView {
     }
 
     func requestRemoteCleanupConfirmation(option: BranchCleanupOption) {
-        pendingCleanupOption = option
-        showRemoteCleanupConfirmation = true
+        branchDialogs.pendingCleanupOption = option
+        branchDialogs.showRemoteCleanupConfirmation = true
     }
 
     func dismissMergeCleanup() {
-        showMergeCleanupDialog = false
-        featureBranchName = ""
-        defaultBranchName = ""
-        pendingCleanupOption = nil
+        branchDialogs.showMergeCleanupDialog = false
+        branchDialogs.featureBranchName = ""
+        branchDialogs.defaultBranchName = ""
+        branchDialogs.pendingCleanupOption = nil
     }
 
     func performMergeCleanup(option: BranchCleanupOption) {
-        let featureBranch = featureBranchName
-        showMergeCleanupDialog = false
-        showRemoteCleanupConfirmation = false
-        featureBranchName = ""
-        defaultBranchName = ""
-        pendingCleanupOption = nil
+        let featureBranch = branchDialogs.featureBranchName
+        branchDialogs.showMergeCleanupDialog = false
+        branchDialogs.showRemoteCleanupConfirmation = false
+        branchDialogs.featureBranchName = ""
+        branchDialogs.defaultBranchName = ""
+        branchDialogs.pendingCleanupOption = nil
 
         guard !featureBranch.isEmpty else { return }
 
