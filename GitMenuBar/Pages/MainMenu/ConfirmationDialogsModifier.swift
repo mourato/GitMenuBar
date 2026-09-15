@@ -1,31 +1,19 @@
 import SwiftUI
 
 struct ConfirmationDialogsModifier: ViewModifier {
+    @Bindable var dialogs: MainMenuBranchDialogs
     @Binding var showDeleteConfirmation: Bool
     @Binding var showVisibilityConfirmation: Bool
     @Binding var showDiscardConfirmation: Bool
     @Binding var showDiscardAllConfirmation: Bool
     @Binding var showRestartConfirmation: Bool
-    @Binding var showMergeConfirmation: Bool
-    @Binding var showDirtySwitchConfirmation: Bool
-    @Binding var showBranchDeleteConfirmation: Bool
-    @Binding var showMergeToDefaultConfirmation: Bool
-    @Binding var showMergeCleanupDialog: Bool
-    @Binding var showRemoteCleanupConfirmation: Bool
 
     let isDeleting: Bool
     let isTogglingVisibility: Bool
     let visibilityConfirmationTitle: String
     let visibilityActionTitle: String
     let visibilityConfirmationMessage: String
-    let mergeBranchName: String
-    let mergeTargetBranch: String
-    let pendingSwitchBranch: String
-    let branchNameToDelete: String
     let deleteBranchWarningMessage: String
-    let featureBranchName: String
-    let defaultBranchName: String
-    let pendingCleanupOption: BranchCleanupOption?
 
     let onDeleteRepository: () -> Void
     let onToggleVisibility: () -> Void
@@ -84,44 +72,44 @@ struct ConfirmationDialogsModifier: ViewModifier {
             } message: {
                 Text("This will relaunch the app immediately.")
             }
-            .alert("Merge into \(mergeTargetBranch)?", isPresented: $showMergeConfirmation) {
+            .alert("Merge into \(dialogs.mergeTargetBranch)?", isPresented: $dialogs.showMergeConfirmation) {
                 Button("Merge", action: onMerge)
                 Button("Cancel", role: .cancel, action: onCancelMerge)
             } message: {
-                Text("This will bring all changes from '\(mergeBranchName)' into your current branch '\(mergeTargetBranch)'.")
+                Text("This will bring all changes from '\(dialogs.mergeBranchName)' into your current branch '\(dialogs.mergeTargetBranch)'.")
             }
-            .alert("Uncommitted Changes", isPresented: $showDirtySwitchConfirmation) {
+            .alert("Uncommitted Changes", isPresented: $dialogs.showDirtySwitchConfirmation) {
                 Button("Switch & Carry Over", action: onDirtySwitch)
                 Button("Cancel", role: .cancel, action: onCancelDirtySwitch)
             } message: {
-                Text("You have uncommitted changes. They will follow you to '\(pendingSwitchBranch)'.")
+                Text("You have uncommitted changes. They will follow you to '\(dialogs.pendingSwitchBranch)'.")
             }
-            .alert("Delete '\(branchNameToDelete)'?", isPresented: $showBranchDeleteConfirmation) {
+            .alert("Delete '\(dialogs.branchNameToDelete)'?", isPresented: $dialogs.showBranchDeleteConfirmation) {
                 Button("Delete", role: .destructive, action: onDeleteBranch)
                 Button("Cancel", role: .cancel, action: onCancelDeleteBranch)
             } message: {
                 Text(deleteBranchWarningMessage)
             }
-            .alert("Merge '\(featureBranchName)' into \(defaultBranchName)?", isPresented: $showMergeToDefaultConfirmation) {
+            .alert("Merge '\(dialogs.featureBranchName)' into \(dialogs.defaultBranchName)?", isPresented: $dialogs.showMergeToDefaultConfirmation) {
                 Button("Merge", action: onMergeToDefault)
                     .keyboardShortcut(.defaultAction)
                 Button("Cancel", role: .cancel, action: onCancelMergeToDefault)
             } message: {
-                Text("This brings all changes from '\(featureBranchName)' into \(defaultBranchName). Uncommitted changes are stashed and restored. The feature branch is kept so you can clean it up afterwards.")
+                Text("This brings all changes from '\(dialogs.featureBranchName)' into \(dialogs.defaultBranchName). Uncommitted changes are stashed and restored. The feature branch is kept so you can clean it up afterwards.")
             }
-            .confirmationDialog("Clean up '\(featureBranchName)'?", isPresented: $showMergeCleanupDialog, titleVisibility: .visible) {
+            .confirmationDialog("Clean up '\(dialogs.featureBranchName)'?", isPresented: $dialogs.showMergeCleanupDialog, titleVisibility: .visible) {
                 Button("Delete Local Only", role: .destructive, action: onMergeCleanupDeleteLocal)
                 Button("Delete Local & Remote", role: .destructive, action: onMergeCleanupDeleteLocalAndRemote)
                 Button("Delete Remote Only", role: .destructive, action: onMergeCleanupDeleteRemoteOnly)
                 Button("Keep Branch", role: .cancel, action: onMergeCleanupKeep)
             } message: {
-                Text("'\(featureBranchName)' is merged into \(defaultBranchName). You can delete the feature branch now or keep it.")
+                Text("'\(dialogs.featureBranchName)' is merged into \(dialogs.defaultBranchName). You can delete the feature branch now or keep it.")
             }
-            .alert("Delete remote branch '\(featureBranchName)'?", isPresented: $showRemoteCleanupConfirmation) {
+            .alert("Delete remote branch '\(dialogs.featureBranchName)'?", isPresented: $dialogs.showRemoteCleanupConfirmation) {
                 Button("Delete Remote", role: .destructive, action: onRemoteCleanupDelete)
                 Button("Cancel", role: .cancel, action: onRemoteCleanupCancel)
             } message: {
-                Text("This permanently removes '\(featureBranchName)' from the remote. Other collaborators may be affected, and this cannot be undone.")
+                Text("This permanently removes '\(dialogs.featureBranchName)' from the remote. Other collaborators may be affected, and this cannot be undone.")
             }
     }
 }
@@ -129,30 +117,18 @@ struct ConfirmationDialogsModifier: ViewModifier {
 extension View {
     // swiftlint:disable:next function_parameter_count
     func confirmationDialogs(
+        dialogs: MainMenuBranchDialogs,
         showDeleteConfirmation: Binding<Bool>,
         showVisibilityConfirmation: Binding<Bool>,
         showDiscardConfirmation: Binding<Bool>,
         showDiscardAllConfirmation: Binding<Bool>,
         showRestartConfirmation: Binding<Bool>,
-        showMergeConfirmation: Binding<Bool>,
-        showDirtySwitchConfirmation: Binding<Bool>,
-        showBranchDeleteConfirmation: Binding<Bool>,
-        showMergeToDefaultConfirmation: Binding<Bool>,
-        showMergeCleanupDialog: Binding<Bool>,
-        showRemoteCleanupConfirmation: Binding<Bool>,
         isDeleting: Bool,
         isTogglingVisibility: Bool,
         visibilityConfirmationTitle: String,
         visibilityActionTitle: String,
         visibilityConfirmationMessage: String,
-        mergeBranchName: String,
-        mergeTargetBranch: String,
-        pendingSwitchBranch: String,
-        branchNameToDelete: String,
         deleteBranchWarningMessage: String,
-        featureBranchName: String,
-        defaultBranchName: String,
-        pendingCleanupOption: BranchCleanupOption?,
         onDeleteRepository: @escaping () -> Void,
         onToggleVisibility: @escaping () -> Void,
         onDiscardConfirm: @escaping () -> Void,
@@ -174,30 +150,18 @@ extension View {
         onRemoteCleanupCancel: @escaping () -> Void
     ) -> some View {
         modifier(ConfirmationDialogsModifier(
+            dialogs: dialogs,
             showDeleteConfirmation: showDeleteConfirmation,
             showVisibilityConfirmation: showVisibilityConfirmation,
             showDiscardConfirmation: showDiscardConfirmation,
             showDiscardAllConfirmation: showDiscardAllConfirmation,
             showRestartConfirmation: showRestartConfirmation,
-            showMergeConfirmation: showMergeConfirmation,
-            showDirtySwitchConfirmation: showDirtySwitchConfirmation,
-            showBranchDeleteConfirmation: showBranchDeleteConfirmation,
-            showMergeToDefaultConfirmation: showMergeToDefaultConfirmation,
-            showMergeCleanupDialog: showMergeCleanupDialog,
-            showRemoteCleanupConfirmation: showRemoteCleanupConfirmation,
             isDeleting: isDeleting,
             isTogglingVisibility: isTogglingVisibility,
             visibilityConfirmationTitle: visibilityConfirmationTitle,
             visibilityActionTitle: visibilityActionTitle,
             visibilityConfirmationMessage: visibilityConfirmationMessage,
-            mergeBranchName: mergeBranchName,
-            mergeTargetBranch: mergeTargetBranch,
-            pendingSwitchBranch: pendingSwitchBranch,
-            branchNameToDelete: branchNameToDelete,
             deleteBranchWarningMessage: deleteBranchWarningMessage,
-            featureBranchName: featureBranchName,
-            defaultBranchName: defaultBranchName,
-            pendingCleanupOption: pendingCleanupOption,
             onDeleteRepository: onDeleteRepository,
             onToggleVisibility: onToggleVisibility,
             onDiscardConfirm: onDiscardConfirm,

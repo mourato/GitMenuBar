@@ -8,6 +8,7 @@ import SwiftUI
 struct MainMenuView: View {
     @Namespace var animationNamespace
     @State var errorCenter = MainMenuErrorCenter()
+    @State var branchDialogs = MainMenuBranchDialogs()
     @State var commentText = ""
     @State var showDeleteConfirmation = false
     @State var isDeleting = false
@@ -50,35 +51,16 @@ struct MainMenuView: View {
     @State var pullToNewBranchName = ""
     @State var useRebase = false
     @State var showRestartConfirmation = false
-    @State var showCreateBranch = false
-    @State var newBranchName: String = ""
-    @State var createBranchError: String?
 
     // Rename branch states
-    @State var showRenameBranch = false
-    @State var oldBranchName = ""
-    @State var renameBranchNewName = ""
 
     // Merge confirmation states
-    @State var showMergeConfirmation = false
-    @State var mergeBranchName = ""
-    @State var mergeTargetBranch = ""
 
     // Merge-to-default states
-    @State var showMergeToDefaultConfirmation = false
-    @State var showMergeCleanupDialog = false
-    @State var showRemoteCleanupConfirmation = false
-    @State var pendingCleanupOption: BranchCleanupOption?
-    @State var featureBranchName = ""
-    @State var defaultBranchName = ""
 
     // Switch confirmation states
-    @State var showDirtySwitchConfirmation = false
-    @State var pendingSwitchBranch = ""
 
     // Delete confirmation states
-    @State var showBranchDeleteConfirmation = false
-    @State var branchNameToDelete = ""
 
     @State var showDiscardConfirmation = false
     @State var discardFilePath: String?
@@ -147,30 +129,18 @@ struct MainMenuView: View {
             value: palette.isPresented
         )
         .confirmationDialogs(
+            dialogs: branchDialogs,
             showDeleteConfirmation: $showDeleteConfirmation,
             showVisibilityConfirmation: $showVisibilityConfirmation,
             showDiscardConfirmation: $showDiscardConfirmation,
             showDiscardAllConfirmation: $showDiscardAllConfirmation,
             showRestartConfirmation: $showRestartConfirmation,
-            showMergeConfirmation: $showMergeConfirmation,
-            showDirtySwitchConfirmation: $showDirtySwitchConfirmation,
-            showBranchDeleteConfirmation: $showBranchDeleteConfirmation,
-            showMergeToDefaultConfirmation: $showMergeToDefaultConfirmation,
-            showMergeCleanupDialog: $showMergeCleanupDialog,
-            showRemoteCleanupConfirmation: $showRemoteCleanupConfirmation,
             isDeleting: isDeleting,
             isTogglingVisibility: isTogglingVisibility,
             visibilityConfirmationTitle: repositoryActionSet.visibilityConfirmationTitle,
             visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
             visibilityConfirmationMessage: repositoryActionSet.visibilityConfirmationMessage,
-            mergeBranchName: mergeBranchName,
-            mergeTargetBranch: mergeTargetBranch,
-            pendingSwitchBranch: pendingSwitchBranch,
-            branchNameToDelete: branchNameToDelete,
             deleteBranchWarningMessage: deleteBranchWarningMessage,
-            featureBranchName: featureBranchName,
-            defaultBranchName: defaultBranchName,
-            pendingCleanupOption: pendingCleanupOption,
             onDeleteRepository: deleteRepository,
             onToggleVisibility: toggleRepoVisibility,
             onDiscardConfirm: {
@@ -191,54 +161,54 @@ struct MainMenuView: View {
             },
             onRestart: restartApplication,
             onMerge: {
-                gitManager.mergeBranch(fromBranch: mergeBranchName) { result in
+                gitManager.mergeBranch(fromBranch: branchDialogs.mergeBranchName) { result in
                     if case let .failure(error) = result {
                         errorCenter.merge = error.localizedDescription
                     }
                 }
             },
             onCancelMerge: {
-                mergeBranchName = ""
-                mergeTargetBranch = ""
+                branchDialogs.mergeBranchName = ""
+                branchDialogs.mergeTargetBranch = ""
             },
             onDirtySwitch: {
-                let branch = pendingSwitchBranch
-                pendingSwitchBranch = ""
+                let branch = branchDialogs.pendingSwitchBranch
+                branchDialogs.pendingSwitchBranch = ""
                 guard !branch.isEmpty else { return }
                 Task {
                     _ = await actionCoordinator.switchSidePanelBranch(branch)
                 }
             },
             onCancelDirtySwitch: {
-                pendingSwitchBranch = ""
+                branchDialogs.pendingSwitchBranch = ""
             },
             onDeleteBranch: {
-                let name = branchNameToDelete
-                branchNameToDelete = ""
+                let name = branchDialogs.branchNameToDelete
+                branchDialogs.branchNameToDelete = ""
                 Task {
                     _ = await actionCoordinator.deleteSidePanelBranch(name)
                 }
             },
             onCancelDeleteBranch: {
-                branchNameToDelete = ""
+                branchDialogs.branchNameToDelete = ""
             },
             onMergeToDefault: performMergeToDefault,
             onCancelMergeToDefault: {
-                featureBranchName = ""
-                defaultBranchName = ""
+                branchDialogs.featureBranchName = ""
+                branchDialogs.defaultBranchName = ""
             },
             onMergeCleanupDeleteLocal: { performMergeCleanup(option: .deleteLocal) },
             onMergeCleanupDeleteLocalAndRemote: { requestRemoteCleanupConfirmation(option: .deleteLocalAndRemote) },
             onMergeCleanupDeleteRemoteOnly: { requestRemoteCleanupConfirmation(option: .deleteRemoteOnly) },
             onMergeCleanupKeep: dismissMergeCleanup,
             onRemoteCleanupDelete: {
-                if let option = pendingCleanupOption {
+                if let option = branchDialogs.pendingCleanupOption {
                     performMergeCleanup(option: option)
                 }
-                pendingCleanupOption = nil
+                branchDialogs.pendingCleanupOption = nil
             },
             onRemoteCleanupCancel: {
-                pendingCleanupOption = nil
+                branchDialogs.pendingCleanupOption = nil
             }
         )
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)

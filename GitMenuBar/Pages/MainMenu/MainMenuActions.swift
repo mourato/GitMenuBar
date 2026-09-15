@@ -130,27 +130,27 @@ extension MainMenuView {
     }
 
     func createNewBranch() {
-        createBranchError = nil
-        gitManager.createBranch(branchName: newBranchName) { result in
+        branchDialogs.createBranchError = nil
+        gitManager.createBranch(branchName: branchDialogs.newBranchName) { result in
             switch result {
             case .success:
-                showCreateBranch = false
-                newBranchName = ""
+                branchDialogs.showCreateBranch = false
+                branchDialogs.newBranchName = ""
                 Task { await actionCoordinator.reloadSidePanelBranchData() }
             case let .failure(error):
-                createBranchError = error.localizedDescription
+                branchDialogs.createBranchError = error.localizedDescription
             }
         }
     }
 
     func renameBranch() {
         errorCenter.renameBranch = nil
-        gitManager.renameBranch(oldName: oldBranchName, newName: renameBranchNewName) { result in
+        gitManager.renameBranch(oldName: branchDialogs.oldBranchName, newName: branchDialogs.renameBranchNewName) { result in
             switch result {
             case .success:
-                showRenameBranch = false
-                renameBranchNewName = ""
-                oldBranchName = ""
+                branchDialogs.showRenameBranch = false
+                branchDialogs.renameBranchNewName = ""
+                branchDialogs.oldBranchName = ""
                 Task { await actionCoordinator.reloadSidePanelBranchData() }
             case let .failure(error):
                 errorCenter.renameBranch = error.localizedDescription

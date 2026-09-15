@@ -107,14 +107,14 @@ extension MainMenuView {
                     },
                     onRequestDiscard: requestDiscard,
                     onRequestDeleteBranch: { name in
-                        branchNameToDelete = name
-                        showBranchDeleteConfirmation = true
+                        branchDialogs.branchNameToDelete = name
+                        branchDialogs.showBranchDeleteConfirmation = true
                     },
                     onRequestSwitchBranch: { branch in
                         guard branch != gitManager.currentBranch else { return }
                         if hasWorkingTreeChanges {
-                            pendingSwitchBranch = branch
-                            showDirtySwitchConfirmation = true
+                            branchDialogs.pendingSwitchBranch = branch
+                            branchDialogs.showDirtySwitchConfirmation = true
                         } else {
                             Task {
                                 _ = await actionCoordinator.switchSidePanelBranch(branch)
@@ -123,13 +123,13 @@ extension MainMenuView {
                     },
                     onCreateBranch: {
                         dismissTransientPresentations()
-                        showCreateBranch = true
+                        branchDialogs.showCreateBranch = true
                     },
                     onRenameBranch: { name in
                         dismissTransientPresentations()
-                        oldBranchName = name
-                        renameBranchNewName = name
-                        showRenameBranch = true
+                        branchDialogs.oldBranchName = name
+                        branchDialogs.renameBranchNewName = name
+                        branchDialogs.showRenameBranch = true
                     }
                 )
             }

@@ -3,12 +3,12 @@ import SwiftUI
 extension MainMenuView {
     func renameBranchSheet() -> some View {
         RenameBranchSheet(
-            oldBranchName: oldBranchName,
-            newBranchName: $renameBranchNewName,
+            oldBranchName: branchDialogs.oldBranchName,
+            newBranchName: $branchDialogs.renameBranchNewName,
             errorMessage: errorCenter.renameBranch,
             onCancel: {
-                showRenameBranch = false
-                renameBranchNewName = ""
+                branchDialogs.showRenameBranch = false
+                branchDialogs.renameBranchNewName = ""
                 errorCenter.renameBranch = nil
             },
             onRename: renameBranch
@@ -93,13 +93,13 @@ extension MainMenuView {
 
     func createBranchSheet() -> some View {
         CreateBranchSheet(
-            branchName: $newBranchName,
+            branchName: $branchDialogs.newBranchName,
             currentBranch: gitManager.currentBranch,
-            errorMessage: createBranchError,
+            errorMessage: branchDialogs.createBranchError,
             onCancel: {
-                showCreateBranch = false
-                newBranchName = ""
-                createBranchError = nil
+                branchDialogs.showCreateBranch = false
+                branchDialogs.newBranchName = ""
+                branchDialogs.createBranchError = nil
             },
             onCreate: createNewBranch
         )

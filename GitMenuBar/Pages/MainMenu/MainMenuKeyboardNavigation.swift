@@ -9,9 +9,9 @@ extension MainMenuView {
               !palette.isPresented,
               !showProjectSelector,
               !showBranchSelector,
-              !showCreateBranch,
+              !branchDialogs.showCreateBranch,
               !showPullToNewBranch,
-              !showRenameBranch,
+              !branchDialogs.showRenameBranch,
               !commitHistoryEditCoordinator.isEditorPresented,
               !showRepositoryOptionsPopover
         else {
@@ -36,9 +36,9 @@ extension MainMenuView {
             palette.isPresented ? "1" : "0",
             showProjectSelector ? "1" : "0",
             showBranchSelector ? "1" : "0",
-            showCreateBranch ? "1" : "0",
+            branchDialogs.showCreateBranch ? "1" : "0",
             showPullToNewBranch ? "1" : "0",
-            showRenameBranch ? "1" : "0",
+            branchDialogs.showRenameBranch ? "1" : "0",
             commitHistoryEditCoordinator.isEditorPresented ? "1" : "0",
             showRepositoryOptionsPopover ? "1" : "0",
             isCommentFieldFocused ? "1" : "0"
