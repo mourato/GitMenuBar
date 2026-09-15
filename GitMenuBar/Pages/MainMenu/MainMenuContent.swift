@@ -206,88 +206,71 @@ extension MainMenuView {
 
     var mainView: some View {
         applyMainViewOverlays(
-            to: NavigationSplitView(columnVisibility: projectsSidebarVisibility) {
-                ProjectsSidebarView(
-                    currentPath: currentRepositoryPath,
-                    onSelect: switchRepository,
-                    onReveal: revealProjectInFinder,
-                    onStopMonitoring: { projectMonitor.remove(path: $0) },
-                    onRemove: removeProject,
-                    onRename: renameProject,
-                    onProjectCleanup: presentationModel.showProjectCleanup,
-                    onAddProject: selectDirectory,
-                    onRefreshAll: projectMonitor.refreshAll,
-                    onFetchAll: projectMonitor.fetchAll,
-                    onOpenSettings: openSettingsWindow
-                )
-                .navigationSplitViewColumnWidth(
-                    min: WorkbenchMetrics.projectsMinimumWidth,
-                    ideal: WorkbenchMetrics.projectsMinimumWidth,
-                    max: WorkbenchMetrics.projectsMaximumWidth
-                )
-            } detail: {
-                routeContent
-                    .padding(.top, WorkbenchMetrics.sectionSpacing)
-                    .padding(.leading, WorkbenchMetrics.windowPadding)
-                    .padding(.trailing, WorkbenchMetrics.windowPadding)
-                    .padding(.bottom, WorkbenchMetrics.windowPadding)
-                    .frame(
-                        minWidth: WorkbenchMetrics.centralMinimumWidth,
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: .top
-                    )
-                    .sidePanel(
-                        isPresented: isSidePanelPresented,
-                        dismissOnOutsideTap: sidePanelDismissesOnOutsideTap
-                    ) {
-                        sidePanelContent
-                    }
-            }
-            .navigationSplitViewStyle(.balanced)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .onExitCommand {
-                if selectedSidePanelSelection != nil {
-                    clearSidePanelSelection()
-                    return
-                }
-                if isCommandPalettePresented {
-                    closeCommandPalette()
-                    return
-                }
-                if showBranchSelector {
-                    dismissTransientPresentations()
-                    return
-                }
-                if showRepositoryOptionsPopover {
-                    dismissTransientPresentations()
-                    return
-                }
-                if hasTransientPresentation {
-                    dismissTransientPresentations()
-                    return
-                }
-                closeWindow()
-            }
-            .onReceive(shortcutActionBridge.actions) { action in
-                guard presentationModel.route == .main else { return }
-
-                switch action {
-                case .commit:
-                    guard hasWorkingTreeChanges else { return }
-                    Task {
-                        await submitComment()
-                    }
-                case .sync:
-                    Task {
-                        await actionCoordinator.performSync()
-                    }
-                case .atomicCommits:
-                    startAtomicCommitFlow()
-                }
-            }
+            to: MainMenuShellView(
+                currentRepositoryPath: currentRepositoryPath,
+                onSelectRepository: switchRepository,
+                onReveal: revealProjectInFinder,
+                onStopMonitoring: { projectMonitor.remove(path: $0) },
+                onRemove: removeProject,
+                onRename: renameProject,
+                onProjectCleanup: presentationModel.showProjectCleanup,
+                onAddProject: selectDirectory,
+                onRefreshAll: projectMonitor.refreshAll,
+                onFetchAll: projectMonitor.fetchAll,
+                onOpenSettings: openSettingsWindow,
+                sidebarVisibility: projectsSidebarVisibility,
+                detail: { routeContent },
+                sidePanelPresented: isSidePanelPresented,
+                dismissSidePanelOnOutsideTap: sidePanelDismissesOnOutsideTap,
+                sidePanel: { sidePanelContent },
+                onExitCommand: handleExitCommand,
+                shortcutActions: shortcutActionBridge.actions,
+                onShortcutAction: handleShortcutAction
+            )
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func handleExitCommand() {
+        if selectedSidePanelSelection != nil {
+            clearSidePanelSelection()
+            return
+        }
+        if isCommandPalettePresented {
+            closeCommandPalette()
+            return
+        }
+        if showBranchSelector {
+            dismissTransientPresentations()
+            return
+        }
+        if showRepositoryOptionsPopover {
+            dismissTransientPresentations()
+            return
+        }
+        if hasTransientPresentation {
+            dismissTransientPresentations()
+            return
+        }
+        closeWindow()
+    }
+
+    private func handleShortcutAction(_ action: MainMenuShortcutAction) {
+        guard presentationModel.route == .main else { return }
+
+        switch action {
+        case .commit:
+            guard hasWorkingTreeChanges else { return }
+            Task {
+                await submitComment()
+            }
+        case .sync:
+            Task {
+                await actionCoordinator.performSync()
+            }
+        case .atomicCommits:
+            startAtomicCommitFlow()
+        }
     }
 
     private func requestDiscard(path: String, status: WorkingTreeFileStatus) {
