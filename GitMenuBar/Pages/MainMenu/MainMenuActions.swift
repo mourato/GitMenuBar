@@ -144,7 +144,7 @@ extension MainMenuView {
     }
 
     func renameBranch() {
-        renameBranchError = nil
+        errorCenter.renameBranch = nil
         gitManager.renameBranch(oldName: oldBranchName, newName: renameBranchNewName) { result in
             switch result {
             case .success:
@@ -153,7 +153,7 @@ extension MainMenuView {
                 oldBranchName = ""
                 Task { await actionCoordinator.reloadSidePanelBranchData() }
             case let .failure(error):
-                renameBranchError = error.localizedDescription
+                errorCenter.renameBranch = error.localizedDescription
             }
         }
     }
@@ -169,7 +169,7 @@ extension MainMenuView {
                     showPullToNewBranch = false
                     pullToNewBranchName = ""
                 case let .failure(error):
-                    syncError = error.localizedDescription
+                    errorCenter.sync = error.localizedDescription
                 }
             }
         }
@@ -253,7 +253,7 @@ extension MainMenuView {
             } catch {
                 await MainActor.run {
                     isDeleting = false
-                    deleteError = error.localizedDescription
+                    errorCenter.deleteRepository = error.localizedDescription
                 }
             }
         }
@@ -278,7 +278,7 @@ extension MainMenuView {
             } catch {
                 await MainActor.run {
                     isTogglingVisibility = false
-                    toggleVisibilityError = error.localizedDescription
+                    errorCenter.toggleVisibility = error.localizedDescription
                 }
             }
         }
@@ -366,48 +366,12 @@ extension MainMenuView {
         }
 
         switch source {
-        case .coordinatorAlert, .coordinatorSuccess, .deleteRepository, .toggleVisibility, .discard:
-            dismissInlineBannerState(source)
-        case .sync, .branchSwitch, .merge, .deleteBranch, .renameBranch, .restart, .push:
-            dismissInlineBannerOperationError(source)
-        }
-    }
-
-    private func dismissInlineBannerState(_ source: MainMenuInlineBannerSource) {
-        switch source {
         case .coordinatorAlert:
             actionCoordinator.clearAlert()
         case .coordinatorSuccess:
             actionCoordinator.success = nil
-        case .deleteRepository:
-            deleteError = nil
-        case .toggleVisibility:
-            toggleVisibilityError = nil
-        case .discard:
-            discardError = nil
         default:
-            break
-        }
-    }
-
-    private func dismissInlineBannerOperationError(_ source: MainMenuInlineBannerSource) {
-        switch source {
-        case .sync:
-            syncError = nil
-        case .branchSwitch:
-            branchSwitchError = nil
-        case .merge:
-            mergeError = nil
-        case .deleteBranch:
-            deleteBranchError = nil
-        case .renameBranch:
-            renameBranchError = nil
-        case .restart:
-            restartError = nil
-        case .push:
-            pushError = nil
-        default:
-            break
+            errorCenter.clear(source)
         }
     }
 
@@ -446,7 +410,7 @@ extension MainMenuView {
         NSWorkspace.shared.openApplication(at: appURL, configuration: configuration) { _, error in
             Task { @MainActor in
                 if let error {
-                    restartError = error.localizedDescription
+                    errorCenter.restart = error.localizedDescription
                     return
                 }
 

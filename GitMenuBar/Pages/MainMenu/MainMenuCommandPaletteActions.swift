@@ -88,7 +88,7 @@ extension MainMenuView {
         case let .switchBranch(branchName):
             gitManager.switchBranch(branchName: branchName) { result in
                 if case let .failure(error) = result {
-                    branchSwitchError = error.localizedDescription
+                    errorCenter.branchSwitch = error.localizedDescription
                 }
             }
         default:

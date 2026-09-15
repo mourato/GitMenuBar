@@ -359,34 +359,34 @@ extension MainMenuView {
         if actionCoordinator.success != nil {
             return .coordinatorSuccess
         }
-        if deleteError != nil {
+        if errorCenter.deleteRepository != nil {
             return .deleteRepository
         }
-        if toggleVisibilityError != nil {
+        if errorCenter.toggleVisibility != nil {
             return .toggleVisibility
         }
-        if discardError != nil {
+        if errorCenter.discard != nil {
             return .discard
         }
-        if syncError != nil {
+        if errorCenter.sync != nil {
             return .sync
         }
-        if branchSwitchError != nil {
+        if errorCenter.branchSwitch != nil {
             return .branchSwitch
         }
-        if mergeError != nil {
+        if errorCenter.merge != nil {
             return .merge
         }
-        if deleteBranchError != nil {
+        if errorCenter.deleteBranch != nil {
             return .deleteBranch
         }
-        if renameBranchError != nil {
+        if errorCenter.renameBranch != nil {
             return .renameBranch
         }
-        if restartError != nil {
+        if errorCenter.restart != nil {
             return .restart
         }
-        if pushError != nil {
+        if errorCenter.push != nil {
             return .push
         }
 
@@ -402,25 +402,25 @@ extension MainMenuView {
             guard let success = actionCoordinator.success else { return nil }
             return InlineStatusBanner(title: success.title, message: success.message, style: .info)
         case .deleteRepository:
-            return banner(title: "Delete Failed", message: deleteError)
+            return banner(title: "Delete Failed", message: errorCenter.deleteRepository)
         case .toggleVisibility:
-            return banner(title: "Visibility Update Failed", message: toggleVisibilityError)
+            return banner(title: "Visibility Update Failed", message: errorCenter.toggleVisibility)
         case .discard:
-            return banner(title: "Discard Failed", message: discardError)
+            return banner(title: "Discard Failed", message: errorCenter.discard)
         case .sync:
-            return banner(title: "Sync Failed", message: syncError)
+            return banner(title: "Sync Failed", message: errorCenter.sync)
         case .branchSwitch:
-            return banner(title: "Branch Switch Failed", message: branchSwitchError)
+            return banner(title: "Branch Switch Failed", message: errorCenter.branchSwitch)
         case .merge:
-            return banner(title: "Merge Failed", message: mergeError)
+            return banner(title: "Merge Failed", message: errorCenter.merge)
         case .deleteBranch:
-            return banner(title: "Delete Failed", message: deleteBranchError)
+            return banner(title: "Delete Failed", message: errorCenter.deleteBranch)
         case .renameBranch:
-            return banner(title: "Rename Failed", message: renameBranchError)
+            return banner(title: "Rename Failed", message: errorCenter.renameBranch)
         case .restart:
-            return banner(title: "Restart Failed", message: restartError)
+            return banner(title: "Restart Failed", message: errorCenter.restart)
         case .push:
-            return banner(title: "Push Failed", message: pushError)
+            return banner(title: "Push Failed", message: errorCenter.push)
         case .none:
             return nil
         }

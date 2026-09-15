@@ -5,11 +5,11 @@ extension MainMenuView {
         RenameBranchSheet(
             oldBranchName: oldBranchName,
             newBranchName: $renameBranchNewName,
-            errorMessage: renameBranchError,
+            errorMessage: errorCenter.renameBranch,
             onCancel: {
                 showRenameBranch = false
                 renameBranchNewName = ""
-                renameBranchError = nil
+                errorCenter.renameBranch = nil
             },
             onRename: renameBranch
         )
@@ -108,11 +108,11 @@ extension MainMenuView {
     func pullToNewBranchSheet() -> some View {
         PullToNewBranchSheet(
             branchName: $pullToNewBranchName,
-            errorMessage: syncError,
+            errorMessage: errorCenter.sync,
             onCancel: {
                 showPullToNewBranch = false
                 pullToNewBranchName = ""
-                syncError = nil
+                errorCenter.sync = nil
             },
             onPull: pullToNewBranch
         )
