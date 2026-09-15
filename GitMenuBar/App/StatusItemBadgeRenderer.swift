@@ -25,7 +25,13 @@ enum StatusItemBadgeRenderer {
         let image = NSImage(size: NSSize(width: iconSize.width + gap + usageWidth, height: max(iconSize.height, usageImage?.size.height ?? 0)))
 
         image.lockFocus()
-        baseStatusImage.draw(in: NSRect(origin: .zero, size: iconSize))
+        let iconRect = NSRect(
+            x: 0,
+            y: (image.size.height - iconSize.height) / 2,
+            width: iconSize.width,
+            height: iconSize.height
+        )
+        baseStatusImage.draw(in: iconRect)
         if let usageImage {
             let usageRect = NSRect(
                 x: iconSize.width + gap,

@@ -14,7 +14,7 @@ import SwiftUI
 @MainActor
 final class StatusBarController: NSObject, ObservableObject {
     enum Constants {
-        static let statusIconPointSize = NSSize(width: 16, height: 16)
+        static let statusIconPointSize = NSSize(width: 18, height: 18)
         static let windowInitialSize = NSSize(width: WorkbenchMetrics.mainWindowInitialWidth, height: 720)
         static let windowMinimumHeight: CGFloat = 420
         static let windowMinimumSize = NSSize(width: WorkbenchMetrics.mainWindowMinimumWidth, height: windowMinimumHeight)
