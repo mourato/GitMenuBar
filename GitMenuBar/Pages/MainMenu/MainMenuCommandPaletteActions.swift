@@ -73,7 +73,7 @@ extension MainMenuView {
         case .atomicCommits:
             startAtomicCommitFlow()
         case .branchManagement:
-            selectedSidePanelSelection = .branches
+            workspace.selectedSidePanelSelection = .branches
         case .createBranch:
             branchDialogs.showCreateBranch = true
         case let .mergeToDefault(featureBranch):

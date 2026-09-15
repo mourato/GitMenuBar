@@ -45,7 +45,7 @@ extension MainMenuView {
                     onCommit: performQuickCommit,
                     canSync: actionCoordinator.canSync,
                     onSync: syncRepository,
-                    onSelectSection: { selectedSidePanelSelection = $0 }
+                    onSelectSection: { workspace.selectedSidePanelSelection = $0 }
                 )
             }
             .scrollDisabled(palette.isPresented)
@@ -64,13 +64,13 @@ extension MainMenuView {
 
     private var sidePanelContent: some View {
         Group {
-            if let selection = selectedSidePanelSelection {
+            if let selection = workspace.selectedSidePanelSelection {
                 MainMenuSidePanelHost(
                     selection: selection,
                     projectName: renderSnapshot.currentProjectName,
                     overview: renderSnapshot.overview,
                     history: sidePanelHistory,
-                    commitMessage: $commentText,
+                    commitMessage: $workspace.commentText,
                     commitFieldFocus: $isCommentFieldFocused,
                     showsCommitField: showsCommentField,
                     commitPrimaryButtonSystemImage: primaryButtonSystemImage,
@@ -85,7 +85,7 @@ extension MainMenuView {
                     isCommitPrimaryButtonDisabled: isPrimaryButtonDisabled,
                     canShowSplitCommits: canShowAtomicCommits,
                     commitFocusToken: presentationModel.focusCommitFieldToken,
-                    workspaceSelectedFileID: selectedMainItemID,
+                    workspaceSelectedFileID: workspace.selectedMainItemID,
                     onClose: clearSidePanelSelection,
                     onCommitPrimaryAction: {
                         Task {
@@ -97,13 +97,13 @@ extension MainMenuView {
                     onUseCommitFallbackModel: commitUsingFallbackModel,
                     onCommitDidCommit: {
                         if hideCommitMessageField {
-                            isCommitFieldTemporarilyVisible = false
+                            workspace.isCommitFieldTemporarilyVisible = false
                         }
                     },
                     onRequestCommitFocus: requestCommitFieldFocus,
                     onSelectWorkspaceFile: { selectMainItem($0) },
                     onDiscardAllUnstaged: {
-                        showDiscardAllConfirmation = true
+                        workspace.showDiscardAllConfirmation = true
                     },
                     onRequestDiscard: requestDiscard,
                     onRequestDeleteBranch: { name in
@@ -141,25 +141,25 @@ extension MainMenuView {
         .ignoresSafeArea(.container, edges: .top)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
-            selectedSidePanelSelection.map { "Details for \($0.title)" } ?? "Details"
+            workspace.selectedSidePanelSelection.map { "Details for \($0.title)" } ?? "Details"
         )
     }
 
     private var sidePanelHistory: SidePanelHistoryModel {
         SidePanelHistoryModel(
             sections: historyTimelineSections,
-            selectedItemID: selectedMainItemID,
+            selectedItemID: workspace.selectedMainItemID,
             isLoading: presentationModel.isDetailLoading,
             canLoadMore: gitManager.canLoadMoreCommitHistory,
             animationNamespace: animationNamespace,
             isCommitInFuture: isCommitInFuture,
             onSelectRow: { selectMainItem($0.id) },
             onOpenCommit: { commitID in
-                selectedSidePanelSelection = .commit(id: commitID)
-                selectedMainItemID = .historyCommit(id: commitID)
+                workspace.selectedSidePanelSelection = .commit(id: commitID)
+                workspace.selectedMainItemID = .historyCommit(id: commitID)
             },
             onBackToHistory: {
-                selectedSidePanelSelection = .history
+                workspace.selectedSidePanelSelection = .history
             },
             onEditCommitMessage: { commit in
                 Task {
@@ -190,18 +190,18 @@ extension MainMenuView {
     private var isSidePanelPresented: Binding<Bool> {
         Binding(
             get: {
-                presentationModel.route == .main && selectedSidePanelSelection != nil
+                presentationModel.route == .main && workspace.selectedSidePanelSelection != nil
             },
             set: { isPresented in
                 if !isPresented {
-                    selectedSidePanelSelection = nil
+                    workspace.selectedSidePanelSelection = nil
                 }
             }
         )
     }
 
     private var sidePanelDismissesOnOutsideTap: Bool {
-        selectedSidePanelSelection != .workingTree
+        workspace.selectedSidePanelSelection != .workingTree
     }
 
     var mainView: some View {
@@ -232,7 +232,7 @@ extension MainMenuView {
     }
 
     private func handleExitCommand() {
-        if selectedSidePanelSelection != nil {
+        if workspace.selectedSidePanelSelection != nil {
             clearSidePanelSelection()
             return
         }
@@ -274,9 +274,9 @@ extension MainMenuView {
     }
 
     private func requestDiscard(path: String, status: WorkingTreeFileStatus) {
-        discardFilePath = path
-        discardFileStatus = status
-        showDiscardConfirmation = true
+        workspace.discardFilePath = path
+        workspace.discardFileStatus = status
+        workspace.showDiscardConfirmation = true
     }
 
     private func requestCommitFieldFocus() {

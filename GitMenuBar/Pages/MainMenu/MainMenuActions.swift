@@ -9,7 +9,7 @@ import SwiftUI
 
 extension MainMenuView {
     private var shouldRevealCommitFieldBeforeSubmitting: Bool {
-        hideCommitMessageField && !isCommitFieldTemporarilyVisible && !aiCommitCoordinator.isReadyForGeneration
+        hideCommitMessageField && !workspace.isCommitFieldTemporarilyVisible && !aiCommitCoordinator.isReadyForGeneration
     }
 
     func submitComment() async {
@@ -19,14 +19,14 @@ extension MainMenuView {
         }
 
         let result = await actionCoordinator.performCommit(
-            commentText: commentText,
+            commentText: workspace.commentText,
             shouldPushAfterCommit: resolvedCommitButtonAction == .commitAndPush
         )
         if result.didCommit {
             HapticFeedback.actionSucceeded()
-            commentText = ""
+            workspace.commentText = ""
             if hideCommitMessageField {
-                isCommitFieldTemporarilyVisible = false
+                workspace.isCommitFieldTemporarilyVisible = false
             }
         }
     }
@@ -223,7 +223,7 @@ extension MainMenuView {
     }
 
     func resetToLastCommit() {
-        commentText = ""
+        workspace.commentText = ""
 
         Task {
             let result = await gitManager.resetToLastCommitAsync()
@@ -371,7 +371,7 @@ extension MainMenuView {
     }
 
     func revealCommitFieldForManualEntry() {
-        isCommitFieldTemporarilyVisible = true
+        workspace.isCommitFieldTemporarilyVisible = true
         presentationModel.requestCommitFocus()
     }
 
@@ -433,9 +433,9 @@ extension MainMenuView {
             )
             if result.didCommit {
                 HapticFeedback.actionSucceeded()
-                commentText = ""
+                workspace.commentText = ""
                 if hideCommitMessageField {
-                    isCommitFieldTemporarilyVisible = false
+                    workspace.isCommitFieldTemporarilyVisible = false
                 }
             }
         }
@@ -449,9 +449,9 @@ extension MainMenuView {
             )
             if result.didCommit {
                 HapticFeedback.actionSucceeded()
-                commentText = ""
+                workspace.commentText = ""
                 if hideCommitMessageField {
-                    isCommitFieldTemporarilyVisible = false
+                    workspace.isCommitFieldTemporarilyVisible = false
                 }
             }
         }

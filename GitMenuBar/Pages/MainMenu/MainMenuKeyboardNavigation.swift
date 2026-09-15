@@ -46,7 +46,7 @@ extension MainMenuView {
     }
 
     func synchronizeSelectedMainItem() {
-        guard let selectedMainItemID else {
+        guard let selectedMainItemID = workspace.selectedMainItemID else {
             clearSidePanelSelection()
             return
         }
@@ -55,26 +55,26 @@ extension MainMenuView {
             return
         }
 
-        self.selectedMainItemID = nil
+        workspace.selectedMainItemID = nil
         clearSidePanelSelection()
     }
 
     func clearSidePanelSelection() {
-        selectedSidePanelSelection = nil
+        workspace.selectedSidePanelSelection = nil
     }
 
     func selectMainItem(_ itemID: MainMenuSelectableItem) {
-        selectedMainItemID = itemID
-        selectedSidePanelSelection = MainMenuSidePanelSelection(mainMenuItem: itemID)
+        workspace.selectedMainItemID = itemID
+        workspace.selectedSidePanelSelection = MainMenuSidePanelSelection(mainMenuItem: itemID)
     }
 
     func moveMainSelection(_ direction: MoveCommandDirection) {
         guard let nextSelection = MainMenuSelectionNavigator.moveSelection(
-            currentSelection: selectedMainItemID,
+            currentSelection: workspace.selectedMainItemID,
             items: keyboardSelectableItems,
             direction: direction
         ) else {
-            selectedMainItemID = nil
+            workspace.selectedMainItemID = nil
             clearSidePanelSelection()
             return
         }
@@ -83,7 +83,7 @@ extension MainMenuView {
     }
 
     func activateSelectedMainItem() {
-        guard let selectedMainItemID else {
+        guard let selectedMainItemID = workspace.selectedMainItemID else {
             return
         }
 
@@ -91,12 +91,12 @@ extension MainMenuView {
         case let .stagedFile(path), let .unstagedFile(path):
             gitManager.openFile(path: path)
         case let .historyCommit(id):
-            selectedSidePanelSelection = .commit(id: id)
+            workspace.selectedSidePanelSelection = .commit(id: id)
         }
     }
 
     func discardSelectedMainItemIfPossible() {
-        guard let selectedMainItemID else {
+        guard let selectedMainItemID = workspace.selectedMainItemID else {
             return
         }
 
@@ -106,9 +106,9 @@ extension MainMenuView {
             return
         }
 
-        discardFilePath = file.path
-        discardFileStatus = file.status
-        showDiscardConfirmation = true
+        workspace.discardFilePath = file.path
+        workspace.discardFileStatus = file.status
+        workspace.showDiscardConfirmation = true
     }
 
     func handleMainKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {

@@ -9,7 +9,7 @@ struct MainMenuView: View {
     @Namespace var animationNamespace
     @State var errorCenter = MainMenuErrorCenter()
     @State var branchDialogs = MainMenuBranchDialogs()
-    @State var commentText = ""
+    @State var workspace = MainMenuWorkspaceState()
     @State var showDeleteConfirmation = false
     @State var isDeleting = false
     @State var showProjectSelector = false
@@ -41,10 +41,7 @@ struct MainMenuView: View {
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
     @State var showBranchSelector = false
     @State var showAtomicCommitSheet = false
-    @State var isCommitFieldTemporarilyVisible = false
     @State var palette = MainMenuCommandPaletteState()
-    @State var selectedMainItemID: MainMenuSelectableItem?
-    @State var selectedSidePanelSelection: MainMenuSidePanelSelection?
     @State var lastHandledRepositoryOptionsToken = 0
     @State var selectedPushBranch: String = ""
     @State var showPullToNewBranch = false
@@ -62,10 +59,6 @@ struct MainMenuView: View {
 
     // Delete confirmation states
 
-    @State var showDiscardConfirmation = false
-    @State var discardFilePath: String?
-    @State var discardFileStatus: WorkingTreeFileStatus?
-    @State var showDiscardAllConfirmation = false
     @State var recentProjectReferences = RecentProjectsStore().recentProjects()
     @State var renderSnapshot = MainMenuRenderSnapshot.empty
 
@@ -132,8 +125,8 @@ struct MainMenuView: View {
             dialogs: branchDialogs,
             showDeleteConfirmation: $showDeleteConfirmation,
             showVisibilityConfirmation: $showVisibilityConfirmation,
-            showDiscardConfirmation: $showDiscardConfirmation,
-            showDiscardAllConfirmation: $showDiscardAllConfirmation,
+            showDiscardConfirmation: $workspace.showDiscardConfirmation,
+            showDiscardAllConfirmation: $workspace.showDiscardAllConfirmation,
             showRestartConfirmation: $showRestartConfirmation,
             isDeleting: isDeleting,
             isTogglingVisibility: isTogglingVisibility,
@@ -144,13 +137,13 @@ struct MainMenuView: View {
             onDeleteRepository: deleteRepository,
             onToggleVisibility: toggleRepoVisibility,
             onDiscardConfirm: {
-                if let path = discardFilePath, let status = discardFileStatus {
+                if let path = workspace.discardFilePath, let status = workspace.discardFileStatus {
                     Task {
                         _ = await actionCoordinator.discardSidePanelFile(path: path, status: status)
                     }
                 }
-                discardFilePath = nil
-                discardFileStatus = nil
+                workspace.discardFilePath = nil
+                workspace.discardFileStatus = nil
             },
             onDiscardAll: {
                 gitManager.discardAllUnstagedChanges { result in
@@ -252,20 +245,20 @@ struct MainMenuView: View {
                 clearSidePanelSelection()
                 closeCommandPalette()
                 dismissTransientPresentations()
-                if commentText.isEmpty {
-                    isCommitFieldTemporarilyVisible = false
+                if workspace.commentText.isEmpty {
+                    workspace.isCommitFieldTemporarilyVisible = false
                 }
             }
         }
         .onChange(of: mainKeyboardFocusSyncToken) {
             synchronizeMainKeyboardNavigationFocus()
         }
-        .onChange(of: selectedMainItemID) {
+        .onChange(of: workspace.selectedMainItemID) {
             synchronizeMainKeyboardNavigationFocus()
         }
         .onChange(of: hideCommitMessageField) { _, isHidden in
-            if !isHidden || commentText.isEmpty {
-                isCommitFieldTemporarilyVisible = false
+            if !isHidden || workspace.commentText.isEmpty {
+                workspace.isCommitFieldTemporarilyVisible = false
             }
         }
         .onChange(of: gitManager.stagedFiles) {
@@ -299,7 +292,7 @@ struct MainMenuView: View {
             refreshRenderSnapshot()
         }
         .onChange(of: currentRepositoryPath) {
-            selectedMainItemID = nil
+            workspace.selectedMainItemID = nil
             clearSidePanelSelection()
             reloadRepositorySelectionSnapshot()
             refreshRenderSnapshot()
@@ -320,7 +313,7 @@ struct MainMenuView: View {
         .onChange(of: projectMonitor.snapshots) {
             refreshRenderSnapshot()
         }
-        .onChange(of: selectedSidePanelSelection) { _, selection in
+        .onChange(of: workspace.selectedSidePanelSelection) { _, selection in
             Task {
                 await actionCoordinator.prepareSidePanelSelection(selection)
             }
