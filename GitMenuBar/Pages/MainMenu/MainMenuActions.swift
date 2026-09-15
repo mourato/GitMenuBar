@@ -465,4 +465,36 @@ extension MainMenuView {
         }
         return commitIndex < currentIndex
     }
+
+    func retryAutomaticGeneration() {
+        aiCommitCoordinator.consumeAutomaticRetry()
+        Task {
+            let result = await actionCoordinator.retryAutomaticCommit(
+                shouldPushAfterCommit: resolvedCommitButtonAction == .commitAndPush
+            )
+            if result.didCommit {
+                HapticFeedback.actionSucceeded()
+                commentText = ""
+                if hideCommitMessageField {
+                    isCommitFieldTemporarilyVisible = false
+                }
+            }
+        }
+    }
+
+    func commitUsingFallbackModel() {
+        aiCommitCoordinator.consumeAutomaticRetry()
+        Task {
+            let result = await actionCoordinator.commitUsingFallbackModel(
+                shouldPushAfterCommit: resolvedCommitButtonAction == .commitAndPush
+            )
+            if result.didCommit {
+                HapticFeedback.actionSucceeded()
+                commentText = ""
+                if hideCommitMessageField {
+                    isCommitFieldTemporarilyVisible = false
+                }
+            }
+        }
+    }
 }

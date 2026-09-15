@@ -6,46 +6,16 @@
 import SwiftUI
 
 extension MainMenuView {
-    private var mainScrollContent: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-            if let inlineStatusBanner {
-                InlineStatusBannerView(
-                    banner: inlineStatusBanner,
-                    onDismiss: dismissInlineStatusBanner
-                )
-            }
-
-            if let suggestionPath = presentationModel.createRepoSuggestionPath, suggestionPath == currentRepoPath {
-                createRepoSuggestionBanner(path: suggestionPath)
-            }
-
-            if !currentRepoPath.isEmpty {
-                RepositoryOverviewView(
-                    overview: renderSnapshot.overview,
-                    onSelectSection: { selection in
-                        selectedSidePanelSelection = selection
-                    },
-                    commitActionTitle: resolvedCommitButtonAction.buttonTitle,
-                    canCommit: actionCoordinator.canAutoCommit,
-                    onCommit: performQuickCommit,
-                    canSync: actionCoordinator.canSync,
-                    onSync: syncRepository
-                )
-            }
-        }
-    }
-
     private var footerSection: some View {
-        BranchManagementControlsView(
+        MainMenuFooterSection(
             currentBranch: gitManager.currentBranch,
             commitCount: gitManager.commitCount,
             isRemoteAhead: gitManager.isRemoteAhead,
             behindCount: gitManager.behindCount,
             isDetachedHead: gitManager.isDetachedHead,
-            isBranchSelectorPresented: showBranchSelector,
-            onBranchTap: toggleBranchSelectorPresentation
-        )
-        .popover(isPresented: $showBranchSelector, arrowEdge: .bottom) {
+            onBranchTap: toggleBranchSelectorPresentation,
+            isBranchSelectorPresented: $showBranchSelector
+        ) {
             branchSelectorOverlay
         }
     }
@@ -63,7 +33,20 @@ extension MainMenuView {
     private var mainRouteContent: some View {
         VStack(spacing: WorkbenchMetrics.groupSpacing) {
             ScrollView(.vertical) {
-                mainScrollContent
+                MainMenuOverviewSection(
+                    banner: inlineStatusBanner,
+                    onDismissBanner: dismissInlineStatusBanner,
+                    suggestionPath: presentationModel.createRepoSuggestionPath,
+                    currentRepoPath: currentRepoPath,
+                    onCreateRepo: { presentationModel.showCreateRepo(path: $0) },
+                    overview: renderSnapshot.overview,
+                    commitActionTitle: resolvedCommitButtonAction.buttonTitle,
+                    canCommit: actionCoordinator.canAutoCommit,
+                    onCommit: performQuickCommit,
+                    canSync: actionCoordinator.canSync,
+                    onSync: syncRepository,
+                    onSelectSection: { selectedSidePanelSelection = $0 }
+                )
             }
             .scrollDisabled(isCommandPalettePresented)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -80,64 +63,86 @@ extension MainMenuView {
     }
 
     private var sidePanelContent: some View {
-        sidePanelSelectionView
-            .padding(.horizontal, WorkbenchMetrics.panelPadding)
-            .padding(.top, WorkbenchMetrics.iconHitTarget + WorkbenchMetrics.compactSpacing)
-            .padding(.bottom, WorkbenchMetrics.panelPadding)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .ignoresSafeArea(.container, edges: .top)
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(
-                selectedSidePanelSelection.map { "Details for \($0.title)" } ?? "Details"
-            )
-    }
-
-    @ViewBuilder
-    private var sidePanelSelectionView: some View {
-        switch selectedSidePanelSelection {
-        case .workingTree:
-            commitWorkspaceView
-        case .history, .commit:
-            HistorySidePanelView(
-                projectName: renderSnapshot.currentProjectName,
-                selection: selectedSidePanelSelection,
-                history: sidePanelHistory,
-                onClose: clearSidePanelSelection
-            )
-        default:
-            SidePanelDetailView(
-                projectName: renderSnapshot.currentProjectName,
-                selection: selectedSidePanelSelection,
-                overview: renderSnapshot.overview,
-                onClose: clearSidePanelSelection,
-                onRequestDiscard: requestDiscard,
-                onRequestDeleteBranch: { name in
-                    branchNameToDelete = name
-                    showBranchDeleteConfirmation = true
-                },
-                onRequestSwitchBranch: { branch in
-                    guard branch != gitManager.currentBranch else { return }
-                    if hasWorkingTreeChanges {
-                        pendingSwitchBranch = branch
-                        showDirtySwitchConfirmation = true
-                    } else {
+        Group {
+            if let selection = selectedSidePanelSelection {
+                MainMenuSidePanelHost(
+                    selection: selection,
+                    projectName: renderSnapshot.currentProjectName,
+                    overview: renderSnapshot.overview,
+                    history: sidePanelHistory,
+                    commitMessage: $commentText,
+                    commitFieldFocus: $isCommentFieldFocused,
+                    showsCommitField: showsCommentField,
+                    commitPrimaryButtonSystemImage: primaryButtonSystemImage,
+                    isCommitActionBusy: isPrimaryActionBusy,
+                    commitAutomaticMessageHint: automaticMessageHint,
+                    commitGenerationDisabledReason: shouldShowGenerationHint
+                        ? aiCommitCoordinator.generationDisabledReason : nil,
+                    commitGenerationError: displayedGenerationError,
+                    commitAutomaticRetryAvailable: aiCommitCoordinator.automaticRetryAvailable,
+                    isCommitFallbackModelAvailable: aiCommitCoordinator.isReadyForFallbackGeneration,
+                    commitPrimaryButtonTitle: primaryButtonTitle,
+                    isCommitPrimaryButtonDisabled: isPrimaryButtonDisabled,
+                    canShowSplitCommits: canShowAtomicCommits,
+                    commitFocusToken: presentationModel.focusCommitFieldToken,
+                    workspaceSelectedFileID: selectedMainItemID,
+                    onClose: clearSidePanelSelection,
+                    onCommitPrimaryAction: {
                         Task {
-                            _ = await actionCoordinator.switchSidePanelBranch(branch)
+                            await performPrimaryAction()
                         }
+                    },
+                    onSplitCommits: startAtomicCommitFlow,
+                    onRetryCommitGeneration: retryAutomaticGeneration,
+                    onUseCommitFallbackModel: commitUsingFallbackModel,
+                    onCommitDidCommit: {
+                        if hideCommitMessageField {
+                            isCommitFieldTemporarilyVisible = false
+                        }
+                    },
+                    onRequestCommitFocus: requestCommitFieldFocus,
+                    onSelectWorkspaceFile: { selectMainItem($0) },
+                    onDiscardAllUnstaged: {
+                        showDiscardAllConfirmation = true
+                    },
+                    onRequestDiscard: requestDiscard,
+                    onRequestDeleteBranch: { name in
+                        branchNameToDelete = name
+                        showBranchDeleteConfirmation = true
+                    },
+                    onRequestSwitchBranch: { branch in
+                        guard branch != gitManager.currentBranch else { return }
+                        if hasWorkingTreeChanges {
+                            pendingSwitchBranch = branch
+                            showDirtySwitchConfirmation = true
+                        } else {
+                            Task {
+                                _ = await actionCoordinator.switchSidePanelBranch(branch)
+                            }
+                        }
+                    },
+                    onCreateBranch: {
+                        dismissTransientPresentations()
+                        showCreateBranch = true
+                    },
+                    onRenameBranch: { name in
+                        dismissTransientPresentations()
+                        oldBranchName = name
+                        renameBranchNewName = name
+                        showRenameBranch = true
                     }
-                },
-                onCreateBranch: {
-                    dismissTransientPresentations()
-                    showCreateBranch = true
-                },
-                onRenameBranch: { name in
-                    dismissTransientPresentations()
-                    oldBranchName = name
-                    renameBranchNewName = name
-                    showRenameBranch = true
-                }
-            )
+                )
+            }
         }
+        .padding(.horizontal, WorkbenchMetrics.panelPadding)
+        .padding(.top, WorkbenchMetrics.iconHitTarget + WorkbenchMetrics.compactSpacing)
+        .padding(.bottom, WorkbenchMetrics.panelPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .ignoresSafeArea(.container, edges: .top)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(
+            selectedSidePanelSelection.map { "Details for \($0.title)" } ?? "Details"
+        )
     }
 
     private var sidePanelHistory: SidePanelHistoryModel {
@@ -173,48 +178,6 @@ extension MainMenuView {
         )
     }
 
-    private var commitWorkspaceView: some View {
-        SidePanelCommitWorkspaceView(
-            projectName: renderSnapshot.currentProjectName,
-            commitMessage: $commentText,
-            commitFieldFocus: $isCommentFieldFocused,
-            showsCommitField: showsCommentField,
-            commitPrimaryButtonSystemImage: primaryButtonSystemImage,
-            isCommitActionBusy: isPrimaryActionBusy,
-            commitAutomaticMessageHint: automaticMessageHint,
-            commitGenerationDisabledReason: shouldShowGenerationHint ? aiCommitCoordinator.generationDisabledReason : nil,
-            commitGenerationError: displayedGenerationError,
-            commitAutomaticRetryAvailable: aiCommitCoordinator.automaticRetryAvailable,
-            isCommitFallbackModelAvailable: aiCommitCoordinator.isReadyForFallbackGeneration,
-            commitPrimaryButtonTitle: primaryButtonTitle,
-            isCommitPrimaryButtonDisabled: isPrimaryButtonDisabled,
-            canShowSplitCommits: canShowAtomicCommits,
-            commitFocusToken: presentationModel.focusCommitFieldToken,
-            history: sidePanelHistory,
-            workspaceSelectedFileID: selectedMainItemID,
-            onClose: clearSidePanelSelection,
-            onCommitPrimaryAction: {
-                Task {
-                    await performPrimaryAction()
-                }
-            },
-            onSplitCommits: startAtomicCommitFlow,
-            onRetryCommitGeneration: retryAutomaticGeneration,
-            onUseCommitFallbackModel: commitUsingFallbackModel,
-            onCommitDidCommit: {
-                if hideCommitMessageField {
-                    isCommitFieldTemporarilyVisible = false
-                }
-            },
-            onRequestCommitFocus: requestCommitFieldFocus,
-            onSelectWorkspaceFile: { selectMainItem($0) },
-            onDiscardAllUnstaged: {
-                showDiscardAllConfirmation = true
-            },
-            onRequestDiscard: requestDiscard
-        )
-    }
-
     private var projectsSidebarVisibility: Binding<NavigationSplitViewVisibility> {
         Binding(
             get: { isProjectsSidebarCollapsed ? .detailOnly : .all },
@@ -243,88 +206,71 @@ extension MainMenuView {
 
     var mainView: some View {
         applyMainViewOverlays(
-            to: NavigationSplitView(columnVisibility: projectsSidebarVisibility) {
-                ProjectsSidebarView(
-                    currentPath: currentRepositoryPath,
-                    onSelect: switchRepository,
-                    onReveal: revealProjectInFinder,
-                    onStopMonitoring: { projectMonitor.remove(path: $0) },
-                    onRemove: removeProject,
-                    onRename: renameProject,
-                    onProjectCleanup: presentationModel.showProjectCleanup,
-                    onAddProject: selectDirectory,
-                    onRefreshAll: projectMonitor.refreshAll,
-                    onFetchAll: projectMonitor.fetchAll,
-                    onOpenSettings: openSettingsWindow
-                )
-                .navigationSplitViewColumnWidth(
-                    min: WorkbenchMetrics.projectsMinimumWidth,
-                    ideal: WorkbenchMetrics.projectsMinimumWidth,
-                    max: WorkbenchMetrics.projectsMaximumWidth
-                )
-            } detail: {
-                routeContent
-                    .padding(.top, WorkbenchMetrics.sectionSpacing)
-                    .padding(.leading, WorkbenchMetrics.windowPadding)
-                    .padding(.trailing, WorkbenchMetrics.windowPadding)
-                    .padding(.bottom, WorkbenchMetrics.windowPadding)
-                    .frame(
-                        minWidth: WorkbenchMetrics.centralMinimumWidth,
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: .top
-                    )
-                    .sidePanel(
-                        isPresented: isSidePanelPresented,
-                        dismissOnOutsideTap: sidePanelDismissesOnOutsideTap
-                    ) {
-                        sidePanelContent
-                    }
-            }
-            .navigationSplitViewStyle(.balanced)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .onExitCommand {
-                if selectedSidePanelSelection != nil {
-                    clearSidePanelSelection()
-                    return
-                }
-                if isCommandPalettePresented {
-                    closeCommandPalette()
-                    return
-                }
-                if showBranchSelector {
-                    dismissTransientPresentations()
-                    return
-                }
-                if showRepositoryOptionsPopover {
-                    dismissTransientPresentations()
-                    return
-                }
-                if hasTransientPresentation {
-                    dismissTransientPresentations()
-                    return
-                }
-                closeWindow()
-            }
-            .onReceive(shortcutActionBridge.actions) { action in
-                guard presentationModel.route == .main else { return }
-
-                switch action {
-                case .commit:
-                    guard hasWorkingTreeChanges else { return }
-                    Task {
-                        await submitComment()
-                    }
-                case .sync:
-                    Task {
-                        await actionCoordinator.performSync()
-                    }
-                case .atomicCommits:
-                    startAtomicCommitFlow()
-                }
-            }
+            to: MainMenuShellView(
+                currentRepositoryPath: currentRepositoryPath,
+                onSelectRepository: switchRepository,
+                onReveal: revealProjectInFinder,
+                onStopMonitoring: { projectMonitor.remove(path: $0) },
+                onRemove: removeProject,
+                onRename: renameProject,
+                onProjectCleanup: presentationModel.showProjectCleanup,
+                onAddProject: selectDirectory,
+                onRefreshAll: projectMonitor.refreshAll,
+                onFetchAll: projectMonitor.fetchAll,
+                onOpenSettings: openSettingsWindow,
+                sidebarVisibility: projectsSidebarVisibility,
+                detail: { routeContent },
+                sidePanelPresented: isSidePanelPresented,
+                dismissSidePanelOnOutsideTap: sidePanelDismissesOnOutsideTap,
+                sidePanel: { sidePanelContent },
+                onExitCommand: handleExitCommand,
+                shortcutActions: shortcutActionBridge.actions,
+                onShortcutAction: handleShortcutAction
+            )
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func handleExitCommand() {
+        if selectedSidePanelSelection != nil {
+            clearSidePanelSelection()
+            return
+        }
+        if isCommandPalettePresented {
+            closeCommandPalette()
+            return
+        }
+        if showBranchSelector {
+            dismissTransientPresentations()
+            return
+        }
+        if showRepositoryOptionsPopover {
+            dismissTransientPresentations()
+            return
+        }
+        if hasTransientPresentation {
+            dismissTransientPresentations()
+            return
+        }
+        closeWindow()
+    }
+
+    private func handleShortcutAction(_ action: MainMenuShortcutAction) {
+        guard presentationModel.route == .main else { return }
+
+        switch action {
+        case .commit:
+            guard hasWorkingTreeChanges else { return }
+            Task {
+                await submitComment()
+            }
+        case .sync:
+            Task {
+                await actionCoordinator.performSync()
+            }
+        case .atomicCommits:
+            startAtomicCommitFlow()
+        }
     }
 
     private func requestDiscard(path: String, status: WorkingTreeFileStatus) {

@@ -12,75 +12,25 @@ extension MainMenuView {
         }
     }
 
-    @ViewBuilder
-    private var transientPresentationOverlayContent: some View {
-        if presentationModel.route == .main, hasTransientPresentation {
-            ZStack {
-                transientPresentationScrim
-                    .contentShape(Rectangle())
-                    .ignoresSafeArea()
-                    .accessibilityHidden(true)
-                    .onTapGesture {
-                        dismissTransientPresentations()
-                    }
-
-                transientPanelContent
-            }
-            .animation(WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion), value: hasTransientPresentation)
-            .transition(.opacity)
-        }
-    }
-
-    @ViewBuilder
-    private var transientPanelContent: some View {
-        if showRepositoryOptionsPopover {
-            topCenteredOverlay(repositoryOptionsOverlay)
-        } else if let snapshot = presentationModel.quotaInfoSnapshot {
-            quotaInfoOverlay(snapshot)
-        }
-    }
-
-    private func topCenteredOverlay(_ overlay: some View) -> some View {
-        HStack {
-            Spacer(minLength: 0)
-            overlay
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .padding(.top, WorkbenchMetrics.sectionSpacing)
-        .padding(.horizontal, WorkbenchMetrics.windowPadding)
-    }
-
-    private func quotaInfoOverlay(_ snapshot: UsageQuotaSnapshot) -> some View {
-        HStack {
-            QuotaStaleInfoPanel(
-                snapshot: snapshot,
-                onRetry: {
-                    dismissTransientPresentations()
-                    usageQuotaStore.refresh(reason: .manual)
-                }
-            )
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-        .padding(.leading, WorkbenchMetrics.windowPadding)
-        .padding(.trailing, WorkbenchMetrics.windowPadding)
-        .padding(.bottom, WorkbenchMetrics.windowPadding * 2)
-        .modifier(TransientPanelChrome(origin: .bottomLeading, reduceMotion: reduceMotion))
-    }
-
-    private var repositoryOptionsOverlay: some View {
-        RepositoryOptionsPopoverView(
+    var transientPresentationOverlayContent: some View {
+        MainMenuTransientOverlay(
+            isPresented: presentationModel.route == .main && hasTransientPresentation,
+            showsRepositoryOptions: showRepositoryOptionsPopover,
             visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
             visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
+            quotaSnapshot: presentationModel.quotaInfoSnapshot,
             onToggleVisibility: confirmRepositoryVisibilityAction,
-            onDeleteRepository: confirmRepositoryDeleteAction
+            onDeleteRepository: confirmRepositoryDeleteAction,
+            onDismiss: dismissTransientPresentations,
+            onRetryQuota: {
+                dismissTransientPresentations()
+                usageQuotaStore.refresh(reason: .manual)
+            }
         )
-        .modifier(TransientPanelChrome(origin: .topCenter, reduceMotion: reduceMotion))
     }
 
     var branchSelectorOverlay: some View {
-        BranchSelectorPopoverView(
+        MainMenuBranchSelectorOverlay(
             isDetachedHead: gitManager.isDetachedHead,
             isRemoteAhead: gitManager.isRemoteAhead,
             behindCount: gitManager.behindCount,
@@ -151,51 +101,15 @@ extension MainMenuView {
         )
     }
 
-    @ViewBuilder
-    private var transientPresentationScrim: some View {
-        if reduceTransparency {
-            Color(nsColor: .windowBackgroundColor)
-        } else {
-            Color.black.opacity(0.05)
-        }
-    }
-
-    private struct TransientPanelChrome: ViewModifier {
-        let origin: WorkbenchMotion.TransientPanelOrigin
-        let reduceMotion: Bool
-
-        func body(content: Content) -> some View {
-            content
-                .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 8)
-                .accessibilityAddTraits(.isModal)
-                .transition(WorkbenchMotion.transientPanelTransition(from: origin, usesReducedMotion: reduceMotion))
-        }
-    }
-
-    @ViewBuilder
     var commandPaletteOverlayContent: some View {
-        if isCommandPalettePresented, presentationModel.route == .main {
-            ZStack {
-                commandPaletteScrim
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        closeCommandPalette()
-                    }
-                    .zIndex(0)
-
-                MainMenuCommandPaletteView(
-                    query: $commandPaletteQuery,
-                    items: commandPaletteVisibleItems,
-                    selectedItemID: $selectedCommandPaletteItemID,
-                    onClose: closeCommandPalette,
-                    onSelectItem: executeCommandPaletteItem
-                )
-                .accessibilityAddTraits(.isModal)
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
-                .zIndex(1)
-            }
-            .transition(.opacity)
-        }
+        MainMenuCommandPaletteOverlay(
+            isPresented: isCommandPalettePresented && presentationModel.route == .main,
+            query: $commandPaletteQuery,
+            items: commandPaletteVisibleItems,
+            selectedItemID: $selectedCommandPaletteItemID,
+            onClose: closeCommandPalette,
+            onSelectItem: executeCommandPaletteItem
+        )
     }
 
     private func applySheets(to view: some View) -> some View {
@@ -217,19 +131,6 @@ extension MainMenuView {
             .sheet(isPresented: $showAtomicCommitSheet, content: atomicCommitSheet)
     }
 
-    @ViewBuilder
-    private var commandPaletteScrim: some View {
-        if reduceTransparency {
-            Color(nsColor: .windowBackgroundColor)
-        } else {
-            ZStack {
-                Color.black.opacity(0.08)
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-            }
-        }
-    }
-
     var deleteBranchWarningMessage: String {
         let protectedBranches = ["main", "master", "develop"]
         if gitManager.unmergedIntoDefaultBranches.contains(branchNameToDelete) {
@@ -240,150 +141,6 @@ extension MainMenuView {
         }
 
         return "Are you sure you want to delete this branch? This action cannot be undone."
-    }
-
-    private func renameBranchSheet() -> some View {
-        RenameBranchSheet(
-            oldBranchName: oldBranchName,
-            newBranchName: $renameBranchNewName,
-            errorMessage: renameBranchError,
-            onCancel: {
-                showRenameBranch = false
-                renameBranchNewName = ""
-                renameBranchError = nil
-            },
-            onRename: renameBranch
-        )
-    }
-
-    @ViewBuilder
-    private func commitMessageEditorSheet() -> some View {
-        if let editingCommit = commitHistoryEditCoordinator.editingCommit {
-            CommitMessageEditorSheet(
-                title: commitHistoryEditCoordinator.editMode.title,
-                commit: editingCommit,
-                message: $commitHistoryEditCoordinator.draftMessage,
-                isPublishedCommit: commitHistoryEditCoordinator.isPublishedCommit,
-                isSaving: commitHistoryEditCoordinator.isSaving,
-                errorMessage: commitHistoryEditCoordinator.inlineError,
-                onCancel: {
-                    commitHistoryEditCoordinator.dismissEditor()
-                },
-                onSave: {
-                    Task {
-                        await saveEditedCommitMessage()
-                    }
-                }
-            )
-        }
-    }
-
-    private func syncOptionsSheet() -> some View {
-        VStack(spacing: 16) {
-            Text("Sync with Remote")
-                .font(.headline.weight(.semibold))
-
-            Text(syncOptionsSubtitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            VStack(alignment: .leading, spacing: 12) {
-                SyncOptionCard(
-                    title: "Merge",
-                    subtitle: "Safe: Creates a merge commit",
-                    tone: .accent
-                ) {
-                    useRebase = false
-                    syncWithRemote()
-                }
-
-                SyncOptionCard(
-                    title: "Rebase",
-                    subtitle: "Clean: Replays your commits on top",
-                    tone: .warning
-                ) {
-                    useRebase = true
-                    syncWithRemote()
-                }
-
-                SyncOptionCard(
-                    title: "Pull to New Branch",
-                    subtitle: "Safe: Creates a fresh branch from remote",
-                    tone: .success
-                ) {
-                    actionCoordinator.dismissSyncOptions()
-                    pullToNewBranchName = "\(gitManager.currentBranch)-remote"
-                    showPullToNewBranch = true
-                }
-            }
-
-            Button("Cancel") {
-                actionCoordinator.dismissSyncOptions()
-            }
-            .buttonStyle(.borderless)
-            .foregroundStyle(.secondary)
-            .padding(.top, 8)
-        }
-        .padding()
-        .frame(width: 320)
-    }
-
-    private var syncOptionsSubtitle: String {
-        "Remote has \(gitManager.behindCount) new commit\(gitManager.behindCount == 1 ? "" : "s")"
-    }
-
-    private func createBranchSheet() -> some View {
-        CreateBranchSheet(
-            branchName: $newBranchName,
-            currentBranch: gitManager.currentBranch,
-            errorMessage: createBranchError,
-            onCancel: {
-                showCreateBranch = false
-                newBranchName = ""
-                createBranchError = nil
-            },
-            onCreate: createNewBranch
-        )
-    }
-
-    private func pullToNewBranchSheet() -> some View {
-        PullToNewBranchSheet(
-            branchName: $pullToNewBranchName,
-            errorMessage: syncError,
-            onCancel: {
-                showPullToNewBranch = false
-                pullToNewBranchName = ""
-                syncError = nil
-            },
-            onPull: pullToNewBranch
-        )
-    }
-
-    private func atomicCommitSheet() -> some View {
-        AtomicCommitReviewSheet(
-            gitManager: gitManager,
-            makeSnapshot: { [weak gitManager] in
-                await gitManager?.makeAtomicCommitSnapshotAsync()
-            },
-            generateGroups: { [weak aiCommitCoordinator] snapshot in
-                guard let coordinator = aiCommitCoordinator else {
-                    return []
-                }
-                return try await coordinator.generateAtomicHunkGroups(snapshot: snapshot)
-            },
-            onCancel: {
-                showAtomicCommitSheet = false
-            },
-            onCommit: { executionPlan in
-                showAtomicCommitSheet = false
-                Task {
-                    let result = await actionCoordinator.performReviewedAtomicCommits(plan: executionPlan)
-                    if result.didCommit {
-                        HapticFeedback.actionSucceeded()
-                    }
-                }
-            }
-        )
     }
 }
 
