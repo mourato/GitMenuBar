@@ -49,17 +49,24 @@ struct CommitWorkflowView: View {
         .onAppear {
             onRequestFocus()
         }
-        .onChange(of: focusCommitFieldToken) { _ in
+        .onChange(of: focusCommitFieldToken) {
             onRequestFocus()
         }
-        .alert(item: $commitHistoryEditCoordinator.alert) { alert in
-            Alert(
-                title: Text(alert.title),
-                message: Text(alert.message),
-                dismissButton: .cancel(Text("OK")) {
-                    commitHistoryEditCoordinator.clearAlert()
+        .alert(
+            commitHistoryEditCoordinator.alert?.title ?? "",
+            isPresented: Binding(
+                get: { commitHistoryEditCoordinator.alert != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        commitHistoryEditCoordinator.clearAlert()
+                    }
                 }
-            )
+            ),
+            presenting: commitHistoryEditCoordinator.alert
+        ) { _ in
+            Button("OK", role: .cancel) {}
+        } message: { alert in
+            Text(alert.message)
         }
         .confirmationDialog(
             "Commit message contains only spaces",

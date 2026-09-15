@@ -14,7 +14,7 @@ struct RenameBranchSheet: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("New name for '\(oldBranchName)':")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 TextField("new-branch-name", text: $newBranchName)
                     .textFieldStyle(.roundedBorder)
@@ -24,7 +24,7 @@ struct RenameBranchSheet: View {
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.caption)
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
                 }
             }
 

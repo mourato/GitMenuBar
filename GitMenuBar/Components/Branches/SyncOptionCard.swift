@@ -22,7 +22,7 @@ struct SyncOptionCard: View {
                         .font(.subheadline.weight(.medium))
                     Text(subtitle)
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
             }

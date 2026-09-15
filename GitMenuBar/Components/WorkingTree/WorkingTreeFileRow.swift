@@ -21,7 +21,7 @@ struct WorkingTreeLineDiffView: View {
             Text("+\(addedCount)")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
-                .foregroundColor(addedCount > 0 ? .green : .secondary)
+                .foregroundStyle(addedCount > 0 ? .green : .secondary)
                 .contentTransition(reduceMotion ? .identity : .numericText())
                 .animation(
                     WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
@@ -30,7 +30,7 @@ struct WorkingTreeLineDiffView: View {
             Text("-\(removedCount)")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
-                .foregroundColor(removedCount > 0 ? .red : .secondary)
+                .foregroundStyle(removedCount > 0 ? .red : .secondary)
                 .contentTransition(reduceMotion ? .identity : .numericText())
                 .animation(
                     WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
@@ -52,7 +52,7 @@ func workingTreeRowIconButton(
     Button(action: action) {
         Image(systemName: systemName)
             .font(WorkbenchTypography.captionStrong)
-            .foregroundColor(.primary)
+            .foregroundStyle(.primary)
             .frame(
                 width: WorkingTreeLayoutMetrics.actionHitTarget,
                 height: WorkingTreeLayoutMetrics.actionHitTarget

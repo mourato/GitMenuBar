@@ -11,8 +11,9 @@ struct RecentPathRowView: View {
         Button(action: onTap) {
             HStack {
                 Image(systemName: "clock")
+                    .accessibilityHidden(true)
                     .font(WorkbenchTypography.detail)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Text(displayText)
                     .font(WorkbenchTypography.body)
                     .lineLimit(1)

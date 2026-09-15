@@ -48,6 +48,7 @@ struct CreateRepoContentView: View {
 
                 HStack {
                     Image(systemName: "folder.fill")
+                        .accessibilityHidden(true)
                         .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
                     Text(URL(fileURLWithPath: folderPath).lastPathComponent)
@@ -96,6 +97,7 @@ struct CreateRepoContentView: View {
                         Text("Creating")
                     } else {
                         Image(systemName: "arrow.up.circle.fill")
+                            .accessibilityHidden(true)
                         Text("Create & Publish to GitHub")
                     }
                 }

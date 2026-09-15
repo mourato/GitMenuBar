@@ -13,8 +13,8 @@ struct WorktreeManagementContentView: View {
         return snapshot.worktrees
             .filter { info in
                 guard !query.isEmpty else { return true }
-                return info.worktree.path.localizedCaseInsensitiveContains(query)
-                    || (info.worktree.branchName?.localizedCaseInsensitiveContains(query) ?? false)
+                return info.worktree.path.localizedStandardContains(query)
+                    || (info.worktree.branchName?.localizedStandardContains(query) ?? false)
             }
             .sorted { $0.worktree.path.localizedStandardCompare($1.worktree.path) == .orderedAscending }
     }
@@ -71,8 +71,8 @@ struct CleanupManagementContentView: View {
         guard let snapshot else { return [] }
         return snapshot.managementUnits.filter { unit in
             query.isEmpty
-                || unit.branch.reference.name.localizedCaseInsensitiveContains(query)
-                || (unit.worktree?.worktree.path.localizedCaseInsensitiveContains(query) ?? false)
+                || unit.branch.reference.name.localizedStandardContains(query)
+                || (unit.worktree?.worktree.path.localizedStandardContains(query) ?? false)
         }.sorted {
             $0.branch.reference.name.localizedStandardCompare($1.branch.reference.name) == .orderedAscending
         }

@@ -343,9 +343,11 @@ struct FileTypeIconView: View {
             Image(nsImage: image)
                 .resizable()
                 .scaledToFit()
+                .accessibilityHidden(true)
                 .frame(width: 14, height: 14)
         } else {
             Image(systemName: descriptor.fallbackSymbolName)
+                .accessibilityHidden(true)
                 .font(WorkbenchTypography.captionStrong)
                 .foregroundStyle(descriptor.color(for: colorScheme))
         }

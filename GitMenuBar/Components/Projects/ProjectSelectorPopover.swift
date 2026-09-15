@@ -66,16 +66,27 @@ struct ProjectSelectorPopoverView: View {
         }
         .workbenchPanelSurface(material: .thin)
         .frame(width: 300, height: 260)
-        .alert(item: $removalProject) { project in
-            let isCurrent = project.path == normalizedCurrentRepoPath
-            return Alert(
-                title: Text("Remove \u{201c}\(project.name)\u{201d}?"),
-                message: Text(
-                    "This only removes the project from this list. The folder, local repository, and remote repository are not deleted."
-                        + (isCurrent ? " GitMenuBar will stop using it until you choose it again." : "")
-                ),
-                primaryButton: .cancel(),
-                secondaryButton: .destructive(Text("Remove")) { onRemoveProject(project.path) }
+        .alert(
+            removalProject.map { "Remove “\($0.name)”?" } ?? "",
+            isPresented: Binding(
+                get: { removalProject != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        removalProject = nil
+                    }
+                }
+            ),
+            presenting: removalProject
+        ) { project in
+            Button("Remove", role: .destructive) { onRemoveProject(project.path) }
+            Button("Cancel", role: .cancel) {}
+        } message: { project in
+            let suffix = project.path == normalizedCurrentRepoPath
+                ? " GitMenuBar will stop using it until you choose it again."
+                : ""
+            Text(
+                "This only removes the project from this list. The folder, local repository, and remote repository are not deleted."
+                    + suffix
             )
         }
         .onExitCommand {
@@ -90,7 +101,7 @@ struct ProjectSelectorPopoverView: View {
     private func beginRename(_ project: ProjectReference) {
         renameDraft = project.name
         renamingProjectPath = project.path
-        DispatchQueue.main.async {
+        Task { @MainActor in
             focusedRenameProjectPath = project.path
         }
     }
@@ -217,6 +228,7 @@ private struct ProjectSelectorRowView: View {
 
     private var projectStatusIcon: some View {
         Image(systemName: isCurrent ? "checkmark.circle.fill" : "circle")
+            .accessibilityHidden(true)
             .foregroundStyle(isCurrent ? Color.accentColor : Color.secondary)
     }
 

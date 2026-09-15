@@ -349,7 +349,7 @@ final class ProjectMonitorStore: ObservableObject {
     private func scheduleFileEventFlush() {
         guard fileEventDebounceTask == nil else { return }
         fileEventDebounceTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 250_000_000)
+            try? await Task.sleep(for: .milliseconds(250))
             guard !Task.isCancelled else { return }
             self?.flushFileEvents()
         }

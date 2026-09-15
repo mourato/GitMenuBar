@@ -76,18 +76,18 @@ struct CommitComposerSectionView: View {
             if let automaticMessageHint {
                 Text(automaticMessageHint)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             if let generationDisabledReason {
                 Text(generationDisabledReason)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             } else if let generationError {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(generationError)
                         .font(.caption)
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
 
                     HStack(spacing: WorkbenchMetrics.compactSpacing) {
                         Button(automaticRetryAvailable ? "Retry (\(retryCountdown)s)" : "Retry", action: onRetryGeneration)
@@ -103,7 +103,7 @@ struct CommitComposerSectionView: View {
                     if !isFallbackModelAvailable {
                         Text("Configure a fallback model in Settings.")
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

@@ -161,7 +161,7 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
         let snapshot = try await resolvedSnapshot(from: gitManager)
-        let main = try XCTUnwrap(snapshot.worktrees.first { $0.worktree.isMainWorktree })
+        let main = try XCTUnwrap(snapshot.worktrees.first(where: \.worktree.isMainWorktree))
         let dirtyMain = GitWorktreeCleanupInfo(worktree: main.worktree, status: .dirty)
         let unit = GitCleanupUnit.forceWorktreeRemoval(
             repositoryIdentity: snapshot.repositoryIdentity,
@@ -199,7 +199,7 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
         let repositoryURL = try createTemporaryGitRepository(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
         let snapshot = try await resolvedSnapshot(from: gitManager)
-        let main = try XCTUnwrap(snapshot.worktrees.first { $0.worktree.isMainWorktree })
+        let main = try XCTUnwrap(snapshot.worktrees.first(where: \.worktree.isMainWorktree))
         let unsafeMain = GitWorktreeCleanupInfo(worktree: main.worktree, status: .eligible)
 
         let result = try await successfulCleanup(gitManager, targets: [.worktree(unsafeMain)], snapshot: snapshot)

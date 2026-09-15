@@ -49,7 +49,7 @@ struct BranchManagementRowView: View {
             Spacer()
 
             if branch.isLocal {
-                Menu {
+                Menu("Branch actions", systemImage: "ellipsis.circle") {
                     Button("Switch to \(branch.name)") { onSwitch() }
                     Button("Rename") { onRename() }
                     if let onPush {
@@ -62,25 +62,23 @@ struct BranchManagementRowView: View {
                     Button(role: .destructive) { onDelete() } label: {
                         Text("Delete Branch")
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(WorkbenchTypography.body)
-                        .foregroundStyle(.secondary)
                 }
+                .labelStyle(.iconOnly)
+                .font(WorkbenchTypography.body)
+                .foregroundStyle(.secondary)
                 .menuStyle(.borderlessButton)
                 .opacity(isHovered ? 1 : 0.75)
             } else {
-                Menu {
+                Menu("Branch actions", systemImage: "ellipsis.circle") {
                     Button("Checkout Locally") { onCheckoutLocally?() }
                     Divider()
                     Button(role: .destructive) { onDeleteRemote?() } label: {
                         Text("Delete Remote Branch")
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(WorkbenchTypography.body)
-                        .foregroundStyle(.secondary)
                 }
+                .labelStyle(.iconOnly)
+                .font(WorkbenchTypography.body)
+                .foregroundStyle(.secondary)
                 .menuStyle(.borderlessButton)
                 .opacity(isHovered ? 1 : 0.75)
             }
@@ -94,6 +92,7 @@ struct BranchManagementRowView: View {
         .onTapGesture(perform: onSwitch)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityAddTraits(.isButton)
         .onHover { inside in
             isHovered = inside
         }

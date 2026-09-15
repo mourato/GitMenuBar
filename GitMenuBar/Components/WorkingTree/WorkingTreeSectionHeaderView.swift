@@ -38,7 +38,7 @@ struct WorkingTreeSectionHeaderView: View {
                                     : "arrow.up.left.and.arrow.down.right"
                             )
                             .font(WorkbenchTypography.captionStrong)
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
                             .frame(
                                 width: WorkingTreeLayoutMetrics.actionHitTarget,
                                 height: WorkingTreeLayoutMetrics.actionHitTarget
@@ -55,7 +55,7 @@ struct WorkingTreeSectionHeaderView: View {
                             Button(action: onDiscardAll) {
                                 Image(systemName: "arrow.uturn.backward")
                                     .font(WorkbenchTypography.captionStrong)
-                                    .foregroundColor(.primary)
+                                    .foregroundStyle(.primary)
                                     .frame(
                                         width: WorkingTreeLayoutMetrics.actionHitTarget,
                                         height: WorkingTreeLayoutMetrics.actionHitTarget
@@ -70,7 +70,7 @@ struct WorkingTreeSectionHeaderView: View {
                         Button(action: onAction) {
                             Image(systemName: actionIcon)
                                 .font(WorkbenchTypography.captionStrong)
-                                .foregroundColor(.primary)
+                                .foregroundStyle(.primary)
                                 .frame(
                                     width: WorkingTreeLayoutMetrics.actionHitTarget,
                                     height: WorkingTreeLayoutMetrics.actionHitTarget
@@ -85,7 +85,7 @@ struct WorkingTreeSectionHeaderView: View {
 
                 Text(summary.fileCountText)
                     .font(.caption.weight(.medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .contentTransition(reduceMotion ? .identity : .numericText())
                     .animation(
                         WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),

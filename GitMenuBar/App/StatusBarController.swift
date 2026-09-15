@@ -513,7 +513,8 @@ final class StatusBarController: NSObject, ObservableObject {
     private func handleMainWindowDidResignKey() {
         guard shouldAutoHideOnBlur, !isMainWindowPresentingSheet else { return }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.autoHideBlurEvaluationDelay) { [weak self] in
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Constants.autoHideBlurEvaluationDelay))
             guard let self,
                   shouldAutoHideOnBlur,
                   !self.isMainWindowPresentingSheet,
@@ -566,7 +567,7 @@ final class StatusBarController: NSObject, ObservableObject {
             presentationModel.showMain(requestCommitFocus: false)
             NSApp.activate(ignoringOtherApps: true)
             mainWindow?.makeKeyAndOrderFront(nil)
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 self?.presentationModel.requestCommandPalettePresentation()
             }
             return
@@ -583,7 +584,7 @@ final class StatusBarController: NSObject, ObservableObject {
             shouldRefreshAfterPresentation: true,
             trace: trace
         )
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.presentationModel.requestCommandPalettePresentation()
         }
     }
@@ -1129,7 +1130,7 @@ final class StatusBarController: NSObject, ObservableObject {
             shouldRefreshAfterPresentation: true,
             trace: trace
         )
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.presentationModel.requestRepositoryOptionsPresentation()
         }
     }

@@ -31,6 +31,7 @@ struct BottomBranchSelectorView: View {
                 }
 
                 Image(systemName: "chevron.down")
+                    .accessibilityHidden(true)
                     .font(WorkbenchTypography.captionStrong)
                     .foregroundStyle(.secondary)
             }
@@ -96,6 +97,7 @@ struct BottomBranchSelectorView: View {
     private func statusBadge(symbol: String, count: Int, style: BadgeStyle) -> some View {
         HStack(spacing: 4) {
             Image(systemName: symbol)
+                .accessibilityHidden(true)
                 .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
             Text("\(count)")
                 .contentTransition(reduceMotion ? .identity : .numericText())

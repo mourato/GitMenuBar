@@ -285,7 +285,7 @@ extension MainMenuView {
 
             Text(syncOptionsSubtitle)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             VStack(alignment: .leading, spacing: 12) {
                 SyncOptionCard(
@@ -321,7 +321,7 @@ extension MainMenuView {
                 actionCoordinator.dismissSyncOptions()
             }
             .buttonStyle(.borderless)
-            .foregroundColor(.secondary)
+            .foregroundStyle(.secondary)
             .padding(.top, 8)
         }
         .padding()

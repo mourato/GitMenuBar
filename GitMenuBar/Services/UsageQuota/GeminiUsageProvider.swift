@@ -173,7 +173,7 @@ final class GeminiUsageProvider: UsageQuotaProviding, Sendable {
             let labels = project["labels"] as? [String: String] ?? [:]
             return (id, id.hasPrefix("gen-lang-client") || labels["generative-language"] != nil)
         }
-        return candidates.first(where: { $0.1 })?.0 ?? candidates.first?.0
+        return candidates.first(where: \.1)?.0 ?? candidates.first?.0
     }
 
     private func requestQuota(accessToken: String, projectId: String?) async throws -> [GeminiUsageParsing.ModelQuota] {

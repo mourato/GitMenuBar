@@ -272,24 +272,24 @@ struct MainMenuView: View {
             handleRepositoryOptionsPresentationRequest(presentationModel.showRepositoryOptionsToken)
             synchronizeSelectedMainItem()
         }
-        .onChange(of: presentationModel.showCommandPaletteToken) { token in
+        .onChange(of: presentationModel.showCommandPaletteToken) { _, token in
             handleCommandPalettePresentationRequest(token)
         }
-        .onChange(of: presentationModel.showRepositoryOptionsToken) { token in
+        .onChange(of: presentationModel.showRepositoryOptionsToken) { _, token in
             handleRepositoryOptionsPresentationRequest(token)
         }
-        .onChange(of: showProjectSelector) { _ in
+        .onChange(of: showProjectSelector) {
             presentPendingRepositoryOptionsIfPossible()
         }
-        .onChange(of: showBranchSelector) { _ in
+        .onChange(of: showBranchSelector) {
             presentPendingRepositoryOptionsIfPossible()
         }
-        .onChange(of: isCommandPalettePresented) { isPresented in
+        .onChange(of: isCommandPalettePresented) { _, isPresented in
             if !isPresented {
                 presentPendingRepositoryOptionsIfPossible()
             }
         }
-        .onChange(of: presentationModel.route) { route in
+        .onChange(of: presentationModel.route) { _, route in
             if route != .main {
                 clearSidePanelSelection()
                 closeCommandPalette()
@@ -299,70 +299,70 @@ struct MainMenuView: View {
                 }
             }
         }
-        .onChange(of: mainKeyboardFocusSyncToken) { _ in
+        .onChange(of: mainKeyboardFocusSyncToken) {
             synchronizeMainKeyboardNavigationFocus()
         }
-        .onChange(of: selectedMainItemID) { _ in
+        .onChange(of: selectedMainItemID) {
             synchronizeMainKeyboardNavigationFocus()
         }
-        .onChange(of: hideCommitMessageField) { isHidden in
+        .onChange(of: hideCommitMessageField) { _, isHidden in
             if !isHidden || commentText.isEmpty {
                 isCommitFieldTemporarilyVisible = false
             }
         }
-        .onChange(of: gitManager.stagedFiles) { _ in
+        .onChange(of: gitManager.stagedFiles) {
             refreshRenderSnapshot()
         }
-        .onChange(of: gitManager.changedFiles) { _ in
+        .onChange(of: gitManager.changedFiles) {
             refreshRenderSnapshot()
         }
-        .onChange(of: gitManager.commitHistory) { _ in
+        .onChange(of: gitManager.commitHistory) {
             refreshRenderSnapshot()
         }
-        .onChange(of: gitManager.currentHash) { _ in
+        .onChange(of: gitManager.currentHash) {
             refreshRenderSnapshot()
         }
-        .onChange(of: gitManager.remoteUrl) { _ in
+        .onChange(of: gitManager.remoteUrl) {
             refreshRenderSnapshot()
         }
-        .onChange(of: gitManager.availableBranches) { _ in
+        .onChange(of: gitManager.availableBranches) {
             refreshRenderSnapshot()
         }
-        .onChange(of: gitManager.currentBranch) { _ in
+        .onChange(of: gitManager.currentBranch) {
             refreshRenderSnapshot()
         }
-        .onChange(of: gitManager.commitCount) { _ in
+        .onChange(of: gitManager.commitCount) {
             refreshRenderSnapshot()
         }
-        .onChange(of: gitManager.behindCount) { _ in
+        .onChange(of: gitManager.behindCount) {
             refreshRenderSnapshot()
         }
-        .onChange(of: gitManager.isDetachedHead) { _ in
+        .onChange(of: gitManager.isDetachedHead) {
             refreshRenderSnapshot()
         }
-        .onChange(of: currentRepositoryPath) { _ in
+        .onChange(of: currentRepositoryPath) {
             selectedMainItemID = nil
             clearSidePanelSelection()
             reloadRepositorySelectionSnapshot()
             refreshRenderSnapshot()
         }
-        .onChange(of: recentProjectReferences) { _ in
+        .onChange(of: recentProjectReferences) {
             refreshRenderSnapshot()
         }
-        .onChange(of: isStagedSectionCollapsed) { _ in
+        .onChange(of: isStagedSectionCollapsed) {
             refreshRenderSnapshot()
         }
-        .onChange(of: isUnstagedSectionCollapsed) { _ in
+        .onChange(of: isUnstagedSectionCollapsed) {
             refreshRenderSnapshot()
         }
-        .onChange(of: keyboardSelectableItems) { _ in
+        .onChange(of: keyboardSelectableItems) {
             synchronizeSelectedMainItem()
             synchronizeMainKeyboardNavigationFocus()
         }
-        .onChange(of: projectMonitor.snapshots) { _ in
+        .onChange(of: projectMonitor.snapshots) {
             refreshRenderSnapshot()
         }
-        .onChange(of: selectedSidePanelSelection) { selection in
+        .onChange(of: selectedSidePanelSelection) { _, selection in
             Task {
                 await actionCoordinator.prepareSidePanelSelection(selection)
             }

@@ -54,7 +54,7 @@ struct AIProviderCredentialID: Codable, Equatable, Hashable, Sendable, CustomStr
         let isOpenRouter = host == "openrouter.ai" || host?.hasSuffix(".openrouter.ai") == true
         let normalizedEndpoint = endpoint.map { url in
             let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-            return (components?.scheme?.lowercased(), components?.host?.lowercased(), components?.port ?? 443, components?.path == "" || components?.path == "/")
+            return (components?.scheme?.lowercased(), components?.host?.lowercased(), components?.port ?? 443, components?.path.isEmpty == true || components?.path == "/")
         }
         let builtInEndpoint = { (type: AIProviderType) in
             let expected = URLComponents(string: type.defaultEndpoint)

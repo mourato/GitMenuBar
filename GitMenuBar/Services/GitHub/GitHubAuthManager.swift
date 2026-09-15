@@ -140,7 +140,7 @@ class GitHubAuthManager: ObservableObject {
     private func startPolling() async {
         // Poll with the specified interval
         while isAuthenticating, !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: UInt64(pollingInterval) * 1_000_000_000)
+            try? await Task.sleep(for: .seconds(pollingInterval))
             guard !Task.isCancelled, isAuthenticating else { break }
 
             let result = await pollForToken()

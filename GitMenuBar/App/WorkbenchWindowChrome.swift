@@ -120,7 +120,7 @@ final class WorkbenchWindowShellView: NSView {
 
     @objc
     private func handleAccessibilityDisplayOptionsDidChange() {
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.updateAppearance()
         }
     }

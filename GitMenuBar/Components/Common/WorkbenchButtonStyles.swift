@@ -117,6 +117,7 @@ private struct WorkbenchButtonVariantsPreviewMatrix: View {
                     Spacer()
                     if selectedRow {
                         Image(systemName: "checkmark")
+                            .accessibilityHidden(true)
                             .foregroundStyle(Color.accentColor)
                     }
                 }
@@ -126,6 +127,7 @@ private struct WorkbenchButtonVariantsPreviewMatrix: View {
             Button(role: .destructive) {} label: {
                 HStack(spacing: WorkbenchMetrics.compactSpacing) {
                     Image(systemName: "trash")
+                        .accessibilityHidden(true)
                     Text("Delete Repository")
                         .font(WorkbenchTypography.body)
                     Spacer()

@@ -6,3 +6,10 @@
 --commas inline
 --wraparguments before-first
 --wrapcollections before-first
+--importgrouping alpha
+--nilinit remove
+
+# NÃO ativados de propósito (documentado):
+# --self remove: 578 usos de `self.`; remoção em massa poluiria o diff.
+#   Cobrir incrementalmente por arquivo tocado, não global.
+# --semicolons never: quebraria o padrão `lock.lock(); defer {}` (legítimo).

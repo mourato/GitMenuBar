@@ -58,7 +58,7 @@ final class GitCommitHistoryService: ObservableObject {
         let resolvedIncludeReflog = includeReflog ?? includesReflogCommitsInHistory
 
         guard !storedRepoPath.isEmpty else {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.includesReflogCommitsInHistory = resolvedIncludeReflog
                 self.commitHistoryLimit = resolvedLimit
                 self.commitHistory = []
@@ -73,7 +73,7 @@ final class GitCommitHistoryService: ObservableObject {
                 includeReflog: resolvedIncludeReflog
             )
 
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.includesReflogCommitsInHistory = resolvedIncludeReflog
                 self.commitHistoryLimit = resolvedLimit
                 self.commitHistory = commits

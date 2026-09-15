@@ -11,8 +11,7 @@ import Foundation
 /// back to its own public facade so call sites are unchanged.
 ///
 /// Threading mirrors `GitManager`: heavy git work runs on a background queue and
-/// published state is written on the main thread via `DispatchQueue.main.async`
-/// / `MainActor.run`.
+/// published state is written on the main thread via `Task { @MainActor in }`.
 @MainActor
 final class GitBranchService: ObservableObject {
     @Published var currentBranch: String = "main"
