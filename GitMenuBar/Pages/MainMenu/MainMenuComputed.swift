@@ -547,7 +547,7 @@ extension MainMenuView {
     var commandPaletteVisibleItems: [MainMenuCommandPaletteItem] {
         MainMenuCommandPaletteResolver.filteredItems(
             from: commandPaletteAllItems,
-            query: commandPaletteQuery
+            query: palette.query
         )
     }
 

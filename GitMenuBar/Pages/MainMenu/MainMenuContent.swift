@@ -48,7 +48,7 @@ extension MainMenuView {
                     onSelectSection: { selectedSidePanelSelection = $0 }
                 )
             }
-            .scrollDisabled(isCommandPalettePresented)
+            .scrollDisabled(palette.isPresented)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .layoutPriority(1)
             .refreshable {
@@ -236,7 +236,7 @@ extension MainMenuView {
             clearSidePanelSelection()
             return
         }
-        if isCommandPalettePresented {
+        if palette.isPresented {
             closeCommandPalette()
             return
         }
@@ -280,13 +280,13 @@ extension MainMenuView {
     }
 
     private func requestCommitFieldFocus() {
-        guard showsCommentField, !isCommandPalettePresented else {
+        guard showsCommentField, !palette.isPresented else {
             return
         }
 
         Task { @MainActor in
             await Task.yield()
-            guard showsCommentField, !isCommandPalettePresented else {
+            guard showsCommentField, !palette.isPresented else {
                 return
             }
             isCommentFieldFocused = true

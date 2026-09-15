@@ -6,7 +6,7 @@ extension MainMenuView {
               // When the command palette is presented, MainMenuCommandPaletteView
               // owns arrow/enter/escape via onKeyPress on its focused search field.
               // This guard prevents the main list handler from competing with it.
-              !isCommandPalettePresented,
+              !palette.isPresented,
               !showProjectSelector,
               !showBranchSelector,
               !showCreateBranch,
@@ -33,7 +33,7 @@ extension MainMenuView {
     var mainKeyboardFocusSyncToken: String {
         [
             presentationModel.route == .main ? "main" : "other",
-            isCommandPalettePresented ? "1" : "0",
+            palette.isPresented ? "1" : "0",
             showProjectSelector ? "1" : "0",
             showBranchSelector ? "1" : "0",
             showCreateBranch ? "1" : "0",

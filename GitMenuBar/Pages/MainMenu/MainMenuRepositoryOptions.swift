@@ -6,9 +6,9 @@ extension MainMenuView {
             return
         }
 
-        let hadTransientPresentation = hasTransientPresentation || isCommandPalettePresented
+        let hadTransientPresentation = hasTransientPresentation || palette.isPresented
 
-        if isCommandPalettePresented {
+        if palette.isPresented {
             closeCommandPalette()
         }
 
@@ -29,7 +29,7 @@ extension MainMenuView {
               canPresentRepositoryOptions,
               !showProjectSelector,
               !showBranchSelector,
-              !isCommandPalettePresented
+              !palette.isPresented
         else {
             return
         }

@@ -91,7 +91,7 @@ extension MainMenuView {
         }
 
         let shouldPresent = !showProjectSelector
-        if isCommandPalettePresented {
+        if palette.isPresented {
             closeCommandPalette()
         }
         dismissTransientPresentations()
@@ -104,7 +104,7 @@ extension MainMenuView {
         }
 
         let shouldPresent = !showBranchSelector
-        if isCommandPalettePresented {
+        if palette.isPresented {
             closeCommandPalette()
         }
         dismissTransientPresentations()
@@ -119,7 +119,7 @@ extension MainMenuView {
             return
         }
 
-        if isCommandPalettePresented {
+        if palette.isPresented {
             closeCommandPalette()
         }
         dismissTransientPresentations()
@@ -300,20 +300,17 @@ extension MainMenuView {
             return
         }
 
-        commandPaletteQuery = ""
-        selectedCommandPaletteItemID = MainMenuCommandPaletteResolver.defaultSelectionID(
-            for: commandPaletteVisibleItems
-        )
         dismissTransientPresentations()
-        isCommandPalettePresented = true
+        palette.open(defaultSelectionID: MainMenuCommandPaletteResolver.defaultSelectionID(
+            for: commandPaletteVisibleItems
+        ))
     }
 
     func handleCommandPalettePresentationRequest(_ token: Int) {
-        guard token > lastHandledCommandPaletteToken else {
+        guard palette.claimPresentationRequest(token) else {
             return
         }
 
-        lastHandledCommandPaletteToken = token
         presentCommandPaletteIfPossible()
     }
 
@@ -327,9 +324,7 @@ extension MainMenuView {
     }
 
     func closeCommandPalette() {
-        isCommandPalettePresented = false
-        commandPaletteQuery = ""
-        selectedCommandPaletteItemID = nil
+        palette.close()
     }
 
     func startAtomicCommitFlow() {

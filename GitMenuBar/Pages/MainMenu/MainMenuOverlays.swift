@@ -103,10 +103,10 @@ extension MainMenuView {
 
     var commandPaletteOverlayContent: some View {
         MainMenuCommandPaletteOverlay(
-            isPresented: isCommandPalettePresented && presentationModel.route == .main,
-            query: $commandPaletteQuery,
+            isPresented: palette.isPresented && presentationModel.route == .main,
+            query: $palette.query,
             items: commandPaletteVisibleItems,
-            selectedItemID: $selectedCommandPaletteItemID,
+            selectedItemID: $palette.selectedItemID,
             onClose: closeCommandPalette,
             onSelectItem: executeCommandPaletteItem
         )

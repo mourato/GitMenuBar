@@ -41,12 +41,9 @@ struct MainMenuView: View {
     @State var showBranchSelector = false
     @State var showAtomicCommitSheet = false
     @State var isCommitFieldTemporarilyVisible = false
-    @State var isCommandPalettePresented = false
-    @State var commandPaletteQuery = ""
-    @State var selectedCommandPaletteItemID: String?
+    @State var palette = MainMenuCommandPaletteState()
     @State var selectedMainItemID: MainMenuSelectableItem?
     @State var selectedSidePanelSelection: MainMenuSidePanelSelection?
-    @State var lastHandledCommandPaletteToken = 0
     @State var lastHandledRepositoryOptionsToken = 0
     @State var selectedPushBranch: String = ""
     @State var showPullToNewBranch = false
@@ -147,7 +144,7 @@ struct MainMenuView: View {
         )
         .animation(
             WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
-            value: isCommandPalettePresented
+            value: palette.isPresented
         )
         .confirmationDialogs(
             showDeleteConfirmation: $showDeleteConfirmation,
@@ -275,7 +272,7 @@ struct MainMenuView: View {
         .onChange(of: showBranchSelector) {
             presentPendingRepositoryOptionsIfPossible()
         }
-        .onChange(of: isCommandPalettePresented) { _, isPresented in
+        .onChange(of: palette.isPresented) { _, isPresented in
             if !isPresented {
                 presentPendingRepositoryOptionsIfPossible()
             }
