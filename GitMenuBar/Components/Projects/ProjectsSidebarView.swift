@@ -76,7 +76,6 @@ struct ProjectsSidebarView: View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
             Text("Projects")
                 .font(.headline)
-                .fontWeight(.semibold)
 
             Spacer(minLength: 0)
 

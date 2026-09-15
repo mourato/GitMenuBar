@@ -16,7 +16,7 @@ final class DirectoryPickerService {
         let panel = NSOpenPanel()
         configurePanel(panel, title: title, prompt: prompt, preparePanel: preparePanel)
 
-        DispatchQueue.main.async {
+        Task { @MainActor in
             panel.makeKeyAndOrderFront(nil)
             panel.orderFrontRegardless()
         }

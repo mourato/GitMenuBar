@@ -44,6 +44,7 @@ struct RepositoryOptionsPopoverView: View {
     private func actionRow(title: String, symbol: String) -> some View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
             Image(systemName: symbol)
+                .accessibilityHidden(true)
                 .font(WorkbenchTypography.detail)
                 .foregroundStyle(.secondary)
 

@@ -100,15 +100,15 @@ struct MainMenuCommandPaletteItem: Identifiable, Equatable {
             return true
         }
 
-        if title.lowercased().contains(normalizedQuery) {
+        if title.localizedStandardContains(normalizedQuery) {
             return true
         }
 
-        if let subtitle, subtitle.lowercased().contains(normalizedQuery) {
+        if let subtitle, subtitle.localizedStandardContains(normalizedQuery) {
             return true
         }
 
-        return keywords.contains { $0.lowercased().contains(normalizedQuery) }
+        return keywords.contains { $0.localizedStandardContains(normalizedQuery) }
     }
 }
 
@@ -165,7 +165,7 @@ struct MainMenuCommandPaletteView: View {
                     .onAppear {
                         scrollSelectionIntoView(using: proxy, animated: false)
                     }
-                    .onChange(of: selectedItemID) { _ in
+                    .onChange(of: selectedItemID) {
                         scrollSelectionIntoView(using: proxy, animated: true)
                     }
                 }
@@ -183,7 +183,7 @@ struct MainMenuCommandPaletteView: View {
             selectedItemID = MainMenuCommandPaletteResolver.defaultSelectionID(for: items)
             isSearchFieldFocused = true
         }
-        .onChange(of: items.map(\.id)) { _ in
+        .onChange(of: items.map(\.id)) {
             synchronizeSelectionWithVisibleItems()
         }
     }
@@ -194,7 +194,7 @@ struct MainMenuCommandPaletteView: View {
                 .font(WorkbenchTypography.sectionLabel)
             Text("Try another query.")
                 .font(WorkbenchTypography.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -215,7 +215,7 @@ struct MainMenuCommandPaletteView: View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
             Text(section.title)
                 .font(WorkbenchTypography.captionStrong)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             ForEach(items) { item in
                 Button {
@@ -237,12 +237,12 @@ struct MainMenuCommandPaletteView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(WorkbenchTypography.body)
-                    .foregroundColor(item.isEnabled ? .primary : .secondary)
+                    .foregroundStyle(item.isEnabled ? .primary : .secondary)
 
                 if let subtitle = item.subtitle {
                     Text(subtitle)
                         .font(WorkbenchTypography.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
             }
@@ -267,13 +267,13 @@ struct MainMenuCommandPaletteView: View {
 
         if animated {
             if reduceMotion {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     performScroll()
                 }
                 return
             }
 
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 withAnimation(.spring(response: 0.3, dampingFraction: 1.0)) {
                     performScroll()
                 }
@@ -281,7 +281,7 @@ struct MainMenuCommandPaletteView: View {
             return
         }
 
-        DispatchQueue.main.async {
+        Task { @MainActor in
             performScroll()
         }
     }

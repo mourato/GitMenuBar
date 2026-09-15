@@ -265,6 +265,8 @@ private struct UsageQuotaProgressBar: View {
     let percent: Int
 
     var body: some View {
+        // Proportional meter fill needs measured width; static 4pt surface.
+        // swiftlint:disable:next swiftui_geometry_reader
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Capsule(style: .continuous)

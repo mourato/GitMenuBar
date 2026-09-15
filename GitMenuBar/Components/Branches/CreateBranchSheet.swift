@@ -15,7 +15,7 @@ struct CreateBranchSheet: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Branch Name")
                     .font(.caption.weight(.medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 TextField("feature/new-feature", text: $branchName)
                     .textFieldStyle(.roundedBorder)
@@ -29,12 +29,12 @@ struct CreateBranchSheet: View {
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.caption2)
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
                 }
 
                 Text("Will branch from: \(currentBranch)")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             HStack {

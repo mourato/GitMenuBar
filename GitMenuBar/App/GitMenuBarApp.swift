@@ -108,12 +108,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 statusBarController?.actionCoordinator.resetForRepositorySwitch()
 
                 if exists {
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         self.statusBarController?.openMainWindow()
                     }
                 } else {
                     // Remote doesn't exist (either no remote or 404) - show create repo UI
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         self.statusBarController?.openMainWindowWithCreateRepo(path: selectedPath)
                     }
                 }
@@ -128,11 +128,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 statusBarController?.actionCoordinator.resetForRepositorySwitch()
             }
             if case let .requiresRepositoryCreation(candidatePath) = selection {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.statusBarController?.openMainWindowWithCreateRepo(path: candidatePath)
                 }
             } else if case .selected = selection {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self.statusBarController?.openMainWindow()
                 }
             }

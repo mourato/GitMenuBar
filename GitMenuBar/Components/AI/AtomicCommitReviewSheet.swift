@@ -58,6 +58,7 @@ struct AtomicCommitReviewSheet: View {
         VStack(spacing: 12) {
             Spacer()
             Image(systemName: "exclamationmark.triangle")
+                .accessibilityHidden(true)
                 .font(.largeTitle)
                 .foregroundStyle(.orange)
             Text(message)
@@ -127,13 +128,12 @@ struct AtomicCommitReviewSheet: View {
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
                 if groups.count > 1 {
-                    Button {
+                    Button("Remove group", systemImage: "trash") {
                         removeGroup(at: index)
-                    } label: {
-                        Image(systemName: "trash")
-                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(.secondary)
                     .help("Remove group")
                 }
             }
@@ -161,6 +161,7 @@ struct AtomicCommitReviewSheet: View {
     private func hunkRow(_ hunk: AtomicCommitHunk, groupIndex: Int) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "text.badge.plus")
+                .accessibilityHidden(true)
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(hunk.path).lineLimit(1)
@@ -203,30 +204,27 @@ struct AtomicCommitReviewSheet: View {
             Spacer()
             HStack(spacing: 4) {
                 if groupIndex > 0 {
-                    Button {
+                    Button("Move to previous group", systemImage: "arrow.up") {
                         moveFile(file, from: groupIndex, to: groupIndex - 1)
-                    } label: {
-                        Image(systemName: "arrow.up")
                     }
                     .buttonStyle(.plain)
+                    .labelStyle(.iconOnly)
                     .help("Move to previous group")
                 }
                 if groupIndex < groups.count - 1 {
-                    Button {
+                    Button("Move to next group", systemImage: "arrow.down") {
                         moveFile(file, from: groupIndex, to: groupIndex + 1)
-                    } label: {
-                        Image(systemName: "arrow.down")
                     }
                     .buttonStyle(.plain)
+                    .labelStyle(.iconOnly)
                     .help("Move to next group")
                 }
-                Button {
+                Button("Exclude from commits", systemImage: "xmark.circle") {
                     removeFile(file, from: groupIndex)
-                } label: {
-                    Image(systemName: "xmark.circle")
-                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .labelStyle(.iconOnly)
+                .foregroundStyle(.secondary)
                 .help("Exclude from commits")
             }
         }

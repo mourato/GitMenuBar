@@ -230,7 +230,7 @@ struct WorkingTreeDiffTreeFileRowView: View {
 
             Text(file.status.symbol)
                 .font(WorkbenchTypography.body.weight(.semibold))
-                .foregroundColor(Color(nsColor: file.status.foregroundColor))
+                .foregroundStyle(Color(nsColor: file.status.foregroundColor))
                 .frame(width: WorkingTreeLayoutMetrics.statusColumnWidth, alignment: .trailing)
         }
         .padding(.vertical, WorkingTreeLayoutMetrics.rowVerticalPadding)
@@ -258,6 +258,7 @@ struct WorkingTreeDiffTreeFileRowView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityAddTraits(.isButton)
         .accessibilityHint("Press Return to open, or Delete to discard when available.")
         .contextMenu {
             Button("Open File") {

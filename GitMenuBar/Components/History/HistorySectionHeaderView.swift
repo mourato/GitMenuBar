@@ -16,7 +16,7 @@ struct HistorySectionHeaderView: View {
         ) { _ in
             Text("\(commitCount)")
                 .font(.caption.weight(.medium))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .contentTransition(reduceMotion ? .identity : .numericText())
                 .animation(
                     WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),

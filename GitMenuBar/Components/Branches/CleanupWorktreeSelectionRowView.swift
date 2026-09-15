@@ -50,8 +50,8 @@ struct CleanupWorktreeListView: View {
         guard let snapshot else { return [] }
         return snapshot.worktrees.filter { info in
             query.isEmpty
-                || info.worktree.path.localizedCaseInsensitiveContains(query)
-                || (info.worktree.branchName?.localizedCaseInsensitiveContains(query) ?? false)
+                || info.worktree.path.localizedStandardContains(query)
+                || (info.worktree.branchName?.localizedStandardContains(query) ?? false)
         }
     }
 

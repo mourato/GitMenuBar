@@ -160,7 +160,7 @@ final class UsageQuotaStoreTests: XCTestCase {
         let store = makeStore(provider: provider)
 
         store.refresh(reason: .manual)
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        try? await Task.sleep(for: .milliseconds(200))
 
         XCTAssertEqual(provider.fetchCount, 0)
         XCTAssertTrue(store.snapshots.isEmpty)
@@ -222,7 +222,7 @@ final class UsageQuotaStoreTests: XCTestCase {
             if predicate() {
                 return
             }
-            try? await Task.sleep(nanoseconds: 50_000_000)
+            try? await Task.sleep(for: .milliseconds(50))
         }
         XCTFail("Timed out waiting for store refresh")
     }
@@ -298,7 +298,7 @@ private struct HangingUsageQuotaProvider: UsageQuotaProviding {
     let id: UsageProviderID = .codex
 
     func fetchSnapshot() async -> UsageQuotaSnapshot {
-        try? await Task.sleep(nanoseconds: 60_000_000_000)
+        try? await Task.sleep(for: .seconds(60))
         return .unavailable(providerID: .codex, statusNote: "should not finish")
     }
 }

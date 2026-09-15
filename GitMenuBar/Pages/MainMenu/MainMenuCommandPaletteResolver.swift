@@ -139,7 +139,7 @@ enum MainMenuCommandPaletteResolver {
     }
 
     static func defaultSelectionID(for items: [MainMenuCommandPaletteItem]) -> String? {
-        if let firstEnabled = items.first(where: { $0.isEnabled }) {
+        if let firstEnabled = items.first(where: \.isEnabled) {
             return firstEnabled.id
         }
 

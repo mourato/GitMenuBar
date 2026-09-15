@@ -54,7 +54,7 @@ struct HistoryTimelineSectionView: View {
         } else {
             Text("No commits yet")
                 .font(WorkbenchTypography.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -64,7 +64,7 @@ struct HistoryTimelineSectionView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(section.title)
                         .font(WorkbenchTypography.sectionLabel)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     VStack(spacing: 0) {
                         ForEach(section.rows) { timelineRow in
@@ -126,7 +126,7 @@ private struct HistoryTimelineRowView: View {
                 HStack(spacing: 6) {
                     Text(commit.subject)
                         .font(WorkbenchTypography.body)
-                        .foregroundColor(titleColor)
+                        .foregroundStyle(titleColor)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .matchedGeometryEffect(id: "commit-\(commit.id)", in: animationNamespace)
@@ -144,8 +144,9 @@ private struct HistoryTimelineRowView: View {
                     Spacer(minLength: 0)
 
                     Image(systemName: "chevron.right")
+                        .accessibilityHidden(true)
                         .font(WorkbenchTypography.captionStrong)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(.vertical, HistoryTimelineMetrics.rowContentVerticalPadding)
@@ -172,6 +173,7 @@ private struct HistoryTimelineRowView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(commit.subject)
+        .accessibilityAddTraits(.isButton)
         .accessibilityHint("Press Return to open commit details.")
         .contextMenu {
             Button("Open on GitHub") {

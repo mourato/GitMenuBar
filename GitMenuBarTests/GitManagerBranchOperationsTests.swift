@@ -120,7 +120,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
 
         let infos = await gitManager.resolveBranchInfoAsync()
 
-        let current = infos.first { $0.isCurrent }
+        let current = infos.first(where: \.isCurrent)
         XCTAssertNotNil(current)
         XCTAssertEqual(current?.name, "main")
         XCTAssertTrue(current?.isLocal ?? false)
@@ -375,7 +375,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         _ = await gitManager.resolveBranchInfoAsync()
 
         // Allow the Combine `assign(to:)` pipe a tick to flush.
-        try await Task.sleep(nanoseconds: 100_000_000)
+        try await Task.sleep(for: .milliseconds(100))
 
         XCTAssertEqual(
             gitManager.branchInfos,

@@ -42,10 +42,9 @@ struct WorkbenchSectionHeaderChrome<Trailing: View>: View {
         }
         .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
         .padding(.horizontal, WorkbenchMetrics.microSpacing)
-        .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
-        .cornerRadius(WorkbenchMetrics.rowCornerRadius)
-        .overlay(
+        .background(
             RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius)
+                .fill(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
                 .stroke(
                     WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast)
                         .opacity(colorSchemeContrast == .increased ? 1 : 0),
@@ -91,8 +90,9 @@ struct WorkbenchSectionHeaderChrome<Trailing: View>: View {
     private var sectionTitle: some View {
         HStack(spacing: WorkbenchMetrics.chipSpacing) {
             Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                .accessibilityHidden(true)
                 .font(WorkbenchTypography.captionStrong)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
 
             Text(title)
@@ -126,7 +126,7 @@ private struct SectionHeaderChromePreview: View {
             ) { _ in
                 Text("42")
                     .font(.caption.weight(.medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .contentTransition(reduceMotion ? .identity : .numericText())
             }
 
@@ -140,22 +140,20 @@ private struct SectionHeaderChromePreview: View {
                 HStack(spacing: WorkbenchMetrics.microSpacing) {
                     WorkingTreeLineDiffView(addedCount: 23, removedCount: 8)
 
-                    Button(action: {}, label: {
-                        Image(systemName: "minus.circle")
-                            .font(WorkbenchTypography.captionStrong)
-                            .foregroundColor(.primary)
-                            .frame(
-                                width: WorkingTreeLayoutMetrics.actionHitTarget,
-                                height: WorkingTreeLayoutMetrics.actionHitTarget
-                            )
-                            .contentShape(Rectangle())
-                    })
-                    .workbenchIcon()
-                    .help("Unstage all files")
+                    Button("Unstage all files", systemImage: "minus.circle") {}
+                        .font(WorkbenchTypography.captionStrong)
+                        .frame(
+                            width: WorkingTreeLayoutMetrics.actionHitTarget,
+                            height: WorkingTreeLayoutMetrics.actionHitTarget
+                        )
+                        .contentShape(Rectangle())
+                        .labelStyle(.iconOnly)
+                        .workbenchIcon()
+                        .help("Unstage all files")
 
                     Text("3 files")
                         .font(.caption.weight(.medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
         }

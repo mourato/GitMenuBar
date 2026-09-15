@@ -211,7 +211,7 @@ struct SidePanelBranchManagementView: View {
     private func filteredBranches(matching predicate: (BranchInfo) -> Bool) -> [BranchInfo] {
         gitManager.branchInfos
             .filter(predicate)
-            .filter { branchQuery.isEmpty || $0.displayName.localizedCaseInsensitiveContains(branchQuery) }
+            .filter { branchQuery.isEmpty || $0.displayName.localizedStandardContains(branchQuery) }
             .sorted { lhs, rhs in
                 if lhs.isCurrent != rhs.isCurrent {
                     return lhs.isCurrent

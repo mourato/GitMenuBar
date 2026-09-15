@@ -226,6 +226,8 @@ private struct UsageQuotaMenuMeter: View {
     let remainingPercent: Int
 
     var body: some View {
+        // Proportional meter fill needs measured width; static 5pt surface.
+        // swiftlint:disable:next swiftui_geometry_reader
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule()

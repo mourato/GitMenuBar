@@ -11,6 +11,8 @@ struct SettingsFormPage<Content: View>: View {
     }
 
     var body: some View {
+        // Min content width derives from container width via SettingsFormLayoutPolicy.
+        // swiftlint:disable:next swiftui_geometry_reader
         GeometryReader { geometry in
             Form {
                 content

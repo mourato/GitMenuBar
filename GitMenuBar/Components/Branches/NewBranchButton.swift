@@ -8,7 +8,8 @@ struct NewBranchButton: View {
             HStack {
                 Image(systemName: "plus.circle.fill")
                     .font(.caption2)
-                    .foregroundColor(.accentColor)
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityHidden(true)
                 Text("New Branch")
                     .font(.caption.weight(.medium))
                 Spacer()

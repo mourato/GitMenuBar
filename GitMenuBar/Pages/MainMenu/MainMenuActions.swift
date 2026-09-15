@@ -163,7 +163,7 @@ extension MainMenuView {
         guard !name.isEmpty else { return }
 
         gitManager.pullToNewBranch(newBranchName: name) { result in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 switch result {
                 case .success:
                     showPullToNewBranch = false
@@ -444,7 +444,7 @@ extension MainMenuView {
         configuration.activates = true
 
         NSWorkspace.shared.openApplication(at: appURL, configuration: configuration) { _, error in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 if let error {
                     restartError = error.localizedDescription
                     return

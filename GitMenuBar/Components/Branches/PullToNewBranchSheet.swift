@@ -14,7 +14,7 @@ struct PullToNewBranchSheet: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Branch name:")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 TextField("branch-name", text: $branchName)
                     .textFieldStyle(.roundedBorder)
@@ -24,7 +24,7 @@ struct PullToNewBranchSheet: View {
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.caption)
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
                 }
             }
 

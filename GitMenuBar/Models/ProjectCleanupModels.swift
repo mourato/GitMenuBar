@@ -59,9 +59,9 @@ struct ProjectCleanupRow: Identifiable {
         let canonicalPaths: [String: String] = Dictionary(uniqueKeysWithValues: grouped.compactMap { identity, entries in
             let mainPath = entries
                 .flatMap(\.1.snapshot.worktrees)
-                .first(where: { $0.worktree.isMainWorktree })
+                .first(where: \.worktree.isMainWorktree)
                 .map { GitRepositoryContext.normalizedPath($0.worktree.path) }
-            let canonical = entries.map(\.0).first(where: { $0 == mainPath }) ?? entries.map(\.0).sorted().first
+            let canonical = entries.map(\.0).first(where: { $0 == mainPath }) ?? entries.map(\.0).min()
             guard let canonical else { return nil }
             return (identity, canonical)
         })

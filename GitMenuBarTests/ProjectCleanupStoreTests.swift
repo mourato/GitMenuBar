@@ -59,7 +59,7 @@ final class ProjectCleanupStoreTests: XCTestCase {
 
         store.load()
         for _ in 0 ..< 100 where store.loadState != .loaded {
-            try await Task.sleep(nanoseconds: 5_000_000)
+            try await Task.sleep(for: .milliseconds(5))
         }
         let paths = Set(monitor.monitoredProjects.map(\.path))
         XCTAssertEqual(paths.count, 2)

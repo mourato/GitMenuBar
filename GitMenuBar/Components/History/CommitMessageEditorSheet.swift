@@ -20,25 +20,25 @@ struct CommitMessageEditorSheet: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Commit")
                     .font(.caption.weight(.medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Text("\(commit.shortHash) • \(commit.subject)")
                     .font(.subheadline)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
             }
 
             if isPublishedCommit {
                 Text("This commit already exists on the remote. Saving will rewrite local history and may require force push.")
                     .font(.caption)
-                    .foregroundColor(.orange)
+                    .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Commit Message")
                     .font(.caption.weight(.medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 TextEditor(text: $message)
                     .font(.subheadline)
@@ -55,7 +55,7 @@ struct CommitMessageEditorSheet: View {
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.caption2)
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
                 }
             }
 

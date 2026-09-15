@@ -44,6 +44,7 @@ struct GitHubConnectionSection: View {
 
                         HStack(spacing: WorkbenchMetrics.microSpacing) {
                             Image(systemName: "checkmark.circle.fill")
+                                .accessibilityHidden(true)
                                 .font(.caption2)
                                 .foregroundStyle(Color.accentColor)
                             Text("Copied to clipboard")
