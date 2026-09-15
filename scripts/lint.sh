@@ -4,6 +4,7 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${PROJECT_ROOT}"
+STYLE_CONFIG_DIR="${AGENT_CONFIG_HOME:-${HOME}/.agents}/skills/swift-conventions/config"
 
 usage() {
     cat <<'EOF'
@@ -37,9 +38,9 @@ else
 fi
 
 echo "Running SwiftFormat (lint mode)..."
-swiftformat --lint --config .swiftformat "${TARGETS[@]}"
+swiftformat --lint --config "${STYLE_CONFIG_DIR}/.swiftformat" "${TARGETS[@]}"
 
 echo "Running SwiftLint..."
-swiftlint lint --strict "${TARGETS[@]}"
+swiftlint lint --strict --config "${STYLE_CONFIG_DIR}/.swiftlint.yml" "${TARGETS[@]}"
 
 echo "Lint checks passed"
