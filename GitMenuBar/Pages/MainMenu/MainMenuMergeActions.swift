@@ -21,7 +21,7 @@ extension MainMenuView {
                 case let .failure(error):
                     featureBranchName = ""
                     defaultBranchName = ""
-                    mergeError = error.localizedDescription
+                    errorCenter.merge = error.localizedDescription
                 }
             }
         }
@@ -59,7 +59,7 @@ extension MainMenuView {
                 break
             case let .failure(error):
                 await MainActor.run {
-                    mergeError = error.localizedDescription
+                    errorCenter.merge = error.localizedDescription
                 }
             }
         }

@@ -55,7 +55,7 @@ extension MainMenuView {
                 } else {
                     gitManager.switchBranch(branchName: branch) { result in
                         if case let .failure(error) = result {
-                            branchSwitchError = error.localizedDescription
+                            errorCenter.branchSwitch = error.localizedDescription
                         }
                     }
                 }
@@ -69,7 +69,7 @@ extension MainMenuView {
                 } else {
                     gitManager.mergeBranch(fromBranch: branch) { result in
                         if case let .failure(error) = result {
-                            mergeError = error.localizedDescription
+                            errorCenter.merge = error.localizedDescription
                         }
                     }
                 }

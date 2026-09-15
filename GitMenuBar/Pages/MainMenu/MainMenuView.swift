@@ -7,16 +7,15 @@ import SwiftUI
 
 struct MainMenuView: View {
     @Namespace var animationNamespace
+    @State var errorCenter = MainMenuErrorCenter()
     @State var commentText = ""
     @State var showDeleteConfirmation = false
     @State var isDeleting = false
-    @State var deleteError: String?
     @State var showProjectSelector = false
     @State var showRepositoryOptionsPopover = false
     @State var pendingRepositoryOptionsPresentation = false
     @State var showVisibilityConfirmation = false
     @State var isTogglingVisibility = false
-    @State var toggleVisibilityError: String?
     @FocusState var isCommentFieldFocused: Bool
     @FocusState var isMainKeyboardNavigationFocused: Bool
     @EnvironmentObject var gitManager: GitManager
@@ -53,22 +52,15 @@ struct MainMenuView: View {
     @State var showPullToNewBranch = false
     @State var pullToNewBranchName = ""
     @State var useRebase = false
-    @State var syncError: String?
     @State var showRestartConfirmation = false
-    @State var restartError: String?
-    @State var branchSwitchError: String?
     @State var showCreateBranch = false
     @State var newBranchName: String = ""
     @State var createBranchError: String?
-    @State var mergeError: String?
-    @State var deleteBranchError: String?
-    @State var pushError: String?
 
     // Rename branch states
     @State var showRenameBranch = false
     @State var oldBranchName = ""
     @State var renameBranchNewName = ""
-    @State var renameBranchError: String?
 
     // Merge confirmation states
     @State var showMergeConfirmation = false
@@ -94,7 +86,6 @@ struct MainMenuView: View {
     @State var showDiscardConfirmation = false
     @State var discardFilePath: String?
     @State var discardFileStatus: WorkingTreeFileStatus?
-    @State var discardError: String?
     @State var showDiscardAllConfirmation = false
     @State var recentProjectReferences = RecentProjectsStore().recentProjects()
     @State var renderSnapshot = MainMenuRenderSnapshot.empty
@@ -197,7 +188,7 @@ struct MainMenuView: View {
             onDiscardAll: {
                 gitManager.discardAllUnstagedChanges { result in
                     if case let .failure(error) = result {
-                        discardError = error.localizedDescription
+                        errorCenter.discard = error.localizedDescription
                     }
                 }
             },
@@ -205,7 +196,7 @@ struct MainMenuView: View {
             onMerge: {
                 gitManager.mergeBranch(fromBranch: mergeBranchName) { result in
                     if case let .failure(error) = result {
-                        mergeError = error.localizedDescription
+                        errorCenter.merge = error.localizedDescription
                     }
                 }
             },
