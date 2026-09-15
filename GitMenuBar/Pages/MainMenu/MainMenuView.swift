@@ -10,13 +10,9 @@ struct MainMenuView: View {
     @State var errorCenter = MainMenuErrorCenter()
     @State var branchDialogs = MainMenuBranchDialogs()
     @State var workspace = MainMenuWorkspaceState()
-    @State var showDeleteConfirmation = false
-    @State var isDeleting = false
-    @State var showProjectSelector = false
-    @State var showRepositoryOptionsPopover = false
-    @State var pendingRepositoryOptionsPresentation = false
-    @State var showVisibilityConfirmation = false
-    @State var isTogglingVisibility = false
+    @State var repoOptions = MainMenuRepositoryOptionsState()
+    @State var sync = MainMenuSyncSheetState()
+    @State var repoConfirm = MainMenuRepositoryConfirmations()
     @FocusState var isCommentFieldFocused: Bool
     @FocusState var isMainKeyboardNavigationFocused: Bool
     @EnvironmentObject var gitManager: GitManager
@@ -39,15 +35,7 @@ struct MainMenuView: View {
     @AppStorage(AppPreferences.Keys.commitButtonAction)
     var commitButtonAction = AppPreferences.CommitButtonAction.defaultAction.rawValue
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
-    @State var showBranchSelector = false
-    @State var showAtomicCommitSheet = false
     @State var palette = MainMenuCommandPaletteState()
-    @State var lastHandledRepositoryOptionsToken = 0
-    @State var selectedPushBranch: String = ""
-    @State var showPullToNewBranch = false
-    @State var pullToNewBranchName = ""
-    @State var useRebase = false
-    @State var showRestartConfirmation = false
 
     // Rename branch states
 
@@ -123,13 +111,13 @@ struct MainMenuView: View {
         )
         .confirmationDialogs(
             dialogs: branchDialogs,
-            showDeleteConfirmation: $showDeleteConfirmation,
-            showVisibilityConfirmation: $showVisibilityConfirmation,
+            showDeleteConfirmation: $repoConfirm.showDeleteConfirmation,
+            showVisibilityConfirmation: $repoConfirm.showVisibilityConfirmation,
             showDiscardConfirmation: $workspace.showDiscardConfirmation,
             showDiscardAllConfirmation: $workspace.showDiscardAllConfirmation,
-            showRestartConfirmation: $showRestartConfirmation,
-            isDeleting: isDeleting,
-            isTogglingVisibility: isTogglingVisibility,
+            showRestartConfirmation: $repoConfirm.showRestartConfirmation,
+            isDeleting: repoConfirm.isDeleting,
+            isTogglingVisibility: repoConfirm.isTogglingVisibility,
             visibilityConfirmationTitle: repositoryActionSet.visibilityConfirmationTitle,
             visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
             visibilityConfirmationMessage: repositoryActionSet.visibilityConfirmationMessage,
@@ -229,10 +217,10 @@ struct MainMenuView: View {
         .onChange(of: presentationModel.showRepositoryOptionsToken) { _, token in
             handleRepositoryOptionsPresentationRequest(token)
         }
-        .onChange(of: showProjectSelector) {
+        .onChange(of: repoOptions.showProjectSelector) {
             presentPendingRepositoryOptionsIfPossible()
         }
-        .onChange(of: showBranchSelector) {
+        .onChange(of: branchDialogs.showBranchSelector) {
             presentPendingRepositoryOptionsIfPossible()
         }
         .onChange(of: palette.isPresented) { _, isPresented in

@@ -60,7 +60,7 @@ extension MainMenuView {
 
     func syncWithRemote() {
         Task {
-            await handleSyncResult(actionCoordinator.syncWithRemote(rebase: useRebase))
+            await handleSyncResult(actionCoordinator.syncWithRemote(rebase: sync.useRebase))
         }
     }
 
@@ -73,14 +73,14 @@ extension MainMenuView {
     }
 
     var hasTransientPresentation: Bool {
-        showRepositoryOptionsPopover || presentationModel.quotaInfoSnapshot != nil
+        repoOptions.showRepositoryOptionsPopover || presentationModel.quotaInfoSnapshot != nil
     }
 
     func dismissTransientPresentations() {
-        showRepositoryOptionsPopover = false
-        showBranchSelector = false
+        repoOptions.showRepositoryOptionsPopover = false
+        branchDialogs.showBranchSelector = false
         presentationModel.clearQuotaInfo()
-        pendingRepositoryOptionsPresentation = false
+        repoOptions.pendingPresentation = false
         isCommentFieldFocused = false
         NSApp.keyWindow?.makeFirstResponder(nil)
     }
@@ -90,12 +90,12 @@ extension MainMenuView {
             return
         }
 
-        let shouldPresent = !showProjectSelector
+        let shouldPresent = !repoOptions.showProjectSelector
         if palette.isPresented {
             closeCommandPalette()
         }
         dismissTransientPresentations()
-        showProjectSelector = shouldPresent
+        repoOptions.showProjectSelector = shouldPresent
     }
 
     func toggleBranchSelectorPresentation() {
@@ -103,12 +103,12 @@ extension MainMenuView {
             return
         }
 
-        let shouldPresent = !showBranchSelector
+        let shouldPresent = !branchDialogs.showBranchSelector
         if palette.isPresented {
             closeCommandPalette()
         }
         dismissTransientPresentations()
-        showBranchSelector = shouldPresent
+        branchDialogs.showBranchSelector = shouldPresent
         if shouldPresent, gitManager.availableBranches.isEmpty {
             Task { await gitManager.fetchSelectedBranchesAsync() }
         }
@@ -123,7 +123,7 @@ extension MainMenuView {
             closeCommandPalette()
         }
         dismissTransientPresentations()
-        showBranchSelector = true
+        branchDialogs.showBranchSelector = true
         if gitManager.availableBranches.isEmpty {
             Task { await gitManager.fetchSelectedBranchesAsync() }
         }
@@ -159,15 +159,15 @@ extension MainMenuView {
     }
 
     func pullToNewBranch() {
-        let name = pullToNewBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = sync.pullToNewBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
 
         gitManager.pullToNewBranch(newBranchName: name) { result in
             Task { @MainActor in
                 switch result {
                 case .success:
-                    showPullToNewBranch = false
-                    pullToNewBranchName = ""
+                    sync.showPullToNewBranch = false
+                    sync.pullToNewBranchName = ""
                 case let .failure(error):
                     errorCenter.sync = error.localizedDescription
                 }
@@ -204,7 +204,7 @@ extension MainMenuView {
 
         actionCoordinator.resetForRepositorySwitch()
         GitPerformanceTrace.event("selection.accepted", id: trace)
-        showProjectSelector = false
+        repoOptions.showProjectSelector = false
         dismissTransientPresentations()
         presentationModel.showMain()
         let refreshGeneration = presentationModel.startRefresh()
@@ -236,7 +236,7 @@ extension MainMenuView {
     }
 
     func deleteRepository() {
-        isDeleting = true
+        repoConfirm.isDeleting = true
 
         Task {
             do {
@@ -244,7 +244,7 @@ extension MainMenuView {
                 try await repositoryService.deleteRepository(remoteURL: gitManager.remoteUrl)
 
                 await MainActor.run {
-                    isDeleting = false
+                    repoConfirm.isDeleting = false
                     // Clear the remote URL since repo is deleted
                     gitManager.remoteUrl = ""
                     presentationModel.clearCreateRepoSuggestion()
@@ -252,7 +252,7 @@ extension MainMenuView {
                 }
             } catch {
                 await MainActor.run {
-                    isDeleting = false
+                    repoConfirm.isDeleting = false
                     errorCenter.deleteRepository = error.localizedDescription
                 }
             }
@@ -260,7 +260,7 @@ extension MainMenuView {
     }
 
     func toggleRepoVisibility() {
-        isTogglingVisibility = true
+        repoConfirm.isTogglingVisibility = true
         let newStatus = !gitManager.isPrivate
 
         Task {
@@ -272,12 +272,12 @@ extension MainMenuView {
                 )
 
                 await MainActor.run {
-                    isTogglingVisibility = false
+                    repoConfirm.isTogglingVisibility = false
                     gitManager.checkRepoVisibility()
                 }
             } catch {
                 await MainActor.run {
-                    isTogglingVisibility = false
+                    repoConfirm.isTogglingVisibility = false
                     errorCenter.toggleVisibility = error.localizedDescription
                 }
             }
@@ -315,11 +315,10 @@ extension MainMenuView {
     }
 
     func handleRepositoryOptionsPresentationRequest(_ token: Int) {
-        guard token > lastHandledRepositoryOptionsToken else {
+        guard repoOptions.claimPresentationRequest(token) else {
             return
         }
 
-        lastHandledRepositoryOptionsToken = token
         requestRepositoryOptionsPopoverPresentation()
     }
 
@@ -342,7 +341,7 @@ extension MainMenuView {
             return
         }
 
-        showAtomicCommitSheet = true
+        workspace.showAtomicCommitSheet = true
     }
 
     private func generateAutomaticAtomicCommitPlan() async -> AtomicCommitExecutionPlan? {

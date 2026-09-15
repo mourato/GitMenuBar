@@ -3,6 +3,9 @@ import Foundation
 @Observable
 @MainActor
 final class MainMenuBranchDialogs {
+    // Branch selector popover
+    var showBranchSelector = false
+
     // Create branch sheet
     var showCreateBranch = false
     var newBranchName = ""

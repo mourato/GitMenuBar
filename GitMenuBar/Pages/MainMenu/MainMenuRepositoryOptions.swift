@@ -15,36 +15,36 @@ extension MainMenuView {
         dismissTransientPresentations()
 
         if hadTransientPresentation {
-            pendingRepositoryOptionsPresentation = true
+            repoOptions.pendingPresentation = true
             return
         }
 
-        pendingRepositoryOptionsPresentation = false
-        showRepositoryOptionsPopover = true
+        repoOptions.pendingPresentation = false
+        repoOptions.showRepositoryOptionsPopover = true
     }
 
     func presentPendingRepositoryOptionsIfPossible() {
-        guard pendingRepositoryOptionsPresentation,
+        guard repoOptions.pendingPresentation,
               presentationModel.route == .main,
               canPresentRepositoryOptions,
-              !showProjectSelector,
-              !showBranchSelector,
+              !repoOptions.showProjectSelector,
+              !branchDialogs.showBranchSelector,
               !palette.isPresented
         else {
             return
         }
 
-        pendingRepositoryOptionsPresentation = false
-        showRepositoryOptionsPopover = true
+        repoOptions.pendingPresentation = false
+        repoOptions.showRepositoryOptionsPopover = true
     }
 
     func confirmRepositoryVisibilityAction() {
         dismissTransientPresentations()
-        showVisibilityConfirmation = true
+        repoConfirm.showVisibilityConfirmation = true
     }
 
     func confirmRepositoryDeleteAction() {
         dismissTransientPresentations()
-        showDeleteConfirmation = true
+        repoConfirm.showDeleteConfirmation = true
     }
 }

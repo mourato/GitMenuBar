@@ -14,7 +14,7 @@ extension MainMenuView {
             behindCount: gitManager.behindCount,
             isDetachedHead: gitManager.isDetachedHead,
             onBranchTap: toggleBranchSelectorPresentation,
-            isBranchSelectorPresented: $showBranchSelector
+            isBranchSelectorPresented: $branchDialogs.showBranchSelector
         ) {
             branchSelectorOverlay
         }
@@ -240,11 +240,11 @@ extension MainMenuView {
             closeCommandPalette()
             return
         }
-        if showBranchSelector {
+        if branchDialogs.showBranchSelector {
             dismissTransientPresentations()
             return
         }
-        if showRepositoryOptionsPopover {
+        if repoOptions.showRepositoryOptionsPopover {
             dismissTransientPresentations()
             return
         }

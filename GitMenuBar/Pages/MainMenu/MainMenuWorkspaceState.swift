@@ -6,6 +6,7 @@ final class MainMenuWorkspaceState {
     // Commit composer
     var commentText = ""
     var isCommitFieldTemporarilyVisible = false
+    var showAtomicCommitSheet = false
 
     // Selection
     var selectedMainItemID: MainMenuSelectableItem?

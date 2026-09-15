@@ -15,7 +15,7 @@ extension MainMenuView {
     var transientPresentationOverlayContent: some View {
         MainMenuTransientOverlay(
             isPresented: presentationModel.route == .main && hasTransientPresentation,
-            showsRepositoryOptions: showRepositoryOptionsPopover,
+            showsRepositoryOptions: repoOptions.showRepositoryOptionsPopover,
             visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
             visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
             quotaSnapshot: presentationModel.quotaInfoSnapshot,
@@ -42,7 +42,7 @@ extension MainMenuView {
             },
             onQuickPull: {
                 dismissTransientPresentations()
-                useRebase = false
+                sync.useRebase = false
                 syncWithRemote()
             },
             onSelectBranch: { branch in
@@ -127,8 +127,8 @@ extension MainMenuView {
             ) { commitMessageEditorSheet() }
             .sheet(isPresented: $actionCoordinator.showSyncOptions, content: syncOptionsSheet)
             .sheet(isPresented: $branchDialogs.showCreateBranch, content: createBranchSheet)
-            .sheet(isPresented: $showPullToNewBranch, content: pullToNewBranchSheet)
-            .sheet(isPresented: $showAtomicCommitSheet, content: atomicCommitSheet)
+            .sheet(isPresented: $sync.showPullToNewBranch, content: pullToNewBranchSheet)
+            .sheet(isPresented: $workspace.showAtomicCommitSheet, content: atomicCommitSheet)
     }
 
     var deleteBranchWarningMessage: String {
