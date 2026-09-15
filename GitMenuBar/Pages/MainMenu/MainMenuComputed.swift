@@ -593,3 +593,49 @@ extension MainMenuView {
         return InlineStatusBanner(title: title, message: message, style: .error)
     }
 }
+
+extension MainMenuView {
+    func reloadRepositorySelectionSnapshot() {
+        recentProjectReferences = RecentProjectsStore().recentProjects()
+    }
+
+    func refreshRenderSnapshot() {
+        let normalizedPath = currentRepositoryPath.isEmpty
+            ? ""
+            : RecentProjectsStore.normalize(currentRepositoryPath)
+        let monitorSnapshot = normalizedPath.isEmpty
+            ? nil
+            : projectMonitor.snapshots[normalizedPath]
+        let overview = currentRepositoryPath.isEmpty
+            ? RepositoryOverviewSnapshot.empty
+            : RepositoryOverviewSnapshot.build(
+                stagedFiles: gitManager.stagedFiles,
+                changedFiles: gitManager.changedFiles,
+                commitCount: gitManager.commitCount,
+                aheadOfRemote: gitManager.isAheadOfRemote,
+                behindRemote: gitManager.isRemoteAhead,
+                gitBehindCount: gitManager.behindCount,
+                commitHistory: gitManager.commitHistory,
+                currentBranch: gitManager.currentBranch,
+                isDetachedHead: gitManager.isDetachedHead,
+                monitorSnapshot: monitorSnapshot,
+                isLoading: presentationModel.isFastLoading
+            )
+
+        renderSnapshot = MainMenuRenderSnapshot.build(
+            stagedFiles: gitManager.stagedFiles,
+            changedFiles: gitManager.changedFiles,
+            commitHistory: gitManager.commitHistory,
+            currentHash: gitManager.currentHash,
+            remoteUrl: gitManager.remoteUrl,
+            availableBranches: gitManager.availableBranches,
+            currentBranch: gitManager.currentBranch,
+            isStagedSectionCollapsed: isStagedSectionCollapsed,
+            isUnstagedSectionCollapsed: isUnstagedSectionCollapsed,
+            recentProjects: recentProjectReferences,
+            currentRepoPath: currentRepositoryPath,
+            isCommitInFuture: isCommitInFuture,
+            overview: overview
+        )
+    }
+}
