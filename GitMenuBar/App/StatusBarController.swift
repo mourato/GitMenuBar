@@ -124,7 +124,7 @@ final class StatusBarController: NSObject, ObservableObject {
         setupShortcutHandlers()
         setupContextMenu()
         setupMainWindow()
-        setupBadgeObservation()
+        setupStatusItemObservation()
         setupAuthenticationObservation()
         setupAppCommandObservation()
 
@@ -150,23 +150,18 @@ final class StatusBarController: NSObject, ObservableObject {
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.target = self
 
-        updateStatusItemBadge(count: projectMonitor.attentionCount)
+        updateStatusItemAppearance()
     }
 
-    private func updateStatusItemBadge(count: Int) {
-        updateStatusItemAppearance(attentionCount: count)
-    }
-
-    private func setupBadgeObservation() {
+    private func setupStatusItemObservation() {
         let quotaChanges = usageQuotaStore.objectWillChange.map { _ in () }
         let presentationChanges = usageQuotaPresentationPreferences.objectWillChange.map { _ in () }
-        Publishers.Merge3(
-            projectMonitor.$snapshots.map { _ in () },
+        Publishers.Merge(
             quotaChanges,
             presentationChanges
         )
         .receive(on: RunLoop.main)
-        .sink { [weak self] _ in self?.updateStatusItemBadge(count: self?.projectMonitor.attentionCount ?? 0) }
+        .sink { [weak self] _ in self?.updateStatusItemAppearance() }
         .store(in: &cancellables)
     }
 

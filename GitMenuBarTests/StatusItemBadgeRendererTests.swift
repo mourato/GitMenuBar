@@ -3,40 +3,42 @@ import AppKit
 import XCTest
 
 final class StatusItemBadgeRendererTests: XCTestCase {
-    func testBadgedImagePreservesSizeAndDisablesTemplateRendering() {
+    func testCompositeImagePreservesTemplateRenderingWithoutBadge() {
         let iconSize = NSSize(width: 18, height: 18)
 
-        let image = StatusItemBadgeRenderer.makeBadgedImage(
-            count: 3,
+        let image = StatusItemBadgeRenderer.makeCompositeImage(
             baseStatusImage: makeTemplateImage(size: iconSize),
+            usageImage: nil,
             iconSize: iconSize
         )
 
         XCTAssertEqual(image?.size, iconSize)
-        XCTAssertEqual(image?.isTemplate, false)
+        XCTAssertEqual(image?.isTemplate, true)
     }
 
-    func testBadgedImageSupportsCappedLargeCounts() {
+    func testCompositeImageKeepsUsageStripAsTemplate() {
         let iconSize = NSSize(width: 18, height: 18)
+        let usageSize = NSSize(width: 18, height: 18)
 
-        let image = StatusItemBadgeRenderer.makeBadgedImage(
-            count: 120,
+        let image = StatusItemBadgeRenderer.makeCompositeImage(
             baseStatusImage: makeTemplateImage(size: iconSize),
+            usageImage: makeTemplateImage(size: usageSize),
             iconSize: iconSize
         )
 
-        XCTAssertEqual(image?.size, iconSize)
-        XCTAssertEqual(image?.isTemplate, false)
+        XCTAssertEqual(image?.size, NSSize(width: 42, height: 18))
+        XCTAssertEqual(image?.isTemplate, true)
     }
 
-    func testBadgedImageReturnsNilWithoutBaseImage() {
-        let image = StatusItemBadgeRenderer.makeBadgedImage(
-            count: 1,
+    func testCompositeImageReturnsUsageImageWithoutBaseImage() {
+        let usageImage = makeTemplateImage(size: NSSize(width: 18, height: 18))
+        let image = StatusItemBadgeRenderer.makeCompositeImage(
             baseStatusImage: nil,
+            usageImage: usageImage,
             iconSize: NSSize(width: 18, height: 18)
         )
 
-        XCTAssertNil(image)
+        XCTAssertTrue(image === usageImage)
     }
 
     private func makeTemplateImage(size: NSSize) -> NSImage {

@@ -46,10 +46,6 @@ final class ProjectMonitorStore: ObservableObject {
         projectStore.monitoredProjects()
     }
 
-    var attentionCount: Int {
-        snapshots.values.filter { [.needsAttention, .unavailable].contains($0.classification) }.count
-    }
-
     func seed(currentPath: String, recentProjects: [ProjectReference]) async {
         fetchGeneration += 1
         refreshGeneration += 1

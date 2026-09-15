@@ -27,10 +27,10 @@ coexist without adding a second status item owner or a new credential path.
   selected metrics per provider, text/bars, left/used, and status-item
   visibility.
 - Keep custom rendering limited to the quota block inside the native menu and
-  the compact status-item image. Render the strip as a template when possible;
-  when the attention badge requires a multicolor image, resolve AppKit's
-  semantic label color against the status item's effective appearance. All
-  other actions remain ordinary `NSMenuItem` rows.
+  the compact status-item image. Render the complete status-item strip as a
+  template so AppKit owns its light/dark menu-bar color. Do not add a
+  colorized attention badge to the status item. All other actions remain
+  ordinary `NSMenuItem` rows.
 
 ## Consequences
 
@@ -38,8 +38,8 @@ The quota feature has one data source and two views: the existing sidebar
 cards and the status-item workflow. Left-click behavior remains a direct main
 window action, while the right-click menu exposes the quota cards without
 duplicating its Settings and Quit actions. The status item remains readable in
-light and dark menu bars, including when the Git attention badge is present. No
-provider credentials or tokens are duplicated.
+light and dark menu bars because its complete image remains template-rendered.
+No provider credentials or tokens are duplicated.
 
 Claude Code contributes local rate-limit events when available; it remains
 unavailable for accounts that do not expose such events.

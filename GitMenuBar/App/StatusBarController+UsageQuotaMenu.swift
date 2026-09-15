@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 extension StatusBarController {
-    func updateStatusItemAppearance(attentionCount: Int) {
+    func updateStatusItemAppearance() {
         guard let button = statusItem?.button else { return }
 
         let groups = UsageQuotaMenuPresentation.groups(
@@ -15,21 +15,16 @@ extension StatusBarController {
             : usageQuotaPresentationPreferences.meterStyle
         let showsUsageInStatusItem = usageQuotaStore.showAIUsageQuotas
             && usageQuotaPresentationPreferences.menuBarVisibility == .always
-        let menuBarAppearance = button.window?.effectiveAppearance ?? button.effectiveAppearance
         let usageImage = showsUsageInStatusItem && !groups.isEmpty
             ? makeUsageStatusImage(
                 groups: groups,
-                style: style,
-                isTemplate: attentionCount == 0,
-                appearance: menuBarAppearance
+                style: style
             )
             : nil
         button.image = StatusItemBadgeRenderer.makeCompositeImage(
             baseStatusImage: baseStatusImage,
             usageImage: usageImage,
-            count: attentionCount,
-            iconSize: Constants.statusIconPointSize,
-            appearance: menuBarAppearance
+            iconSize: Constants.statusIconPointSize
         )
         button.toolTip = if showsUsageInStatusItem, !groups.isEmpty {
             "\(groups.map(\.spokenLabel).joined(separator: ", ")). Right-click for usage quotas and Git commands"
@@ -67,40 +62,20 @@ extension StatusBarController {
 
     private func makeUsageStatusImage(
         groups: [UsageQuotaMenuBarGroup],
-        style: UsageQuotaPresentationPreferences.MeterStyle,
-        isTemplate: Bool,
-        appearance: NSAppearance?
+        style: UsageQuotaPresentationPreferences.MeterStyle
     ) -> NSImage? {
-        // ponytail: ImageRenderer ignora NSAppearance.current, então resolve labelColor
-        // para cor fixa antes de renderizar; template usa preto (só alpha importa).
-        let tint: Color = if isTemplate {
-            .black
-        } else if let appearance {
-            resolvedMenuBarTint(for: appearance)
-        } else {
-            Color(nsColor: .labelColor)
-        }
-
         let renderer = ImageRenderer(
             content: UsageQuotaMenuBarStrip(
                 groups: groups,
                 style: style,
-                tint: tint
+                tint: .black
             )
         )
         renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
         guard let image = renderer.nsImage else { return nil }
-        image.isTemplate = isTemplate
+        image.isTemplate = true
         image.accessibilityDescription = groups.map(\.spokenLabel).joined(separator: ", ")
         return image
-    }
-
-    private func resolvedMenuBarTint(for appearance: NSAppearance) -> Color {
-        var resolved = NSColor.labelColor
-        appearance.performAsCurrentDrawingAppearance {
-            resolved = NSColor.labelColor.usingColorSpace(.sRGB) ?? NSColor.labelColor
-        }
-        return Color(nsColor: resolved)
     }
 
     private func menuItem(title: String, action: Selector) -> NSMenuItem {

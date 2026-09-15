@@ -77,9 +77,9 @@ with the provider quota cards and refresh action. The user can choose whether
 the status item always renders up to two selected quota figures per provider
 or keeps them only inside that submenu; the submenu remains available in both
 modes. The status-item strip uses template/semantic AppKit label color so it
-follows the menu bar's appearance, while the Git attention badge retains its
-red/white contrast. Unavailable provider data does not create an empty meter;
-cached stale readings stay visible and marked Outdated in the quota submenu.
+follows the menu bar's appearance. Unavailable provider data does not create
+an empty meter; cached stale readings stay visible and marked Outdated in the
+quota submenu.
 
 The side panel uses fixed `WorkbenchMetrics.sidePanelWidth`. Dismiss with the
 explicit close control, Escape (clears selection first), and outside tap —
