@@ -12,75 +12,25 @@ extension MainMenuView {
         }
     }
 
-    @ViewBuilder
-    private var transientPresentationOverlayContent: some View {
-        if presentationModel.route == .main, hasTransientPresentation {
-            ZStack {
-                transientPresentationScrim
-                    .contentShape(Rectangle())
-                    .ignoresSafeArea()
-                    .accessibilityHidden(true)
-                    .onTapGesture {
-                        dismissTransientPresentations()
-                    }
-
-                transientPanelContent
-            }
-            .animation(WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion), value: hasTransientPresentation)
-            .transition(.opacity)
-        }
-    }
-
-    @ViewBuilder
-    private var transientPanelContent: some View {
-        if showRepositoryOptionsPopover {
-            topCenteredOverlay(repositoryOptionsOverlay)
-        } else if let snapshot = presentationModel.quotaInfoSnapshot {
-            quotaInfoOverlay(snapshot)
-        }
-    }
-
-    private func topCenteredOverlay(_ overlay: some View) -> some View {
-        HStack {
-            Spacer(minLength: 0)
-            overlay
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .padding(.top, WorkbenchMetrics.sectionSpacing)
-        .padding(.horizontal, WorkbenchMetrics.windowPadding)
-    }
-
-    private func quotaInfoOverlay(_ snapshot: UsageQuotaSnapshot) -> some View {
-        HStack {
-            QuotaStaleInfoPanel(
-                snapshot: snapshot,
-                onRetry: {
-                    dismissTransientPresentations()
-                    usageQuotaStore.refresh(reason: .manual)
-                }
-            )
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-        .padding(.leading, WorkbenchMetrics.windowPadding)
-        .padding(.trailing, WorkbenchMetrics.windowPadding)
-        .padding(.bottom, WorkbenchMetrics.windowPadding * 2)
-        .modifier(TransientPanelChrome(origin: .bottomLeading, reduceMotion: reduceMotion))
-    }
-
-    private var repositoryOptionsOverlay: some View {
-        RepositoryOptionsPopoverView(
+    var transientPresentationOverlayContent: some View {
+        MainMenuTransientOverlay(
+            isPresented: presentationModel.route == .main && hasTransientPresentation,
+            showsRepositoryOptions: showRepositoryOptionsPopover,
             visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
             visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
+            quotaSnapshot: presentationModel.quotaInfoSnapshot,
             onToggleVisibility: confirmRepositoryVisibilityAction,
-            onDeleteRepository: confirmRepositoryDeleteAction
+            onDeleteRepository: confirmRepositoryDeleteAction,
+            onDismiss: dismissTransientPresentations,
+            onRetryQuota: {
+                dismissTransientPresentations()
+                usageQuotaStore.refresh(reason: .manual)
+            }
         )
-        .modifier(TransientPanelChrome(origin: .topCenter, reduceMotion: reduceMotion))
     }
 
     var branchSelectorOverlay: some View {
-        BranchSelectorPopoverView(
+        MainMenuBranchSelectorOverlay(
             isDetachedHead: gitManager.isDetachedHead,
             isRemoteAhead: gitManager.isRemoteAhead,
             behindCount: gitManager.behindCount,
@@ -151,51 +101,15 @@ extension MainMenuView {
         )
     }
 
-    @ViewBuilder
-    private var transientPresentationScrim: some View {
-        if reduceTransparency {
-            Color(nsColor: .windowBackgroundColor)
-        } else {
-            Color.black.opacity(0.05)
-        }
-    }
-
-    private struct TransientPanelChrome: ViewModifier {
-        let origin: WorkbenchMotion.TransientPanelOrigin
-        let reduceMotion: Bool
-
-        func body(content: Content) -> some View {
-            content
-                .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 8)
-                .accessibilityAddTraits(.isModal)
-                .transition(WorkbenchMotion.transientPanelTransition(from: origin, usesReducedMotion: reduceMotion))
-        }
-    }
-
-    @ViewBuilder
     var commandPaletteOverlayContent: some View {
-        if isCommandPalettePresented, presentationModel.route == .main {
-            ZStack {
-                commandPaletteScrim
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        closeCommandPalette()
-                    }
-                    .zIndex(0)
-
-                MainMenuCommandPaletteView(
-                    query: $commandPaletteQuery,
-                    items: commandPaletteVisibleItems,
-                    selectedItemID: $selectedCommandPaletteItemID,
-                    onClose: closeCommandPalette,
-                    onSelectItem: executeCommandPaletteItem
-                )
-                .accessibilityAddTraits(.isModal)
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
-                .zIndex(1)
-            }
-            .transition(.opacity)
-        }
+        MainMenuCommandPaletteOverlay(
+            isPresented: isCommandPalettePresented && presentationModel.route == .main,
+            query: $commandPaletteQuery,
+            items: commandPaletteVisibleItems,
+            selectedItemID: $selectedCommandPaletteItemID,
+            onClose: closeCommandPalette,
+            onSelectItem: executeCommandPaletteItem
+        )
     }
 
     private func applySheets(to view: some View) -> some View {
@@ -215,19 +129,6 @@ extension MainMenuView {
             .sheet(isPresented: $showCreateBranch, content: createBranchSheet)
             .sheet(isPresented: $showPullToNewBranch, content: pullToNewBranchSheet)
             .sheet(isPresented: $showAtomicCommitSheet, content: atomicCommitSheet)
-    }
-
-    @ViewBuilder
-    private var commandPaletteScrim: some View {
-        if reduceTransparency {
-            Color(nsColor: .windowBackgroundColor)
-        } else {
-            ZStack {
-                Color.black.opacity(0.08)
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-            }
-        }
     }
 
     var deleteBranchWarningMessage: String {
