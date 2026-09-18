@@ -56,8 +56,9 @@ Contextual details open in a trailing **side panel** overlay hosted on the
 detail column (VoiceInk-inspired; independent reimplementation). The panel is
 absent until a central selection exists; there is no permanent empty third
 column and no compact sheet fallback. The commit workspace lives in the side
-panel under the Working Tree selection as commit composer → working tree →
-history, with the composer fixed above the workspace's single scroll owner.
+panel under the Working Tree selection as commit composer → working tree,
+with the composer fixed above the workspace's single scroll owner. Commit
+history lives in the central project view below the repository overview.
 `NavigationSplitView` owns the Projects sidebar's width, selection, and
 collapse behavior. While visible, the sidebar is always present and
 user-resizable between `WorkbenchMetrics.projectsMinimumWidth` and

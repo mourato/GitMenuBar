@@ -13,8 +13,11 @@ struct MainMenuOverviewSection: View {
     let canSync: Bool
     let onSync: () -> Void
     let onSelectSection: (MainMenuSidePanelSelection) -> Void
+    let history: SidePanelHistoryModel?
 
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @EnvironmentObject private var actionCoordinator: MainMenuActionCoordinator
+    @State private var pendingReset: Commit?
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
@@ -39,6 +42,18 @@ struct MainMenuOverviewSection: View {
                     canSync: canSync,
                     onSync: onSync
                 )
+
+                if let history {
+                    SidePanelHistoryBrowserView(
+                        history: history,
+                        pendingReset: $pendingReset
+                    )
+                }
+            }
+        }
+        .sidePanelResetAlert(commit: $pendingReset) { commit in
+            Task {
+                _ = await actionCoordinator.resetSidePanelCommit(hash: commit.id)
             }
         }
     }
@@ -70,20 +85,23 @@ struct MainMenuOverviewSection: View {
 }
 
 #Preview("Overview Section") {
-    MainMenuOverviewSection(
-        banner: nil,
-        onDismissBanner: {},
-        suggestionPath: nil,
-        currentRepoPath: "/tmp/demo",
-        onCreateRepo: { _ in },
-        overview: .empty,
-        commitActionTitle: "Commit",
-        canCommit: false,
-        onCommit: {},
-        canSync: false,
-        onSync: {},
-        onSelectSection: { _ in }
-    )
+    MainMenuPreviewHarness {
+        MainMenuOverviewSection(
+            banner: nil,
+            onDismissBanner: {},
+            suggestionPath: nil,
+            currentRepoPath: "/tmp/demo",
+            onCreateRepo: { _ in },
+            overview: .empty,
+            commitActionTitle: "Commit",
+            canCommit: false,
+            onCommit: {},
+            canSync: false,
+            onSync: {},
+            onSelectSection: { _ in },
+            history: nil
+        )
+    }
     .frame(width: 380)
     .padding()
 }

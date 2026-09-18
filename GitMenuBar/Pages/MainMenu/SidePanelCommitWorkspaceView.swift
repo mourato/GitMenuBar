@@ -16,7 +16,6 @@ struct SidePanelCommitWorkspaceView: View {
     let isCommitPrimaryButtonDisabled: Bool
     let canShowSplitCommits: Bool
     let commitFocusToken: Int
-    let history: SidePanelHistoryModel
     let workspaceSelectedFileID: MainMenuSelectableItem?
     let onClose: () -> Void
     let onCommitPrimaryAction: () -> Void
@@ -34,7 +33,6 @@ struct SidePanelCommitWorkspaceView: View {
     @EnvironmentObject private var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
     @State private var isStagedCollapsed = false
     @State private var isUnstagedCollapsed = false
-    @State private var pendingReset: Commit?
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
@@ -68,15 +66,7 @@ struct SidePanelCommitWorkspaceView: View {
                 commitHistoryEditCoordinator: commitHistoryEditCoordinator
             )
             ScrollView {
-                VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-                    workingTreeContent
-                    SidePanelHistoryBrowserView(history: history, pendingReset: $pendingReset)
-                }
-            }
-        }
-        .sidePanelResetAlert(commit: $pendingReset) { commit in
-            Task {
-                _ = await actionCoordinator.resetSidePanelCommit(hash: commit.id)
+                workingTreeContent
             }
         }
     }
@@ -176,7 +166,6 @@ private struct SidePanelCommitWorkspacePreviewHost: View {
             isCommitPrimaryButtonDisabled: false,
             canShowSplitCommits: true,
             commitFocusToken: 0,
-            history: .preview(),
             workspaceSelectedFileID: nil,
             onClose: {},
             onCommitPrimaryAction: {},

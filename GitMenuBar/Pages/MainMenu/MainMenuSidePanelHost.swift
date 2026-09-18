@@ -56,7 +56,6 @@ struct MainMenuSidePanelHost: View {
                 isCommitPrimaryButtonDisabled: isCommitPrimaryButtonDisabled,
                 canShowSplitCommits: canShowSplitCommits,
                 commitFocusToken: commitFocusToken,
-                history: history,
                 workspaceSelectedFileID: workspaceSelectedFileID,
                 onClose: onClose,
                 onCommitPrimaryAction: onCommitPrimaryAction,

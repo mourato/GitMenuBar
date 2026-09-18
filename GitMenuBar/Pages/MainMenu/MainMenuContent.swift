@@ -45,7 +45,8 @@ extension MainMenuView {
                     onCommit: performQuickCommit,
                     canSync: actionCoordinator.canSync,
                     onSync: syncRepository,
-                    onSelectSection: { workspace.selectedSidePanelSelection = $0 }
+                    onSelectSection: { workspace.selectedSidePanelSelection = $0 },
+                    history: sidePanelHistory
                 )
             }
             .scrollDisabled(palette.isPresented)
@@ -159,7 +160,7 @@ extension MainMenuView {
                 workspace.selectedMainItemID = .historyCommit(id: commitID)
             },
             onBackToHistory: {
-                workspace.selectedSidePanelSelection = .history
+                workspace.selectedSidePanelSelection = nil
             },
             onEditCommitMessage: { commit in
                 Task {
