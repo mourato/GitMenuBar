@@ -31,10 +31,12 @@ they drift, and use an ADR for a durable decision rather than a task log.
 
 - Use one depth strategy: window-level material/vibrancy for the shell, quiet
   borders/tints for structure, and shadows only for floating overlays.
-- The header uses native toolbar chrome; the main window title stays hidden and
-  the underlying titled `NSWindow` is retained only for AppKit traffic lights
-  and toolbar ownership. Do not add a material plate above the content.
-  Inputs are slightly inset from their surrounding surface.
+- The header uses the native macOS titlebar and unified toolbar pattern used by
+  GUGU Settings: the titlebar is opaque, the window title is visible in the
+  system's leading title area, and the titlebar hairline is hidden. The titled
+  `NSWindow` remains the owner of traffic lights and toolbar chrome; do not add
+  a hand-drawn titlebar or material plate above the content. Inputs are slightly
+  inset from their surrounding surface.
 - Spacing is based on 8 points: compact 8, section 12, group 20, panel inset
   16, and window inset 12. Micro values 4 and 6 must be named metrics.
 - Radius scale is 6, 8, 10, 14, and 16 for chips, rows, inline panels, main
@@ -68,8 +70,8 @@ control beside Settings. When the sidebar is collapsed, the native toolbar item
 minimum of `WorkbenchMetrics.centralMinimumWidth` and grows with the window
 (no max-width cap feeding a third column). The sidebar footer concentrates the
 quota summary, sidebar visibility, and Settings access in one bottom surface;
-the window toolbar keeps the centered title and only shows the native sidebar
-toggle while the sidebar is collapsed.
+the native window title identifies the current repository or route, and the
+toolbar keeps only route-specific controls such as the sidebar toggle and Back.
 
 The status item remains the single app-shell owner. Left click opens the main
 GitMenuBar window. When AI usage quotas are enabled, right click and

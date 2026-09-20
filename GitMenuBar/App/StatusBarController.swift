@@ -38,7 +38,7 @@ final class StatusBarController: NSObject, ObservableObject {
 
     var statusItem: NSStatusItem?
     private var mainWindow: NSWindow?
-    private var mainWindowToolbarDelegate: MainWindowToolbarDelegate?
+    private var mainWindowToolbarController: MainWindowToolbarController?
     var contextMenu: NSMenu?
     private var cancellables = Set<AnyCancellable>()
     var baseStatusImage: NSImage?
@@ -313,7 +313,9 @@ final class StatusBarController: NSObject, ObservableObject {
 
         configureMainWindowAppearance(window)
         window.title = "GitMenuBar"
-        configureMainWindowToolbar(window)
+        let toolbarController = MainWindowToolbarController(target: self)
+        toolbarController.install(in: window)
+        mainWindowToolbarController = toolbarController
         window.isReleasedWhenClosed = false
         window.setContentSize(Constants.windowInitialSize)
         window.contentMinSize = Constants.windowMinimumSize
@@ -347,98 +349,29 @@ final class StatusBarController: NSObject, ObservableObject {
 
     private func configureMainWindowAppearance(_ window: NSWindow) {
         window.styleMask.insert(.fullSizeContentView)
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
         window.titlebarSeparatorStyle = .none
-        window.toolbarStyle = .unifiedCompact
         window.hasShadow = true
         window.isMovableByWindowBackground = false
     }
 
-    private func configureMainWindowToolbar(_ window: NSWindow) {
-        let toolbar = NSToolbar(identifier: "GitMenuBar.MainWindowToolbar")
-        let toolbarDelegate = MainWindowToolbarDelegate(target: self)
-        toolbar.delegate = toolbarDelegate
-        toolbar.displayMode = .iconOnly
-        toolbar.sizeMode = .small
-        toolbar.allowsUserCustomization = false
-        window.toolbar = toolbar
-        mainWindowToolbarDelegate = toolbarDelegate
-    }
-
-    fileprivate func makeMainWindowToolbarItem(
-        identifier: NSToolbarItem.Identifier
-    ) -> NSToolbarItem? {
-        if identifier == .toggleSidebar {
-            return NSToolbarItem(itemIdentifier: .toggleSidebar)
-        }
-
-        let item = NSToolbarItem(itemIdentifier: identifier)
-        item.target = self
-
-        switch identifier {
-        case MainWindowToolbarItemIdentifier.back:
-            item.label = "Back"
-            item.paletteLabel = "Back"
-            item.toolTip = "Return to the main repository view"
-            item.action = #selector(goBackFromToolbar(_:))
-            item.image = NSImage(systemSymbolName: "chevron.backward", accessibilityDescription: "Back")
-        case MainWindowToolbarItemIdentifier.title:
-            let titleField = NSTextField(labelWithString: mainWindowTitle)
-            titleField.alignment = .center
-            titleField.font = .systemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
-            titleField.lineBreakMode = .byTruncatingTail
-            titleField.maximumNumberOfLines = 1
-            titleField.translatesAutoresizingMaskIntoConstraints = false
-            item.view = titleField
-            NSLayoutConstraint.activate([
-                titleField.widthAnchor.constraint(greaterThanOrEqualToConstant: 120),
-                titleField.widthAnchor.constraint(lessThanOrEqualToConstant: 240),
-                titleField.heightAnchor.constraint(equalToConstant: 22)
-            ])
-        default:
-            return nil
-        }
-
-        return item
-    }
-
     private func updateMainWindowToolbar() {
-        guard let window = mainWindow, let toolbar = window.toolbar else { return }
-
-        window.title = mainWindowTitle
-
-        let titleField = toolbar.items
-            .first(where: { $0.itemIdentifier == MainWindowToolbarItemIdentifier.title })?.view as? NSTextField
-        if let titleField {
-            titleField.stringValue = mainWindowTitle
-        }
-
         let shouldShowSidebarItem = switch presentationModel.route {
         case .createRepo:
             false
         case .main, .projectCleanup:
             true
         }
-        let hasSidebarItem = toolbar.items.contains { $0.itemIdentifier == .toggleSidebar }
-        if shouldShowSidebarItem, !hasSidebarItem {
-            toolbar.insertItem(withItemIdentifier: .toggleSidebar, at: 0)
-        } else if !shouldShowSidebarItem, let sidebarIndex = toolbar.items.firstIndex(where: { $0.itemIdentifier == .toggleSidebar }) {
-            toolbar.removeItem(at: sidebarIndex)
-        }
-
         let needsBackItem = switch presentationModel.route {
         case .projectCleanup:
             true
         case .main, .createRepo:
             false
         }
-        let hasBackItem = toolbar.items.contains { $0.itemIdentifier == MainWindowToolbarItemIdentifier.back }
-        if needsBackItem, !hasBackItem {
-            toolbar.insertItem(withItemIdentifier: MainWindowToolbarItemIdentifier.back, at: 1)
-        } else if !needsBackItem, let backIndex = toolbar.items.firstIndex(where: { $0.itemIdentifier == MainWindowToolbarItemIdentifier.back }) {
-            toolbar.removeItem(at: backIndex)
-        }
+        mainWindowToolbarController?.update(
+            title: mainWindowTitle,
+            showsSidebarItem: shouldShowSidebarItem,
+            showsBackItem: needsBackItem
+        )
     }
 
     private var mainWindowTitle: String {
@@ -455,8 +388,9 @@ final class StatusBarController: NSObject, ObservableObject {
         }
     }
 
+    /// Returns from a route-specific toolbar surface to the main repository view.
     @objc
-    private func goBackFromToolbar(_: NSToolbarItem) {
+    func goBackFromToolbar(_: NSToolbarItem) {
         presentationModel.showMain()
     }
 
@@ -1239,46 +1173,6 @@ final class StatusBarController: NSObject, ObservableObject {
         case .atomicCommits:
             "atomicCommits"
         }
-    }
-}
-
-private enum MainWindowToolbarItemIdentifier {
-    static let back = NSToolbarItem.Identifier("GitMenuBar.back")
-    static let title = NSToolbarItem.Identifier("GitMenuBar.title")
-}
-
-@MainActor
-private final class MainWindowToolbarDelegate: NSObject, NSToolbarDelegate {
-    private weak var target: StatusBarController?
-
-    init(target: StatusBarController) {
-        self.target = target
-    }
-
-    func toolbarAllowedItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [
-            .toggleSidebar,
-            MainWindowToolbarItemIdentifier.back,
-            .flexibleSpace,
-            MainWindowToolbarItemIdentifier.title
-        ]
-    }
-
-    func toolbarDefaultItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [
-            .toggleSidebar,
-            .flexibleSpace,
-            MainWindowToolbarItemIdentifier.title,
-            .flexibleSpace
-        ]
-    }
-
-    func toolbar(
-        _: NSToolbar,
-        itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
-        willBeInsertedIntoToolbar _: Bool
-    ) -> NSToolbarItem? {
-        target?.makeMainWindowToolbarItem(identifier: itemIdentifier)
     }
 }
 
