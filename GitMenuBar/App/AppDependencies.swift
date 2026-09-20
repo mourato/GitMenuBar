@@ -14,6 +14,7 @@ final class AppDependencies {
     let aiKeychainStore: any AIAPIKeyStore
     let chatGPTSubscription = ChatGPTSubscriptionManager()
     let aiCommitMessageService: AICommitMessageService
+    let shortcutManager = GlobalShortcutManager()
     let shortcutActionBridge = MainMenuShortcutActionBridge()
     let presentationModel = MainMenuPresentationModel()
     let usageQuotaStore: UsageQuotaStore
@@ -106,6 +107,7 @@ final class AppDependencies {
             chatGPTSubscription: chatGPTSubscription,
             usageQuotaStore: usageQuotaStore,
             usageQuotaPresentationPreferences: usageQuotaPresentationPreferences,
+            shortcutManager: shortcutManager,
             onSetAutoHideSuspended: onSetAutoHideSuspended
         )
     }

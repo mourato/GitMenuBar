@@ -7,7 +7,6 @@
 
 import AppKit
 import Combine
-import KeyboardShortcuts
 import SwiftUI
 
 // swiftlint:disable file_length
@@ -21,7 +20,7 @@ final class StatusBarController: NSObject, ObservableObject {
         static let autoHideBlurEvaluationDelay: TimeInterval = 0.08
         static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
         static let screenCaptureUIBundleIdentifier = "com.apple.screencaptureui"
-        static let appFocusedShortcutNames: [KeyboardShortcuts.Name] = [
+        static let appFocusedShortcutIDs: [GlobalShortcutID] = [
             .commandPalette, .commit, .sync, .atomicCommits, .push, .branchManagement, .createBranch
         ]
     }
@@ -60,6 +59,7 @@ final class StatusBarController: NSObject, ObservableObject {
     let aiKeychainStore: any AIAPIKeyStore
     let aiCommitMessageService: AICommitMessageService
     let shortcutActionBridge: MainMenuShortcutActionBridge
+    let shortcutManager: GlobalShortcutManager
     let presentationModel: MainMenuPresentationModel
     let usageQuotaStore: UsageQuotaStore
     let usageQuotaPresentationPreferences: UsageQuotaPresentationPreferences
@@ -105,6 +105,7 @@ final class StatusBarController: NSObject, ObservableObject {
         aiKeychainStore = dependencies.aiKeychainStore
         aiCommitMessageService = dependencies.aiCommitMessageService
         shortcutActionBridge = dependencies.shortcutActionBridge
+        shortcutManager = dependencies.shortcutManager
         presentationModel = dependencies.presentationModel
         usageQuotaStore = dependencies.usageQuotaStore
         usageQuotaPresentationPreferences = dependencies.usageQuotaPresentationPreferences
@@ -197,67 +198,55 @@ final class StatusBarController: NSObject, ObservableObject {
     }
 
     private func setupShortcutHandlers() {
-        KeyboardShortcuts.onKeyDown(for: .togglePopover) { [weak self] in
-            Task { @MainActor in
+        let enabledIDs: Set<GlobalShortcutID> = NSApp.isActive
+            ? Set(GlobalShortcutID.allCases)
+            : [.togglePopover]
+        shortcutManager.configure([
+            GlobalShortcutAction(id: .togglePopover) { [weak self] in
                 self?.toggleMainWindowFromShortcut()
-            }
-        }
-
-        KeyboardShortcuts.onKeyDown(for: .commandPalette) { [weak self] in
-            Task { @MainActor in
+            },
+            GlobalShortcutAction(id: .commandPalette) { [weak self] in
                 self?.handleCommandPaletteShortcut()
-            }
-        }
-
-        KeyboardShortcuts.onKeyDown(for: .commit) { [weak self] in
-            Task { @MainActor in
+            },
+            GlobalShortcutAction(id: .commit) { [weak self] in
                 self?.handleActionShortcut(.commit)
-            }
-        }
-
-        KeyboardShortcuts.onKeyDown(for: .sync) { [weak self] in
-            Task { @MainActor in
+            },
+            GlobalShortcutAction(id: .sync) { [weak self] in
                 self?.handleActionShortcut(.sync)
-            }
-        }
-
-        KeyboardShortcuts.onKeyDown(for: .atomicCommits) { [weak self] in
-            Task { @MainActor in
+            },
+            GlobalShortcutAction(id: .atomicCommits) { [weak self] in
                 self?.handleActionShortcut(.atomicCommits)
-            }
-        }
-
-        KeyboardShortcuts.onKeyDown(for: .push) { [weak self] in
-            Task { @MainActor in
+            },
+            GlobalShortcutAction(id: .push) { [weak self] in
                 self?.appCommandCenter.perform(.push)
-            }
-        }
-
-        KeyboardShortcuts.onKeyDown(for: .branchManagement) { [weak self] in
-            Task { @MainActor in
+            },
+            GlobalShortcutAction(id: .branchManagement) { [weak self] in
                 self?.appCommandCenter.perform(.branchManagement)
-            }
-        }
-
-        KeyboardShortcuts.onKeyDown(for: .createBranch) { [weak self] in
-            Task { @MainActor in
+            },
+            GlobalShortcutAction(id: .createBranch) { [weak self] in
                 self?.appCommandCenter.perform(.createBranch)
             }
-        }
+        ], enabledIDs: enabledIDs)
 
         setupActionShortcutScopeObservation()
     }
 
     private func setupActionShortcutScopeObservation() {
         NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
-            .sink { _ in
-                KeyboardShortcuts.enable(Constants.appFocusedShortcutNames)
+            .sink { [weak self] _ in
+                self?.updateActionShortcutScope(isAppActive: true)
             }
             .store(in: &cancellables)
 
         NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)
-            .sink { _ in
-                KeyboardShortcuts.disable(Constants.appFocusedShortcutNames)
+            .sink { [weak self] _ in
+                self?.updateActionShortcutScope(isAppActive: false)
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)
+            .sink { [weak self] _ in
+                self?.shortcutManager.stop()
             }
             .store(in: &cancellables)
 
@@ -265,12 +254,7 @@ final class StatusBarController: NSObject, ObservableObject {
     }
 
     private func updateActionShortcutScope(isAppActive: Bool) {
-        if isAppActive {
-            KeyboardShortcuts.enable(Constants.appFocusedShortcutNames)
-            return
-        }
-
-        KeyboardShortcuts.disable(Constants.appFocusedShortcutNames)
+        shortcutManager.setEnabled(isAppActive, for: Constants.appFocusedShortcutIDs)
     }
 
     private func setupAuthenticationObservation() {

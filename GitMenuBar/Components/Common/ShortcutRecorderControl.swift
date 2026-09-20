@@ -1,18 +1,17 @@
 import AppKit
 import Carbon.HIToolbox
-@preconcurrency import KeyboardShortcuts
 import SwiftUI
 
-/// Keycap-style shortcut recorder backed by `KeyboardShortcuts` storage.
+/// Keycap-style shortcut recorder backed by the app-owned shortcut manager.
 struct ShortcutRecorderControl: View {
-    let name: KeyboardShortcuts.Name
+    let id: GlobalShortcutID
+    let manager: GlobalShortcutManager
     var isInteractionEnabled: Bool = true
-    var onChange: ((KeyboardShortcuts.Shortcut?) -> Void)?
+    var onChange: ((ShortcutConfig?) -> Void)?
 
     @State private var isRecording = false
-    @State private var shortcut: KeyboardShortcuts.Shortcut?
+    @State private var shortcut: ShortcutConfig?
     @State private var eventMonitor: Any?
-    @State private var previousShortcutsEnabled: Bool?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -26,7 +25,7 @@ struct ShortcutRecorderControl: View {
                         .foregroundStyle(Color.accentColor)
                         .frame(minWidth: 100)
                 } else if let shortcut {
-                    KeyCapGroupView(parts: shortcut.keyCapParts)
+                    KeyCapGroupView(parts: shortcut.displayParts)
                 } else {
                     EmptyShortcutCTAView(title: "Set shortcut")
                 }
@@ -44,17 +43,20 @@ struct ShortcutRecorderControl: View {
             }
         }
         .onReceive(
-            NotificationCenter.default.publisher(
-                for: Notification.Name("KeyboardShortcuts_shortcutByNameDidChange")
-            )
+            NotificationCenter.default.publisher(for: GlobalShortcutManager.shortcutDidChange)
         ) { notification in
             guard
-                let changed = notification.userInfo?["name"] as? KeyboardShortcuts.Name,
-                changed == name
+                let changed = notification.userInfo?["id"] as? GlobalShortcutID,
+                changed == id
             else {
                 return
             }
             refreshShortcut()
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)
+        ) { _ in
+            stopRecording()
         }
     }
 
@@ -69,14 +71,13 @@ struct ShortcutRecorderControl: View {
     }
 
     private func refreshShortcut() {
-        shortcut = KeyboardShortcuts.getShortcut(for: name)
+        shortcut = manager.shortcut(for: id)
     }
 
     private func startRecording() {
         guard !isRecording, isInteractionEnabled else { return }
         isRecording = true
-        previousShortcutsEnabled = KeyboardShortcuts.isEnabled
-        KeyboardShortcuts.isEnabled = false
+        manager.suspend()
 
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             if event.keyCode == UInt16(kVK_Escape) {
@@ -95,8 +96,8 @@ struct ShortcutRecorderControl: View {
                 .subtracting([.shift])
                 .isEmpty
             guard
-                hasUsableModifiers || isFunctionKeyCode(event.keyCode),
-                let newShortcut = KeyboardShortcuts.Shortcut(event: event)
+                hasUsableModifiers || ShortcutConfig.isFunctionKeyCode(UInt32(event.keyCode)),
+                let newShortcut = ShortcutConfig(event: event)
             else {
                 NSSound.beep()
                 return nil
@@ -118,33 +119,20 @@ struct ShortcutRecorderControl: View {
         }
     }
 
-    private func isFunctionKeyCode(_ keyCode: UInt16) -> Bool {
-        switch Int(keyCode) {
-        case kVK_F1, kVK_F2, kVK_F3, kVK_F4, kVK_F5, kVK_F6, kVK_F7, kVK_F8, kVK_F9, kVK_F10,
-             kVK_F11, kVK_F12, kVK_F13, kVK_F14, kVK_F15, kVK_F16, kVK_F17, kVK_F18, kVK_F19, kVK_F20:
-            true
-        default:
-            false
-        }
-    }
-
-    private func saveShortcut(_ newShortcut: KeyboardShortcuts.Shortcut?) {
-        KeyboardShortcuts.setShortcut(newShortcut, for: name)
+    private func saveShortcut(_ newShortcut: ShortcutConfig?) {
+        manager.setShortcut(newShortcut, for: id)
         shortcut = newShortcut
         onChange?(newShortcut)
     }
 
     private func stopRecording() {
-        guard isRecording || eventMonitor != nil || previousShortcutsEnabled != nil else { return }
+        guard isRecording || eventMonitor != nil else { return }
         isRecording = false
         if let eventMonitor {
             NSEvent.removeMonitor(eventMonitor)
             self.eventMonitor = nil
         }
-        if let previousShortcutsEnabled {
-            KeyboardShortcuts.isEnabled = previousShortcutsEnabled
-            self.previousShortcutsEnabled = nil
-        }
+        manager.resume()
     }
 }
 
@@ -197,44 +185,17 @@ struct ShortcutKeycapButtonStyle: ButtonStyle {
     }
 }
 
-extension KeyboardShortcuts.Shortcut {
-    /// Individual key parts for keycap-style rendering (⌃ ⌥ ⇧ ⌘ order).
-    @MainActor
-    var keyCapParts: [String] {
-        var parts: [String] = []
-        if modifiers.contains(.control) {
-            parts.append("⌃")
-        }
-        if modifiers.contains(.option) {
-            parts.append("⌥")
-        }
-        if modifiers.contains(.shift) {
-            parts.append("⇧")
-        }
-        if modifiers.contains(.command) {
-            parts.append("⌘")
-        }
-        if modifiers.contains(.function) {
-            parts.append("fn")
-        }
-
-        var keyLabel = description
-        for symbol in ["⌃", "⌥", "⇧", "⌘", "🌐\u{FE0E}", "fn"] {
-            keyLabel = keyLabel.replacingOccurrences(of: symbol, with: "")
-        }
-        parts.append(keyLabel.isEmpty ? "?" : keyLabel)
-        return parts
-    }
-}
-
 #Preview("Shortcut Recorder") {
+    let defaults = UserDefaults(suiteName: "GitMenuBar.ShortcutRecorderPreview") ?? .standard
+    let manager = GlobalShortcutManager(defaults: defaults)
+
     Form {
         Section {
             LabeledContent("Open Window (global)") {
-                ShortcutRecorderControl(name: .togglePopover)
+                ShortcutRecorderControl(id: .togglePopover, manager: manager)
             }
             LabeledContent("Command Palette") {
-                ShortcutRecorderControl(name: .commandPalette)
+                ShortcutRecorderControl(id: .commandPalette, manager: manager)
             }
             LabeledContent("Empty") {
                 EmptyShortcutCTAView(title: "Set shortcut")

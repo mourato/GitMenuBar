@@ -1,37 +1,35 @@
-import KeyboardShortcuts
 import SwiftUI
 
 struct KeyboardShortcutsSection: View {
+    let manager: GlobalShortcutManager
+
     var body: some View {
-        shortcutRow("Open Window (global)", name: .togglePopover)
-        shortcutRow("Command Palette", name: .commandPalette)
-        shortcutRow("Commit", name: .commit)
-        shortcutRow("Sync", name: .sync)
-        shortcutRow("Split Commits", name: .atomicCommits)
+        shortcutRow("Open Window (global)", id: .togglePopover)
+        shortcutRow("Command Palette", id: .commandPalette)
+        shortcutRow("Commit", id: .commit)
+        shortcutRow("Sync", id: .sync)
+        shortcutRow("Split Commits", id: .atomicCommits)
 
         Button("Reset to Defaults") {
-            KeyboardShortcuts.reset(.togglePopover)
-            KeyboardShortcuts.reset(.commandPalette)
-            KeyboardShortcuts.reset(.commit)
-            KeyboardShortcuts.reset(.sync)
-            KeyboardShortcuts.reset(.atomicCommits)
+            manager.reset([.togglePopover, .commandPalette, .commit, .sync, .atomicCommits])
         }
         .buttonStyle(.borderless)
         .font(WorkbenchTypography.detail)
     }
 
-    private func shortcutRow(_ title: String, name: KeyboardShortcuts.Name) -> some View {
+    private func shortcutRow(_ title: String, id: GlobalShortcutID) -> some View {
         LabeledContent(title) {
-            ShortcutRecorderControl(name: name)
+            ShortcutRecorderControl(id: id, manager: manager)
                 .accessibilityLabel(title)
         }
     }
 }
 
 #Preview("Keyboard Shortcuts") {
+    let defaults = UserDefaults(suiteName: "GitMenuBar.KeyboardShortcutsSectionPreview") ?? .standard
     Form {
         Section {
-            KeyboardShortcutsSection()
+            KeyboardShortcutsSection(manager: GlobalShortcutManager(defaults: defaults))
         } header: {
             SettingsFormSectionHeader(title: "Keyboard Shortcuts", icon: "keyboard")
         }

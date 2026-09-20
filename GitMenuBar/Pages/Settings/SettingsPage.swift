@@ -191,12 +191,13 @@ struct AISettingsPaneView: View {
 }
 
 struct ShortcutsSettingsPaneView: View {
+    let manager: GlobalShortcutManager
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
 
     var body: some View {
         SettingsFormPage {
             Section {
-                KeyboardShortcutsSection()
+                KeyboardShortcutsSection(manager: manager)
             } header: {
                 SettingsFormSectionHeader(title: "Keyboard Shortcuts", icon: "keyboard")
             }
@@ -258,5 +259,6 @@ private enum SettingsAppearance {
 }
 
 #Preview("Shortcuts Settings Pane") {
-    ShortcutsSettingsPaneView()
+    let defaults = UserDefaults(suiteName: "GitMenuBar.ShortcutsSettingsPreview") ?? .standard
+    ShortcutsSettingsPaneView(manager: GlobalShortcutManager(defaults: defaults))
 }

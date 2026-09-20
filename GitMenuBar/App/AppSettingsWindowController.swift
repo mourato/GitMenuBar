@@ -27,6 +27,7 @@ final class AppSettingsWindowController {
         chatGPTSubscription: ChatGPTSubscriptionManager,
         usageQuotaStore: UsageQuotaStore,
         usageQuotaPresentationPreferences: UsageQuotaPresentationPreferences,
+        shortcutManager: GlobalShortcutManager,
         onSetAutoHideSuspended: @escaping (Bool) -> Void
     ) {
         let generalPane = Settings.Pane(
@@ -73,7 +74,7 @@ final class AppSettingsWindowController {
             toolbarIcon: NSImage(systemSymbolName: "keyboard", accessibilityDescription: "Shortcuts settings")
                 ?? NSImage(),
             contentView: {
-                ShortcutsSettingsPaneView()
+                ShortcutsSettingsPaneView(manager: shortcutManager)
             }
         )
 
