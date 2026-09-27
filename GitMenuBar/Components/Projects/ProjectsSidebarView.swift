@@ -31,10 +31,6 @@ struct ProjectsSidebarView: View {
             .scrollContentBackground(.hidden)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(spacing: 0) {
-                    UsageQuotaStripView()
-                        .padding(.horizontal, WorkbenchMetrics.windowPadding)
-                        .padding(.bottom, WorkbenchMetrics.microSpacing)
-
                     Divider()
                         .padding(.horizontal, WorkbenchMetrics.windowPadding)
 
@@ -115,7 +111,7 @@ struct ProjectsSidebarView: View {
     }
 
     private var sidebarBottomActions: some View {
-        HStack {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
             Button(action: onOpenSettings) {
                 Image(systemName: "gearshape")
                     .foregroundStyle(.secondary)
@@ -128,6 +124,8 @@ struct ProjectsSidebarView: View {
             .accessibilityHint("Open GitMenuBar settings.")
 
             Spacer(minLength: 0)
+
+            UsageQuotaStripView()
         }
         .padding(.horizontal, WorkbenchMetrics.windowPadding)
         .padding(.vertical, WorkbenchMetrics.microSpacing)

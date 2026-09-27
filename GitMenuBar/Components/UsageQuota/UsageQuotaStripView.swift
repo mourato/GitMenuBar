@@ -2,75 +2,29 @@ import SwiftUI
 
 struct UsageQuotaStripView: View {
     @EnvironmentObject private var usageQuotaStore: UsageQuotaStore
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    @AppStorage(AppPreferences.Keys.isUsageQuotaSectionCollapsed)
-    private var isCollapsed = true
-
-    init(defaults: UserDefaults = .standard) {
-        _isCollapsed = AppStorage(
-            wrappedValue: true,
-            AppPreferences.Keys.isUsageQuotaSectionCollapsed,
-            store: defaults
-        )
-    }
+    @State private var isPopoverPresented = false
 
     var body: some View {
         let snapshots = usageQuotaStore.visibleSnapshots
         if usageQuotaStore.showAIUsageQuotas, !eligibleSnapshots(snapshots).isEmpty {
-            VStack(alignment: .leading, spacing: 0) {
-                WorkbenchSectionHeaderChrome(
-                    title: "Quotas",
-                    isCollapsed: $isCollapsed,
-                    accessibilityLabel: "Quotas section",
-                    accessibilityHintExpanded: "Expands quota details.",
-                    accessibilityHintCollapsed: "Collapses quota details.",
-                    includesTrailingInToggle: true
-                ) { _ in
-                    if isCollapsed {
-                        UsageQuotaSummaryView(snapshots: eligibleSnapshots(snapshots))
-                    }
-                }
-
-                if !isCollapsed {
-                    expandedCards(snapshots: snapshots)
-                        .transition(.opacity)
-                }
+            Button {
+                isPopoverPresented.toggle()
+            } label: {
+                UsageQuotaSummaryView(snapshots: snapshots)
+                    .padding(.horizontal, WorkbenchMetrics.microSpacing)
+                    .contentShape(Rectangle())
             }
-            .padding(.vertical, WorkbenchMetrics.microSpacing)
-            .animation(
-                WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
-                value: isCollapsed
-            )
+            .buttonStyle(.borderless)
+            .frame(minHeight: WorkbenchMetrics.iconHitTarget)
+            .help("Show AI usage quotas")
+            .accessibilityLabel("AI usage quotas")
+            .accessibilityValue(accessibilityValue(for: snapshots))
+            .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
+                UsageQuotaDetailsPopover(snapshots: snapshots)
+            }
             .task {
                 usageQuotaStore.refresh(reason: .contentAppeared)
             }
-        }
-    }
-
-    private func expandedCards(snapshots: [UsageQuotaSnapshot]) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(snapshots.enumerated()), id: \.element.id) { index, snapshot in
-                if index > 0 {
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.06))
-                        .frame(height: 1)
-                        .padding(.horizontal, WorkbenchMetrics.compactSpacing)
-                }
-
-                UsageQuotaProviderCard(snapshot: snapshot)
-                    .padding(.vertical, WorkbenchMetrics.compactSpacing)
-            }
-        }
-        .padding(.horizontal, WorkbenchMetrics.compactSpacing)
-        .background(
-            RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
-                .fill(Color.primary.opacity(0.04))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
-                .strokeBorder(groupBorderColor, lineWidth: 1)
         }
     }
 
@@ -78,8 +32,54 @@ struct UsageQuotaStripView: View {
         snapshots.filter { $0.primaryDisplayWindow != nil }
     }
 
-    private var groupBorderColor: Color {
-        Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.12)
+    private func accessibilityValue(for snapshots: [UsageQuotaSnapshot]) -> String {
+        snapshots.compactMap { snapshot in
+            snapshot.primaryDisplayWindow.map {
+                "\(snapshot.displayName) \($0.remainingPercent) percent remaining"
+            }
+        }
+        .joined(separator: ", ")
+    }
+}
+
+private struct UsageQuotaDetailsPopover: View {
+    let snapshots: [UsageQuotaSnapshot]
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(snapshots.enumerated()), id: \.element.id) { index, snapshot in
+                    if index > 0 {
+                        Rectangle()
+                            .fill(Color.primary.opacity(0.06))
+                            .frame(height: 1)
+                            .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+                    }
+
+                    UsageQuotaProviderCard(snapshot: snapshot)
+                        .padding(.vertical, WorkbenchMetrics.compactSpacing)
+                }
+            }
+            .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+            .padding(.vertical, WorkbenchMetrics.microSpacing)
+        }
+        .frame(width: 320)
+        .frame(maxHeight: 420)
+        .background(
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
+                .fill(Color.primary.opacity(0.04))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.largeCornerRadius, style: .continuous)
+                .strokeBorder(
+                    Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.12),
+                    lineWidth: 1
+                )
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("AI usage quota details")
     }
 }
 
@@ -286,7 +286,6 @@ private struct UsageQuotaProgressBar: View {
 
 #Preview("Usage Quota Strip") {
     UsageQuotaStripPreviewHarness(
-        collapsed: true,
         snapshots: [
             PreviewUsageQuotaSnapshotFactory.codex(
                 remainingPercent: 62,
@@ -300,7 +299,6 @@ private struct UsageQuotaProgressBar: View {
 
 #Preview("Usage Quota Strip – High") {
     UsageQuotaStripPreviewHarness(
-        collapsed: true,
         snapshots: [
             PreviewUsageQuotaSnapshotFactory.codex(
                 remainingPercent: 95,
@@ -313,7 +311,6 @@ private struct UsageQuotaProgressBar: View {
 
 #Preview("Usage Quota Strip – Low") {
     UsageQuotaStripPreviewHarness(
-        collapsed: true,
         snapshots: [
             PreviewUsageQuotaSnapshotFactory.cursor(
                 remainingPercent: 8,
@@ -325,7 +322,6 @@ private struct UsageQuotaProgressBar: View {
 
 #Preview("Usage Quota Strip – Stale") {
     UsageQuotaStripPreviewHarness(
-        collapsed: true,
         snapshots: [
             PreviewUsageQuotaSnapshotFactory.cursor(
                 remainingPercent: 33,
@@ -337,24 +333,23 @@ private struct UsageQuotaProgressBar: View {
 }
 
 #Preview("Usage Quota Strip – Collapsed Multi Provider") {
-    UsageQuotaStripPreviewHarness(collapsed: true, snapshots: PreviewUsageQuotaSnapshotFactory.multiProvider)
+    UsageQuotaStripPreviewHarness(snapshots: PreviewUsageQuotaSnapshotFactory.multiProvider)
 }
 
-#Preview("Usage Quota Strip – Expanded Multi Provider") {
-    UsageQuotaStripPreviewHarness(collapsed: false, snapshots: PreviewUsageQuotaSnapshotFactory.multiProvider)
+#Preview("Usage Quota Strip – Popover Multi Provider") {
+    UsageQuotaStripPreviewHarness(snapshots: PreviewUsageQuotaSnapshotFactory.multiProvider)
 }
 
 #Preview("Usage Quota Strip – No Eligible Snapshot") {
-    UsageQuotaStripPreviewHarness(collapsed: true, snapshots: [])
+    UsageQuotaStripPreviewHarness(snapshots: [])
 }
 
 private struct UsageQuotaStripPreviewHarness: View {
-    let collapsed: Bool
     let snapshots: [UsageQuotaSnapshot]
 
     var body: some View {
         if let defaults = UserDefaults(suiteName: previewDefaultsName) {
-            UsageQuotaStripView(defaults: defaults)
+            UsageQuotaStripView()
                 .environmentObject(previewStore(defaults: defaults))
                 .environmentObject(MainMenuPresentationModel())
                 .frame(width: 380)
@@ -363,7 +358,6 @@ private struct UsageQuotaStripPreviewHarness: View {
 
     private func previewStore(defaults: UserDefaults) -> UsageQuotaStore {
         defaults.removePersistentDomain(forName: previewDefaultsName)
-        defaults.set(collapsed, forKey: AppPreferences.Keys.isUsageQuotaSectionCollapsed)
         let store = UsageQuotaStore(
             defaults: defaults,
             providers: snapshots.map { PreviewUsageQuotaProvider(snapshot: $0) }
