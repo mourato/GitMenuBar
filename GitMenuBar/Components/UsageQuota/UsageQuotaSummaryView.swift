@@ -14,7 +14,7 @@ struct UsageQuotaSummaryView: View {
 
     private var eligibleSnapshots: [UsageQuotaSnapshot] {
         snapshots.compactMap { snapshot in
-            guard snapshot.primaryDisplayWindow != nil else { return nil }
+            guard snapshot.primaryDisplayWindow != nil || !snapshot.modelWindows.isEmpty else { return nil }
             return snapshot
         }.prefix(3).map(\.self)
     }
@@ -24,7 +24,7 @@ private struct UsageQuotaSummaryItem: View {
     let snapshot: UsageQuotaSnapshot
 
     var body: some View {
-        if let window = snapshot.primaryDisplayWindow {
+        if let window = snapshot.primaryDisplayWindow ?? tightestModelWindow {
             HStack(spacing: WorkbenchMetrics.microSpacing) {
                 ProviderIconView(providerID: snapshot.providerID)
 
@@ -36,6 +36,10 @@ private struct UsageQuotaSummaryItem: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityLabel(window: window))
         }
+    }
+
+    private var tightestModelWindow: UsageWindow? {
+        snapshot.modelWindows.min { $0.remainingPercent < $1.remainingPercent }
     }
 
     private func accessibilityLabel(window: UsageWindow) -> String {

@@ -112,6 +112,15 @@ enum UsageQuotaMenuPresentation {
                     fractions.append(fraction)
                 }
             }
+            if !values.isEmpty {
+                for modelWindow in snapshot.modelWindows.prefix(2) {
+                    let reading = reading(for: modelWindow, valueStyle: preferences.valueStyle)
+                    values.append("\(modelWindow.label) \(reading.compactValue)")
+                    if let fraction = reading.fraction {
+                        fractions.append(fraction)
+                    }
+                }
+            }
             return values.isEmpty ? nil : UsageQuotaMenuBarGroup(providerID: providerID, values: values, fractions: fractions)
         }
     }
@@ -380,12 +389,46 @@ private func usageQuotaMenuColor(for remainingPercent: Int) -> Color {
     UsageQuotaMenuPreviewHarness()
 }
 
+#Preview("Usage Quota Menu – Claude Models") {
+    UsageQuotaMenuPreviewHarness(snapshot: UsageQuotaSnapshot(
+        providerID: .claudeCode,
+        displayName: "Claude Code",
+        sessionWindow: UsageWindow(
+            remainingPercent: 77,
+            resetAt: Date().addingTimeInterval(8100),
+            label: "5h",
+            durationSeconds: 18000
+        ),
+        weeklyWindow: UsageWindow(
+            remainingPercent: 58,
+            resetAt: Date().addingTimeInterval(86400 * 3),
+            label: "7d",
+            durationSeconds: 604_800
+        ),
+        modelWindows: [
+            UsageWindow(
+                remainingPercent: 88,
+                resetAt: Date().addingTimeInterval(86400 * 3),
+                label: "Sonnet",
+                durationSeconds: 604_800
+            ),
+            UsageWindow(
+                remainingPercent: 32,
+                resetAt: Date().addingTimeInterval(86400 * 3),
+                label: "Opus",
+                durationSeconds: 604_800
+            )
+        ],
+        isAvailable: true
+    ))
+}
+
 private struct UsageQuotaMenuPreviewHarness: View {
     @StateObject private var store: UsageQuotaStore
     @StateObject private var preferences: UsageQuotaPresentationPreferences
 
-    init() {
-        let snapshot = UsageQuotaSnapshot(
+    init(snapshot: UsageQuotaSnapshot? = nil) {
+        let snapshot = snapshot ?? UsageQuotaSnapshot(
             providerID: .codex,
             displayName: "Codex",
             sessionWindow: UsageWindow(

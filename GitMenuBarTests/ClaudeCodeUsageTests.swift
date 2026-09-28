@@ -326,4 +326,63 @@ final class ClaudeCodeUsageTests: XCTestCase {
 
         XCTAssertNil(ClaudeCodeUsageParsing.snapshot(fromJSONL: text))
     }
+
+    @MainActor
+    func testMenuBarGroupsIncludeModelWindows() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "TestGroupsModels-\(UUID().uuidString)"))
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        let snapshot = UsageQuotaSnapshot(
+            providerID: .claudeCode,
+            displayName: "Claude Code",
+            sessionWindow: UsageWindow(
+                remainingPercent: 77,
+                resetAt: nil,
+                label: "5h",
+                durationSeconds: 5 * 3600
+            ),
+            weeklyWindow: UsageWindow(
+                remainingPercent: 58,
+                resetAt: nil,
+                label: "7d",
+                durationSeconds: 7 * 86400
+            ),
+            modelWindows: [
+                UsageWindow(remainingPercent: 88, resetAt: nil, label: "Sonnet", durationSeconds: 7 * 86400),
+                UsageWindow(remainingPercent: 32, resetAt: nil, label: "Opus", durationSeconds: 7 * 86400)
+            ],
+            isAvailable: true
+        )
+
+        let groups = UsageQuotaMenuPresentation.groups(snapshots: [snapshot], preferences: preferences)
+
+        XCTAssertEqual(groups.count, 1)
+        XCTAssertEqual(groups.first?.values, ["77%", "58%", "Sonnet 88%", "Opus 32%"])
+        XCTAssertEqual(groups.first?.fractions.count, 4)
+    }
+
+    @MainActor
+    func testMenuBarGroupsRespectMarkOnlySelection() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "TestGroupsMarkOnly-\(UUID().uuidString)"))
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.setSelectedMetrics([], for: .claudeCode)
+        let snapshot = UsageQuotaSnapshot(
+            providerID: .claudeCode,
+            displayName: "Claude Code",
+            sessionWindow: UsageWindow(
+                remainingPercent: 77,
+                resetAt: nil,
+                label: "5h",
+                durationSeconds: 5 * 3600
+            ),
+            weeklyWindow: nil,
+            modelWindows: [
+                UsageWindow(remainingPercent: 88, resetAt: nil, label: "Sonnet", durationSeconds: 7 * 86400)
+            ],
+            isAvailable: true
+        )
+
+        let groups = UsageQuotaMenuPresentation.groups(snapshots: [snapshot], preferences: preferences)
+
+        XCTAssertTrue(groups.isEmpty)
+    }
 }
