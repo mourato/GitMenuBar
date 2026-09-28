@@ -17,7 +17,7 @@ MIT License. The full license text is available at
 
 ## CodexBar
 
-OpenRouter credits parsing and the Codex, Cursor, and OpenRouter provider icons
+OpenRouter credits parsing and the Claude Code, Codex, Cursor, and OpenRouter provider icons
 are adapted from [CodexBar](https://github.com/steipete/CodexBar).
 
 Copyright (c) 2026 Peter Steinberger
