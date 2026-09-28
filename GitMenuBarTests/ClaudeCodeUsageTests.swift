@@ -36,6 +36,31 @@ final class ClaudeCodeUsageTests: XCTestCase {
         XCTAssertEqual(snapshot.modelWindows.first?.remainingPercent, 27)
     }
 
+    func testParsesCLIUsagePanel() throws {
+        let output = """
+        Settings: Usage
+        Current session
+        25% used
+        Current week (all models)
+        40% used
+        Current week (Sonnet only)
+        12% used
+        """
+
+        let snapshot = try XCTUnwrap(
+            ClaudeCodeCLIUsage.snapshot(
+                from: output,
+                now: Date(timeIntervalSince1970: 1_800_000_000)
+            )
+        )
+
+        XCTAssertEqual(snapshot.sessionWindow?.remainingPercent, 75)
+        XCTAssertEqual(snapshot.weeklyWindow?.remainingPercent, 60)
+        XCTAssertEqual(snapshot.modelWindows.map(\.label), ["Sonnet only"])
+        XCTAssertEqual(snapshot.modelWindows.first?.remainingPercent, 88)
+        XCTAssertEqual(snapshot.statusNote, "Claude Code CLI PTY /usage")
+    }
+
     func testReadsAccessTokenFromClaudeCredentials() {
         let data = Data(#"{"claudeAiOauth":{"accessToken":"access-token"}}"#.utf8)
 
@@ -71,7 +96,8 @@ final class ClaudeCodeUsageTests: XCTestCase {
             session: makeMockedURLSession(),
             now: { Date(timeIntervalSince1970: 1_800_000_000) },
             keychainData: { nil },
-            cookieSessionKey: { nil }
+            cookieSessionKey: { nil },
+            cliSnapshot: { nil }
         )
 
         let snapshot = await provider.fetchSnapshot()
@@ -172,6 +198,36 @@ final class ClaudeCodeUsageTests: XCTestCase {
         XCTAssertEqual(cookie.value, "sessionKey=sk-ant-browser-session")
     }
 
+    func testUsageProviderFallsBackToCLIUsage() async throws {
+        let root = try makeTemporaryTestDirectory(testName: #function)
+        let cliSnapshot = UsageQuotaSnapshot(
+            providerID: .claudeCode,
+            displayName: UsageProviderID.claudeCode.displayName,
+            sessionWindow: UsageWindow(
+                remainingPercent: 64,
+                resetAt: nil,
+                label: "5h",
+                durationSeconds: 5 * 3600
+            ),
+            weeklyWindow: nil,
+            isAvailable: true,
+            statusNote: "Claude Code CLI PTY /usage",
+            fetchedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        let provider = ClaudeCodeUsageProvider(
+            homeDirectory: root,
+            credentialsURL: root.appendingPathComponent(".credentials.json"),
+            session: makeMockedURLSession(),
+            keychainData: { nil },
+            cookieSessionKey: { nil },
+            cliSnapshot: { cliSnapshot }
+        )
+
+        let snapshot = await provider.fetchSnapshot()
+
+        XCTAssertEqual(snapshot, cliSnapshot)
+    }
+
     func testUsageProviderFallsBackToLocalEventsWhenUsageAPIFails() async throws {
         let root = try makeTemporaryTestDirectory(testName: #function)
         let credentialsURL = root.appendingPathComponent(".credentials.json")
@@ -207,7 +263,8 @@ final class ClaudeCodeUsageTests: XCTestCase {
             session: makeMockedURLSession(),
             now: { Date(timeIntervalSince1970: 1_800_000_000) },
             keychainData: { nil },
-            cookieSessionKey: { nil }
+            cookieSessionKey: { nil },
+            cliSnapshot: { nil }
         )
 
         let snapshot = await provider.fetchSnapshot()
@@ -224,7 +281,8 @@ final class ClaudeCodeUsageTests: XCTestCase {
             credentialsURL: root.appendingPathComponent(".credentials.json"),
             session: makeMockedURLSession(),
             keychainData: { nil },
-            cookieSessionKey: { nil }
+            cookieSessionKey: { nil },
+            cliSnapshot: { nil }
         )
 
         let snapshot = await provider.fetchSnapshot()
