@@ -10,6 +10,7 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
     private let saveKeychainData: (@Sendable (Data) -> Bool)?
     private let session: URLSession
     private let now: @Sendable () -> Date
+    private let cookieSessionKey: @Sendable () -> String?
 
     private enum Constants {
         static let usageEndpoint = "https://api.anthropic.com/api/oauth/usage"
@@ -42,7 +43,8 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
         session: URLSession = .shared,
         now: @escaping @Sendable () -> Date = Date.init,
         keychainData: (@Sendable () -> Data?)? = nil,
-        saveKeychainData: (@Sendable (Data) -> Bool)? = nil
+        saveKeychainData: (@Sendable (Data) -> Bool)? = nil,
+        cookieSessionKey: (@Sendable () -> String?)? = nil
     ) {
         self.homeDirectory = homeDirectory
         let configuredDirectory = ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"]?
@@ -52,6 +54,7 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
         } else {
             homeDirectory.appendingPathComponent(".claude", isDirectory: true)
         }
+        self.cookieSessionKey = cookieSessionKey ?? { ClaudeCodeCookieUsage.browserSessionKey() }
         self.credentialsURL = credentialsURL ?? configDirectory.appendingPathComponent(".credentials.json")
         self.session = session
         self.now = now
@@ -96,6 +99,16 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
             case .unauthorized, .failed:
                 break
             }
+        }
+
+        if let sessionKey = cookieSessionKey(),
+           let cookieSnapshot = await ClaudeCodeCookieUsage.fetchSnapshot(
+               sessionKey: sessionKey,
+               session: session,
+               now: now
+           )
+        {
+            return cookieSnapshot
         }
 
         if let localSnapshot = fetchLocalSnapshot() {

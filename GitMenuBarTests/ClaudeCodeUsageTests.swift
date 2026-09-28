@@ -70,7 +70,8 @@ final class ClaudeCodeUsageTests: XCTestCase {
             credentialsURL: credentialsURL,
             session: makeMockedURLSession(),
             now: { Date(timeIntervalSince1970: 1_800_000_000) },
-            keychainData: { nil }
+            keychainData: { nil },
+            cookieSessionKey: { nil }
         )
 
         let snapshot = await provider.fetchSnapshot()
@@ -139,6 +140,38 @@ final class ClaudeCodeUsageTests: XCTestCase {
         XCTAssertEqual(oauth["expiresAt"] as? Double, 1_800_003_600_000)
     }
 
+    func testUsageProviderFallsBackToBrowserCookies() async throws {
+        let root = try makeTemporaryTestDirectory(testName: #function)
+        let paths = PromptListCapture()
+        let cookie = PromptCapture()
+        MockURLProtocol.requestHandler = { request in
+            paths.append(request.url?.path ?? "")
+            cookie.set(request.value(forHTTPHeaderField: "Cookie") ?? "")
+            let body = request.url?.path == "/api/organizations"
+                ? #"[{"uuid":"organization-id"}]"#
+                : #"{"five_hour":{"utilization":25,"resets_at":1800003600},"seven_day_sonnet":{"utilization":10}}"#
+            return try (makeMockHTTPResponse(for: request), Data(body.utf8))
+        }
+
+        let provider = ClaudeCodeUsageProvider(
+            homeDirectory: root,
+            credentialsURL: root.appendingPathComponent(".credentials.json"),
+            session: makeMockedURLSession(),
+            now: { Date(timeIntervalSince1970: 1_800_000_000) },
+            keychainData: { nil },
+            cookieSessionKey: { "sk-ant-browser-session" }
+        )
+
+        let snapshot = await provider.fetchSnapshot()
+
+        XCTAssertTrue(snapshot.isAvailable)
+        XCTAssertEqual(snapshot.sessionWindow?.remainingPercent, 75)
+        XCTAssertEqual(snapshot.modelWindows.first?.label, "Sonnet")
+        XCTAssertEqual(snapshot.statusNote, "Claude Code browser cookie usage API")
+        XCTAssertEqual(paths.values, ["/api/organizations", "/api/organizations/organization-id/usage"])
+        XCTAssertEqual(cookie.value, "sessionKey=sk-ant-browser-session")
+    }
+
     func testUsageProviderFallsBackToLocalEventsWhenUsageAPIFails() async throws {
         let root = try makeTemporaryTestDirectory(testName: #function)
         let credentialsURL = root.appendingPathComponent(".credentials.json")
@@ -173,7 +206,8 @@ final class ClaudeCodeUsageTests: XCTestCase {
             credentialsURL: credentialsURL,
             session: makeMockedURLSession(),
             now: { Date(timeIntervalSince1970: 1_800_000_000) },
-            keychainData: { nil }
+            keychainData: { nil },
+            cookieSessionKey: { nil }
         )
 
         let snapshot = await provider.fetchSnapshot()
@@ -189,7 +223,8 @@ final class ClaudeCodeUsageTests: XCTestCase {
             homeDirectory: root,
             credentialsURL: root.appendingPathComponent(".credentials.json"),
             session: makeMockedURLSession(),
-            keychainData: { nil }
+            keychainData: { nil },
+            cookieSessionKey: { nil }
         )
 
         let snapshot = await provider.fetchSnapshot()

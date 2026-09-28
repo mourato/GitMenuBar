@@ -40,7 +40,11 @@ enum ClaudeCodeUsageParsing {
         credentials(fromCredentials: data)?.accessToken
     }
 
-    static func snapshot(fromUsageAPI data: Data, now: Date = Date()) -> UsageQuotaSnapshot? {
+    static func snapshot(
+        fromUsageAPI data: Data,
+        now: Date = Date(),
+        statusNote: String = "Claude Code OAuth usage API"
+    ) -> UsageQuotaSnapshot? {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return nil
         }
@@ -65,7 +69,7 @@ enum ClaudeCodeUsageParsing {
             weeklyWindow: weekly,
             modelWindows: modelWindows,
             isAvailable: true,
-            statusNote: "Claude Code OAuth usage API",
+            statusNote: statusNote,
             fetchedAt: now
         )
     }
