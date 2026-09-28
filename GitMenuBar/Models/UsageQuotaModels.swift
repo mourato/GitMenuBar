@@ -58,6 +58,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
     let displayName: String
     let sessionWindow: UsageWindow?
     let weeklyWindow: UsageWindow?
+    let modelWindows: [UsageWindow]
     let creditValueText: String?
     /// Codex limit-reset credits still available (from `wham/rate-limit-reset-credits`).
     let resetCreditsAvailable: Int?
@@ -89,6 +90,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         displayName: String,
         sessionWindow: UsageWindow?,
         weeklyWindow: UsageWindow?,
+        modelWindows: [UsageWindow] = [],
         creditValueText: String? = nil,
         resetCreditsAvailable: Int? = nil,
         isAvailable: Bool,
@@ -100,12 +102,42 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         self.displayName = displayName
         self.sessionWindow = sessionWindow
         self.weeklyWindow = weeklyWindow
+        self.modelWindows = modelWindows
         self.creditValueText = creditValueText
         self.resetCreditsAvailable = resetCreditsAvailable.flatMap { $0 > 0 ? $0 : nil }
         self.isAvailable = isAvailable
         self.isStale = isStale
         self.statusNote = statusNote
         self.fetchedAt = fetchedAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case providerID
+        case displayName
+        case sessionWindow
+        case weeklyWindow
+        case modelWindows
+        case creditValueText
+        case resetCreditsAvailable
+        case isAvailable
+        case isStale
+        case statusNote
+        case fetchedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        providerID = try container.decode(UsageProviderID.self, forKey: .providerID)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        sessionWindow = try container.decodeIfPresent(UsageWindow.self, forKey: .sessionWindow)
+        weeklyWindow = try container.decodeIfPresent(UsageWindow.self, forKey: .weeklyWindow)
+        modelWindows = try container.decodeIfPresent([UsageWindow].self, forKey: .modelWindows) ?? []
+        creditValueText = try container.decodeIfPresent(String.self, forKey: .creditValueText)
+        resetCreditsAvailable = try container.decodeIfPresent(Int.self, forKey: .resetCreditsAvailable)
+        isAvailable = try container.decode(Bool.self, forKey: .isAvailable)
+        isStale = try container.decode(Bool.self, forKey: .isStale)
+        statusNote = try container.decodeIfPresent(String.self, forKey: .statusNote)
+        fetchedAt = try container.decode(Date.self, forKey: .fetchedAt)
     }
 
     static func unavailable(
@@ -128,6 +160,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
             displayName: displayName,
             sessionWindow: sessionWindow,
             weeklyWindow: weeklyWindow,
+            modelWindows: modelWindows,
             creditValueText: creditValueText,
             resetCreditsAvailable: resetCreditsAvailable,
             isAvailable: isAvailable,
@@ -143,6 +176,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
             displayName: displayName,
             sessionWindow: sessionWindow,
             weeklyWindow: weeklyWindow,
+            modelWindows: modelWindows,
             creditValueText: creditValueText,
             resetCreditsAvailable: count,
             isAvailable: isAvailable,

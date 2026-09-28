@@ -15,7 +15,11 @@ struct UsageQuotaSnapshotStore {
 
     func save(_ snapshot: UsageQuotaSnapshot) {
         guard snapshot.isAvailable else { return }
-        guard snapshot.sessionWindow != nil || snapshot.weeklyWindow != nil || snapshot.creditValueText != nil else {
+        guard snapshot.sessionWindow != nil
+            || snapshot.weeklyWindow != nil
+            || !snapshot.modelWindows.isEmpty
+            || snapshot.creditValueText != nil
+        else {
             return
         }
 

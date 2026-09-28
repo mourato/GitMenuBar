@@ -67,6 +67,16 @@ final class UsageQuotaParsingTests: XCTestCase {
         XCTAssertEqual(snapshot?.statusNote, "chatgpt usage api")
     }
 
+    func testLegacySnapshotDecodesWithoutModelWindows() throws {
+        let data = Data(
+            #"{"providerID":"claudeCode","displayName":"Claude Code","sessionWindow":null,"weeklyWindow":null,"creditValueText":null,"resetCreditsAvailable":null,"isAvailable":true,"isStale":false,"statusNote":null,"fetchedAt":1800000000}"#.utf8
+        )
+
+        let snapshot = try JSONDecoder().decode(UsageQuotaSnapshot.self, from: data)
+
+        XCTAssertTrue(snapshot.modelWindows.isEmpty)
+    }
+
     func testResetCreditsAvailableCount() {
         let json = """
         {"available_count":2,"credits":[{"id":"a"},{"id":"b","expires_at":"2099-01-01T00:00:00Z"}]}

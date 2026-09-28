@@ -63,6 +63,14 @@ struct UsageQuotaMenuView: View {
                         isCondensed: index > 0
                     )
                 }
+                ForEach(Array(snapshot.modelWindows.enumerated()), id: \.offset) { index, window in
+                    UsageQuotaMenuMetricRow(
+                        modelWindow: window,
+                        snapshot: snapshot,
+                        valueStyle: preferences.valueStyle,
+                        isCondensed: !metrics.isEmpty || index > 0
+                    )
+                }
             }
             .padding(.vertical, 5)
             .background(
@@ -130,7 +138,7 @@ enum UsageQuotaMenuPresentation {
         }
     }
 
-    private static func reading(
+    fileprivate static func reading(
         for window: UsageWindow,
         valueStyle: UsageQuotaPresentationPreferences.ValueStyle
     ) -> UsageQuotaMenuReading {
@@ -154,10 +162,37 @@ struct UsageQuotaMenuReading {
 }
 
 private struct UsageQuotaMenuMetricRow: View {
-    let metric: UsageQuotaPresentationPreferences.Metric
+    let metric: UsageQuotaPresentationPreferences.Metric?
     let value: UsageQuotaMenuReading
     let snapshot: UsageQuotaSnapshot
     let isCondensed: Bool
+    private let modelWindow: UsageWindow?
+
+    init(
+        metric: UsageQuotaPresentationPreferences.Metric,
+        value: UsageQuotaMenuReading,
+        snapshot: UsageQuotaSnapshot,
+        isCondensed: Bool
+    ) {
+        self.metric = metric
+        self.value = value
+        self.snapshot = snapshot
+        self.isCondensed = isCondensed
+        modelWindow = nil
+    }
+
+    init(
+        modelWindow: UsageWindow,
+        snapshot: UsageQuotaSnapshot,
+        valueStyle: UsageQuotaPresentationPreferences.ValueStyle,
+        isCondensed: Bool
+    ) {
+        metric = nil
+        value = UsageQuotaMenuPresentation.reading(for: modelWindow, valueStyle: valueStyle)
+        self.snapshot = snapshot
+        self.isCondensed = isCondensed
+        self.modelWindow = modelWindow
+    }
 
     var body: some View {
         if let window {
@@ -210,13 +245,17 @@ private struct UsageQuotaMenuMetricRow: View {
     }
 
     private var window: UsageWindow? {
+        if let modelWindow {
+            return modelWindow
+        }
+        guard let metric else { return nil }
         switch metric {
         case .session:
-            snapshot.sessionWindow
+            return snapshot.sessionWindow
         case .weekly:
-            snapshot.weeklyWindow
+            return snapshot.weeklyWindow
         case .credits:
-            nil
+            return nil
         }
     }
 }

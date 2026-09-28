@@ -10,7 +10,7 @@ final class ClaudeCodeUsageTests: XCTestCase {
     func testParsesUsageAPIWindows() throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let data = Data(
-            #"{"five_hour":{"utilization":23.5,"resets_at":1800003600},"seven_day":{"utilization":0.42,"resets_at":"2030-01-20T12:00:00Z"}}"#.utf8
+            #"{"five_hour":{"utilization":23.5,"resets_at":1800003600},"seven_day":{"utilization":0.42,"resets_at":"2030-01-20T12:00:00Z"},"seven_day_sonnet":{"utilization":12,"resets_at":1800007200},"seven_day_opus":{"utilization":68,"resets_at":1800007200}}"#.utf8
         )
 
         let snapshot = try XCTUnwrap(ClaudeCodeUsageParsing.snapshot(fromUsageAPI: data, now: now))
@@ -19,8 +19,21 @@ final class ClaudeCodeUsageTests: XCTestCase {
         XCTAssertEqual(snapshot.sessionWindow?.intervalChip, "5h")
         XCTAssertEqual(snapshot.weeklyWindow?.remainingPercent, 58)
         XCTAssertEqual(snapshot.weeklyWindow?.intervalChip, "7d")
+        XCTAssertEqual(snapshot.modelWindows.map(\.label), ["Sonnet", "Opus"])
+        XCTAssertEqual(snapshot.modelWindows.map(\.remainingPercent), [88, 32])
         XCTAssertEqual(snapshot.statusNote, "Claude Code OAuth usage API")
         XCTAssertEqual(snapshot.fetchedAt, now)
+    }
+
+    func testParsesDynamicModelScopedUsageLimits() throws {
+        let data = Data(
+            #"{"five_hour":{"utilization":10},"limits":[{"kind":"weekly_scoped","group":"weekly","percent":73,"resets_at":"2030-01-20T12:00:00Z","scope":{"model":{"id":"fable","display_name":"Fable"}}},{"kind":"weekly_scoped","group":"weekly","percent":99,"scope":{"model":{"display_name":"All models"}}}]}"#.utf8
+        )
+
+        let snapshot = try XCTUnwrap(ClaudeCodeUsageParsing.snapshot(fromUsageAPI: data))
+
+        XCTAssertEqual(snapshot.modelWindows.map(\.label), ["Fable only"])
+        XCTAssertEqual(snapshot.modelWindows.first?.remainingPercent, 27)
     }
 
     func testReadsAccessTokenFromClaudeCredentials() {
