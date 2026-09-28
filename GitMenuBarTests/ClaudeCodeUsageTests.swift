@@ -69,6 +69,63 @@ final class ClaudeCodeUsageTests: XCTestCase {
         XCTAssertEqual(requests.values, ["/api/oauth/usage"])
     }
 
+    func testUsageProviderRefreshesExpiredOAuthCredentials() async throws {
+        let root = try makeTemporaryTestDirectory(testName: #function)
+        let credentialsURL = root.appendingPathComponent(".credentials.json")
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        try #"{"claudeAiOauth":{"accessToken":"expired-access","refreshToken":"refresh-token","expiresAt":1799999000000}}"#.write(
+            to: credentialsURL,
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let paths = PromptListCapture()
+        let refreshedAuthorization = PromptCapture()
+        let refreshBody = PromptCapture()
+        MockURLProtocol.requestHandler = { request in
+            let path = request.url?.path ?? ""
+            paths.append(path)
+            if path == "/v1/oauth/token" {
+                refreshBody.set(String(data: requestBodyData(from: request), encoding: .utf8) ?? "")
+                return try (
+                    makeMockHTTPResponse(for: request),
+                    Data(#"{"access_token":"fresh-access","refresh_token":"rotated-refresh","expires_in":3600}"#.utf8)
+                )
+            }
+
+            refreshedAuthorization.set(request.value(forHTTPHeaderField: "Authorization") ?? "")
+            return try (
+                makeMockHTTPResponse(for: request),
+                Data(#"{"five_hour":{"utilization":0.25,"resets_at":1800003600}}"#.utf8)
+            )
+        }
+
+        let provider = ClaudeCodeUsageProvider(
+            homeDirectory: root,
+            credentialsURL: credentialsURL,
+            session: makeMockedURLSession(),
+            now: { now },
+            keychainData: { nil }
+        )
+
+        let snapshot = await provider.fetchSnapshot()
+
+        XCTAssertTrue(snapshot.isAvailable)
+        XCTAssertEqual(snapshot.sessionWindow?.remainingPercent, 75)
+        XCTAssertEqual(paths.values, ["/v1/oauth/token", "/api/oauth/usage"])
+        XCTAssertEqual(refreshedAuthorization.value, "Bearer fresh-access")
+        XCTAssertTrue(refreshBody.value.contains("grant_type=refresh_token"))
+        XCTAssertTrue(refreshBody.value.contains("refresh_token=refresh-token"))
+        XCTAssertTrue(refreshBody.value.contains("client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e"))
+
+        let persisted = try Data(contentsOf: credentialsURL)
+        let rootObject = try XCTUnwrap(try JSONSerialization.jsonObject(with: persisted) as? [String: Any])
+        let oauth = try XCTUnwrap(rootObject["claudeAiOauth"] as? [String: Any])
+        XCTAssertEqual(oauth["accessToken"] as? String, "fresh-access")
+        XCTAssertEqual(oauth["refreshToken"] as? String, "rotated-refresh")
+        XCTAssertEqual(oauth["expiresAt"] as? Double, 1_800_003_600_000)
+    }
+
     func testUsageProviderFallsBackToLocalEventsWhenUsageAPIFails() async throws {
         let root = try makeTemporaryTestDirectory(testName: #function)
         let credentialsURL = root.appendingPathComponent(".credentials.json")
