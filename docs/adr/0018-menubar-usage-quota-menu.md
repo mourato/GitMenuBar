@@ -41,12 +41,15 @@ duplicating its Settings and Quit actions. The status item remains readable in
 light and dark menu bars because its complete image remains template-rendered.
 No provider credentials or tokens are duplicated.
 
-Claude Code contributes local rate-limit events when available; it remains
-unavailable for accounts that do not expose such events.
+Claude Code uses its existing OAuth login to request the account's current
+rate-limit windows; it remains unavailable for API-key-only accounts or when
+the login is missing.
 
 ## Rejected or deferred
 
 - A second status item or independent quota store.
-- OAuth or credential scraping for Claude Code.
+- Persisting a second Claude Code credential or refreshing OAuth tokens inside
+  GitMenuBar; the provider reads the existing access token and leaves token
+  lifecycle to Claude Code.
 - A fully generic provider-metric schema before a provider requires it; the
   current snapshot windows and credit field are enough for the supported set.

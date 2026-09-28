@@ -37,10 +37,10 @@ struct UsageQuotaSettingsSection: View {
         }
 
         Text(
-            "Quota data stays on this Mac. GitMenuBar uses credentials already stored by each provider "
+            "Quota snapshots stay on this Mac. GitMenuBar uses credentials already stored by each provider "
                 + "and refreshes them in place when needed. It never creates a separate OAuth token store. "
                 + "OpenRouter quota uses the provider credential configured in AI settings. Claude Code "
-                + "is read from local session events when available."
+                + "uses its existing login to request the account quota when available."
         )
         .font(WorkbenchTypography.caption)
         .foregroundStyle(.secondary)

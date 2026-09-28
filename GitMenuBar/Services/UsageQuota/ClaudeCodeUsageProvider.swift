@@ -1,16 +1,95 @@
 import Foundation
+import Security
 
 struct ClaudeCodeUsageProvider: UsageQuotaProviding {
     let id: UsageProviderID = .claudeCode
 
     private let homeDirectory: URL
+    private let credentialsURL: URL
+    private let keychainData: @Sendable () -> Data?
+    private let session: URLSession
+    private let now: @Sendable () -> Date
 
-    init(homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser) {
-        self.homeDirectory = homeDirectory
+    private enum Constants {
+        static let usageEndpoint = "https://api.anthropic.com/api/oauth/usage"
+        static let keychainService = "Claude Code-credentials"
+        static let oauthBeta = "oauth-2025-04-20"
+        static let requestTimeout: TimeInterval = 10
     }
 
-    // swiftlint:disable:next async_without_await
+    init(
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        credentialsURL: URL? = nil,
+        session: URLSession = .shared,
+        now: @escaping @Sendable () -> Date = Date.init,
+        keychainData: (@Sendable () -> Data?)? = nil
+    ) {
+        self.homeDirectory = homeDirectory
+        let configuredDirectory = ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let configDirectory = if let configuredDirectory, !configuredDirectory.isEmpty {
+            URL(fileURLWithPath: configuredDirectory)
+        } else {
+            homeDirectory.appendingPathComponent(".claude", isDirectory: true)
+        }
+        self.credentialsURL = credentialsURL ?? configDirectory.appendingPathComponent(".credentials.json")
+        self.session = session
+        self.now = now
+        self.keychainData = keychainData ?? {
+            Self.readKeychainData(service: Constants.keychainService)
+        }
+    }
+
     func fetchSnapshot() async -> UsageQuotaSnapshot {
+        if let accessToken = readAccessToken() {
+            if let snapshot = await fetchUsage(accessToken: accessToken) {
+                return snapshot
+            }
+            if let localSnapshot = fetchLocalSnapshot() {
+                return localSnapshot
+            }
+            return .unavailable(providerID: id, statusNote: "Claude Code usage unavailable")
+        }
+
+        if let localSnapshot = fetchLocalSnapshot() {
+            return localSnapshot
+        }
+
+        return .unavailable(providerID: id, statusNote: "sign in to Claude Code")
+    }
+
+    private func fetchUsage(accessToken: String) async -> UsageQuotaSnapshot? {
+        guard let url = URL(string: Constants.usageEndpoint) else { return nil }
+
+        var request = URLRequest(url: url, timeoutInterval: Constants.requestTimeout)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(Constants.oauthBeta, forHTTPHeaderField: "anthropic-beta")
+        request.setValue("claude-cli (external, cli)", forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse,
+              200 ... 299 ~= http.statusCode
+        else {
+            return nil
+        }
+
+        return ClaudeCodeUsageParsing.snapshot(fromUsageAPI: data, now: now())
+    }
+
+    private func readAccessToken() -> String? {
+        if let data = try? Data(contentsOf: credentialsURL),
+           let accessToken = ClaudeCodeUsageParsing.accessToken(fromCredentials: data)
+        {
+            return accessToken
+        }
+
+        guard let data = keychainData() else { return nil }
+        return ClaudeCodeUsageParsing.accessToken(fromCredentials: data)
+    }
+
+    private func fetchLocalSnapshot() -> UsageQuotaSnapshot? {
         let projectsDirectory = homeDirectory.appendingPathComponent(".claude/projects", isDirectory: true)
         let fileManager = FileManager.default
         guard let enumerator = fileManager.enumerator(
@@ -18,7 +97,7 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
             includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) else {
-            return .unavailable(providerID: id, statusNote: "Claude Code sessions not found")
+            return nil
         }
 
         let files = enumerator.compactMap { $0 as? URL }
@@ -34,7 +113,21 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
             }
         }
 
-        return .unavailable(providerID: id, statusNote: "Claude Code rate limits not reported yet")
+        return nil
+    }
+
+    private static func readKeychainData(service: String) -> Data? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else {
+            return nil
+        }
+        return result as? Data
     }
 
     private func modificationDate(for url: URL) -> Date {
@@ -43,6 +136,45 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
 }
 
 enum ClaudeCodeUsageParsing {
+    static func accessToken(fromCredentials data: Data) -> String? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let oauth = root["claudeAiOauth"] as? [String: Any],
+              let accessToken = oauth["accessToken"] as? String,
+              !accessToken.isEmpty
+        else {
+            return nil
+        }
+        return accessToken
+    }
+
+    static func snapshot(fromUsageAPI data: Data, now: Date = Date()) -> UsageQuotaSnapshot? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+
+        let session = usageWindow(
+            from: root["five_hour"] as? [String: Any],
+            label: "5h",
+            durationSeconds: 5 * 3600
+        )
+        let weekly = usageWindow(
+            from: root["seven_day"] as? [String: Any],
+            label: "7d",
+            durationSeconds: 7 * 86400
+        )
+        guard session != nil || weekly != nil else { return nil }
+
+        return UsageQuotaSnapshot(
+            providerID: .claudeCode,
+            displayName: UsageProviderID.claudeCode.displayName,
+            sessionWindow: session,
+            weeklyWindow: weekly,
+            isAvailable: true,
+            statusNote: "Claude Code OAuth usage API",
+            fetchedAt: now
+        )
+    }
+
     static func snapshot(fromJSONL text: String, now: Date = Date()) -> UsageQuotaSnapshot? {
         var windows: [String: UsageWindow] = [:]
 
@@ -86,6 +218,27 @@ enum ClaudeCodeUsageParsing {
             isAvailable: true,
             statusNote: "Claude Code local rate limit events",
             fetchedAt: now
+        )
+    }
+
+    private static func usageWindow(
+        from value: [String: Any]?,
+        label: String,
+        durationSeconds: Int
+    ) -> UsageWindow? {
+        guard let value,
+              let utilization = doubleValue(value["utilization"] ?? value["used_percentage"]),
+              utilization.isFinite
+        else {
+            return nil
+        }
+
+        let usedPercent = utilization <= 1 ? utilization * 100 : utilization
+        return UsageWindow(
+            remainingPercent: UsageQuotaFormatting.remainingPercent(fromUsed: usedPercent),
+            resetAt: resetDate(from: value["resets_at"] ?? value["resetsAt"]),
+            label: label,
+            durationSeconds: durationSeconds
         )
     }
 
