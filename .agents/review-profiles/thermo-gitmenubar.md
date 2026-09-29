@@ -9,7 +9,7 @@ It contains no generic review checklist and no model configuration.
   safety before convenience.
 - Treat `NSStatusItem` ownership, status-item click behavior, popover/window
   dismissal, repository switching, branch actions, commit flow, and sync flow
-  as product-critical behavior. Route `global:macos-app-engineering` to `.agents/overlays/macos-app-engineering.md` when a diff touches those paths.
+  as product-critical behavior. Route `global:macos-ui` to `AGENTS.md` (UI invariants) when a diff touches those paths.
 - Require a `#Preview` for every new Swift file that renders UI, including
   `View`, `NSViewRepresentable`, and `NSViewControllerRepresentable` files.
 - Do not accept orphaned UI, logic, assets, or stale resources introduced by a
@@ -19,7 +19,7 @@ It contains no generic review checklist and no model configuration.
 
 ## Routing boundary
 
-Route `global:delivery-workflow` to `.agents/overlays/delivery-workflow.md` for
+Route `global:delivery` to `AGENTS.md` (Delivery commands) for
 risk lanes, command routing, validation depth, logs, and Git evidence. Use the
 narrowest domain skill for technical behavior. This profile only adds
 GitMenuBar-specific acceptance criteria to the global thermo review.

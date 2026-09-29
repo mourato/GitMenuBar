@@ -27,91 +27,15 @@ require_file AGENTS.md
 require_file .agents/review-profiles/thermo-gitmenubar.md
 require_text AGENTS.md '## Execution Policy'
 require_text AGENTS.md 'Every implementation plan must contain an `## Execution profile` section'
-global_routing_marker='Global skill routing is defined by the global agent configuration.'
+require_text AGENTS.md 'Project facts for global skills live in this file'
+require_file docs/agents/reference-apps.md
+require_file docs/agents/motion.md
+require_text AGENTS.md 'docs/agents/reference-apps.md'
+require_text AGENTS.md 'docs/agents/motion.md'
 
-overlay_names=(
-  apple-design
-  reference-apps
-  code-quality
-  delivery-workflow
-  macos-app-engineering
-  swift-conventions
-  swiftui-accessibility-audit
-)
-
-route_pair_present() {
-  local file="$1"
-  local global_skill="$2"
-  local overlay="$3"
-  rg -Fq -- "\`$global_skill\` + \`$overlay\`" "$file"
-}
-
-profile_route_present() {
-  local file="$1"
-  local global_skill="$2"
-  local overlay="$3"
-  rg -Fq -- "\`$global_skill\` to \`$overlay\`" "$file"
-}
-
-if rg -Fq -- "$global_routing_marker" "$ROOT/AGENTS.md"; then
-  : # Global routes are intentionally delegated to the shared configuration.
-else
-  require_text AGENTS.md 'global:improve'
-  require_text AGENTS.md 'global:thermo-nuclear-code-quality-review'
-  for name in "${overlay_names[@]}"; do
-    if ! route_pair_present "$ROOT/AGENTS.md" "global:$name" ".agents/overlays/$name.md"; then
-      error "AGENTS.md is missing route pair: global:$name -> .agents/overlays/$name.md"
-    fi
-  done
+if [[ -e "$ROOT/.agents/overlays" ]]; then
+  error ".agents/overlays must not exist (migrated to AGENTS.md and docs/agents/)"
 fi
-
-profile="$ROOT/.agents/review-profiles/thermo-gitmenubar.md"
-for pair in \
-  'global:macos-app-engineering|.agents/overlays/macos-app-engineering.md' \
-  'global:delivery-workflow|.agents/overlays/delivery-workflow.md'; do
-  IFS='|' read -r global_skill overlay <<< "$pair"
-  if ! profile_route_present "$profile" "$global_skill" "$overlay"; then
-    error ".agents/review-profiles/thermo-gitmenubar.md is missing route pair: $global_skill -> $overlay"
-  fi
-done
-
-if ! rg -Fq -- "$global_routing_marker" "$ROOT/AGENTS.md"; then
-  route_fixture="$(mktemp)"
-  trap 'rm -f "$route_fixture"' EXIT
-  sed 's#`global:macos-app-engineering` + `.agents/overlays/macos-app-engineering.md`#`global:macos-app-engineering` + `.agents/overlays/apple-design.md`#' \
-    "$ROOT/AGENTS.md" > "$route_fixture"
-  if route_pair_present "$route_fixture" 'global:macos-app-engineering' '.agents/overlays/macos-app-engineering.md'; then
-    error "route-pair negative check accepted a swapped overlay"
-  fi
-fi
-
-for name in "${overlay_names[@]}"; do
-  overlay="$ROOT/.agents/overlays/$name.md"
-  if [[ ! -f "$overlay" ]]; then
-    error "missing overlay: .agents/overlays/$name.md"
-    continue
-  fi
-  for metadata in \
-    'kind: project-overlay' \
-    "extends: $name" \
-    'project: GitMenuBar' \
-    'precedence: project'; do
-    if ! rg -q -- "^$metadata$" "$overlay"; then
-      error ".agents/overlays/$name.md is missing metadata: $metadata"
-    fi
-  done
-  if [[ -d "$ROOT/.agents/skills/$name" ]]; then
-    error "same-name local skill directory remains: .agents/skills/$name"
-  fi
-done
-
-for file in AGENTS.md .agents/review-profiles/*.md; do
-  for name in "${overlay_names[@]}"; do
-    if rg -q -- "\.agents/skills/$name(/|\`|\"|')" "$ROOT/$file"; then
-      error "$file contains stale local path for deleted generic skill: $name"
-    fi
-  done
-done
 
 shopt -s nullglob
 plans=("$ROOT"/plans/*.md)
@@ -148,7 +72,7 @@ while IFS=$'\t' read -r file link; do
   fi
 done < <(perl -ne 'while (/\]\(([^)]+)\)/g) { print "$ARGV\t$1\n" }' \
   "$ROOT/AGENTS.md" "$ROOT/.agents/review-profiles"/*.md \
-  "$ROOT/.agents/overlays"/*.md "$ROOT/plans/README.md" "$ROOT/plans"/*.md)
+  "$ROOT/docs/agents"/*.md "$ROOT/plans/README.md" "$ROOT/plans"/*.md)
 
 if ((errors > 0)); then
   echo "guidance-check: failed with $errors error(s)" >&2

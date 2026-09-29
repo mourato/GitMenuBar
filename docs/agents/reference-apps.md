@@ -1,10 +1,3 @@
----
-kind: project-overlay
-extends: reference-apps
-project: GitMenuBar
-precedence: project
----
-
 # GitMenuBar reference catalog
 
 **Same-domain** here means menu-bar utilities, Git clients, macOS developer
@@ -145,9 +138,9 @@ When studying CodexBar, cross-reference:
 
 After locating reference material:
 
-- Status-item / popover behavior → global `macos-app-engineering` (+ overlay)
-- General macOS UI → global `macos-app-engineering` (+ overlay)
-- Architecture adoption → global `code-quality` (+ overlay)
+- Status-item / popover behavior → global `macos-ui` (project facts in `AGENTS.md`)
+- General macOS UI → global `macos-ui` (project facts in `AGENTS.md`)
+- Architecture adoption → global `code-quality` (project facts in `AGENTS.md`)
 - Latency budgets, Instruments, regression measurement → local `performance-profiling`
 
 When studying VoiceInk, cross-reference:

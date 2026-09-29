@@ -87,6 +87,7 @@ validate-lane-command:
 
 guidance-check:
 	@./scripts/validate-agent-guidance.sh
+	@"$${AGENT_CONFIG_HOME:-$$HOME/.agents}/scripts/check-skill-references.sh" --project "$(CURDIR)"
 
 install-app:
 	@./scripts/build-and-run.sh
