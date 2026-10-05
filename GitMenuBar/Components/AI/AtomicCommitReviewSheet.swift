@@ -243,7 +243,7 @@ struct AtomicCommitReviewSheet: View {
         errorMessage = nil
         do {
             guard let generatedSnapshot = await makeSnapshot() else {
-                throw NSError(domain: "GitManager", code: 35, userInfo: [NSLocalizedDescriptionKey: "Could not capture the working tree snapshot."])
+                throw GitOperationError.commandFailed("Could not capture the working tree snapshot.")
             }
             let generated = try await generateGroups(generatedSnapshot)
             await MainActor.run {

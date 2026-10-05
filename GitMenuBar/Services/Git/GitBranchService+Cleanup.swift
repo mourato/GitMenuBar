@@ -78,7 +78,7 @@ extension GitBranchService {
         }
     }
 
-    private nonisolated func cleanupError(_ description: String) -> NSError {
-        NSError(domain: "GitManager", code: 70, userInfo: [NSLocalizedDescriptionKey: description])
+    private nonisolated func cleanupError(_ description: String) -> GitOperationError {
+        GitOperationError.invalidState(description)
     }
 }

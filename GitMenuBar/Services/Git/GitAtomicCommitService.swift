@@ -45,7 +45,7 @@ final class GitAtomicCommitService: ObservableObject {
         )
     }
 
-    private func makeMissingRepositoryError() -> NSError {
+    private func makeMissingRepositoryError() -> GitOperationError {
         GitExecution.missingRepositoryError()
     }
 
@@ -137,20 +137,12 @@ final class GitAtomicCommitService: ObservableObject {
         }
 
         guard !files.isEmpty else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 30,
-                userInfo: [NSLocalizedDescriptionKey: "No files to commit"]
-            ))
+            return .failure(GitOperationError.invalidInput("No files to commit"))
         }
 
         let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedMessage.isEmpty else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 33,
-                userInfo: [NSLocalizedDescriptionKey: "Commit message cannot be empty"]
-            ))
+            return .failure(GitOperationError.invalidInput("Commit message cannot be empty"))
         }
 
         if case .staged = scope {
@@ -166,22 +158,14 @@ final class GitAtomicCommitService: ObservableObject {
             self.executeGitCommand(in: repositoryPath, args: stageArgs)
         }
         guard !stageResult.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 31,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to stage files: \(stageResult.output)"]
-            ))
+            return .failure(GitOperationError.commandFailed("Failed to stage files: \(stageResult.output)"))
         }
 
         let commitResult = await runOnBackground {
             self.executeGitCommand(in: repositoryPath, args: ["commit", "--no-gpg-sign", "-m", trimmedMessage])
         }
         guard !commitResult.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 32,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to commit: \(commitResult.output)"]
-            ))
+            return .failure(GitOperationError.commandFailed("Failed to commit: \(commitResult.output)"))
         }
 
         return .success(())
@@ -261,11 +245,7 @@ final class GitAtomicCommitService: ObservableObject {
             self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "HEAD"])
         }
         guard !originalHeadResult.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 34,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to capture current HEAD: \(originalHeadResult.output)"]
-            ))
+            return .failure(GitOperationError.commandFailed("Failed to capture current HEAD: \(originalHeadResult.output)"))
         }
         let originalHead = originalHeadResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -439,12 +419,12 @@ final class GitAtomicCommitService: ObservableObject {
         return ("", false)
     }
 
-    private static func hunkError(_ message: String) -> NSError {
-        NSError(domain: "GitManager", code: 35, userInfo: [NSLocalizedDescriptionKey: message])
+    private static func hunkError(_ message: String) -> GitOperationError {
+        GitOperationError.invalidState(message)
     }
 
-    private static func stagedError(_ message: String) -> NSError {
-        NSError(domain: "GitManager", code: 36, userInfo: [NSLocalizedDescriptionKey: message])
+    private static func stagedError(_ message: String) -> GitOperationError {
+        GitOperationError.invalidState(message)
     }
 
     private func rollbackAtomicCommits(to originalHead: String, repositoryPath: String) async {

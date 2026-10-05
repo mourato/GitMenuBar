@@ -484,7 +484,7 @@ struct GitCleanupRepository {
         runner.runGitCommand(in: path, args: args, useAuth: useAuth)
     }
 
-    private func error(_ message: String) -> NSError {
-        NSError(domain: "GitManager", code: 60, userInfo: [NSLocalizedDescriptionKey: message])
+    private func error(_ message: String) -> GitOperationError {
+        GitOperationError.invalidState(message)
     }
 }

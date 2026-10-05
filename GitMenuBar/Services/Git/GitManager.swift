@@ -151,7 +151,7 @@ class GitManager: ObservableObject {
         selectedRefreshTask?.cancel()
     }
 
-    private func makeMissingRepositoryError() -> NSError {
+    private func makeMissingRepositoryError() -> GitOperationError {
         GitExecution.missingRepositoryError()
     }
 
@@ -396,11 +396,7 @@ class GitManager: ObservableObject {
 
             guard !commitResult.failure else {
                 return .failure(
-                    NSError(
-                        domain: "GitManager",
-                        code: 2,
-                        userInfo: [NSLocalizedDescriptionKey: "Failed to create commit: \(commitResult.output)"]
-                    )
+                    GitOperationError.commandFailed("Failed to create commit: \(commitResult.output)")
                 )
             }
 
@@ -439,11 +435,7 @@ class GitManager: ObservableObject {
                 args: ["commit", "--no-gpg-sign", "--allow-empty-message", "--cleanup=verbatim", "-m", message]
             )
             guard !commitResult.failure else {
-                return .failure(NSError(
-                    domain: "GitManager",
-                    code: 2,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to create commit: \(commitResult.output)"]
-                ))
+                return .failure(GitOperationError.commandFailed("Failed to create commit: \(commitResult.output)"))
             }
             return .success(())
         }
@@ -473,12 +465,8 @@ class GitManager: ObservableObject {
         }
     }
 
-    private func staleOperationError() -> NSError {
-        NSError(
-            domain: "GitManager",
-            code: 4,
-            userInfo: [NSLocalizedDescriptionKey: "The repository branch changed before the action started."]
-        )
+    private func staleOperationError() -> GitOperationError {
+        GitOperationError.invalidState("The repository branch changed before the action started.")
     }
 
     private func workingTreeStatus(at path: String) async -> OperationWorkingTreeStatus {
@@ -771,11 +759,7 @@ class GitManager: ObservableObject {
         currentBranchName: String
     ) async -> Result<Void, Error> {
         guard !repositoryPath.isEmpty else {
-            let error = NSError(
-                domain: "GitManager",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Error: No repository path configured"]
-            )
+            let error = GitOperationError.noRepository
             print(error.localizedDescription)
             return .failure(error)
         }
@@ -796,11 +780,7 @@ class GitManager: ObservableObject {
                     let forcePushResult = self.executeGitCommand(in: repositoryPath, args: forcePushArgs, useAuth: true)
 
                     guard !forcePushResult.failure else {
-                        let error = NSError(
-                            domain: "GitManager",
-                            code: 2,
-                            userInfo: [NSLocalizedDescriptionKey: "Error force pushing: \(forcePushResult.output)"]
-                        )
+                        let error = GitOperationError.commandFailed("Error force pushing: \(forcePushResult.output)")
                         print(error.localizedDescription)
                         return .failure(error)
                     }
@@ -809,11 +789,7 @@ class GitManager: ObservableObject {
                     return .success(())
                 }
 
-                let error = NSError(
-                    domain: "GitManager",
-                    code: 3,
-                    userInfo: [NSLocalizedDescriptionKey: "Error pushing: \(pushResult.output)"]
-                )
+                let error = GitOperationError.commandFailed("Error pushing: \(pushResult.output)")
                 print(error.localizedDescription)
                 return .failure(error)
             }
@@ -1005,11 +981,7 @@ class GitManager: ObservableObject {
             self.executeGitCommand(in: repositoryPath, args: ["add", "--", path])
         }
         guard !result.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to stage '\(path)': \(result.output)"]
-            ))
+            return .failure(GitOperationError.commandFailed("Failed to stage '\(path)': \(result.output)"))
         }
         await updateUncommittedFilesAsync()
         return .success(())
@@ -1022,11 +994,7 @@ class GitManager: ObservableObject {
             self.executeGitCommand(in: context.repositoryPath, args: ["add", "--", path])
         }
         guard !result.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to stage '\(path)': \(result.output)"]
-            ))
+            return .failure(GitOperationError.commandFailed("Failed to stage '\(path)': \(result.output)"))
         }
         return .success(())
     }
@@ -1050,11 +1018,7 @@ class GitManager: ObservableObject {
 
         guard !result.failure else {
             return .failure(
-                NSError(
-                    domain: "GitManager",
-                    code: 2,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to stage all changes: \(result.output)"]
-                )
+                GitOperationError.commandFailed("Failed to stage all changes: \(result.output)")
             )
         }
 
@@ -1069,11 +1033,7 @@ class GitManager: ObservableObject {
             self.executeGitCommand(in: context.repositoryPath, args: ["add", "-A"])
         }
         guard !result.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to stage all changes: \(result.output)"]
-            ))
+            return .failure(GitOperationError.commandFailed("Failed to stage all changes: \(result.output)"))
         }
         return .success(())
     }
@@ -1100,11 +1060,7 @@ class GitManager: ObservableObject {
             }
         }
         guard !result.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to unstage all changes: \(result.output)"]
-            ))
+            return .failure(GitOperationError.commandFailed("Failed to unstage all changes: \(result.output)"))
         }
         await updateUncommittedFilesAsync()
         return .success(())
@@ -1122,11 +1078,7 @@ class GitManager: ObservableObject {
             }
         }
         guard !result.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to unstage all changes: \(result.output)"]
-            ))
+            return .failure(GitOperationError.commandFailed("Failed to unstage all changes: \(result.output)"))
         }
         return .success(())
     }
@@ -1153,11 +1105,7 @@ class GitManager: ObservableObject {
             }
         }
         guard !result.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to unstage '\(path)': \(result.output)"]
-            ))
+            return .failure(GitOperationError.commandFailed("Failed to unstage '\(path)': \(result.output)"))
         }
         await updateUncommittedFilesAsync()
         return .success(())
@@ -1175,11 +1123,7 @@ class GitManager: ObservableObject {
             }
         }
         guard !result.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to unstage '\(path)': \(result.output)"]
-            ))
+            return .failure(GitOperationError.commandFailed("Failed to unstage '\(path)': \(result.output)"))
         }
         return .success(())
     }
@@ -1284,18 +1228,14 @@ class GitManager: ObservableObject {
         }
 
         guard !result.failure else {
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to discard '\(path)': \(result.output)"]
-            ))
+            return .failure(GitOperationError.commandFailed("Failed to discard '\(path)': \(result.output)"))
         }
         return .success(())
     }
 
     func discardAllUnstagedChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
         guard !storedRepoPath.isEmpty else {
-            completion?(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            completion?(.failure(GitOperationError.noRepository))
             return
         }
 
@@ -1318,7 +1258,7 @@ class GitManager: ObservableObject {
 
             if result.failure || cleanResult.failure {
                 let errorMsg = result.failure ? result.output : cleanResult.output
-                completion?(.failure(NSError(domain: "GitManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to discard untracked changes: \(errorMsg)"])))
+                completion?(.failure(GitOperationError.commandFailed("Failed to discard untracked changes: \(errorMsg)")))
                 return
             }
 
@@ -1459,11 +1399,7 @@ class GitManager: ObservableObject {
         }
 
         if await hasUncommittedChangesAsync() {
-            throw NSError(
-                domain: "GitManager",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Commit message editing requires a clean working tree."]
-            )
+            throw GitOperationError.invalidState("Commit message editing requires a clean working tree.")
         }
 
         let mergeStatus = await commitHistoryService.checkIsMergeCommitAsync(commitHash)
@@ -1471,11 +1407,7 @@ class GitManager: ObservableObject {
         case let .failure(error):
             throw error
         case let .success(isMergeCommit) where isMergeCommit:
-            throw NSError(
-                domain: "GitManager",
-                code: 3,
-                userInfo: [NSLocalizedDescriptionKey: "Editing merge commits is not supported yet."]
-            )
+            throw GitOperationError.invalidInput("Editing merge commits is not supported yet.")
         case .success:
             break
         }
@@ -1484,11 +1416,7 @@ class GitManager: ObservableObject {
             let headResult = self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "HEAD"])
             guard !headResult.failure else {
                 return .failure(
-                    NSError(
-                        domain: "GitManager",
-                        code: 4,
-                        userInfo: [NSLocalizedDescriptionKey: "Failed to resolve HEAD: \(headResult.output)"]
-                    )
+                    GitOperationError.commandFailed("Failed to resolve HEAD: \(headResult.output)")
                 )
             }
 
@@ -1574,7 +1502,7 @@ class GitManager: ObservableObject {
         )
 
         if result.failure {
-            return .failure(NSError(domain: "GitManager", code: 8, userInfo: [NSLocalizedDescriptionKey: "Failed to amend commit message: \(result.output)"]))
+            return .failure(GitOperationError.commandFailed("Failed to amend commit message: \(result.output)"))
         }
 
         return .success(())
@@ -1589,7 +1517,7 @@ class GitManager: ObservableObject {
               let messageEditorPath = writeTemporaryScript(contents: messageEditorScript(), executable: true),
               let messageFilePath = writeTemporaryScript(contents: newMessage, executable: false)
         else {
-            return .failure(NSError(domain: "GitManager", code: 9, userInfo: [NSLocalizedDescriptionKey: "Failed to prepare commit rewrite scripts."]))
+            return .failure(GitOperationError.commandFailed("Failed to prepare commit rewrite scripts."))
         }
 
         defer {
@@ -1612,7 +1540,7 @@ class GitManager: ObservableObject {
 
         if rebaseResult.failure {
             _ = executeGitCommand(in: storedRepoPath, args: ["rebase", "--abort"])
-            return .failure(NSError(domain: "GitManager", code: 10, userInfo: [NSLocalizedDescriptionKey: "Failed to rewrite commit message: \(rebaseResult.output)"]))
+            return .failure(GitOperationError.commandFailed("Failed to rewrite commit message: \(rebaseResult.output)"))
         }
 
         return .success(())
@@ -1703,14 +1631,6 @@ class GitManager: ObservableObject {
         }
     }
 
-    private func resetError(code: Int, description: String) -> NSError {
-        NSError(
-            domain: "GitManager",
-            code: code,
-            userInfo: [NSLocalizedDescriptionKey: description]
-        )
-    }
-
     func resetToCommitAsync(
         hash: String,
         context: RepositoryOperationContext
@@ -1720,7 +1640,7 @@ class GitManager: ObservableObject {
         }
         let trimmedHash = hash.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedHash.isEmpty else {
-            return .failure(resetError(code: 50, description: "Commit hash is missing."))
+            return .failure(GitOperationError.commandFailed("Commit hash is missing."))
         }
         guard await branchMatches(context) else {
             return .failure(staleOperationError())
@@ -1734,7 +1654,7 @@ class GitManager: ObservableObject {
             return !result.failure
         }
         guard commitExists else {
-            return .failure(resetError(code: 52, description: "The selected commit is no longer available."))
+            return .failure(GitOperationError.invalidState("The selected commit is no longer available."))
         }
 
         let result = await runOnBackground {
@@ -1745,7 +1665,7 @@ class GitManager: ObservableObject {
         }
         guard !result.failure else {
             return .failure(
-                resetError(code: 51, description: GitStashService.userFacingMessage(from: result.output))
+                GitOperationError.commandFailed(GitStashService.userFacingMessage(from: result.output))
             )
         }
 
@@ -1867,11 +1787,7 @@ class GitManager: ObservableObject {
                 useAuth: true
             )
             guard !result.failure else {
-                return .failure(NSError(
-                    domain: "GitManager",
-                    code: 40,
-                    userInfo: [NSLocalizedDescriptionKey: GitStashService.userFacingMessage(from: result.output)]
-                ))
+                return .failure(GitOperationError.commandFailed(GitStashService.userFacingMessage(from: result.output)))
             }
             return .success(())
         }
@@ -2039,20 +1955,12 @@ class GitManager: ObservableObject {
             guard !result.failure else {
                 if result.output.contains("CONFLICT") || result.output.contains("conflict") {
                     return .failure(
-                        NSError(
-                            domain: "GitManager",
-                            code: 2,
-                            userInfo: [NSLocalizedDescriptionKey: "Merge conflict - please resolve manually"]
-                        )
+                        GitOperationError.conflict("Merge conflict - please resolve manually")
                     )
                 }
 
                 return .failure(
-                    NSError(
-                        domain: "GitManager",
-                        code: 3,
-                        userInfo: [NSLocalizedDescriptionKey: "Pull failed: \(result.output)"]
-                    )
+                    GitOperationError.commandFailed("Pull failed: \(result.output)")
                 )
             }
 
@@ -2073,20 +1981,12 @@ class GitManager: ObservableObject {
             guard !result.failure else {
                 if result.output.contains("CONFLICT") || result.output.contains("conflict") {
                     return .failure(
-                        NSError(
-                            domain: "GitManager",
-                            code: 2,
-                            userInfo: [NSLocalizedDescriptionKey: "Merge conflict - please resolve manually"]
-                        )
+                        GitOperationError.conflict("Merge conflict - please resolve manually")
                     )
                 }
 
                 return .failure(
-                    NSError(
-                        domain: "GitManager",
-                        code: 3,
-                        userInfo: [NSLocalizedDescriptionKey: "Pull failed: \(result.output)"]
-                    )
+                    GitOperationError.commandFailed("Pull failed: \(result.output)")
                 )
             }
             print("Successfully pulled from remote")
@@ -2096,7 +1996,7 @@ class GitManager: ObservableObject {
 
     func pullToNewBranch(newBranchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
-            completion(.failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"])))
+            completion(.failure(GitOperationError.noRepository))
             return
         }
 
@@ -2109,7 +2009,7 @@ class GitManager: ObservableObject {
             }
 
             if result.failure {
-                completion(.failure(NSError(domain: "GitManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create branch from remote: \(result.output)"])))
+                completion(.failure(GitOperationError.commandFailed("Failed to create branch from remote: \(result.output)")))
             } else {
                 print("Successfully created branch \(newBranchName) from remote")
                 await refresh {
