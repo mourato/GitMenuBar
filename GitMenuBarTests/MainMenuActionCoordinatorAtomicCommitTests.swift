@@ -10,9 +10,7 @@ extension MainMenuActionCoordinatorTests {
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
         await waitForWorkingTreeUpdate(gitManager)
-        guard let snapshot = await gitManager.makeAtomicCommitSnapshotAsync() else {
-            return XCTFail("Expected an atomic commit snapshot")
-        }
+        let snapshot = try await gitManager.makeAtomicCommitSnapshotAsync()
 
         var refreshedPaths: [String] = []
         let actionCoordinator = makeActionCoordinator(

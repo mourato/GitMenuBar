@@ -93,14 +93,18 @@ final class GitAtomicCommitService: ObservableObject {
         return diffs.isEmpty ? nil : diffs.joined(separator: "\n\n")
     }
 
-    func makeSnapshotAsync(files: [WorkingTreeFile]) async -> AtomicCommitSnapshot? {
+    func makeSnapshotAsync(files: [WorkingTreeFile]) async throws -> AtomicCommitSnapshot {
         let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else { return nil }
+        guard !repositoryPath.isEmpty else {
+            throw GitOperationError.commandFailed("Could not capture the working tree snapshot.")
+        }
         let diffs = await diffForChangedFilesAsync(changedFiles: files)
         let headResult = await runOnBackground {
             self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "HEAD"])
         }
-        guard !headResult.failure else { return nil }
+        guard !headResult.failure else {
+            throw GitOperationError.commandFailed("Could not capture the working tree snapshot.")
+        }
         let head = headResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
         let status = await runOnBackground {
             self.executeGitCommand(in: repositoryPath, args: ["status", "--porcelain=v1"]).output
@@ -297,7 +301,7 @@ final class GitAtomicCommitService: ObservableObject {
             return .failure(Self.hunkError("Unstage existing changes before splitting hunks."))
         }
 
-        guard let current = await makeSnapshotAsync(files: snapshot.files),
+        guard let current = try? await makeSnapshotAsync(files: snapshot.files),
               current.head == snapshot.head,
               current.fingerprint == snapshot.fingerprint
         else {

@@ -121,8 +121,8 @@ extension MainMenuView {
     func atomicCommitSheet() -> some View {
         AtomicCommitReviewSheet(
             gitManager: gitManager,
-            makeSnapshot: { [weak gitManager] in
-                await gitManager?.makeAtomicCommitSnapshotAsync()
+            makeSnapshot: { [gitManager] in
+                try await gitManager.makeAtomicCommitSnapshotAsync()
             },
             generateGroups: { [weak aiCommitCoordinator] snapshot in
                 guard let coordinator = aiCommitCoordinator else {

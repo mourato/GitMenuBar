@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AtomicCommitReviewSheet: View {
     @ObservedObject var gitManager: GitManager
-    let makeSnapshot: () async -> AtomicCommitSnapshot?
+    let makeSnapshot: () async throws -> AtomicCommitSnapshot
     let generateGroups: (AtomicCommitSnapshot) async throws -> [AtomicCommitGroup]
     let onCancel: () -> Void
     let onCommit: (AtomicCommitExecutionPlan) -> Void
@@ -242,9 +242,7 @@ struct AtomicCommitReviewSheet: View {
         isGenerating = true
         errorMessage = nil
         do {
-            guard let generatedSnapshot = await makeSnapshot() else {
-                throw GitOperationError.commandFailed("Could not capture the working tree snapshot.")
-            }
+            let generatedSnapshot = try await makeSnapshot()
             let generated = try await generateGroups(generatedSnapshot)
             await MainActor.run {
                 snapshot = generatedSnapshot

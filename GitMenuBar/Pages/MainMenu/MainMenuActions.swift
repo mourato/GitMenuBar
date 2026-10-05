@@ -346,7 +346,7 @@ extension MainMenuView {
     }
 
     private func generateAutomaticAtomicCommitPlan() async -> AtomicCommitExecutionPlan? {
-        guard let snapshot = await gitManager.makeAtomicCommitSnapshotAsync() else { return nil }
+        guard let snapshot = try? await gitManager.makeAtomicCommitSnapshotAsync() else { return nil }
         do {
             let groups = try await aiCommitCoordinator.generateAtomicHunkGroups(snapshot: snapshot)
             return AtomicCommitExecutionPlan(groups: groups.isEmpty ? AtomicCommitGroup.fallbackGroups(for: snapshot.files) : groups, snapshot: snapshot)
