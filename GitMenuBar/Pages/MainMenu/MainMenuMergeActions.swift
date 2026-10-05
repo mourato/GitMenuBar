@@ -13,15 +13,15 @@ extension MainMenuView {
         guard !featureBranch.isEmpty else { return }
 
         Task {
-            let result = await gitManager.mergeFeatureIntoDefaultAsync(featureBranch: featureBranch)
+            let result = await actionCoordinator.mergeFeatureIntoDefault(featureBranch: featureBranch)
             await MainActor.run {
                 switch result {
-                case .success:
+                case .succeeded:
                     branchDialogs.showMergeCleanupDialog = true
-                case let .failure(error):
+                case let .failed(message):
                     branchDialogs.featureBranchName = ""
                     branchDialogs.defaultBranchName = ""
-                    errorCenter.merge = error.localizedDescription
+                    errorCenter.merge = message
                 }
             }
         }
@@ -50,16 +50,16 @@ extension MainMenuView {
         guard !featureBranch.isEmpty else { return }
 
         Task {
-            let result = await gitManager.cleanupMergedBranchAsync(
+            let result = await actionCoordinator.cleanupMergedBranch(
                 featureBranch: featureBranch,
                 cleanupOption: option
             )
             switch result {
-            case .success:
+            case .succeeded:
                 break
-            case let .failure(error):
+            case let .failed(message):
                 await MainActor.run {
-                    errorCenter.merge = error.localizedDescription
+                    errorCenter.merge = message
                 }
             }
         }

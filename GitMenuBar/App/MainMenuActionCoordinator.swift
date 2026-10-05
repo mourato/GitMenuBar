@@ -574,6 +574,21 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
+    func mergeFeatureIntoDefault(featureBranch: String) async -> MainMenuDialogMutationResult {
+        await executeDialogMutation {
+            await gitManager.branchService.mergeFeatureIntoDefaultAsync(featureBranch: featureBranch).map { _ in () }
+        }
+    }
+
+    func cleanupMergedBranch(featureBranch: String, cleanupOption: BranchCleanupOption) async -> MainMenuDialogMutationResult {
+        await executeDialogMutation {
+            await gitManager.branchService.cleanupMergedBranchAsync(
+                featureBranch: featureBranch,
+                cleanupOption: cleanupOption
+            ).map { _ in () }
+        }
+    }
+
     func pullToNewBranch(named branchName: String) async -> MainMenuDialogMutationResult {
         await executeDialogMutation { completion in
             gitManager.pullToNewBranch(newBranchName: branchName, completion: completion)
@@ -713,13 +728,21 @@ final class MainMenuActionCoordinator: ObservableObject {
     private func executeDialogMutation(
         start: (@escaping (Result<Void, Error>) -> Void) -> Void
     ) async -> MainMenuDialogMutationResult {
-        var failureMessage: String?
-        let result = await executeContextualMutation(allowsRepositorySwitch: false) { context in
-            let result: Result<Void, Error> = await withCheckedContinuation { continuation in
+        await executeDialogMutation {
+            await withCheckedContinuation { continuation in
                 start { value in
                     continuation.resume(returning: value)
                 }
             }
+        }
+    }
+
+    private func executeDialogMutation(
+        operation: () async -> Result<Void, Error>
+    ) async -> MainMenuDialogMutationResult {
+        var failureMessage: String?
+        let result = await executeContextualMutation(allowsRepositorySwitch: false) { context in
+            let result = await operation()
             await gitManager.refreshAsync(includeReflogHistory: false, context: context)
             onCommitCompleted?(context.repositoryPath)
             if case let .failure(error) = result {
