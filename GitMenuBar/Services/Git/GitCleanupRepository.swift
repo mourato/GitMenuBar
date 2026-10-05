@@ -56,31 +56,11 @@ struct GitCleanupRepository {
             protectedWorktreePaths: protectedWorktreePaths,
             mergedRemoteBranchNamesByRemote: mergedRemote
         )
-        let snapshot = WorktreeCleanupAnalyzer().analyze(input)
         return .success(GitCleanupAnalysis(
             repositoryPath: GitRepositoryContext.normalizedPath(repositoryPath),
             repositoryIdentity: identity,
             defaultBranchRef: defaultBranchRef,
-            snapshot: GitWorktreeSnapshot(
-                repositoryPath: snapshot.repositoryPath,
-                defaultBranchName: snapshot.defaultBranchName,
-                defaultBranchRef: snapshot.defaultBranchRef,
-                analysisDescription: snapshot.analysisDescription,
-                worktrees: snapshot.worktrees,
-                branches: snapshot.branches,
-                repositoryIdentity: identity,
-                protectedWorktreePaths: snapshot.protectedWorktreePaths,
-                cleanupUnits: GitCleanupUnit.build(
-                    repositoryIdentity: identity,
-                    branches: snapshot.branches,
-                    worktrees: snapshot.worktrees
-                ),
-                managementUnits: GitCleanupUnit.buildManagementUnits(
-                    repositoryIdentity: identity,
-                    branches: snapshot.branches,
-                    worktrees: snapshot.worktrees
-                )
-            )
+            snapshot: WorktreeCleanupAnalyzer().analyze(input, repositoryIdentity: identity)
         ))
     }
 
@@ -91,32 +71,21 @@ struct GitCleanupRepository {
         projectName: String? = nil,
         progress: (@Sendable (GitCleanupProgress) -> Void)? = nil
     ) -> GitCleanupBatchResult {
-        progress?(.init(completed: 0, total: units.count, projectName: projectName, detail: "Checking repository state"))
-        guard repositoryIdentity(repositoryPath) == snapshot.repositoryIdentity else {
-            progress?(.init(completed: units.count, total: units.count, projectName: projectName, detail: "Cleanup skipped because the repository changed"))
-            return GitCleanupBatchResult(items: units.map {
-                GitCleanupItemResult(unit: $0, status: .skipped(reason: "The shared repository identity changed; cleanup was skipped."))
-            })
-        }
-        return GitCleanupBatchResult(items: units.enumerated().map { index, unit in
-            progress?(.init(
-                completed: index,
-                total: units.count,
-                projectName: projectName,
-                detail: cleanupDetail(for: unit)
-            ))
-            let status = unitValidationReason(unit, snapshot: snapshot)
-                .map(GitCleanupItemResultStatus.skipped)
-                ?? cleanup(unit, snapshot: snapshot, repositoryPath: repositoryPath)
-            let item = GitCleanupItemResult(unit: unit, status: status)
-            progress?(.init(
-                completed: index + 1,
-                total: units.count,
-                projectName: projectName,
-                detail: "Finished \(unit.title)"
-            ))
-            return item
-        })
+        runBatch(
+            units.map { unit in
+                BatchItem(
+                    title: unit.title,
+                    detail: cleanupDetail(for: unit),
+                    skipReason: { unitValidationReason(unit, snapshot: snapshot) },
+                    execute: { cleanup(unit, snapshot: snapshot, repositoryPath: repositoryPath) },
+                    result: { GitCleanupItemResult(unit: unit, status: $0) }
+                )
+            },
+            snapshot: snapshot,
+            repositoryPath: repositoryPath,
+            projectName: projectName,
+            progress: progress
+        )
     }
 
     func cleanup(
@@ -126,39 +95,67 @@ struct GitCleanupRepository {
         projectName: String? = nil,
         progress: (@Sendable (GitCleanupProgress) -> Void)? = nil
     ) -> GitCleanupBatchResult {
-        progress?(.init(completed: 0, total: targets.count, projectName: projectName, detail: "Checking repository state"))
+        runBatch(
+            targets.map { target in
+                BatchItem(
+                    title: target.title,
+                    detail: "Cleaning \(target.title)",
+                    skipReason: { targetValidationReason(target, snapshot: snapshot) },
+                    execute: {
+                        switch target {
+                        case let .localBranch(info):
+                            cleanupBranch(info, snapshot: snapshot, repositoryPath: repositoryPath, requireDetached: true, allowUnmerged: false)
+                        case let .worktree(info):
+                            cleanupWorktree(info, snapshot: snapshot, repositoryPath: repositoryPath, allowUnmerged: false)
+                        case let .remoteBranch(info):
+                            cleanupRemote(info, snapshot: snapshot, repositoryPath: repositoryPath)
+                        }
+                    },
+                    result: { GitCleanupItemResult(target: target, status: $0) }
+                )
+            },
+            snapshot: snapshot,
+            repositoryPath: repositoryPath,
+            projectName: projectName,
+            progress: progress
+        )
+    }
+
+    private struct BatchItem {
+        let title: String
+        let detail: String
+        /// Revalidates against the snapshot right before `execute`; nil means safe to run.
+        let skipReason: () -> String?
+        let execute: () -> GitCleanupItemResultStatus
+        let result: (GitCleanupItemResultStatus) -> GitCleanupItemResult
+    }
+
+    /// Single validate-execute-report pipeline: identity guard, then serial per-item
+    /// execution gated on snapshot revalidation before each destructive step.
+    private func runBatch(
+        _ items: [BatchItem],
+        snapshot: GitWorktreeSnapshot,
+        repositoryPath: String,
+        projectName: String?,
+        progress: (@Sendable (GitCleanupProgress) -> Void)?
+    ) -> GitCleanupBatchResult {
+        progress?(.init(completed: 0, total: items.count, projectName: projectName, detail: "Checking repository state"))
         guard repositoryIdentity(repositoryPath) == snapshot.repositoryIdentity else {
-            progress?(.init(completed: targets.count, total: targets.count, projectName: projectName, detail: "Cleanup skipped because the repository changed"))
-            return GitCleanupBatchResult(items: targets.map {
-                GitCleanupItemResult(target: $0, status: .skipped(reason: "The shared repository identity changed; cleanup was skipped."))
+            progress?(.init(completed: items.count, total: items.count, projectName: projectName, detail: "Cleanup skipped because the repository changed"))
+            return GitCleanupBatchResult(items: items.map {
+                $0.result(.skipped(reason: "The shared repository identity changed; cleanup was skipped."))
             })
         }
-        return GitCleanupBatchResult(items: targets.enumerated().map { index, target in
-            progress?(.init(
-                completed: index,
-                total: targets.count,
-                projectName: projectName,
-                detail: "Cleaning \(target.title)"
-            ))
-            let status: GitCleanupItemResultStatus = if let reason = targetValidationReason(target, snapshot: snapshot) {
-                .skipped(reason: reason)
-            } else {
-                switch target {
-                case let .localBranch(info):
-                    cleanupBranch(info, snapshot: snapshot, repositoryPath: repositoryPath, requireDetached: true, allowUnmerged: false)
-                case let .worktree(info):
-                    cleanupWorktree(info, snapshot: snapshot, repositoryPath: repositoryPath, allowUnmerged: false)
-                case let .remoteBranch(info):
-                    cleanupRemote(info, snapshot: snapshot, repositoryPath: repositoryPath)
-                }
-            }
+        return GitCleanupBatchResult(items: items.enumerated().map { index, item in
+            progress?(.init(completed: index, total: items.count, projectName: projectName, detail: item.detail))
+            let status = item.skipReason().map(GitCleanupItemResultStatus.skipped) ?? item.execute()
             progress?(.init(
                 completed: index + 1,
-                total: targets.count,
+                total: items.count,
                 projectName: projectName,
-                detail: "Finished \(target.title)"
+                detail: "Finished \(item.title)"
             ))
-            return GitCleanupItemResult(target: target, status: status)
+            return item.result(status)
         })
     }
 
