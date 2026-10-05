@@ -603,6 +603,96 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertNil(actionCoordinator.alert)
     }
 
+    func testMergeToDefaultReturnsDialogResultAndRefreshesBranchData() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["checkout", "-b", "feature/merge"], in: repoURL)
+        try "merged content".write(to: repoURL.appendingPathComponent("feature.txt"), atomically: true, encoding: .utf8)
+        try runGit(["add", "."], in: repoURL)
+        try runGit(["commit", "-m", "feat: merge fixture"], in: repoURL)
+        let manager = GitManager(repositoryPathOverride: repoURL.path)
+        await manager.refreshAsync()
+        var refreshedPaths: [String] = []
+        let coordinator = makeActionCoordinator(
+            gitManager: manager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession(),
+            onCommitCompleted: { refreshedPaths.append($0) }
+        )
+
+        let result = await coordinator.mergeFeatureIntoDefault(featureBranch: "feature/merge")
+
+        XCTAssertEqual(result, .succeeded)
+        XCTAssertEqual(try runGit(["branch", "--show-current"], in: repoURL).trimmingCharacters(in: .whitespacesAndNewlines), "main")
+        XCTAssertEqual(try String(contentsOf: repoURL.appendingPathComponent("feature.txt"), encoding: .utf8), "merged content")
+        XCTAssertTrue(manager.branchService.branchInfos.contains { $0.name == "feature/merge" })
+        XCTAssertEqual(refreshedPaths, [repoURL.path])
+        XCTAssertNil(coordinator.alert)
+        XCTAssertFalse(coordinator.isBusy)
+    }
+
+    func testMergeToDefaultFailureReturnsMessageWithoutGlobalAlert() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let manager = GitManager(repositoryPathOverride: repoURL.path)
+        let coordinator = makeActionCoordinator(
+            gitManager: manager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await coordinator.mergeFeatureIntoDefault(featureBranch: "feature/missing")
+
+        guard case let .failed(message) = result else { return XCTFail("Expected merge failure") }
+        XCTAssertTrue(message.contains("Merge failed"))
+        XCTAssertNil(coordinator.alert)
+        XCTAssertFalse(coordinator.isBusy)
+    }
+
+    func testMergeCleanupReturnsDialogResultAndReloadsBranches() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["branch", "feature/merged"], in: repoURL)
+        let manager = GitManager(repositoryPathOverride: repoURL.path)
+        await manager.refreshAsync()
+        var refreshedPaths: [String] = []
+        let coordinator = makeActionCoordinator(
+            gitManager: manager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession(),
+            onCommitCompleted: { refreshedPaths.append($0) }
+        )
+
+        let result = await coordinator.cleanupMergedBranch(featureBranch: "feature/merged", cleanupOption: .deleteLocal)
+
+        XCTAssertEqual(result, .succeeded)
+        XCTAssertTrue(try runGit(["branch", "--list", "feature/merged"], in: repoURL).isEmpty)
+        XCTAssertFalse(manager.branchService.branchInfos.contains { $0.name == "feature/merged" })
+        XCTAssertEqual(refreshedPaths, [repoURL.path])
+        XCTAssertNil(coordinator.alert)
+        XCTAssertFalse(coordinator.isBusy)
+    }
+
+    func testMergeCleanupFailureReturnsMessageWithoutGlobalAlert() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["branch", "feature/merged"], in: repoURL)
+        let manager = GitManager(repositoryPathOverride: repoURL.path)
+        let coordinator = makeActionCoordinator(
+            gitManager: manager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await coordinator.cleanupMergedBranch(featureBranch: "feature/merged", cleanupOption: .deleteRemoteOnly)
+
+        guard case let .failed(message) = result else { return XCTFail("Expected cleanup failure") }
+        XCTAssertTrue(message.contains("Failed to delete remote branch"))
+        XCTAssertTrue(try runGit(["branch", "--list", "feature/merged"], in: repoURL).contains("feature/merged"))
+        XCTAssertNil(coordinator.alert)
+        XCTAssertFalse(coordinator.isBusy)
+    }
+
     func makeActionCoordinator(
         gitManager: GitManager,
         providerStore: AIProviderStore,
