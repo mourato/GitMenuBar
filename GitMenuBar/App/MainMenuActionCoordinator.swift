@@ -585,7 +585,7 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
         return await executeContextualMutation(allowsRepositorySwitch: false) { context in
-            let result = await gitManager.performCleanupAsync(units: units, snapshot: snapshot)
+            let result = await gitManager.branchService.performCleanupAsync(units: units, snapshot: snapshot)
             switch result {
             case let .success(batch):
                 await finishSidePanelMutation(.success(()), context: context, failureTitle: "Cleanup Failed")

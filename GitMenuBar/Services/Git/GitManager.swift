@@ -489,11 +489,7 @@ class GitManager: ObservableObject {
 
     /// Returns a map of changed file path -> diff string for all changed files.
     func diffForChangedFilesAsync() async -> [String: String] {
-        await diffForFilesAsync(files: changedFiles, scope: .unstaged)
-    }
-
-    func diffForFilesAsync(files: [WorkingTreeFile], scope: DiffScope) async -> [String: String] {
-        await atomicCommitService.diffForFilesAsync(files: files, scope: scope)
+        await atomicCommitService.diffForFilesAsync(files: changedFiles, scope: .unstaged)
     }
 
     func makeAtomicCommitSnapshotAsync() async throws -> AtomicCommitSnapshot {
@@ -508,15 +504,6 @@ class GitManager: ObservableObject {
         let result = await atomicCommitService.performHunkCommitsAsync(groups: groups, snapshot: snapshot, progress: progress)
         await refreshAsync()
         return result
-    }
-
-    /// Stage specific files and commit with the given message.
-    func commitAtomicGroupAsync(
-        files: [String],
-        message: String,
-        scope: DiffScope = .all
-    ) async -> Result<Void, Error> {
-        await atomicCommitService.commitAtomicGroupAsync(files: files, message: message, scope: scope)
     }
 
     /// Execute the full atomic commit sequence for a list of groups.
@@ -1808,20 +1795,6 @@ class GitManager: ObservableObject {
 
     private func resolveBranchInfoAsync(session: GitRefreshSession?) async -> [BranchInfo] {
         await branchService.resolveBranchInfoAsync(session: session)
-    }
-
-    func performCleanupAsync(
-        units: [GitCleanupUnit],
-        snapshot: GitWorktreeSnapshot
-    ) async -> Result<GitCleanupBatchResult, Error> {
-        await branchService.performCleanupAsync(units: units, snapshot: snapshot)
-    }
-
-    func performCleanupAsync(
-        targets: [GitCleanupTarget],
-        snapshot: GitWorktreeSnapshot
-    ) async -> Result<GitCleanupBatchResult, Error> {
-        await branchService.performCleanupAsync(targets: targets, snapshot: snapshot)
     }
 
     /// Merges `featureBranch` into the default branch without deleting anything.

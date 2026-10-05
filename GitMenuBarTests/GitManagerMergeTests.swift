@@ -20,7 +20,7 @@ final class GitManagerMergeTests: XCTestCase {
         try makeFeatureBranch(named: "feature/keep", in: repoURL)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        let result = await gitManager.mergeFeatureIntoDefaultAsync(featureBranch: "feature/keep")
+        let result = await gitManager.branchService.mergeFeatureIntoDefaultAsync(featureBranch: "feature/keep")
 
         switch result {
         case let .success(mergeResult):
@@ -42,8 +42,8 @@ final class GitManagerMergeTests: XCTestCase {
         try makeFeatureBranch(named: "feature/delete-local", in: repoURL)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        _ = await gitManager.mergeFeatureIntoDefaultAsync(featureBranch: "feature/delete-local")
-        let result = await gitManager.cleanupMergedBranchAsync(
+        _ = await gitManager.branchService.mergeFeatureIntoDefaultAsync(featureBranch: "feature/delete-local")
+        let result = await gitManager.branchService.cleanupMergedBranchAsync(
             featureBranch: "feature/delete-local",
             cleanupOption: .deleteLocal
         )
@@ -91,7 +91,7 @@ final class GitManagerMergeTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        let result = await gitManager.mergeFeatureIntoDefaultAsync(featureBranch: "feature/conflict")
+        let result = await gitManager.branchService.mergeFeatureIntoDefaultAsync(featureBranch: "feature/conflict")
 
         switch result {
         case .success:
@@ -110,8 +110,8 @@ final class GitManagerMergeTests: XCTestCase {
         try makeFeatureBranch(named: "feature/no-remote", in: repoURL)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        _ = await gitManager.mergeFeatureIntoDefaultAsync(featureBranch: "feature/no-remote")
-        let result = await gitManager.cleanupMergedBranchAsync(
+        _ = await gitManager.branchService.mergeFeatureIntoDefaultAsync(featureBranch: "feature/no-remote")
+        let result = await gitManager.branchService.cleanupMergedBranchAsync(
             featureBranch: "feature/no-remote",
             cleanupOption: .deleteRemoteOnly
         )
@@ -146,8 +146,8 @@ final class GitManagerMergeTests: XCTestCase {
         var succeeded = false
         var lastError: String?
         for _ in 0 ..< 5 {
-            _ = await gitManager.mergeFeatureIntoDefaultAsync(featureBranch: "feature/remote")
-            let result = await gitManager.cleanupMergedBranchAsync(
+            _ = await gitManager.branchService.mergeFeatureIntoDefaultAsync(featureBranch: "feature/remote")
+            let result = await gitManager.branchService.cleanupMergedBranchAsync(
                 featureBranch: "feature/remote",
                 cleanupOption: .deleteLocalAndRemote
             )
