@@ -108,25 +108,101 @@ enum AntigravityUsageParsing {
         }
     }
 
+    private struct FlexibleKey: CodingKey {
+        let stringValue: String
+
+        init(_ stringValue: String) {
+            self.stringValue = stringValue
+        }
+
+        init?(stringValue: String) {
+            self.init(stringValue)
+        }
+
+        var intValue: Int? {
+            nil
+        }
+
+        init?(intValue _: Int) {
+            nil
+        }
+    }
+
     private struct QuotaBucket: Decodable {
         let bucketId: String?
+        let id: String?
         let displayName: String?
+        let name: String?
         let description: String?
         let disabled: Bool?
         let modelId: String?
         let remainingFraction: Double?
         let remaining: AntigravityQuotaSummaryRemaining?
         let resetTime: String?
+        let window: String?
+
+        // `agy -p /usage` reports use snake_case keys (`id`, `name`,
+        // `remaining_fraction`, `reset_time`) for the same quota buckets.
+        let snakeRemainingFraction: Double?
+        let snakeResetTime: String?
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: FlexibleKey.self)
+            func decodeString(_ key: String) throws -> String? {
+                try container.decodeIfPresent(String.self, forKey: FlexibleKey(key))
+            }
+            bucketId = try decodeString("bucketId")
+            id = try decodeString("id")
+            displayName = try decodeString("displayName")
+            name = try decodeString("name")
+            description = try decodeString("description")
+            disabled = try container.decodeIfPresent(Bool.self, forKey: FlexibleKey("disabled"))
+            modelId = try decodeString("modelId")
+            remainingFraction = try container.decodeIfPresent(Double.self, forKey: FlexibleKey("remainingFraction"))
+            remaining = try container.decodeIfPresent(
+                AntigravityQuotaSummaryRemaining.self,
+                forKey: FlexibleKey("remaining")
+            )
+            resetTime = try decodeString("resetTime")
+            window = try decodeString("window")
+            snakeRemainingFraction = try container.decodeIfPresent(
+                Double.self,
+                forKey: FlexibleKey("remaining_fraction")
+            )
+            snakeResetTime = try decodeString("reset_time")
+        }
 
         var resolvedModelId: String? {
             bucketId?.nonEmptyTrimmed
+                ?? id?.nonEmptyTrimmed
                 ?? modelId?.nonEmptyTrimmed
                 ?? displayName?.nonEmptyTrimmed
+                ?? name?.nonEmptyTrimmed
+        }
+
+        func resolvedLabel(fallback: String) -> String {
+            displayName?.nonEmptyTrimmed ?? name?.nonEmptyTrimmed ?? fallback
         }
 
         var resolvedRemainingFraction: Double? {
-            remainingFraction ?? remaining?.remainingFraction
+            remainingFraction ?? snakeRemainingFraction ?? remaining?.remainingFraction
         }
+
+        var resolvedResetTime: String? {
+            resetTime ?? snakeResetTime
+        }
+    }
+
+    // MARK: - `agy -p /usage` Print Report Envelope
+
+    private struct AgyPrintReport: Decodable {
+        let status: String?
+        let command: AgyPrintCommand?
+    }
+
+    private struct AgyPrintCommand: Decodable {
+        let name: String?
+        let data: QuotaSummaryPayload?
     }
 
     // MARK: - Parsing
@@ -179,6 +255,23 @@ enum AntigravityUsageParsing {
 
         guard let groups = response.resolvedGroups else { return [] }
 
+        return quotas(from: groups)
+    }
+
+    /// Parses the one-shot `agy -p /usage --output-format json` report. Its
+    /// `command.data` node carries the same quota groups as
+    /// `RetrieveUserQuotaSummary`, so bucket mapping is shared.
+    static func parseAgyPrintReportResponse(_ data: Data) throws -> [ModelQuota] {
+        let report = try JSONDecoder().decode(AgyPrintReport.self, from: data)
+        guard report.status?.uppercased() == "SUCCESS",
+              report.command?.name == "usage",
+              let groups = report.command?.data?.groups
+        else { return [] }
+
+        return quotas(from: groups)
+    }
+
+    private static func quotas(from groups: [QuotaGroup]) -> [ModelQuota] {
         var results: [ModelQuota] = []
         for group in groups {
             let groupName = group.resolvedName
@@ -186,9 +279,9 @@ enum AntigravityUsageParsing {
                 guard let fraction = bucket.resolvedRemainingFraction,
                       let modelId = bucket.resolvedModelId
                 else { continue }
-                let resetDate = bucket.resetTime.flatMap { parseDate($0) }
+                let resetDate = bucket.resolvedResetTime.flatMap { parseDate($0) }
                 results.append(ModelQuota(
-                    label: bucket.displayName?.nonEmptyTrimmed ?? groupName,
+                    label: bucket.resolvedLabel(fallback: groupName),
                     modelId: modelId,
                     remainingFraction: fraction,
                     resetAt: resetDate,

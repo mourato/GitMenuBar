@@ -209,7 +209,8 @@ final class AntigravityUsageTests: XCTestCase {
             configuration: AntigravityUsageProvider.Configuration(
                 remoteCredentialsURL: URL(fileURLWithPath: "/tmp/non_existent_antigravity_creds.json")
             ),
-            processDetector: { [] }
+            processDetector: { [] },
+            agyBinaryLocator: { nil }
         )
 
         let snapshot = await provider.fetchSnapshot()
@@ -261,5 +262,141 @@ final class AntigravityUsageTests: XCTestCase {
         XCTAssertEqual(paths.values.count, 1)
         XCTAssertTrue(paths.values[0].hasPrefix("https://127.0.0.1:4321/"))
         XCTAssertEqual(bodies.values, [#"{"forceRefresh":true}"#])
+    }
+
+    func testParseAgyPrintReportParsesSnakeCaseBuckets() throws {
+        let json = """
+        {
+            "status": "SUCCESS",
+            "command": {
+                "name": "usage",
+                "data": {
+                    "description": "shared limits",
+                    "groups": [
+                        {
+                            "name": "Gemini Models",
+                            "buckets": [
+                                { "id": "gemini-weekly", "name": "Weekly Limit Remaining", "window": "weekly", "remaining_fraction": 0.82, "reset_time": "2026-10-12T01:38:19Z" },
+                                { "id": "gemini-5h", "name": "Five Hour Limit Remaining", "window": "5h", "remaining_fraction": 0.91, "reset_time": "2026-10-05T06:38:19Z" }
+                            ]
+                        },
+                        {
+                            "name": "Claude and GPT models",
+                            "buckets": [
+                                { "id": "3p-weekly", "name": "Weekly Limit Remaining", "window": "weekly", "remaining_fraction": 0.64 },
+                                { "id": "3p-5h", "name": "Five Hour Limit Remaining", "window": "5h", "remaining_fraction": 0.73 }
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+        """
+
+        let quotas = try AntigravityUsageParsing.parseAgyPrintReportResponse(Data(json.utf8))
+
+        XCTAssertEqual(quotas.count, 4)
+        XCTAssertEqual(quotas[0].modelId, "gemini-weekly")
+        XCTAssertEqual(quotas[0].label, "Weekly Limit Remaining")
+        XCTAssertEqual(quotas[0].percentLeft, 82)
+        XCTAssertNotNil(quotas[0].resetAt)
+
+        let snapshot = AntigravityUsageParsing.snapshot(from: quotas)
+        XCTAssertTrue(snapshot.isAvailable)
+        XCTAssertEqual(snapshot.sessionWindow?.remainingPercent, 73)
+        XCTAssertEqual(snapshot.weeklyWindow?.remainingPercent, 64)
+    }
+
+    func testParseAgyPrintReportRejectsUnsuccessfulReports() throws {
+        let failed = """
+        { "status": "FAILED", "command": { "name": "usage", "data": { "groups": [] } } }
+        """
+        XCTAssertEqual(try AntigravityUsageParsing.parseAgyPrintReportResponse(Data(failed.utf8)).count, 0)
+
+        let wrongCommand = """
+        { "status": "SUCCESS", "command": { "name": "status", "data": { "groups": [] } } }
+        """
+        XCTAssertEqual(try AntigravityUsageParsing.parseAgyPrintReportResponse(Data(wrongCommand.utf8)).count, 0)
+    }
+
+    func testAntigravityUsageProviderFallsBackToAgyPrintReport() async {
+        let report = """
+        {
+            "status": "SUCCESS",
+            "command": {
+                "name": "usage",
+                "data": {
+                    "groups": [
+                        { "name": "Gemini Models", "buckets": [
+                            { "id": "gemini-weekly", "name": "Weekly Limit", "remaining_fraction": 1.0 },
+                            { "id": "gemini-5h", "name": "Five Hour Limit", "remaining_fraction": 1.0 }
+                        ] },
+                        { "name": "Claude and GPT models", "buckets": [
+                            { "id": "3p-weekly", "name": "Weekly Limit", "remaining_fraction": 1.0 },
+                            { "id": "3p-5h", "name": "Five Hour Limit", "remaining_fraction": 1.0 }
+                        ] }
+                    ]
+                }
+            }
+        }
+        """
+        let requestedBinaries = PromptListCapture()
+        let provider = AntigravityUsageProvider(
+            configuration: AntigravityUsageProvider.Configuration(
+                remoteCredentialsURL: URL(fileURLWithPath: "/tmp/non_existent_antigravity_creds.json")
+            ),
+            processDetector: { [] },
+            agyBinaryLocator: { "/fake/agy" },
+            agyReportRunner: { binary in
+                requestedBinaries.append(binary)
+                return Data(report.utf8)
+            }
+        )
+
+        let snapshot = await provider.fetchSnapshot()
+
+        XCTAssertTrue(snapshot.isAvailable)
+        XCTAssertEqual(snapshot.sessionWindow?.remainingPercent, 100)
+        XCTAssertEqual(snapshot.weeklyWindow?.remainingPercent, 100)
+        XCTAssertEqual(requestedBinaries.values, ["/fake/agy"])
+    }
+
+    func testAntigravityUsageProviderSkipsAgyReportWithoutBinary() async {
+        let runnerCalls = PromptListCapture()
+        let provider = AntigravityUsageProvider(
+            configuration: AntigravityUsageProvider.Configuration(
+                remoteCredentialsURL: URL(fileURLWithPath: "/tmp/non_existent_antigravity_creds.json")
+            ),
+            processDetector: { [] },
+            agyBinaryLocator: { nil },
+            agyReportRunner: { binary in
+                runnerCalls.append(binary)
+                return Data()
+            }
+        )
+
+        let snapshot = await provider.fetchSnapshot()
+
+        XCTAssertFalse(snapshot.isAvailable)
+        XCTAssertEqual(snapshot.statusNote, "sign in to Antigravity")
+        XCTAssertTrue(runnerCalls.values.isEmpty)
+    }
+
+    func testAntigravityUsageProviderReturnsUnavailableWhenAgyReportFails() async {
+        for output in ["", "not json", #"{"status":"FAILED","command":{"name":"usage"}}"#] {
+            let provider = AntigravityUsageProvider(
+                configuration: AntigravityUsageProvider.Configuration(
+                    remoteCredentialsURL: URL(fileURLWithPath: "/tmp/non_existent_antigravity_creds.json")
+                ),
+                processDetector: { [] },
+                agyBinaryLocator: { "/fake/agy" },
+                agyReportRunner: { _ in output.isEmpty ? nil : Data(output.utf8) }
+            )
+
+            let snapshot = await provider.fetchSnapshot()
+
+            XCTAssertFalse(snapshot.isAvailable, "output: \(output)")
+            XCTAssertEqual(snapshot.statusNote, "sign in to Antigravity", "output: \(output)")
+        }
     }
 }

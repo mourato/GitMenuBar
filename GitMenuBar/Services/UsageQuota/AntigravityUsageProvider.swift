@@ -42,14 +42,17 @@ final class AntigravityUsageProvider: UsageQuotaProviding, Sendable {
     struct Configuration: Sendable {
         let timeout: TimeInterval
         let remoteCredentialsURL: URL
+        let agyReportTimeout: TimeInterval
 
         init(
             timeout: TimeInterval = 4.0,
-            remoteCredentialsURL: URL? = nil
+            remoteCredentialsURL: URL? = nil,
+            agyReportTimeout: TimeInterval = 30.0
         ) {
             self.timeout = timeout
             self.remoteCredentialsURL = remoteCredentialsURL ?? FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".codexbar/antigravity/oauth_creds.json")
+            self.agyReportTimeout = agyReportTimeout
         }
     }
 
@@ -62,6 +65,8 @@ final class AntigravityUsageProvider: UsageQuotaProviding, Sendable {
     private let configuration: Configuration
     private let session: URLSession
     private let processDetector: @Sendable () -> [AntigravityProcessDetector.DetectedServer]
+    private let agyBinaryLocator: @Sendable () -> String?
+    private let agyReportRunner: @Sendable (String) async -> Data?
     private let now: @Sendable () -> Date
 
     init(
@@ -70,6 +75,10 @@ final class AntigravityUsageProvider: UsageQuotaProviding, Sendable {
         processDetector: @escaping @Sendable () -> [AntigravityProcessDetector.DetectedServer] = {
             AntigravityProcessDetector.detectRunningServers()
         },
+        agyBinaryLocator: @escaping @Sendable () -> String? = {
+            AntigravityCLIUsageReport.resolveBinary()
+        },
+        agyReportRunner: (@Sendable (String) async -> Data?)? = nil,
         now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.configuration = configuration
@@ -79,6 +88,11 @@ final class AntigravityUsageProvider: UsageQuotaProviding, Sendable {
             delegateQueue: nil
         )
         self.processDetector = processDetector
+        self.agyBinaryLocator = agyBinaryLocator
+        let reportTimeout = configuration.agyReportTimeout
+        self.agyReportRunner = agyReportRunner ?? { binary in
+            await AntigravityCLIUsageReport.run(binary: binary, timeout: reportTimeout)
+        }
         self.now = now
     }
 
@@ -91,6 +105,10 @@ final class AntigravityUsageProvider: UsageQuotaProviding, Sendable {
 
         if let remoteSnapshot = await fetchRemoteSnapshot() {
             return remoteSnapshot
+        }
+
+        if let cliSnapshot = await fetchAgyCLISnapshot() {
+            return cliSnapshot
         }
 
         return .unavailable(providerID: .antigravity, statusNote: "sign in to Antigravity")
@@ -210,6 +228,22 @@ final class AntigravityUsageProvider: UsageQuotaProviding, Sendable {
               let http = response as? HTTPURLResponse,
               http.statusCode == 200,
               let quotas = try? AntigravityUsageParsing.parseRemoteQuotaResponse(responseData),
+              quotas.contains(where: { !$0.isDisabled })
+        else {
+            return nil
+        }
+
+        return AntigravityUsageParsing.snapshot(from: quotas, now: now())
+    }
+
+    /// One-shot `agy -p /usage` fallback for machines where no Antigravity
+    /// language server runs and no OAuth credentials file exists. The CLI
+    /// authenticates with its own login, so no tokens are read or logged here.
+    private func fetchAgyCLISnapshot() async -> UsageQuotaSnapshot? {
+        guard let binary = agyBinaryLocator(),
+              let data = await agyReportRunner(binary),
+              !data.isEmpty,
+              let quotas = try? AntigravityUsageParsing.parseAgyPrintReportResponse(data),
               quotas.contains(where: { !$0.isDisabled })
         else {
             return nil
