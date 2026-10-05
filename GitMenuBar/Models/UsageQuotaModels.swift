@@ -71,18 +71,9 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         providerID
     }
 
-    /// Prefer the tighter active window for the strip hero metric when both exist.
+    /// The shortest available window drives the strip hero metric; weekly is the fallback.
     var primaryDisplayWindow: UsageWindow? {
-        switch (sessionWindow, weeklyWindow) {
-        case let (session?, weekly?):
-            session.remainingPercent <= weekly.remainingPercent ? session : weekly
-        case let (session?, nil):
-            session
-        case let (nil, weekly?):
-            weekly
-        case (nil, nil):
-            nil
-        }
+        sessionWindow ?? weeklyWindow
     }
 
     init(

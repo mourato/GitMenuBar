@@ -10,14 +10,14 @@ final class ClaudeCodeUsageTests: XCTestCase {
     func testParsesUsageAPIWindows() throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let data = Data(
-            #"{"five_hour":{"utilization":23.5,"resets_at":1800003600},"seven_day":{"utilization":0.42,"resets_at":"2030-01-20T12:00:00Z"},"seven_day_sonnet":{"utilization":12,"resets_at":1800007200},"seven_day_opus":{"utilization":68,"resets_at":1800007200}}"#.utf8
+            #"{"five_hour":{"utilization":23.5,"resets_at":1800003600},"seven_day":{"utilization":1.0,"resets_at":"2030-01-20T12:00:00Z"},"seven_day_sonnet":{"utilization":12,"resets_at":1800007200},"seven_day_opus":{"utilization":68,"resets_at":1800007200}}"#.utf8
         )
 
         let snapshot = try XCTUnwrap(ClaudeCodeUsageParsing.snapshot(fromUsageAPI: data, now: now))
 
         XCTAssertEqual(snapshot.sessionWindow?.remainingPercent, 77)
         XCTAssertEqual(snapshot.sessionWindow?.intervalChip, "5h")
-        XCTAssertEqual(snapshot.weeklyWindow?.remainingPercent, 58)
+        XCTAssertEqual(snapshot.weeklyWindow?.remainingPercent, 99)
         XCTAssertEqual(snapshot.weeklyWindow?.intervalChip, "7d")
         XCTAssertEqual(snapshot.modelWindows.map(\.label), ["Sonnet", "Opus"])
         XCTAssertEqual(snapshot.modelWindows.map(\.remainingPercent), [88, 32])
@@ -86,7 +86,7 @@ final class ClaudeCodeUsageTests: XCTestCase {
             beta.set(request.value(forHTTPHeaderField: "anthropic-beta") ?? "")
             return try (
                 makeMockHTTPResponse(for: request),
-                Data(#"{"five_hour":{"utilization":0.25,"resets_at":1800003600}}"#.utf8)
+                Data(#"{"five_hour":{"utilization":25,"resets_at":1800003600}}"#.utf8)
             )
         }
 
@@ -136,7 +136,7 @@ final class ClaudeCodeUsageTests: XCTestCase {
             refreshedAuthorization.set(request.value(forHTTPHeaderField: "Authorization") ?? "")
             return try (
                 makeMockHTTPResponse(for: request),
-                Data(#"{"five_hour":{"utilization":0.25,"resets_at":1800003600}}"#.utf8)
+                Data(#"{"five_hour":{"utilization":25,"resets_at":1800003600}}"#.utf8)
             )
         }
 

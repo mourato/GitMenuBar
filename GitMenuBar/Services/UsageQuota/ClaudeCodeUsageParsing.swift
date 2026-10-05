@@ -132,9 +132,9 @@ enum ClaudeCodeUsageParsing {
             return nil
         }
 
-        let usedPercent = utilization <= 1 ? utilization * 100 : utilization
+        // The OAuth usage API reports utilization as a 0-100 percentage; 1.0 means 1% used.
         return UsageWindow(
-            remainingPercent: UsageQuotaFormatting.remainingPercent(fromUsed: usedPercent),
+            remainingPercent: UsageQuotaFormatting.remainingPercent(fromUsed: utilization),
             resetAt: resetDate(from: value["resets_at"] ?? value["resetsAt"]),
             label: label,
             durationSeconds: durationSeconds

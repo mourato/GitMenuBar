@@ -25,6 +25,28 @@ final class UsageQuotaStoreTests: XCTestCase {
         super.tearDown()
     }
 
+    func testPrimaryDisplayWindowPrefersSessionOverTighterWeekly() {
+        let session = UsageWindow(remainingPercent: 98, resetAt: nil, label: "5h", durationSeconds: 5 * 3600)
+        let weekly = UsageWindow(remainingPercent: 67, resetAt: nil, label: "7d", durationSeconds: 7 * 86400)
+        let both = UsageQuotaSnapshot(
+            providerID: .codex,
+            displayName: "Codex",
+            sessionWindow: session,
+            weeklyWindow: weekly,
+            isAvailable: true
+        )
+        let weeklyOnly = UsageQuotaSnapshot(
+            providerID: .codex,
+            displayName: "Codex",
+            sessionWindow: nil,
+            weeklyWindow: weekly,
+            isAvailable: true
+        )
+
+        XCTAssertEqual(both.primaryDisplayWindow, session)
+        XCTAssertEqual(weeklyOnly.primaryDisplayWindow, weekly)
+    }
+
     func testFeatureDisabledStartsWithEmptyVisibleSnapshots() {
         let provider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
         let store = makeStore(provider: provider)
