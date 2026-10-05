@@ -44,7 +44,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        let defaultBranch = await gitManager.getDefaultBranchNameAsync()
+        let defaultBranch = await gitManager.branchService.getDefaultBranchNameAsync()
 
         XCTAssertFalse(defaultBranch.isEmpty)
         XCTAssertTrue(["main", "master"].contains(defaultBranch))
@@ -57,7 +57,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         try runGit(["branch", "feature/test"], in: repoURL)
         try runGit(["branch", "bugfix/other"], in: repoURL)
 
-        let localBranches = await gitManager.fetchLocalBranchesAsync()
+        let localBranches = await gitManager.branchService.fetchLocalBranchesAsync()
 
         XCTAssertTrue(localBranches.contains("main"))
         XCTAssertTrue(localBranches.contains("feature/test"))
@@ -68,7 +68,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         let repoURL = try prepareRepoWithRemoteTracking(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        let localBranches = await gitManager.fetchLocalBranchesAsync()
+        let localBranches = await gitManager.branchService.fetchLocalBranchesAsync()
 
         XCTAssertFalse(localBranches.contains(where: { $0.contains("origin/") }))
         XCTAssertTrue(localBranches.contains("feature/pushed"))
@@ -78,7 +78,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         let repoURL = try prepareRepoWithRemoteTracking(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        let remoteBranches = await gitManager.fetchRemoteBranchesAsync()
+        let remoteBranches = await gitManager.branchService.fetchRemoteBranchesAsync()
 
         XCTAssertTrue(remoteBranches.contains("feature/pushed"))
         XCTAssertFalse(remoteBranches.contains(where: { $0.contains("origin/") }))
@@ -92,7 +92,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         try runGit(["update-ref", "refs/remotes/company/feature/shared", headSHA], in: repoURL)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        let remoteBranches = await gitManager.fetchRemoteBranchesAsync()
+        let remoteBranches = await gitManager.branchService.fetchRemoteBranchesAsync()
 
         XCTAssertTrue(remoteBranches.contains("company/feature/shared"), "Expected all configured remotes, got: \(remoteBranches)")
     }
@@ -108,7 +108,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        let defaultBranch = await gitManager.getDefaultBranchNameAsync()
+        let defaultBranch = await gitManager.branchService.getDefaultBranchNameAsync()
         XCTAssertEqual(defaultBranch, "trunk")
     }
 
@@ -118,7 +118,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
 
         try runGit(["branch", "feature/test"], in: repoURL)
 
-        let infos = await gitManager.resolveBranchInfoAsync()
+        let infos = await gitManager.branchService.resolveBranchInfoAsync()
 
         let current = infos.first(where: \.isCurrent)
         XCTAssertNotNil(current)
@@ -130,7 +130,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         let repoURL = try prepareRepoWithRemoteTracking(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        let infos = await gitManager.resolveBranchInfoAsync()
+        let infos = await gitManager.branchService.resolveBranchInfoAsync()
 
         let localPushed = infos.first { $0.isLocal && $0.name == "feature/pushed" }
         XCTAssertNotNil(localPushed, "Local branch 'feature/pushed' should be present")
@@ -159,7 +159,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         }
         XCTAssertTrue(pushSucceeded, "Push to local remote should succeed (last error: \(pushError ?? "none"))")
 
-        let remoteBranches = await gitManager.fetchRemoteBranchesAsync()
+        let remoteBranches = await gitManager.branchService.fetchRemoteBranchesAsync()
         XCTAssertTrue(
             remoteBranches.contains("feature/to-push"),
             "Expected remote branch after push, got: \(remoteBranches)"
@@ -181,7 +181,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
 
         try runGit(["fetch", "--prune", "origin"], in: repoURL)
 
-        let remoteBranchesAfter = await gitManager.fetchRemoteBranchesAsync()
+        let remoteBranchesAfter = await gitManager.branchService.fetchRemoteBranchesAsync()
         XCTAssertFalse(
             remoteBranchesAfter.contains("feature/to-push"),
             "Expected remote branch gone after delete, got: \(remoteBranchesAfter)"
@@ -206,11 +206,11 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         }
         await fulfillment(of: [deleteExpectation], timeout: 3)
 
-        let localBranches = await gitManager.fetchLocalBranchesAsync()
+        let localBranches = await gitManager.branchService.fetchLocalBranchesAsync()
         XCTAssertFalse(localBranches.contains("feature/to-push"))
 
         try runGit(["fetch", "--prune", "origin"], in: repoURL)
-        let remoteBranches = await gitManager.fetchRemoteBranchesAsync()
+        let remoteBranches = await gitManager.branchService.fetchRemoteBranchesAsync()
         XCTAssertTrue(
             remoteBranches.contains("feature/to-push"),
             "Local delete should not remove the remote branch, got: \(remoteBranches)"
@@ -372,7 +372,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         try runGit(["branch", "feature/test"], in: repoURL)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        _ = await gitManager.resolveBranchInfoAsync()
+        _ = await gitManager.branchService.resolveBranchInfoAsync()
 
         // Allow the Combine `assign(to:)` pipe a tick to flush.
         try await Task.sleep(for: .milliseconds(100))
@@ -407,7 +407,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         if case let .failure(error) = result {
             XCTFail("Named branch push should succeed: \(error.localizedDescription)")
         }
-        let remoteBranches = await gitManager.fetchRemoteBranchesAsync()
+        let remoteBranches = await gitManager.branchService.fetchRemoteBranchesAsync()
         XCTAssertTrue(remoteBranches.contains("feature/to-push"))
     }
 }

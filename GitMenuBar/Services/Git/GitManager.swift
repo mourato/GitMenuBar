@@ -1704,14 +1704,6 @@ class GitManager: ObservableObject {
 
     // MARK: - Branch Management (Local/Remote separation)
 
-    func fetchLocalBranchesAsync() async -> [String] {
-        await branchService.fetchLocalBranchesAsync()
-    }
-
-    func fetchRemoteBranchesAsync() async -> [String] {
-        await branchService.fetchRemoteBranchesAsync()
-    }
-
     func pushBranchToRemoteAsync(branchName: String) async -> Result<Void, Error> {
         await branchService.pushBranchToRemoteAsync(branchName: branchName)
     }
@@ -1810,24 +1802,12 @@ class GitManager: ObservableObject {
         await branchService.deleteRemoteBranchAsync(branchName: branchName, remoteName: remoteName)
     }
 
-    func getDefaultBranchNameAsync() async -> String {
-        await branchService.getDefaultBranchNameAsync()
-    }
-
     private func getDefaultBranchNameAsync(session: GitRefreshSession?) async -> String {
         await branchService.getDefaultBranchNameAsync(session: session)
     }
 
-    func resolveBranchInfoAsync() async -> [BranchInfo] {
-        await branchService.resolveBranchInfoAsync()
-    }
-
     private func resolveBranchInfoAsync(session: GitRefreshSession?) async -> [BranchInfo] {
         await branchService.resolveBranchInfoAsync(session: session)
-    }
-
-    func resolveWorktreeSnapshotAsync() async -> Result<GitWorktreeSnapshot, Error> {
-        await branchService.resolveWorktreeSnapshotAsync()
     }
 
     func performCleanupAsync(

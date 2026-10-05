@@ -416,8 +416,8 @@ final class MainMenuActionCoordinator: ObservableObject {
     /// Refreshes the branch list and worktree snapshot backing the inspector's
     /// Branch Health section. Runs sessionless so it always publishes.
     func reloadSidePanelBranchData() async {
-        _ = await gitManager.resolveBranchInfoAsync()
-        _ = await gitManager.resolveWorktreeSnapshotAsync()
+        _ = await gitManager.branchService.resolveBranchInfoAsync()
+        _ = await gitManager.branchService.resolveWorktreeSnapshotAsync()
     }
 
     func pushSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {

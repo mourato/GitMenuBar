@@ -164,7 +164,7 @@ final class GitManagerMergeTests: XCTestCase {
         XCTAssertTrue(succeeded, "Merge + remote delete should succeed (last error: \(lastError ?? "none"))")
 
         try runGit(["fetch", "--prune", "origin"], in: repoURL)
-        let remoteBranches = await gitManager.fetchRemoteBranchesAsync()
+        let remoteBranches = await gitManager.branchService.fetchRemoteBranchesAsync()
         XCTAssertFalse(
             remoteBranches.contains("feature/remote"),
             "Remote branch should be gone after delete, got: \(remoteBranches)"
