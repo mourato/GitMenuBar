@@ -928,7 +928,7 @@ final class MainMenuActionCoordinator: ObservableObject {
             if let context = activeOperationContext {
                 return await gitManager.checkRemoteStatusAsync(context: context)
             } else {
-                await gitManager.checkRemoteStatusAsync()
+                await gitManager.branchService.checkRemoteStatusAsync()
                 return gitManager.isRemoteAhead
             }
         }

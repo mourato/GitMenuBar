@@ -158,11 +158,6 @@ private final class RefreshTrackingGitManager: GitManager {
         }
     }
 
-    override func checkRemoteStatusAsync() async {
-        remoteStatusCount += 1
-        isRemoteAhead = remoteAhead
-    }
-
     override func checkRemoteStatusAsync(context _: RepositoryOperationContext) async -> Bool {
         remoteStatusCount += 1
         isRemoteAhead = remoteAhead

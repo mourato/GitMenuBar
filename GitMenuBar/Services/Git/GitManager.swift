@@ -1848,14 +1848,6 @@ class GitManager: ObservableObject {
         )
     }
 
-    func checkRemoteStatus(completion: (() -> Void)? = nil) {
-        branchService.checkRemoteStatus(completion: completion)
-    }
-
-    func checkRemoteStatusAsync() async {
-        await branchService.checkRemoteStatusAsync()
-    }
-
     func checkRemoteStatusAsync(context: RepositoryOperationContext) async -> Bool {
         guard !context.repositoryPath.isEmpty else { return false }
         guard await branchMatches(context) else { return false }
