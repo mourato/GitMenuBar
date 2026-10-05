@@ -557,6 +557,42 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
+    func createBranch(named branchName: String) async -> MainMenuSidePanelActionResult {
+        let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return .skipped
+        }
+        let result = await executeCallbackMutation(failureTitle: "Create Branch Failed") { completion in
+            gitManager.createBranch(branchName: trimmed, completion: completion)
+        }
+        await reloadSidePanelBranchData()
+        return result
+    }
+
+    func renameBranch(oldName: String, newName: String) async -> MainMenuSidePanelActionResult {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return .skipped
+        }
+        let result = await executeCallbackMutation(failureTitle: "Rename Failed") { completion in
+            gitManager.renameBranch(oldName: oldName, newName: trimmed, completion: completion)
+        }
+        await reloadSidePanelBranchData()
+        return result
+    }
+
+    func pullToNewBranch(named branchName: String) async -> MainMenuSidePanelActionResult {
+        let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return .skipped
+        }
+        let result = await executeCallbackMutation(failureTitle: "Pull Failed") { completion in
+            gitManager.pullToNewBranch(newBranchName: trimmed, completion: completion)
+        }
+        await reloadSidePanelBranchData()
+        return result
+    }
+
     func performSidePanelCleanup(units: [GitCleanupUnit], snapshot: GitWorktreeSnapshot) async -> MainMenuSidePanelActionResult {
         guard !units.isEmpty else {
             return .skipped

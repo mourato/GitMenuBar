@@ -41,6 +41,80 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertNil(actionCoordinator.alert)
     }
 
+    func testCreateBranchSucceedsWithoutAlert() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await actionCoordinator.createBranch(named: "feature/coordinator-created")
+        XCTAssertEqual(result, .succeeded)
+        XCTAssertNil(actionCoordinator.alert)
+
+        let branches = try runGit(["branch", "--list", "feature/coordinator-created"], in: repoURL)
+        XCTAssertTrue(branches.contains("feature/coordinator-created"))
+    }
+
+    func testCreateBranchDuplicateNameFailsWithAlert() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["branch", "feature/taken"], in: repoURL)
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await actionCoordinator.createBranch(named: "feature/taken")
+        XCTAssertEqual(result, .failed)
+        XCTAssertEqual(actionCoordinator.alert?.title, "Create Branch Failed")
+        XCTAssertNotNil(actionCoordinator.alert?.message)
+    }
+
+    func testRenameBranchSucceedsWithoutAlert() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let current = try runGit(["branch", "--show-current"], in: repoURL)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await actionCoordinator.renameBranch(oldName: current, newName: "feature/renamed")
+        XCTAssertEqual(result, .succeeded)
+        XCTAssertNil(actionCoordinator.alert)
+
+        let branches = try runGit(["branch", "--list", "feature/renamed"], in: repoURL)
+        XCTAssertTrue(branches.contains("feature/renamed"))
+    }
+
+    func testMainMenuBranchMutationsAreSkippedWhileBusy() async {
+        let gitManager = GitManager(repositoryPathOverride: "")
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+        gitManager.isCommitting = true
+
+        let createResult = await actionCoordinator.createBranch(named: "feature/new")
+        let renameResult = await actionCoordinator.renameBranch(oldName: "main", newName: "feature/new")
+        let pullResult = await actionCoordinator.pullToNewBranch(named: "feature/new")
+        XCTAssertEqual(createResult, .skipped)
+        XCTAssertEqual(renameResult, .skipped)
+        XCTAssertEqual(pullResult, .skipped)
+        XCTAssertNil(actionCoordinator.alert)
+    }
+
     func testCheckoutRemoteSidePanelBranchFailurePublishesAlert() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)

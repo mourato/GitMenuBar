@@ -131,29 +131,36 @@ extension MainMenuView {
 
     func createNewBranch() {
         branchDialogs.createBranchError = nil
-        gitManager.createBranch(branchName: branchDialogs.newBranchName) { result in
-            switch result {
-            case .success:
+        let name = branchDialogs.newBranchName
+        Task {
+            switch await actionCoordinator.createBranch(named: name) {
+            case .succeeded:
                 branchDialogs.showCreateBranch = false
                 branchDialogs.newBranchName = ""
-                Task { await actionCoordinator.reloadSidePanelBranchData() }
-            case let .failure(error):
-                branchDialogs.createBranchError = error.localizedDescription
+            case .failed:
+                branchDialogs.createBranchError = actionCoordinator.alert?.message
+                actionCoordinator.alert = nil
+            case .skipped:
+                break
             }
         }
     }
 
     func renameBranch() {
         errorCenter.renameBranch = nil
-        gitManager.renameBranch(oldName: branchDialogs.oldBranchName, newName: branchDialogs.renameBranchNewName) { result in
-            switch result {
-            case .success:
+        let oldName = branchDialogs.oldBranchName
+        let newName = branchDialogs.renameBranchNewName
+        Task {
+            switch await actionCoordinator.renameBranch(oldName: oldName, newName: newName) {
+            case .succeeded:
                 branchDialogs.showRenameBranch = false
                 branchDialogs.renameBranchNewName = ""
                 branchDialogs.oldBranchName = ""
-                Task { await actionCoordinator.reloadSidePanelBranchData() }
-            case let .failure(error):
-                errorCenter.renameBranch = error.localizedDescription
+            case .failed:
+                errorCenter.renameBranch = actionCoordinator.alert?.message
+                actionCoordinator.alert = nil
+            case .skipped:
+                break
             }
         }
     }
@@ -162,15 +169,16 @@ extension MainMenuView {
         let name = sync.pullToNewBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
 
-        gitManager.pullToNewBranch(newBranchName: name) { result in
-            Task { @MainActor in
-                switch result {
-                case .success:
-                    sync.showPullToNewBranch = false
-                    sync.pullToNewBranchName = ""
-                case let .failure(error):
-                    errorCenter.sync = error.localizedDescription
-                }
+        Task {
+            switch await actionCoordinator.pullToNewBranch(named: name) {
+            case .succeeded:
+                sync.showPullToNewBranch = false
+                sync.pullToNewBranchName = ""
+            case .failed:
+                errorCenter.sync = actionCoordinator.alert?.message
+                actionCoordinator.alert = nil
+            case .skipped:
+                break
             }
         }
     }
