@@ -131,17 +131,15 @@ extension MainMenuView {
 
     func createNewBranch() {
         branchDialogs.createBranchError = nil
-        let name = branchDialogs.newBranchName
+        let name = branchDialogs.newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
         Task {
             switch await actionCoordinator.createBranch(named: name) {
             case .succeeded:
                 branchDialogs.showCreateBranch = false
                 branchDialogs.newBranchName = ""
-            case .failed:
-                branchDialogs.createBranchError = actionCoordinator.alert?.message
-                actionCoordinator.alert = nil
-            case .skipped:
-                break
+            case let .failed(message):
+                branchDialogs.createBranchError = message
             }
         }
     }
@@ -149,18 +147,16 @@ extension MainMenuView {
     func renameBranch() {
         errorCenter.renameBranch = nil
         let oldName = branchDialogs.oldBranchName
-        let newName = branchDialogs.renameBranchNewName
+        let newName = branchDialogs.renameBranchNewName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !newName.isEmpty else { return }
         Task {
             switch await actionCoordinator.renameBranch(oldName: oldName, newName: newName) {
             case .succeeded:
                 branchDialogs.showRenameBranch = false
                 branchDialogs.renameBranchNewName = ""
                 branchDialogs.oldBranchName = ""
-            case .failed:
-                errorCenter.renameBranch = actionCoordinator.alert?.message
-                actionCoordinator.alert = nil
-            case .skipped:
-                break
+            case let .failed(message):
+                errorCenter.renameBranch = message
             }
         }
     }
@@ -174,11 +170,8 @@ extension MainMenuView {
             case .succeeded:
                 sync.showPullToNewBranch = false
                 sync.pullToNewBranchName = ""
-            case .failed:
-                errorCenter.sync = actionCoordinator.alert?.message
-                actionCoordinator.alert = nil
-            case .skipped:
-                break
+            case let .failed(message):
+                errorCenter.sync = message
             }
         }
     }

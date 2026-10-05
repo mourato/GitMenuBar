@@ -59,7 +59,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertTrue(branches.contains("feature/coordinator-created"))
     }
 
-    func testCreateBranchDuplicateNameFailsWithAlert() async throws {
+    func testCreateBranchDuplicateNameReturnsMessageWithoutAlert() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         try runGit(["branch", "feature/taken"], in: repoURL)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
@@ -71,9 +71,11 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         )
 
         let result = await actionCoordinator.createBranch(named: "feature/taken")
-        XCTAssertEqual(result, .failed)
-        XCTAssertEqual(actionCoordinator.alert?.title, "Create Branch Failed")
-        XCTAssertNotNil(actionCoordinator.alert?.message)
+        guard case let .failed(message) = result else {
+            return XCTFail("Expected failure, got \(result)")
+        }
+        XCTAssertFalse(message.isEmpty)
+        XCTAssertNil(actionCoordinator.alert)
     }
 
     func testRenameBranchSucceedsWithoutAlert() async throws {
@@ -96,7 +98,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertTrue(branches.contains("feature/renamed"))
     }
 
-    func testMainMenuBranchMutationsAreSkippedWhileBusy() async {
+    func testMainMenuBranchMutationsReportBusyWhileBusy() async {
         let gitManager = GitManager(repositoryPathOverride: "")
         let actionCoordinator = makeActionCoordinator(
             gitManager: gitManager,
@@ -109,9 +111,12 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         let createResult = await actionCoordinator.createBranch(named: "feature/new")
         let renameResult = await actionCoordinator.renameBranch(oldName: "main", newName: "feature/new")
         let pullResult = await actionCoordinator.pullToNewBranch(named: "feature/new")
-        XCTAssertEqual(createResult, .skipped)
-        XCTAssertEqual(renameResult, .skipped)
-        XCTAssertEqual(pullResult, .skipped)
+        let busy = MainMenuDialogMutationResult.failed(
+            message: "Another Git action is in progress. Try again when it finishes."
+        )
+        XCTAssertEqual(createResult, busy)
+        XCTAssertEqual(renameResult, busy)
+        XCTAssertEqual(pullResult, busy)
         XCTAssertNil(actionCoordinator.alert)
     }
 
