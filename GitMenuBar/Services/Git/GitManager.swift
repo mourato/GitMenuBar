@@ -496,8 +496,8 @@ class GitManager: ObservableObject {
         await atomicCommitService.diffForFilesAsync(files: files, scope: scope)
     }
 
-    func makeAtomicCommitSnapshotAsync() async -> AtomicCommitSnapshot? {
-        await atomicCommitService.makeSnapshotAsync(files: changedFiles)
+    func makeAtomicCommitSnapshotAsync() async throws -> AtomicCommitSnapshot {
+        try await atomicCommitService.makeSnapshotAsync(files: changedFiles)
     }
 
     func performHunkCommitsAsync(

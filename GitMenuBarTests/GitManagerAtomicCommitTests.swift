@@ -3,6 +3,28 @@ import XCTest
 
 @MainActor
 final class GitManagerAtomicCommitTests: XCTestCase {
+    func testSnapshotCaptureFailureThrowsDisplayMessage() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        for repositoryPath in ["", directory.path] {
+            let service = GitAtomicCommitService(
+                repositoryContext: GitRepositoryContext(overridePath: repositoryPath),
+                commandRunner: GitCommandRunner()
+            )
+            do {
+                _ = try await service.makeSnapshotAsync(files: [])
+                XCTFail("Expected snapshot capture to fail")
+            } catch {
+                guard case .commandFailed = error as? GitOperationError else {
+                    return XCTFail("Expected a Git command failure, got \(error)")
+                }
+                XCTAssertEqual(error.localizedDescription, "Could not capture the working tree snapshot.")
+            }
+        }
+    }
+
     func testDiffForChangedFilesAsyncReturnsExpectedMap() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let fileURL = repoURL.appendingPathComponent("README.md")
@@ -210,7 +232,8 @@ final class GitManagerAtomicCommitTests: XCTestCase {
         let initial = expectation(description: "refresh")
         manager.updateUncommittedFiles { initial.fulfill() }
         await fulfillment(of: [initial], timeout: 3)
-        guard let snapshot = await manager.makeAtomicCommitSnapshotAsync(), snapshot.hunks.count == 3 else {
+        let snapshot = try await manager.makeAtomicCommitSnapshotAsync()
+        guard snapshot.hunks.count == 3 else {
             return XCTFail("Expected three hunks in the snapshot")
         }
         let groups = [
@@ -278,7 +301,8 @@ final class GitManagerAtomicCommitTests: XCTestCase {
         let refresh = expectation(description: "refresh")
         manager.updateUncommittedFiles { refresh.fulfill() }
         await fulfillment(of: [refresh], timeout: 3)
-        guard let snapshot = await manager.makeAtomicCommitSnapshotAsync(), snapshot.hunks.count == 3 else {
+        let snapshot = try await manager.makeAtomicCommitSnapshotAsync()
+        guard snapshot.hunks.count == 3 else {
             return XCTFail("Expected three hunks in the snapshot")
         }
         let groups = [
@@ -313,7 +337,8 @@ final class GitManagerAtomicCommitTests: XCTestCase {
         let refresh = expectation(description: "refresh")
         manager.updateUncommittedFiles { refresh.fulfill() }
         await fulfillment(of: [refresh], timeout: 3)
-        guard let snapshot = await manager.makeAtomicCommitSnapshotAsync(), let hunk = snapshot.hunks.first else {
+        let snapshot = try await manager.makeAtomicCommitSnapshotAsync()
+        guard let hunk = snapshot.hunks.first else {
             return XCTFail("Expected a snapshot hunk")
         }
         _ = try runGit(["commit", "--allow-empty", "-m", "move HEAD"], in: repoURL)
