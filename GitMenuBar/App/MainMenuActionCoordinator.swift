@@ -61,6 +61,11 @@ enum MainMenuSidePanelActionResult: Equatable {
     case failed
 }
 
+enum MainMenuDialogMutationResult: Equatable {
+    case succeeded
+    case failed(message: String)
+}
+
 @MainActor
 final class MainMenuActionCoordinator: ObservableObject {
     private enum CommitMessageInputState: Equatable {
@@ -557,6 +562,24 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
+    func createBranch(named branchName: String) async -> MainMenuDialogMutationResult {
+        await executeDialogMutation { completion in
+            gitManager.createBranch(branchName: branchName, completion: completion)
+        }
+    }
+
+    func renameBranch(oldName: String, newName: String) async -> MainMenuDialogMutationResult {
+        await executeDialogMutation { completion in
+            gitManager.renameBranch(oldName: oldName, newName: newName, completion: completion)
+        }
+    }
+
+    func pullToNewBranch(named branchName: String) async -> MainMenuDialogMutationResult {
+        await executeDialogMutation { completion in
+            gitManager.pullToNewBranch(newBranchName: branchName, completion: completion)
+        }
+    }
+
     func performSidePanelCleanup(units: [GitCleanupUnit], snapshot: GitWorktreeSnapshot) async -> MainMenuSidePanelActionResult {
         guard !units.isEmpty else {
             return .skipped
@@ -683,6 +706,35 @@ final class MainMenuActionCoordinator: ObservableObject {
             }
             await finishSidePanelMutation(result, context: context, failureTitle: failureTitle)
             return result.inspectorActionResult
+        }
+    }
+
+    /// Runs a dialog-owned mutation: failures return to the dialog instead of the global alert.
+    private func executeDialogMutation(
+        start: (@escaping (Result<Void, Error>) -> Void) -> Void
+    ) async -> MainMenuDialogMutationResult {
+        var failureMessage: String?
+        let result = await executeContextualMutation(allowsRepositorySwitch: false) { context in
+            let result: Result<Void, Error> = await withCheckedContinuation { continuation in
+                start { value in
+                    continuation.resume(returning: value)
+                }
+            }
+            await gitManager.refreshAsync(includeReflogHistory: false, context: context)
+            onCommitCompleted?(context.repositoryPath)
+            if case let .failure(error) = result {
+                failureMessage = error.localizedDescription
+            }
+            return result.inspectorActionResult
+        }
+        await reloadSidePanelBranchData()
+        switch result {
+        case .succeeded:
+            return .succeeded
+        case .failed:
+            return .failed(message: failureMessage ?? "The Git operation failed.")
+        case .skipped:
+            return .failed(message: "Another Git action is in progress. Try again when it finishes.")
         }
     }
 
