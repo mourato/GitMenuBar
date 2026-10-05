@@ -99,6 +99,43 @@ final class ProjectCleanupStoreTests: XCTestCase {
         XCTAssertEqual(result.excludedCount, 1)
     }
 
+    func testGlobalCleanupUsesSameSkipRulesAsSingleProjectCleanup() async throws {
+        let defaults = try makeIsolatedTestDefaults(name: #function)
+        let persisted = MonitoredProjectsStore(defaults: defaults)
+        persisted.add("/tmp/gitmenubar-missing-project", name: "Missing")
+        let monitor = ProjectMonitorStore(projectStore: persisted)
+        let store = ProjectCleanupStore(projectMonitor: monitor) { project, _ in
+            .success(Self.analysis(for: project))
+        }
+        store.load()
+        for _ in 0 ..< 100 where store.loadState != .loaded {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        let row = try XCTUnwrap(store.rows.first)
+        let snapshot = try XCTUnwrap(row.snapshot)
+        let single = GitCleanupRepository(runner: GitCommandRunner()).cleanup(
+            units: row.units,
+            snapshot: snapshot,
+            repositoryPath: row.project.path
+        )
+
+        let review = try XCTUnwrap(store.reviewAll())
+        store.runCleanup(review)
+        for _ in 0 ..< 200 where store.result == nil {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+
+        let global = try XCTUnwrap(store.result?.projects.first?.items)
+        XCTAssertEqual(global.map(\.status), single.items.map(\.status))
+        XCTAssertFalse(global.isEmpty)
+        XCTAssertTrue(global.allSatisfy { item in
+            if case .skipped = item.status {
+                return true
+            }
+            return false
+        })
+    }
+
     private nonisolated static func analysis(for project: ProjectReference) -> GitCleanupAnalysis {
         let unit = unit(repositoryIdentity: project.path)
         let snapshot = GitWorktreeSnapshot(

@@ -59,7 +59,7 @@ struct WorktreeCleanupAnalyzer {
         "develop"
     ]
 
-    func analyze(_ input: GitWorktreeAnalysisInput) -> GitWorktreeSnapshot {
+    func analyze(_ input: GitWorktreeAnalysisInput, repositoryIdentity: String? = nil) -> GitWorktreeSnapshot {
         let worktreeByBranch: [String: String] = Dictionary(
             input.worktrees.compactMap { worktree in
                 guard let branchName = worktree.branchName else {
@@ -114,35 +114,18 @@ struct WorktreeCleanupAnalyzer {
             )
         }
 
-        let snapshot = GitWorktreeSnapshot(
+        let identity = repositoryIdentity ?? GitRepositoryContext.normalizedPath(input.currentWorktreePath)
+        return GitWorktreeSnapshot(
             repositoryPath: input.currentWorktreePath,
             defaultBranchName: input.defaultBranchName,
             defaultBranchRef: input.defaultBranchRef,
             analysisDescription: input.analysisDescription,
             worktrees: worktrees,
             branches: branches,
-            repositoryIdentity: GitRepositoryContext.normalizedPath(input.currentWorktreePath),
-            protectedWorktreePaths: input.protectedWorktreePaths
-        )
-        return GitWorktreeSnapshot(
-            repositoryPath: snapshot.repositoryPath,
-            defaultBranchName: snapshot.defaultBranchName,
-            defaultBranchRef: snapshot.defaultBranchRef,
-            analysisDescription: snapshot.analysisDescription,
-            worktrees: snapshot.worktrees,
-            branches: snapshot.branches,
-            repositoryIdentity: snapshot.repositoryIdentity,
-            protectedWorktreePaths: snapshot.protectedWorktreePaths,
-            cleanupUnits: GitCleanupUnit.build(
-                repositoryIdentity: snapshot.repositoryIdentity,
-                branches: snapshot.branches,
-                worktrees: snapshot.worktrees
-            ),
-            managementUnits: GitCleanupUnit.buildManagementUnits(
-                repositoryIdentity: snapshot.repositoryIdentity,
-                branches: snapshot.branches,
-                worktrees: snapshot.worktrees
-            )
+            repositoryIdentity: identity,
+            protectedWorktreePaths: input.protectedWorktreePaths,
+            cleanupUnits: Self.cleanupUnits(repositoryIdentity: identity, branches: branches, worktrees: worktrees),
+            managementUnits: Self.managementUnits(repositoryIdentity: identity, branches: branches, worktrees: worktrees)
         )
     }
 
@@ -217,5 +200,88 @@ struct WorktreeCleanupAnalyzer {
 
     private func standardizedPath(_ path: String) -> String {
         URL(fileURLWithPath: path).standardizedFileURL.path
+    }
+}
+
+// MARK: - Cleanup units
+
+extension WorktreeCleanupAnalyzer {
+    static func cleanupUnits(
+        repositoryIdentity: String,
+        branches: [GitBranchCleanupInfo],
+        worktrees: [GitWorktreeCleanupInfo]
+    ) -> [GitCleanupUnit] {
+        let worktreeByBranch: [String: GitWorktreeCleanupInfo] = Dictionary(
+            worktrees.compactMap { info in
+                guard info.status.isEligible, let branchName = info.worktree.branchName else { return nil }
+                return (branchName, info)
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        return branches.compactMap { branch in
+            guard !branch.reference.isRemote else { return nil }
+            let linkedWorktree: GitWorktreeCleanupInfo?
+            switch branch.status {
+            case .mergedIntoDefault:
+                linkedWorktree = nil
+            case let .checkedOutElsewhere(path):
+                linkedWorktree = worktrees.first {
+                    $0.status.isEligible
+                        && $0.worktree.branchName == branch.reference.name
+                        && GitRepositoryContext.normalizedPath($0.worktree.path)
+                        == GitRepositoryContext.normalizedPath(path)
+                }
+                guard linkedWorktree != nil else { return nil }
+            default:
+                return nil
+            }
+            return GitCleanupUnit(
+                repositoryIdentity: repositoryIdentity,
+                branch: branch,
+                worktree: linkedWorktree ?? worktreeByBranch[branch.reference.name],
+                mode: .safe
+            )
+        }
+    }
+
+    static func managementUnits(
+        repositoryIdentity: String,
+        branches: [GitBranchCleanupInfo],
+        worktrees: [GitWorktreeCleanupInfo]
+    ) -> [GitCleanupUnit] {
+        let localBranches = branches.filter { !$0.reference.isRemote }
+        let worktreeByBranch = Dictionary(
+            worktrees.compactMap { info -> (String, GitWorktreeCleanupInfo)? in
+                guard let branchName = info.worktree.branchName else { return nil }
+                return (branchName, info)
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var units = localBranches.map { branch in
+            GitCleanupUnit(
+                repositoryIdentity: repositoryIdentity,
+                branch: branch,
+                worktree: worktreeByBranch[branch.reference.name]
+            )
+        }
+
+        let localBranchNames = Set(localBranches.map(\.reference.name))
+        for worktree in worktrees where worktree.worktree.branchName.map({ !localBranchNames.contains($0) }) ?? true {
+            let name = worktree.worktree.branchName ?? "detached"
+            let branch = GitBranchCleanupInfo(
+                reference: GitBranchReference(name: name, headHash: worktree.worktree.headHash, isRemote: false),
+                status: .notMerged,
+                worktreePath: worktree.worktree.path
+            )
+            units.append(
+                GitCleanupUnit(
+                    repositoryIdentity: repositoryIdentity,
+                    branch: branch,
+                    worktree: worktree,
+                    mode: .removeWorktree
+                )
+            )
+        }
+        return units
     }
 }
