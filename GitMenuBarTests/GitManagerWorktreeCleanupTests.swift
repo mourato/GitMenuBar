@@ -311,7 +311,7 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
 
         XCTAssertEqual(result.items.first?.status, .succeeded)
         try runGit(["fetch", "--prune", "origin"], in: repositoryURL)
-        let remoteBranches = await gitManager.fetchRemoteBranchesAsync()
+        let remoteBranches = await gitManager.branchService.fetchRemoteBranchesAsync()
         XCTAssertFalse(remoteBranches.contains("feature/remote"))
     }
 
@@ -329,7 +329,7 @@ final class GitManagerWorktreeCleanupTests: XCTestCase {
     }
 
     private func resolvedSnapshot(from manager: GitManager) async throws -> GitWorktreeSnapshot {
-        let result = await manager.resolveWorktreeSnapshotAsync()
+        let result = await manager.branchService.resolveWorktreeSnapshotAsync()
         guard case let .success(snapshot) = result else {
             XCTFail("Expected worktree snapshot, got \(result)")
             throw NSError(domain: "GitTest", code: 1)

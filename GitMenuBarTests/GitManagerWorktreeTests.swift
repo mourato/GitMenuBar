@@ -26,7 +26,7 @@ final class GitManagerWorktreeTests: XCTestCase {
         try runGit(["checkout", "main"], in: repositoryURL)
 
         let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
-        let result = await gitManager.resolveWorktreeSnapshotAsync()
+        let result = await gitManager.branchService.resolveWorktreeSnapshotAsync()
 
         guard case let .success(snapshot) = result else {
             XCTFail("Expected snapshot success, got \(result)")
@@ -57,7 +57,7 @@ final class GitManagerWorktreeTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: linkedURL) }
 
         let gitManager = GitManager(repositoryPathOverride: repositoryURL.path)
-        let result = await gitManager.resolveWorktreeSnapshotAsync()
+        let result = await gitManager.branchService.resolveWorktreeSnapshotAsync()
 
         guard case let .success(snapshot) = result else {
             XCTFail("Expected snapshot success, got \(result)")

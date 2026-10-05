@@ -256,7 +256,7 @@ final class GitManagerWorktreeCleanupUnitTests: XCTestCase {
     }
 
     private func resolvedSnapshot(from manager: GitManager) async throws -> GitWorktreeSnapshot {
-        let result = await manager.resolveWorktreeSnapshotAsync()
+        let result = await manager.branchService.resolveWorktreeSnapshotAsync()
         guard case let .success(snapshot) = result else {
             XCTFail("Expected worktree snapshot, got \(result)")
             throw NSError(domain: "GitTest", code: 1)
