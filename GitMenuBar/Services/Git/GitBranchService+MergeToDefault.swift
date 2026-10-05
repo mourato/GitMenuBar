@@ -36,11 +36,7 @@ extension GitBranchService {
                 )
             }
             guard !stashResult.failure else {
-                return .failure(NSError(
-                    domain: "GitManager",
-                    code: 20,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to stash changes: \(stashResult.output)"]
-                ))
+                return .failure(GitOperationError.commandFailed("Failed to stash changes: \(stashResult.output)"))
             }
             stashed = true
         }
@@ -72,15 +68,7 @@ extension GitBranchService {
             }
             let isConflict = mergeResult.output.contains("CONFLICT")
                 || mergeResult.output.contains("Automatic merge failed")
-            return .failure(NSError(
-                domain: "GitManager",
-                code: 21,
-                userInfo: [
-                    NSLocalizedDescriptionKey: isConflict
-                        ? "Merge conflict! Please resolve manually."
-                        : "Merge failed: \(mergeResult.output)"
-                ]
-            ))
+            return .failure(isConflict ? GitOperationError.conflict("Merge conflict! Please resolve manually.") : GitOperationError.commandFailed("Merge failed: \(mergeResult.output)"))
         }
 
         // 5. Restore stash if needed
@@ -137,9 +125,7 @@ extension GitBranchService {
 
         if deleteLocal {
             guard featureBranch != currentBranch, featureBranch != defaultBranchName else {
-                return .failure(mergeCleanupError(
-                    code: 22,
-                    description: "Cannot delete the current or default branch."
+                return .failure(GitOperationError.invalidState("Cannot delete the current or default branch."
                 ))
             }
 
@@ -147,9 +133,7 @@ extension GitBranchService {
                 self.executeGitCommand(in: repositoryPath, args: ["branch", "--delete", featureBranch])
             }
             guard !localResult.failure else {
-                return .failure(mergeCleanupError(
-                    code: 23,
-                    description: "Failed to delete local branch '\(featureBranch)': \(localResult.output)"
+                return .failure(GitOperationError.commandFailed("Failed to delete local branch '\(featureBranch)': \(localResult.output)"
                 ))
             }
             didDeleteLocal = !localResult.failure
@@ -165,9 +149,7 @@ extension GitBranchService {
             }
             guard !remoteResult.failure else {
                 refreshHandler {}
-                return .failure(mergeCleanupError(
-                    code: 24,
-                    description: "Failed to delete remote branch '\(featureBranch)': \(remoteResult.output)"
+                return .failure(GitOperationError.commandFailed("Failed to delete remote branch '\(featureBranch)': \(remoteResult.output)"
                 ))
             }
             didDeleteRemote = !remoteResult.failure
@@ -183,14 +165,6 @@ extension GitBranchService {
             defaultBranchName: defaultBranchName,
             featureBranchName: featureBranch
         ))
-    }
-
-    private func mergeCleanupError(code: Int, description: String) -> NSError {
-        NSError(
-            domain: "GitManager",
-            code: code,
-            userInfo: [NSLocalizedDescriptionKey: description]
-        )
     }
 
     private func hasUncommittedChanges() -> Bool {

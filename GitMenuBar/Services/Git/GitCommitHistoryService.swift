@@ -45,7 +45,7 @@ final class GitCommitHistoryService: ObservableObject {
         )
     }
 
-    private func makeMissingRepositoryError() -> NSError {
+    private func makeMissingRepositoryError() -> GitOperationError {
         GitExecution.missingRepositoryError()
     }
 
@@ -133,7 +133,7 @@ final class GitCommitHistoryService: ObservableObject {
     func checkIsMergeCommitAsync(_ hash: String) async -> Result<Bool, Error> {
         let repositoryPath = storedRepoPath
         guard !repositoryPath.isEmpty else {
-            return .failure(NSError(domain: "GitManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No repository path configured"]))
+            return .failure(GitOperationError.noRepository)
         }
 
         return await runOnBackground {
@@ -204,7 +204,7 @@ final class GitCommitHistoryService: ObservableObject {
     private nonisolated func resolveMergeCommitStatus(for hash: String) -> Result<Bool, Error> {
         let result = executeGitCommand(in: storedRepoPath, args: ["rev-list", "--parents", "-n", "1", hash])
         guard !result.failure else {
-            return .failure(NSError(domain: "GitManager", code: 5, userInfo: [NSLocalizedDescriptionKey: "Failed to inspect commit: \(result.output)"]))
+            return .failure(GitOperationError.commandFailed("Failed to inspect commit: \(result.output)"))
         }
 
         let hashes = result.output
@@ -235,12 +235,12 @@ final class GitCommitHistoryService: ObservableObject {
         )
 
         guard !result.failure else {
-            return .failure(NSError(domain: "GitManager", code: 6, userInfo: [NSLocalizedDescriptionKey: "Failed to load commit diff: \(result.output)"]))
+            return .failure(GitOperationError.commandFailed("Failed to load commit diff: \(result.output)"))
         }
 
         let diff = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !diff.isEmpty else {
-            return .failure(NSError(domain: "GitManager", code: 7, userInfo: [NSLocalizedDescriptionKey: "No diff found for the selected commit."]))
+            return .failure(GitOperationError.invalidState("No diff found for the selected commit."))
         }
 
         return .success(diff)

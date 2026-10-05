@@ -47,11 +47,7 @@ enum GitExecution {
         )
     }
 
-    static func missingRepositoryError() -> NSError {
-        NSError(
-            domain: "GitManager",
-            code: 1,
-            userInfo: [NSLocalizedDescriptionKey: "No repository path configured"]
-        )
+    static func missingRepositoryError() -> GitOperationError {
+        GitOperationError.noRepository
     }
 }
