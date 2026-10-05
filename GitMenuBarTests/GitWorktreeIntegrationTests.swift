@@ -130,7 +130,7 @@ final class GitWorktreeIntegrationTests: XCTestCase {
         targets: [GitCleanupTarget],
         snapshot: GitWorktreeSnapshot
     ) async throws -> GitCleanupBatchResult {
-        let result = await manager.performCleanupAsync(targets: targets, snapshot: snapshot)
+        let result = await manager.branchService.performCleanupAsync(targets: targets, snapshot: snapshot)
         guard case let .success(batch) = result else {
             XCTFail("Expected cleanup batch success, got \(result)")
             throw NSError(domain: "GitTest", code: 2)

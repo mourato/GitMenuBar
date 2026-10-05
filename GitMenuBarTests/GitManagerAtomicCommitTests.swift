@@ -57,7 +57,7 @@ final class GitManagerAtomicCommitTests: XCTestCase {
         try "base\nfeature\n".write(to: trackedFile, atomically: true, encoding: .utf8)
         try "base\nother\n".write(to: otherFile, atomically: true, encoding: .utf8)
 
-        let result = await gitManager.commitAtomicGroupAsync(
+        let result = await gitManager.atomicCommitService.commitAtomicGroupAsync(
             files: ["feature.swift"],
             message: "feat: feature only"
         )
@@ -77,7 +77,7 @@ final class GitManagerAtomicCommitTests: XCTestCase {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        let result = await gitManager.commitAtomicGroupAsync(files: [], message: "x")
+        let result = await gitManager.atomicCommitService.commitAtomicGroupAsync(files: [], message: "x")
         if case .success = result {
             XCTFail("Expected failure for empty files")
         }

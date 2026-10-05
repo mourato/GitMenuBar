@@ -53,7 +53,7 @@ final class GitManagerWorktreeCleanupUnitTests: XCTestCase {
         })
         try runGit(["reset", "--hard", "HEAD~1"], in: repositoryURL)
 
-        let result = await gitManager.performCleanupAsync(units: [unit], snapshot: snapshot)
+        let result = await gitManager.branchService.performCleanupAsync(units: [unit], snapshot: snapshot)
         guard case let .success(batch) = result else {
             XCTFail("Expected cleanup batch success, got \(result)")
             return
@@ -83,7 +83,7 @@ final class GitManagerWorktreeCleanupUnitTests: XCTestCase {
             $0.branch.reference.name == "feature/shared"
         })
 
-        let result = await managerA.performCleanupAsync(units: [foreignUnit], snapshot: snapshotA)
+        let result = await managerA.branchService.performCleanupAsync(units: [foreignUnit], snapshot: snapshotA)
         guard case let .success(batch) = result else {
             XCTFail("Expected cleanup batch success, got \(result)")
             return
@@ -269,7 +269,7 @@ final class GitManagerWorktreeCleanupUnitTests: XCTestCase {
         units: [GitCleanupUnit],
         snapshot: GitWorktreeSnapshot
     ) async throws -> GitCleanupBatchResult {
-        let result = await manager.performCleanupAsync(units: units, snapshot: snapshot)
+        let result = await manager.branchService.performCleanupAsync(units: units, snapshot: snapshot)
         guard case let .success(batch) = result else {
             XCTFail("Expected cleanup batch success, got \(result)")
             throw NSError(domain: "GitTest", code: 2)
@@ -282,7 +282,7 @@ final class GitManagerWorktreeCleanupUnitTests: XCTestCase {
         targets: [GitCleanupTarget],
         snapshot: GitWorktreeSnapshot
     ) async throws -> GitCleanupBatchResult {
-        let result = await manager.performCleanupAsync(targets: targets, snapshot: snapshot)
+        let result = await manager.branchService.performCleanupAsync(targets: targets, snapshot: snapshot)
         guard case let .success(batch) = result else {
             XCTFail("Expected cleanup batch success, got \(result)")
             throw NSError(domain: "GitTest", code: 2)
