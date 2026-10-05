@@ -13,7 +13,7 @@ extension MainMenuView {
         guard !featureBranch.isEmpty else { return }
 
         Task {
-            let result = await gitManager.branchService.mergeFeatureIntoDefaultAsync(featureBranch: featureBranch)
+            let result = await gitManager.mergeFeatureIntoDefaultAsync(featureBranch: featureBranch)
             await MainActor.run {
                 switch result {
                 case .success:
@@ -50,7 +50,7 @@ extension MainMenuView {
         guard !featureBranch.isEmpty else { return }
 
         Task {
-            let result = await gitManager.branchService.cleanupMergedBranchAsync(
+            let result = await gitManager.cleanupMergedBranchAsync(
                 featureBranch: featureBranch,
                 cleanupOption: option
             )

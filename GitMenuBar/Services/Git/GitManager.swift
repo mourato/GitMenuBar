@@ -1797,6 +1797,30 @@ class GitManager: ObservableObject {
         await branchService.resolveBranchInfoAsync(session: session)
     }
 
+    /// Merges `featureBranch` into the default branch without deleting anything.
+    /// The implementation lives in `GitBranchService`; this facade delegates to it.
+    ///
+    /// The caller is responsible for presenting any pre-merge confirmation; this
+    /// method performs the work and refreshes state on success. Cleanup is a
+    /// separate step via ``cleanupMergedBranchAsync(featureBranch:cleanupOption:)``.
+    func mergeFeatureIntoDefaultAsync(
+        featureBranch: String
+    ) async -> Result<MergeToDefaultResult, Error> {
+        await branchService.mergeFeatureIntoDefaultAsync(featureBranch: featureBranch)
+    }
+
+    /// Deletes an already-merged feature branch locally and/or remotely. The
+    /// implementation lives in `GitBranchService`; this facade delegates to it.
+    func cleanupMergedBranchAsync(
+        featureBranch: String,
+        cleanupOption: BranchCleanupOption
+    ) async -> Result<MergeToDefaultResult, Error> {
+        await branchService.cleanupMergedBranchAsync(
+            featureBranch: featureBranch,
+            cleanupOption: cleanupOption
+        )
+    }
+
     func checkRemoteStatusAsync(context: RepositoryOperationContext) async -> Bool {
         guard !context.repositoryPath.isEmpty else { return false }
         guard await branchMatches(context) else { return false }
