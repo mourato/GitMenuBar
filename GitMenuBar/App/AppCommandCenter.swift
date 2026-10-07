@@ -262,12 +262,13 @@ enum AppCommandResolver {
 }
 
 @MainActor
-final class AppCommandCenter: ObservableObject {
-    @Published private(set) var states: [AppCommandID: AppCommandState] = [:]
-    @Published private(set) var recentProjects: [AppRecentProjectCommand] = []
-    @Published private(set) var monitoredProjects: [AppRecentProjectCommand] = []
+@Observable
+final class AppCommandCenter {
+    private(set) var states: [AppCommandID: AppCommandState] = [:]
+    private(set) var recentProjects: [AppRecentProjectCommand] = []
+    private(set) var monitoredProjects: [AppRecentProjectCommand] = []
 
-    var performInvocation: ((AppCommandInvocation) -> Void)?
+    @ObservationIgnored var performInvocation: ((AppCommandInvocation) -> Void)?
 
     func apply(_ snapshot: AppCommandSnapshot) {
         states = snapshot.states
@@ -294,7 +295,7 @@ final class AppCommandCenter: ObservableObject {
 }
 
 struct GitMenuBarCommandMenus: Commands {
-    @ObservedObject var commandCenter: AppCommandCenter
+    @Environment(AppCommandCenter.self) var commandCenter
 
     var body: some Commands {
         CommandGroup(replacing: .appSettings) {

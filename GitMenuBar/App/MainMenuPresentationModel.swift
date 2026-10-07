@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 enum MainMenuRoute: Equatable {
     case main
@@ -28,16 +29,17 @@ enum RemoteExistenceState: Equatable {
 }
 
 @MainActor
-final class MainMenuPresentationModel: ObservableObject {
-    @Published private(set) var route: MainMenuRoute = .main
-    @Published private(set) var refreshState: RefreshState = .idle
-    @Published private(set) var isFastLoading = false
-    @Published private(set) var isDetailLoading = false
-    @Published private(set) var focusCommitFieldToken = 0
-    @Published private(set) var showCommandPaletteToken = 0
-    @Published private(set) var showRepositoryOptionsToken = 0
-    @Published private(set) var createRepoSuggestionPath: String?
-    @Published private(set) var quotaInfoSnapshot: UsageQuotaSnapshot?
+@Observable
+final class MainMenuPresentationModel {
+    private(set) var route: MainMenuRoute = .main
+    private(set) var refreshState: RefreshState = .idle
+    private(set) var isFastLoading = false
+    private(set) var isDetailLoading = false
+    private(set) var focusCommitFieldToken = 0
+    private(set) var showCommandPaletteToken = 0
+    private(set) var showRepositoryOptionsToken = 0
+    private(set) var createRepoSuggestionPath: String?
+    private(set) var quotaInfoSnapshot: UsageQuotaSnapshot?
 
     func prepareForPresentation(route: MainMenuRoute, requestCommitFocus: Bool) {
         self.route = route
@@ -101,7 +103,7 @@ final class MainMenuPresentationModel: ObservableObject {
         }
     }
 
-    private var refreshGeneration = 0
+    @ObservationIgnored private var refreshGeneration = 0
 
     func suggestCreateRepo(path: String) {
         createRepoSuggestionPath = path

@@ -74,7 +74,7 @@ private struct UsageQuotaStripPreviewHarness: View {
             UsageQuotaStripView()
                 .environmentObject(previewStore(defaults: defaults))
                 .environmentObject(UsageQuotaPresentationPreferences(defaults: defaults))
-                .environmentObject(MainMenuPresentationModel())
+                .environment(MainMenuPresentationModel())
                 .frame(width: 380)
         }
     }

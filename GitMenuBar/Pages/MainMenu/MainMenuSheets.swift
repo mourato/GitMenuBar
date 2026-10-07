@@ -21,7 +21,10 @@ extension MainMenuView {
             CommitMessageEditorSheet(
                 title: commitHistoryEditCoordinator.editMode.title,
                 commit: editingCommit,
-                message: $commitHistoryEditCoordinator.draftMessage,
+                message: Binding(
+                    get: { commitHistoryEditCoordinator.draftMessage },
+                    set: { commitHistoryEditCoordinator.draftMessage = $0 }
+                ),
                 isPublishedCommit: commitHistoryEditCoordinator.isPublishedCommit,
                 isSaving: commitHistoryEditCoordinator.isSaving,
                 errorMessage: commitHistoryEditCoordinator.inlineError,

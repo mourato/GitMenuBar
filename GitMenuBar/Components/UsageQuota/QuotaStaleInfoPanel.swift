@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct StaleQuotaInfoButton: View {
-    @EnvironmentObject private var presentationModel: MainMenuPresentationModel
+    @Environment(MainMenuPresentationModel.self) private var presentationModel
     let snapshot: UsageQuotaSnapshot
 
     var body: some View {
@@ -77,7 +77,7 @@ struct QuotaStaleInfoPanel: View {
             statusNote: "openrouter credits api"
         )
     )
-    .environmentObject(MainMenuPresentationModel())
+    .environment(MainMenuPresentationModel())
     .padding()
 }
 

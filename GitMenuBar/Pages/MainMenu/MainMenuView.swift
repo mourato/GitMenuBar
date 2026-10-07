@@ -18,13 +18,13 @@ struct MainMenuView: View {
     @EnvironmentObject var gitManager: GitManager
     @EnvironmentObject var githubAuthManager: GitHubAuthManager
     @EnvironmentObject var aiCommitCoordinator: AICommitCoordinator
-    @EnvironmentObject var actionCoordinator: MainMenuActionCoordinator
-    @EnvironmentObject var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
+    @Environment(MainMenuActionCoordinator.self) var actionCoordinator
+    @Environment(CommitHistoryEditCoordinator.self) var commitHistoryEditCoordinator
     @Environment(MainMenuShortcutActionBridge.self) var shortcutActionBridge
-    @EnvironmentObject var presentationModel: MainMenuPresentationModel
+    @Environment(MainMenuPresentationModel.self) var presentationModel
     @EnvironmentObject var projectMonitor: ProjectMonitorStore
     @EnvironmentObject var usageQuotaStore: UsageQuotaStore
-    @EnvironmentObject var repositorySelectionCoordinator: RepositorySelectionCoordinator
+    @Environment(RepositorySelectionCoordinator.self) var repositorySelectionCoordinator
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Environment(\.accessibilityReduceTransparency) var reduceTransparency
     @Environment(\.colorSchemeContrast) var colorSchemeContrast

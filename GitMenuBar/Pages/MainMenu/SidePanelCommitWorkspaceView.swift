@@ -29,8 +29,8 @@ struct SidePanelCommitWorkspaceView: View {
     let onRequestDiscard: (String, WorkingTreeFileStatus) -> Void
 
     @EnvironmentObject private var gitManager: GitManager
-    @EnvironmentObject private var actionCoordinator: MainMenuActionCoordinator
-    @EnvironmentObject private var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
+    @Environment(MainMenuActionCoordinator.self) private var actionCoordinator
+    @Environment(CommitHistoryEditCoordinator.self) private var commitHistoryEditCoordinator
     @State private var isStagedCollapsed = false
     @State private var isUnstagedCollapsed = false
 

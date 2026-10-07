@@ -1,4 +1,3 @@
-import Combine
 @testable import GitMenuBar
 import XCTest
 
@@ -58,21 +57,20 @@ final class RepositorySelectionCoordinatorTests: XCTestCase {
         XCTAssertTrue(fixture.monitor.monitoredProjects.isEmpty)
     }
 
-    func testSelectionPublishesOnlyActualPathChanges() throws {
+    func testSelectionUpdatesOnlyOnActualPathChanges() throws {
         let fixture = try Fixture(isGitRepository: false)
         defer { fixture.remove() }
-        var changes: [String] = []
-        let observation = fixture.coordinator.$selectedPath
-            .dropFirst()
-            .sink { changes.append($0) }
+
+        XCTAssertEqual(fixture.coordinator.selectedPath, "")
 
         _ = fixture.coordinator.select(path: fixture.path, allowsNonGitSelection: true)
-        _ = fixture.coordinator.select(path: fixture.path + "/.", allowsNonGitSelection: true)
-        _ = fixture.coordinator.select(path: fixture.secondPath, allowsNonGitSelection: true)
+        XCTAssertEqual(fixture.coordinator.selectedPath, fixture.normalizedPath)
 
-        XCTAssertEqual(changes, [fixture.normalizedPath, fixture.normalizedSecondPath])
+        _ = fixture.coordinator.select(path: fixture.path + "/.", allowsNonGitSelection: true)
+        XCTAssertEqual(fixture.coordinator.selectedPath, fixture.normalizedPath)
+
+        _ = fixture.coordinator.select(path: fixture.secondPath, allowsNonGitSelection: true)
         XCTAssertEqual(fixture.coordinator.selectedPath, fixture.normalizedSecondPath)
-        withExtendedLifetime(observation) {}
     }
 
     @MainActor

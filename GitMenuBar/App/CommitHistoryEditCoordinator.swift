@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 enum CommitHistoryEditMode: Equatable {
     case manual
@@ -21,17 +22,18 @@ struct CommitHistoryRewriteConfirmation: Identifiable, Equatable {
 }
 
 @MainActor
-final class CommitHistoryEditCoordinator: ObservableObject {
-    @Published private(set) var editingCommit: Commit?
-    @Published private(set) var editMode: CommitHistoryEditMode = .manual
-    @Published private(set) var isEditorPresented = false
-    @Published private(set) var isPreparing = false
-    @Published private(set) var isSaving = false
-    @Published private(set) var isPublishedCommit = false
-    @Published var draftMessage = ""
-    @Published var inlineError: String?
-    @Published var alert: MainMenuActionAlert?
-    @Published var rewriteConfirmation: CommitHistoryRewriteConfirmation?
+@Observable
+final class CommitHistoryEditCoordinator {
+    private(set) var editingCommit: Commit?
+    private(set) var editMode: CommitHistoryEditMode = .manual
+    private(set) var isEditorPresented = false
+    private(set) var isPreparing = false
+    private(set) var isSaving = false
+    private(set) var isPublishedCommit = false
+    var draftMessage = ""
+    var inlineError: String?
+    var alert: MainMenuActionAlert?
+    var rewriteConfirmation: CommitHistoryRewriteConfirmation?
 
     private let gitManager: GitManager
     private let aiCommitCoordinator: AICommitCoordinator

@@ -125,7 +125,13 @@ extension MainMenuView {
                     }
                 )
             ) { commitMessageEditorSheet() }
-            .sheet(isPresented: $actionCoordinator.showSyncOptions, content: syncOptionsSheet)
+            .sheet(
+                isPresented: Binding(
+                    get: { actionCoordinator.showSyncOptions },
+                    set: { actionCoordinator.showSyncOptions = $0 }
+                ),
+                content: syncOptionsSheet
+            )
             .sheet(isPresented: $branchDialogs.showCreateBranch, content: createBranchSheet)
             .sheet(isPresented: $sync.showPullToNewBranch, content: pullToNewBranchSheet)
             .sheet(isPresented: $workspace.showAtomicCommitSheet, content: atomicCommitSheet)

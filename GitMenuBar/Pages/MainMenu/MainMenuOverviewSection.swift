@@ -16,7 +16,7 @@ struct MainMenuOverviewSection: View {
     let history: SidePanelHistoryModel?
 
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-    @EnvironmentObject private var actionCoordinator: MainMenuActionCoordinator
+    @Environment(MainMenuActionCoordinator.self) private var actionCoordinator
     @State private var pendingReset: Commit?
 
     var body: some View {

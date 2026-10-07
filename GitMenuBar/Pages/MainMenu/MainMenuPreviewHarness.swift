@@ -6,13 +6,13 @@ struct MainMenuPreviewHarness<Content: View>: View {
     @StateObject private var githubAuthManager: GitHubAuthManager
     @StateObject private var aiProviderStore: AIProviderStore
     @StateObject private var aiCommitCoordinator: AICommitCoordinator
-    @StateObject private var actionCoordinator: MainMenuActionCoordinator
-    @StateObject private var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
+    @State private var actionCoordinator: MainMenuActionCoordinator
+    @State private var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
     @State private var shortcutActionBridge = MainMenuShortcutActionBridge()
-    @StateObject private var presentationModel = MainMenuPresentationModel()
+    @State private var presentationModel = MainMenuPresentationModel()
     @StateObject private var usageQuotaStore = UsageQuotaStore()
     @StateObject private var projectMonitor: ProjectMonitorStore
-    @StateObject private var repositorySelectionCoordinator: RepositorySelectionCoordinator
+    @State private var repositorySelectionCoordinator: RepositorySelectionCoordinator
 
     private let width: CGFloat
     private let showsTransparentTitlebar: Bool
@@ -46,7 +46,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
 
         _gitManager = StateObject(wrappedValue: previewGitManager)
         _projectMonitor = StateObject(wrappedValue: previewProjectMonitor)
-        _repositorySelectionCoordinator = StateObject(
+        _repositorySelectionCoordinator = State(
             wrappedValue: RepositorySelectionCoordinator(
                 gitManager: previewGitManager,
                 projectMonitor: previewProjectMonitor
@@ -55,13 +55,13 @@ struct MainMenuPreviewHarness<Content: View>: View {
         _githubAuthManager = StateObject(wrappedValue: previewGitHubAuthManager)
         _aiProviderStore = StateObject(wrappedValue: previewProviderStore)
         _aiCommitCoordinator = StateObject(wrappedValue: previewCoordinator)
-        _actionCoordinator = StateObject(
+        _actionCoordinator = State(
             wrappedValue: MainMenuActionCoordinator(
                 gitManager: previewGitManager,
                 aiCommitCoordinator: previewCoordinator
             )
         )
-        _commitHistoryEditCoordinator = StateObject(
+        _commitHistoryEditCoordinator = State(
             wrappedValue: CommitHistoryEditCoordinator(
                 gitManager: previewGitManager,
                 aiCommitCoordinator: previewCoordinator
@@ -80,13 +80,13 @@ struct MainMenuPreviewHarness<Content: View>: View {
             .environmentObject(githubAuthManager)
             .environmentObject(aiProviderStore)
             .environmentObject(aiCommitCoordinator)
-            .environmentObject(actionCoordinator)
-            .environmentObject(commitHistoryEditCoordinator)
+            .environment(actionCoordinator)
+            .environment(commitHistoryEditCoordinator)
             .environment(shortcutActionBridge)
-            .environmentObject(presentationModel)
+            .environment(presentationModel)
             .environmentObject(usageQuotaStore)
             .environmentObject(projectMonitor)
-            .environmentObject(repositorySelectionCoordinator)
+            .environment(repositorySelectionCoordinator)
             .frame(width: width)
             .modifier(TransparentTitlebarPreviewChrome(isVisible: showsTransparentTitlebar))
     }

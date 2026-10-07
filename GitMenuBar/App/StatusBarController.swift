@@ -275,7 +275,6 @@ final class StatusBarController: NSObject {
             gitManager.$remoteUrl.map { _ in () }.eraseToAnyPublisher(),
             githubAuthManager.$isAuthenticated.map { _ in () }.eraseToAnyPublisher(),
             projectMonitor.$snapshots.map { _ in () }.eraseToAnyPublisher(),
-            presentationModel.$route.map { _ in () }.eraseToAnyPublisher(),
             NotificationCenter.default.publisher(
                 for: UserDefaults.didChangeNotification,
                 object: UserDefaults.standard
@@ -292,6 +291,21 @@ final class StatusBarController: NSObject {
                 self?.updateMainWindowToolbar()
             }
             .store(in: &cancellables)
+
+        observePresentationRoute()
+    }
+
+    private func observePresentationRoute() {
+        withObservationTracking {
+            _ = presentationModel.route
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.refreshAppCommands()
+                self.updateMainWindowToolbar()
+                self.observePresentationRoute()
+            }
+        }
     }
 
     private func setupContextMenu() {
@@ -411,14 +425,14 @@ final class StatusBarController: NSObject {
         .environmentObject(githubAuthManager)
         .environmentObject(aiProviderStore)
         .environmentObject(aiCommitCoordinator)
-        .environmentObject(actionCoordinator)
-        .environmentObject(commitHistoryEditCoordinator)
+        .environment(actionCoordinator)
+        .environment(commitHistoryEditCoordinator)
         .environment(shortcutActionBridge)
-        .environmentObject(presentationModel)
+        .environment(presentationModel)
         .environmentObject(usageQuotaStore)
         .environmentObject(usageQuotaPresentationPreferences)
         .environmentObject(projectMonitor)
-        .environmentObject(repositorySelectionCoordinator)
+        .environment(repositorySelectionCoordinator)
         .environmentObject(projectCleanupStore)
 
         return AnyView(rootView)
