@@ -74,23 +74,3 @@ final class GitHubKeychainTokenStore: GitHubTokenStore {
         SecItemDelete(query as CFDictionary)
     }
 }
-
-final class InMemoryGitHubTokenStore: GitHubTokenStore, @unchecked Sendable {
-    private var token: String?
-
-    init(token: String? = nil) {
-        self.token = token
-    }
-
-    func saveToken(_ token: String) {
-        self.token = token
-    }
-
-    func storedToken() -> String? {
-        token
-    }
-
-    func deleteStoredToken() {
-        token = nil
-    }
-}

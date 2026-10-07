@@ -223,40 +223,43 @@ private enum SettingsAppearance {
     GeneralSettingsPaneView(loginItemManager: LoginItemManager())
 }
 
-#Preview("Git Settings Pane") {
-    let gitManager = GitManager(repositoryPathOverride: "/Users/usuario/Documents/Projects/gitmenubar")
-    let githubAuthManager = GitHubAuthManager(
-        tokenStore: InMemoryGitHubTokenStore(),
-        preloadStoredToken: false
-    )
+#if DEBUG
+    #Preview("Git Settings Pane") {
+        let gitManager = GitManager(repositoryPathOverride: "/Users/usuario/Documents/Projects/gitmenubar")
+        let githubAuthManager = GitHubAuthManager(
+            tokenStore: InMemoryGitHubTokenStore(),
+            preloadStoredToken: false
+        )
 
-    return GitSettingsPaneView(
-        gitManager: gitManager,
-        githubAuthManager: githubAuthManager,
-        onSetAutoHideSuspended: { _ in }
-    )
-    .environmentObject(githubAuthManager)
-}
+        return GitSettingsPaneView(
+            gitManager: gitManager,
+            githubAuthManager: githubAuthManager,
+            onSetAutoHideSuspended: { _ in }
+        )
+        .environmentObject(githubAuthManager)
+    }
 
-#Preview("AI Settings Pane") {
-    let gitManager = GitManager(repositoryPathOverride: "/tmp")
-    let providerStore = AIProviderStore()
-    let chatGPTSubscription = ChatGPTSubscriptionManager()
-    let coordinator = AICommitCoordinator(
-        providerStore: providerStore,
-        keychainStore: InMemoryAIAPIKeyStore(),
-        messageService: AICommitMessageService(chatGPTGenerator: chatGPTSubscription),
-        gitManager: gitManager,
-        chatGPTSubscription: chatGPTSubscription
-    )
+    #Preview("AI Settings Pane") {
+        let gitManager = GitManager(repositoryPathOverride: "/tmp")
+        let providerStore = AIProviderStore()
+        let chatGPTSubscription = ChatGPTSubscriptionManager()
+        let coordinator = AICommitCoordinator(
+            providerStore: providerStore,
+            keychainStore: InMemoryAIAPIKeyStore(),
+            messageService: AICommitMessageService(chatGPTGenerator: chatGPTSubscription),
+            gitManager: gitManager,
+            chatGPTSubscription: chatGPTSubscription
+        )
 
-    return AISettingsPaneView()
-        .environmentObject(providerStore)
-        .environmentObject(coordinator)
-        .environmentObject(chatGPTSubscription)
-        .environmentObject(UsageQuotaStore())
-        .environmentObject(UsageQuotaPresentationPreferences())
-}
+        return AISettingsPaneView()
+            .environmentObject(providerStore)
+            .environmentObject(coordinator)
+            .environmentObject(chatGPTSubscription)
+            .environmentObject(UsageQuotaStore())
+            .environmentObject(UsageQuotaPresentationPreferences())
+    }
+
+#endif
 
 #Preview("Shortcuts Settings Pane") {
     let defaults = UserDefaults(suiteName: "GitMenuBar.ShortcutsSettingsPreview") ?? .standard

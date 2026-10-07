@@ -159,44 +159,47 @@ struct AIProviderManagementSheet: View {
     }
 }
 
-private func makeAIProviderManagementPreviewStore(populated: Bool) -> AIProviderStore {
-    let store = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
-    if populated {
-        store.upsertProvider(AIProviderConfig(
-            name: "OpenAI Team",
-            type: .openAI,
-            endpointURL: AIProviderType.openAI.defaultEndpoint,
-            selectedModel: "gpt-5",
-            availableModels: ["gpt-5"]
-        ))
+#if DEBUG
+    private func makeAIProviderManagementPreviewStore(populated: Bool) -> AIProviderStore {
+        let store = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
+        if populated {
+            store.upsertProvider(AIProviderConfig(
+                name: "OpenAI Team",
+                type: .openAI,
+                endpointURL: AIProviderType.openAI.defaultEndpoint,
+                selectedModel: "gpt-5",
+                availableModels: ["gpt-5"]
+            ))
+        }
+        return store
     }
-    return store
-}
 
-#Preview("AI Provider Management") {
-    let providerStore = makeAIProviderManagementPreviewStore(populated: false)
-    let coordinator = AICommitCoordinator(
-        providerStore: providerStore,
-        keychainStore: InMemoryAIAPIKeyStore(),
-        messageService: AICommitMessageService(),
-        gitManager: GitManager(repositoryPathOverride: "/tmp")
-    )
+    #Preview("AI Provider Management") {
+        let providerStore = makeAIProviderManagementPreviewStore(populated: false)
+        let coordinator = AICommitCoordinator(
+            providerStore: providerStore,
+            keychainStore: InMemoryAIAPIKeyStore(),
+            messageService: AICommitMessageService(),
+            gitManager: GitManager(repositoryPathOverride: "/tmp")
+        )
 
-    AIProviderManagementSheet()
-        .environmentObject(providerStore)
-        .environmentObject(coordinator)
-}
+        AIProviderManagementSheet()
+            .environmentObject(providerStore)
+            .environmentObject(coordinator)
+    }
 
-#Preview("AI Provider Management with providers") {
-    let providerStore = makeAIProviderManagementPreviewStore(populated: true)
-    let coordinator = AICommitCoordinator(
-        providerStore: providerStore,
-        keychainStore: InMemoryAIAPIKeyStore(),
-        messageService: AICommitMessageService(),
-        gitManager: GitManager(repositoryPathOverride: "/tmp")
-    )
+    #Preview("AI Provider Management with providers") {
+        let providerStore = makeAIProviderManagementPreviewStore(populated: true)
+        let coordinator = AICommitCoordinator(
+            providerStore: providerStore,
+            keychainStore: InMemoryAIAPIKeyStore(),
+            messageService: AICommitMessageService(),
+            gitManager: GitManager(repositoryPathOverride: "/tmp")
+        )
 
-    AIProviderManagementSheet()
-        .environmentObject(providerStore)
-        .environmentObject(coordinator)
-}
+        AIProviderManagementSheet()
+            .environmentObject(providerStore)
+            .environmentObject(coordinator)
+    }
+
+#endif

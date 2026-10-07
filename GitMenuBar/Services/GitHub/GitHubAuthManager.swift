@@ -36,9 +36,11 @@ class GitHubAuthManager: ObservableObject {
     ) {
         let usesEphemeralStores = AppExecutionContext.usesEphemeralCredentialStores
         self.tokenStore = tokenStore ?? {
-            if usesEphemeralStores {
-                return InMemoryGitHubTokenStore()
-            }
+            #if DEBUG
+                if usesEphemeralStores {
+                    return InMemoryGitHubTokenStore()
+                }
+            #endif
             return GitHubKeychainTokenStore()
         }()
         let shouldPreloadStoredToken = preloadStoredToken ?? !usesEphemeralStores

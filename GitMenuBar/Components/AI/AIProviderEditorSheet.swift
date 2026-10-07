@@ -194,17 +194,20 @@ struct AIProviderEditorSheet: View {
     }
 }
 
-#Preview("AI Provider Editor") {
-    let gitManager = GitManager(repositoryPathOverride: "/tmp")
-    let providerStore = AIProviderStore()
-    let keychainStore = InMemoryAIAPIKeyStore()
-    let coordinator = AICommitCoordinator(
-        providerStore: providerStore,
-        keychainStore: keychainStore,
-        messageService: AICommitMessageService(),
-        gitManager: gitManager
-    )
+#if DEBUG
+    #Preview("AI Provider Editor") {
+        let gitManager = GitManager(repositoryPathOverride: "/tmp")
+        let providerStore = AIProviderStore()
+        let keychainStore = InMemoryAIAPIKeyStore()
+        let coordinator = AICommitCoordinator(
+            providerStore: providerStore,
+            keychainStore: keychainStore,
+            messageService: AICommitMessageService(),
+            gitManager: gitManager
+        )
 
-    AIProviderEditorSheet(existingProvider: nil, onSave: { _, _ in Result<Void, Error>.success(()) })
-        .environmentObject(coordinator)
-}
+        AIProviderEditorSheet(existingProvider: nil, onSave: { _, _ in Result<Void, Error>.success(()) })
+            .environmentObject(coordinator)
+    }
+
+#endif

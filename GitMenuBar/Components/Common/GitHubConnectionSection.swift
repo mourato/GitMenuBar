@@ -105,22 +105,25 @@ struct GitHubConnectionSection: View {
     }
 }
 
-#Preview("GitHub Connection") {
-    let authManager = GitHubAuthManager(
-        tokenStore: InMemoryGitHubTokenStore(),
-        preloadStoredToken: false
-    )
-    authManager.isAuthenticated = true
-    authManager.username = "octocat"
+#if DEBUG
+    #Preview("GitHub Connection") {
+        let authManager = GitHubAuthManager(
+            tokenStore: InMemoryGitHubTokenStore(),
+            preloadStoredToken: false
+        )
+        authManager.isAuthenticated = true
+        authManager.username = "octocat"
 
-    return Form {
-        Section {
-            GitHubConnectionSection(setAutoHideSuspended: { _ in })
-        } header: {
-            SettingsFormSectionHeader(title: "GitHub", icon: "globe")
+        return Form {
+            Section {
+                GitHubConnectionSection(setAutoHideSuspended: { _ in })
+            } header: {
+                SettingsFormSectionHeader(title: "GitHub", icon: "globe")
+            }
         }
+        .formStyle(.grouped)
+        .environmentObject(authManager)
+        .frame(width: 560, height: 180)
     }
-    .formStyle(.grouped)
-    .environmentObject(authManager)
-    .frame(width: 560, height: 180)
-}
+
+#endif

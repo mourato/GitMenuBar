@@ -21,18 +21,6 @@ struct UserDefaultsAIProviderStoreDataStore: AIProviderStoreDataStore {
     }
 }
 
-final class InMemoryAIProviderStoreDataStore: AIProviderStoreDataStore {
-    private var values: [String: Data] = [:]
-
-    func data(forKey key: String) -> Data? {
-        values[key]
-    }
-
-    func set(_ data: Data, forKey key: String) {
-        values[key] = data
-    }
-}
-
 final class AIProviderStore: ObservableObject {
     /// App AI prefs use the app suite (same plist as `.standard` in the app).
     nonisolated(unsafe) static let sharedDefaults = UserDefaults(suiteName: "com.mourato.GitMenuBar") ?? .standard

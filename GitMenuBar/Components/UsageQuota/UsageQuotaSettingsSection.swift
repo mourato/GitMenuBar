@@ -174,29 +174,32 @@ struct UsageQuotaSettingsSection: View {
     }
 }
 
-#Preview("Usage Quota Settings") {
-    let credentialStore = InMemoryAIAPIKeyStore()
-    let providers: [any UsageQuotaProviding] = [
-        ClaudeCodeUsageProvider(),
-        CodexUsageProvider(),
-        CursorUsageProvider(),
-        OpenRouterUsageProvider(keyStore: credentialStore),
-        GeminiUsageProvider(),
-        AntigravityUsageProvider()
-    ]
+#if DEBUG
+    #Preview("Usage Quota Settings") {
+        let credentialStore = InMemoryAIAPIKeyStore()
+        let providers: [any UsageQuotaProviding] = [
+            ClaudeCodeUsageProvider(),
+            CodexUsageProvider(),
+            CursorUsageProvider(),
+            OpenRouterUsageProvider(keyStore: credentialStore),
+            GeminiUsageProvider(),
+            AntigravityUsageProvider()
+        ]
 
-    Form {
-        Section {
-            UsageQuotaSettingsSection()
-        } header: {
-            SettingsFormSectionHeader(
-                title: "Quotas",
-                icon: "gauge.with.dots.needle.33percent"
-            )
+        Form {
+            Section {
+                UsageQuotaSettingsSection()
+            } header: {
+                SettingsFormSectionHeader(
+                    title: "Quotas",
+                    icon: "gauge.with.dots.needle.33percent"
+                )
+            }
         }
+        .formStyle(.grouped)
+        .environmentObject(UsageQuotaStore(providers: providers))
+        .environmentObject(UsageQuotaPresentationPreferences())
+        .frame(width: 560, height: 280)
     }
-    .formStyle(.grouped)
-    .environmentObject(UsageQuotaStore(providers: providers))
-    .environmentObject(UsageQuotaPresentationPreferences())
-    .frame(width: 560, height: 280)
-}
+
+#endif
