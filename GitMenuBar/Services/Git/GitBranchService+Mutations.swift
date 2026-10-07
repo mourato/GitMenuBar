@@ -70,37 +70,73 @@ extension GitBranchService {
     }
 
     func createBranchFromCurrentHead(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard !storedRepoPath.isEmpty else {
-            completion(.failure(GitOperationError.noRepository))
-            return
+        createBranch(branchName: branchName, fromBranch: nil, completion: completion)
+    }
+
+    func switchBranchAsync(
+        branchName: String,
+        repositoryPath: String? = nil
+    ) async -> Result<Void, Error> {
+        let targetPath = repositoryPath ?? storedRepoPath
+        guard !targetPath.isEmpty else {
+            return .failure(GitOperationError.noRepository)
         }
 
-        let trimmedName = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            completion(.failure(GitOperationError.invalidInput("Branch name cannot be empty")))
-            return
+        // Check if we have uncommitted changes
+        let statusResult = await runOnBackground {
+            self.executeGitCommand(in: targetPath, args: ["status", "--porcelain"])
         }
+        let hasChanges = !statusResult.output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
-        Task {
-            let repositoryPath = storedRepoPath
-            let result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["checkout", "-b", trimmedName])
+        var stashCreated = false
+
+        // If we have changes, stash them first
+        if hasChanges {
+            let stashResult = await runOnBackground {
+                self.executeGitCommand(
+                    in: targetPath,
+                    args: ["stash", "push", "-u", "-m", "GitMenuBar auto-stash for branch switch"]
+                )
             }
 
-            if result.failure {
-                await publishOnMainActor {
-                    completion(.failure(GitOperationError.commandFailed("Failed to create branch: \(result.output)"
-                    )))
-                }
-            } else {
-                print("Successfully created and switched to branch \(trimmedName)")
-                await publishOnMainActor {
-                    self.refreshHandler {
-                        completion(.success(()))
-                    }
+            if stashResult.failure {
+                return .failure(GitOperationError.commandFailed("Failed to save changes: \(stashResult.output)"))
+            }
+            stashCreated = true
+            print("Stashed changes before switching branches")
+        }
+
+        // Try to switch/checkout branch
+        let checkoutResult = await runOnBackground {
+            self.executeGitCommand(in: targetPath, args: ["checkout", branchName])
+        }
+
+        if checkoutResult.failure {
+            // If checkout failed and we stashed, try to restore the stash
+            if stashCreated {
+                _ = await runOnBackground {
+                    self.executeGitCommand(in: targetPath, args: ["stash", "pop"])
                 }
             }
+            return .failure(GitOperationError.commandFailed("Failed to switch branch: \(checkoutResult.output)"))
         }
+
+        print("Successfully switched to branch: \(branchName)")
+
+        // If we stashed changes, restore them
+        if stashCreated {
+            let popResult = await runOnBackground {
+                self.executeGitCommand(in: targetPath, args: ["stash", "pop"])
+            }
+
+            if popResult.failure {
+                // Stash pop failed - likely due to conflicts
+                return .failure(GitOperationError.conflict("Switched branches, but couldn't reapply your changes due to conflicts. Run 'git stash pop' manually to resolve."))
+            }
+            print("Restored stashed changes after branch switch")
+        }
+
+        return .success(())
     }
 
     func switchBranch(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
@@ -109,82 +145,66 @@ extension GitBranchService {
             return
         }
 
-        Task {
-            let repositoryPath = storedRepoPath
-            // Check if we have uncommitted changes
-            let statusResult = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["status", "--porcelain"])
-            }
-            let hasChanges = !statusResult.output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-
-            var stashCreated = false
-
-            // If we have changes, stash them first
-            if hasChanges {
-                let stashResult = await runOnBackground {
-                    self.executeGitCommand(
-                        in: repositoryPath,
-                        args: ["stash", "push", "-u", "-m", "GitMenuBar auto-stash for branch switch"]
-                    )
-                }
-
-                if stashResult.failure {
-                    await publishOnMainActor {
-                        completion(.failure(GitOperationError.commandFailed("Failed to save changes: \(stashResult.output)"
-                        )))
-                    }
-                    return
-                }
-                stashCreated = true
-                print("Stashed changes before switching branches")
-            }
-
-            // Try to switch/checkout branch
-            let checkoutResult = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["checkout", branchName])
-            }
-
-            if checkoutResult.failure {
-                // If checkout failed and we stashed, try to restore the stash
-                if stashCreated {
-                    _ = await runOnBackground {
-                        self.executeGitCommand(in: repositoryPath, args: ["stash", "pop"])
-                    }
-                }
-                await publishOnMainActor {
-                    completion(.failure(GitOperationError.commandFailed("Failed to switch branch: \(checkoutResult.output)"
-                    )))
-                }
-                return
-            }
-
-            print("Successfully switched to branch: \(branchName)")
-
-            // If we stashed changes, restore them
-            if stashCreated {
-                let popResult = await runOnBackground {
-                    self.executeGitCommand(in: repositoryPath, args: ["stash", "pop"])
-                }
-
-                if popResult.failure {
-                    // Stash pop failed - likely due to conflicts
-                    await publishOnMainActor {
-                        completion(.failure(GitOperationError.conflict("Switched branches, but couldn't reapply your changes due to conflicts. "
-                                + "Run 'git stash pop' manually to resolve."
-                        )))
-                    }
-                    return
-                }
-                print("Restored stashed changes after branch switch")
-            }
-
-            // Refresh all status after switch
-            await publishOnMainActor {
+        Task { @MainActor in
+            let result = await switchBranchAsync(branchName: branchName)
+            switch result {
+            case .success:
                 self.refreshHandler {
                     completion(.success(()))
                 }
+            case let .failure(error):
+                completion(.failure(error))
             }
         }
+    }
+
+    func createBranchAsync(
+        branchName: String,
+        fromBranch: String? = nil,
+        repositoryPath: String? = nil
+    ) async -> Result<Void, Error> {
+        let trimmedName = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            return .failure(GitOperationError.invalidInput("Branch name cannot be empty"))
+        }
+
+        let targetPath = repositoryPath ?? storedRepoPath
+        guard !targetPath.isEmpty else {
+            return .failure(GitOperationError.noRepository)
+        }
+
+        let args = {
+            var args = ["checkout", "-b", trimmedName]
+            if let fromBranch, !fromBranch.isEmpty {
+                args.append(fromBranch)
+            }
+            return args
+        }()
+
+        let result = await runOnBackground {
+            self.executeGitCommand(in: targetPath, args: args)
+        }
+
+        if result.failure {
+            let output = result.output
+            var friendlyMessage = "Failed to create branch"
+
+            if output.contains("already exists") {
+                friendlyMessage = "Branch '\(trimmedName)' already exists"
+            } else if output.contains("not a valid branch name") || output.contains("invalid ref format") {
+                friendlyMessage = "Invalid branch name"
+            } else if output.contains("not found") || output.contains("does not exist") {
+                friendlyMessage = "Source branch not found"
+            } else {
+                let errorSnippet = output.components(separatedBy: "\n").first ?? output
+                friendlyMessage = errorSnippet.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+
+            return .failure(GitOperationError.commandFailed(friendlyMessage))
+        }
+
+        print("Successfully created and switched to branch: \(trimmedName)")
+        return .success(())
     }
 
     func createBranch(branchName: String, fromBranch: String? = nil, completion: @escaping (Result<Void, Error>) -> Void) {
@@ -193,58 +213,42 @@ extension GitBranchService {
             return
         }
 
-        // Validate branch name (basic validation)
-        let trimmedName = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            completion(.failure(GitOperationError.invalidInput("Branch name cannot be empty")))
-            return
+        Task { @MainActor in
+            let result = await createBranchAsync(branchName: branchName, fromBranch: fromBranch)
+            switch result {
+            case .success:
+                self.refreshHandler {
+                    completion(.success(()))
+                }
+            case let .failure(error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func mergeBranchAsync(
+        fromBranch: String,
+        repositoryPath: String? = nil
+    ) async -> Result<Void, Error> {
+        let targetPath = repositoryPath ?? storedRepoPath
+        guard !targetPath.isEmpty else {
+            return .failure(GitOperationError.noRepository)
         }
 
-        Task {
-            let repositoryPath = storedRepoPath
-            // Create branch from specified branch or current HEAD
-            let args = {
-                var args = ["checkout", "-b", trimmedName]
-                if let fromBranch, !fromBranch.isEmpty {
-                    args.append(fromBranch)
-                }
-                return args
-            }()
+        let result = await runOnBackground {
+            self.executeGitCommand(in: targetPath, args: ["merge", fromBranch])
+        }
 
-            let result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: args)
-            }
-
-            if result.failure {
-                // Parse common error cases for friendly messages
-                let output = result.output
-                var friendlyMessage = "Failed to create branch"
-
-                if output.contains("already exists") {
-                    friendlyMessage = "Branch '\(trimmedName)' already exists"
-                } else if output.contains("not a valid branch name") || output.contains("invalid ref format") {
-                    friendlyMessage = "Invalid branch name"
-                } else if output.contains("not found") || output.contains("does not exist") {
-                    friendlyMessage = "Source branch not found"
-                } else {
-                    // Show a trimmed version of the error for unexpected cases
-                    let errorSnippet = output.components(separatedBy: "\n").first ?? output
-                    friendlyMessage = errorSnippet.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-
-                await publishOnMainActor {
-                    completion(.failure(GitOperationError.commandFailed(friendlyMessage)))
-                }
+        if result.failure {
+            if result.output.contains("CONFLICT") || result.output.contains("Automatic merge failed") {
+                return .failure(GitOperationError.conflict("Merge conflict! Please resolve manually."))
             } else {
-                print("Successfully created and switched to branch: \(trimmedName)")
-                // Refresh all status after creating branch
-                await publishOnMainActor {
-                    self.refreshHandler {
-                        completion(.success(()))
-                    }
-                }
+                return .failure(GitOperationError.commandFailed("Failed to merge: \(result.output)"))
             }
         }
+
+        print("Successfully merged \(fromBranch) into current branch")
+        return .success(())
     }
 
     func mergeBranch(fromBranch: String, completion: @escaping (Result<Void, Error>) -> Void) {
@@ -253,36 +257,66 @@ extension GitBranchService {
             return
         }
 
-        Task {
-            let repositoryPath = storedRepoPath
-            // Perform the merge
-            let result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["merge", fromBranch])
-            }
-
-            if result.failure {
-                // Check if it's a merge conflict
-                if result.output.contains("CONFLICT") || result.output.contains("Automatic merge failed") {
-                    await publishOnMainActor {
-                        completion(.failure(GitOperationError.conflict("Merge conflict! Please resolve manually."
-                        )))
-                    }
-                } else {
-                    await publishOnMainActor {
-                        completion(.failure(GitOperationError.commandFailed("Failed to merge: \(result.output)"
-                        )))
-                    }
+        Task { @MainActor in
+            let result = await mergeBranchAsync(fromBranch: fromBranch)
+            switch result {
+            case .success:
+                self.refreshHandler {
+                    completion(.success(()))
                 }
-            } else {
-                print("Successfully merged \(fromBranch) into current branch")
-                // Refresh all status after merge
-                await publishOnMainActor {
-                    self.refreshHandler {
-                        completion(.success(()))
-                    }
-                }
+            case let .failure(error):
+                completion(.failure(error))
             }
         }
+    }
+
+    func deleteBranchAsync(
+        branchName: String,
+        force: Bool = false,
+        repositoryPath: String? = nil
+    ) async -> Result<Void, Error> {
+        let targetPath = repositoryPath ?? storedRepoPath
+        guard !targetPath.isEmpty else {
+            return .failure(GitOperationError.noRepository)
+        }
+
+        if branchName == currentBranch {
+            return .failure(GitOperationError.invalidState("Cannot delete the currently checked out branch"))
+        }
+
+        let expectedHash = await runOnBackground { () -> String? in
+            let result = self.executeGitCommand(
+                in: targetPath,
+                args: ["rev-parse", "--verify", "refs/heads/\(branchName)"]
+            )
+            guard !result.failure else { return nil }
+            return result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard let expectedHash, !expectedHash.isEmpty else {
+            return .failure(GitOperationError.invalidState("Branch '\(branchName)' no longer exists."))
+        }
+
+        if let reason = await branchDeletionValidation(
+            branchName: branchName,
+            expectedHash: expectedHash,
+            in: targetPath
+        ) {
+            return .failure(GitOperationError.invalidState(reason))
+        }
+
+        let localResult = await runOnBackground {
+            self.executeGitCommand(
+                in: targetPath,
+                args: force ? ["branch", "--delete", "--force", branchName] : ["branch", "--delete", branchName]
+            )
+        }
+
+        if localResult.failure {
+            return .failure(GitOperationError.commandFailed("Failed to delete local branch: \(localResult.output)"))
+        }
+
+        print("Successfully deleted local branch: \(branchName)")
+        return .success(())
     }
 
     func deleteBranch(branchName: String, force: Bool = false, completion: @escaping (Result<Void, Error>) -> Void) {
@@ -291,74 +325,21 @@ extension GitBranchService {
             return
         }
 
-        // Don't allow deleting current branch
-        if branchName == currentBranch {
-            completion(.failure(GitOperationError.invalidState("Cannot delete the currently checked out branch"
-            )))
-            return
-        }
-
-        Task {
-            let repositoryPath = storedRepoPath
-            let expectedHash = await runOnBackground { () -> String? in
-                let result = self.executeGitCommand(
-                    in: repositoryPath,
-                    args: ["rev-parse", "--verify", "refs/heads/\(branchName)"]
-                )
-                guard !result.failure else { return nil }
-                return result.output.trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-            guard let expectedHash, !expectedHash.isEmpty else {
-                await publishOnMainActor {
-                    completion(.failure(GitOperationError.invalidState("Branch '\(branchName)' no longer exists."
-                    )))
-                }
-                return
-            }
-
-            if let reason = await branchDeletionValidation(
-                branchName: branchName,
-                expectedHash: expectedHash,
-                in: repositoryPath
-            ) {
-                await publishOnMainActor {
-                    completion(.failure(GitOperationError.invalidState(reason
-                    )))
-                }
-                return
-            }
-            // Try to delete the branch locally first
-            let localResult = await runOnBackground {
-                self.executeGitCommand(
-                    in: repositoryPath,
-                    args: force ? ["branch", "--delete", "--force", branchName] : ["branch", "--delete", branchName]
-                )
-            }
-
-            if localResult.failure {
-                await publishOnMainActor {
-                    completion(.failure(GitOperationError.commandFailed("Failed to delete local branch: \(localResult.output)"
-                    )))
-                }
-                return
-            }
-
-            print("Successfully deleted local branch: \(branchName)")
-
-            // Explicitly refresh branch list to update UI immediately
-            await publishOnMainActor {
+        Task { @MainActor in
+            let result = await deleteBranchAsync(branchName: branchName, force: force)
+            switch result {
+            case .success:
                 self.fetchBranches {
                     self.refreshHandler {
                         completion(.success(()))
                     }
                 }
+            case let .failure(error):
+                completion(.failure(error))
             }
         }
     }
 
-    /// Rechecks every mutable precondition after the confirmation boundary.
-    /// The expected hash prevents a confirmed delete from applying to a newer
-    /// incarnation of the same branch name.
     private func branchDeletionValidation(
         branchName: String,
         expectedHash: String,
@@ -400,39 +381,52 @@ extension GitBranchService {
         }
     }
 
+    func renameBranchAsync(
+        oldName: String,
+        newName: String,
+        repositoryPath: String? = nil
+    ) async -> Result<Void, Error> {
+        guard !oldName.isEmpty else {
+            return .failure(GitOperationError.invalidInput("Old branch name cannot be empty"))
+        }
+
+        let trimmedNewName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedNewName.isEmpty else {
+            return .failure(GitOperationError.invalidInput("New branch name cannot be empty"))
+        }
+
+        let targetPath = repositoryPath ?? storedRepoPath
+        guard !targetPath.isEmpty else {
+            return .failure(GitOperationError.noRepository)
+        }
+
+        let result = await runOnBackground {
+            self.executeGitCommand(in: targetPath, args: ["branch", "-m", oldName, trimmedNewName])
+        }
+
+        if result.failure {
+            return .failure(GitOperationError.commandFailed("Failed to rename branch: \(result.output)"))
+        }
+
+        print("Successfully renamed branch from \(oldName) to \(trimmedNewName)")
+        return .success(())
+    }
+
     func renameBranch(oldName: String, newName: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
             completion(.failure(GitOperationError.noRepository))
             return
         }
 
-        let trimmedNewName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedNewName.isEmpty else {
-            completion(.failure(GitOperationError.invalidInput("New branch name cannot be empty")))
-            return
-        }
-
-        Task {
-            let repositoryPath = storedRepoPath
-            // Rename branch (using -m)
-            // If it's the current branch, we don't need to specify the old name, but providing it works too
-
-            let result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["branch", "-m", oldName, trimmedNewName])
-            }
-
-            if result.failure {
-                await publishOnMainActor {
-                    completion(.failure(GitOperationError.commandFailed("Failed to rename branch: \(result.output)"
-                    )))
+        Task { @MainActor in
+            let result = await renameBranchAsync(oldName: oldName, newName: newName)
+            switch result {
+            case .success:
+                self.refreshHandler {
+                    completion(.success(()))
                 }
-            } else {
-                print("Successfully renamed branch from \(oldName) to \(trimmedNewName)")
-                await publishOnMainActor {
-                    self.refreshHandler {
-                        completion(.success(()))
-                    }
-                }
+            case let .failure(error):
+                completion(.failure(error))
             }
         }
     }

@@ -1915,6 +1915,27 @@ class GitManager: ObservableObject {
         }
     }
 
+    func pullToNewBranchAsync(
+        newBranchName: String,
+        context: RepositoryOperationContext? = nil
+    ) async -> Result<Void, Error> {
+        let repositoryPath = context?.repositoryPath ?? storedRepoPath
+        guard !repositoryPath.isEmpty else {
+            return .failure(GitOperationError.noRepository)
+        }
+
+        let result = await runOnBackground {
+            self.executeGitCommand(in: repositoryPath, args: ["checkout", "-b", newBranchName, "@{u}"])
+        }
+
+        if result.failure {
+            return .failure(GitOperationError.commandFailed("Failed to create branch from remote: \(result.output)"))
+        }
+
+        print("Successfully created branch \(newBranchName) from remote")
+        return .success(())
+    }
+
     func pullToNewBranch(newBranchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard !storedRepoPath.isEmpty else {
             completion(.failure(GitOperationError.noRepository))
@@ -1922,38 +1943,70 @@ class GitManager: ObservableObject {
         }
 
         Task { @MainActor in
-            let repositoryPath = storedRepoPath
-            // Create a new branch originating from the upstream branch of our current branch
-            // git checkout -b <newBranchName> @{u}
-            let result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["checkout", "-b", newBranchName, "@{u}"])
-            }
-
-            if result.failure {
-                completion(.failure(GitOperationError.commandFailed("Failed to create branch from remote: \(result.output)")))
-            } else {
-                print("Successfully created branch \(newBranchName) from remote")
+            let result = await pullToNewBranchAsync(newBranchName: newBranchName)
+            switch result {
+            case .success:
                 await refresh {
                     completion(.success(()))
                 }
+            case let .failure(error):
+                completion(.failure(error))
             }
         }
+    }
+
+    func switchBranchAsync(
+        branchName: String,
+        context: RepositoryOperationContext? = nil
+    ) async -> Result<Void, Error> {
+        await branchService.switchBranchAsync(branchName: branchName, repositoryPath: context?.repositoryPath)
     }
 
     func switchBranch(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
         branchService.switchBranch(branchName: branchName, completion: completion)
     }
 
+    func createBranchAsync(
+        branchName: String,
+        fromBranch: String? = nil,
+        context: RepositoryOperationContext? = nil
+    ) async -> Result<Void, Error> {
+        await branchService.createBranchAsync(branchName: branchName, fromBranch: fromBranch, repositoryPath: context?.repositoryPath)
+    }
+
     func createBranch(branchName: String, fromBranch: String? = nil, completion: @escaping (Result<Void, Error>) -> Void) {
         branchService.createBranch(branchName: branchName, fromBranch: fromBranch, completion: completion)
+    }
+
+    func mergeBranchAsync(
+        fromBranch: String,
+        context: RepositoryOperationContext? = nil
+    ) async -> Result<Void, Error> {
+        await branchService.mergeBranchAsync(fromBranch: fromBranch, repositoryPath: context?.repositoryPath)
     }
 
     func mergeBranch(fromBranch: String, completion: @escaping (Result<Void, Error>) -> Void) {
         branchService.mergeBranch(fromBranch: fromBranch, completion: completion)
     }
 
+    func deleteBranchAsync(
+        branchName: String,
+        force: Bool = false,
+        context: RepositoryOperationContext? = nil
+    ) async -> Result<Void, Error> {
+        await branchService.deleteBranchAsync(branchName: branchName, force: force, repositoryPath: context?.repositoryPath)
+    }
+
     func deleteBranch(branchName: String, force: Bool = false, completion: @escaping (Result<Void, Error>) -> Void) {
         branchService.deleteBranch(branchName: branchName, force: force, completion: completion)
+    }
+
+    func renameBranchAsync(
+        oldName: String,
+        newName: String,
+        context: RepositoryOperationContext? = nil
+    ) async -> Result<Void, Error> {
+        await branchService.renameBranchAsync(oldName: oldName, newName: newName, repositoryPath: context?.repositoryPath)
     }
 
     func renameBranch(oldName: String, newName: String, completion: @escaping (Result<Void, Error>) -> Void) {

@@ -9,15 +9,13 @@ extension GitBranchService {
     /// Merges `featureBranch` into the detected default branch *without* deleting
     /// anything. Stashes uncommitted work, switches to the default branch, merges,
     /// then restores the stash. Cleanup is a separate, explicit step via
-    /// ``cleanupMergedBranchAsync(featureBranch:cleanupOption:)`` so the user is
-    /// never forced to pick a destructive option just to merge.
-    ///
-    /// State is refreshed through `refreshHandler` (the same hook used by every
-    /// other branch mutation) so the rest of the app stays in sync.
+    /// ``cleanupMergedBranchAsync(featureBranch:cleanupOption:repositoryPath:)``
+    /// so the user is never forced to pick a destructive option just to merge.
     func mergeFeatureIntoDefaultAsync(
-        featureBranch: String
+        featureBranch: String,
+        repositoryPath: String? = nil
     ) async -> Result<MergeToDefaultResult, Error> {
-        let repositoryPath = storedRepoPath
+        let repositoryPath = repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {
             return .failure(GitExecution.missingRepositoryError())
         }
@@ -26,7 +24,7 @@ extension GitBranchService {
         let defaultBranch = await getDefaultBranchNameAsync()
 
         // 2. Check for uncommitted changes and stash if needed
-        let hasChanges = hasUncommittedChanges()
+        let hasChanges = hasUncommittedChanges(in: repositoryPath)
         var stashed = false
         if hasChanges {
             let stashResult = await runOnBackground {
@@ -78,9 +76,6 @@ extension GitBranchService {
             }
         }
 
-        // 6. Refresh app state through the canonical hook.
-        refreshHandler {}
-
         return .success(MergeToDefaultResult(
             didSwitchToDefault: !currentWasDefault,
             didMerge: true,
@@ -95,14 +90,12 @@ extension GitBranchService {
     /// `cleanupOption`. Intended to run after ``mergeFeatureIntoDefaultAsync``,
     /// when the current branch is the default and the feature branch is safely
     /// merged. Never re-merges.
-    ///
-    /// State is refreshed through `refreshHandler` so the rest of the app stays
-    /// in sync.
     func cleanupMergedBranchAsync(
         featureBranch: String,
-        cleanupOption: BranchCleanupOption
+        cleanupOption: BranchCleanupOption,
+        repositoryPath: String? = nil
     ) async -> Result<MergeToDefaultResult, Error> {
-        let repositoryPath = storedRepoPath
+        let repositoryPath = repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {
             return .failure(GitExecution.missingRepositoryError())
         }
@@ -148,14 +141,11 @@ extension GitBranchService {
                 )
             }
             guard !remoteResult.failure else {
-                refreshHandler {}
                 return .failure(GitOperationError.commandFailed("Failed to delete remote branch '\(featureBranch)': \(remoteResult.output)"
                 ))
             }
             didDeleteRemote = !remoteResult.failure
         }
-
-        refreshHandler {}
 
         return .success(MergeToDefaultResult(
             didSwitchToDefault: false,
@@ -167,8 +157,8 @@ extension GitBranchService {
         ))
     }
 
-    private func hasUncommittedChanges() -> Bool {
-        !executeGitCommand(in: storedRepoPath, args: ["status", "--porcelain"])
+    private func hasUncommittedChanges(in repositoryPath: String) -> Bool {
+        !executeGitCommand(in: repositoryPath, args: ["status", "--porcelain"])
             .output
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .isEmpty

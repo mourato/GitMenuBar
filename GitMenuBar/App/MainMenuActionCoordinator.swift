@@ -512,24 +512,24 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     func switchSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
-        let result = await executeCallbackMutation(failureTitle: "Branch Switch Failed") { completion in
-            gitManager.switchBranch(branchName: branchName, completion: completion)
+        let result = await executeSidePanelMutation(failureTitle: "Branch Switch Failed") { context in
+            await gitManager.switchBranchAsync(branchName: branchName, context: context)
         }
         await reloadSidePanelBranchData()
         return result
     }
 
     func checkoutRemoteSidePanelBranch(_ branchName: String, remoteName: String = "origin") async -> MainMenuSidePanelActionResult {
-        let result = await executeCallbackMutation(failureTitle: "Checkout Failed") { completion in
-            gitManager.switchBranch(branchName: "\(remoteName)/\(branchName)", completion: completion)
+        let result = await executeSidePanelMutation(failureTitle: "Checkout Failed") { context in
+            await gitManager.switchBranchAsync(branchName: "\(remoteName)/\(branchName)", context: context)
         }
         await reloadSidePanelBranchData()
         return result
     }
 
     func mergeSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
-        let result = await executeCallbackMutation(failureTitle: "Merge Failed") { completion in
-            gitManager.mergeBranch(fromBranch: branchName, completion: completion)
+        let result = await executeSidePanelMutation(failureTitle: "Merge Failed") { context in
+            await gitManager.mergeBranchAsync(fromBranch: branchName, context: context)
         }
         await reloadSidePanelBranchData()
         return result
@@ -540,8 +540,8 @@ final class MainMenuActionCoordinator: ObservableObject {
         guard !trimmed.isEmpty else {
             return .skipped
         }
-        let result = await executeCallbackMutation(failureTitle: "Delete Failed") { completion in
-            gitManager.deleteBranch(branchName: trimmed, force: force, completion: completion)
+        let result = await executeSidePanelMutation(failureTitle: "Delete Failed") { context in
+            await gitManager.deleteBranchAsync(branchName: trimmed, force: force, context: context)
         }
         await reloadSidePanelBranchData()
         return result
@@ -563,35 +563,39 @@ final class MainMenuActionCoordinator: ObservableObject {
     }
 
     func createBranch(named branchName: String) async -> MainMenuDialogMutationResult {
-        await executeDialogMutation { completion in
-            gitManager.createBranch(branchName: branchName, completion: completion)
+        await executeDialogMutation { context in
+            await gitManager.createBranchAsync(branchName: branchName, context: context)
         }
     }
 
     func renameBranch(oldName: String, newName: String) async -> MainMenuDialogMutationResult {
-        await executeDialogMutation { completion in
-            gitManager.renameBranch(oldName: oldName, newName: newName, completion: completion)
+        await executeDialogMutation { context in
+            await gitManager.renameBranchAsync(oldName: oldName, newName: newName, context: context)
         }
     }
 
     func mergeFeatureIntoDefault(featureBranch: String) async -> MainMenuDialogMutationResult {
-        await executeDialogMutation {
-            await gitManager.branchService.mergeFeatureIntoDefaultAsync(featureBranch: featureBranch).map { _ in () }
+        await executeDialogMutation { context in
+            await gitManager.branchService.mergeFeatureIntoDefaultAsync(
+                featureBranch: featureBranch,
+                repositoryPath: context.repositoryPath
+            ).map { _ in () }
         }
     }
 
     func cleanupMergedBranch(featureBranch: String, cleanupOption: BranchCleanupOption) async -> MainMenuDialogMutationResult {
-        await executeDialogMutation {
+        await executeDialogMutation { context in
             await gitManager.branchService.cleanupMergedBranchAsync(
                 featureBranch: featureBranch,
-                cleanupOption: cleanupOption
+                cleanupOption: cleanupOption,
+                repositoryPath: context.repositoryPath
             ).map { _ in () }
         }
     }
 
     func pullToNewBranch(named branchName: String) async -> MainMenuDialogMutationResult {
-        await executeDialogMutation { completion in
-            gitManager.pullToNewBranch(newBranchName: branchName, completion: completion)
+        await executeDialogMutation { context in
+            await gitManager.pullToNewBranchAsync(newBranchName: branchName, context: context)
         }
     }
 
@@ -600,7 +604,11 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
         return await executeContextualMutation(allowsRepositorySwitch: false) { context in
-            let result = await gitManager.branchService.performCleanupAsync(units: units, snapshot: snapshot)
+            let result = await gitManager.branchService.performCleanupAsync(
+                units: units,
+                snapshot: snapshot,
+                repositoryPath: context.repositoryPath
+            )
             switch result {
             case let .success(batch):
                 await finishSidePanelMutation(.success(()), context: context, failureTitle: "Cleanup Failed")
@@ -709,16 +717,12 @@ final class MainMenuActionCoordinator: ObservableObject {
         }
     }
 
-    private func executeCallbackMutation(
+    private func executeSidePanelMutation(
         failureTitle: String,
-        start: (@escaping (Result<Void, Error>) -> Void) -> Void
+        operation: (RepositoryOperationContext) async -> Result<Void, Error>
     ) async -> MainMenuSidePanelActionResult {
         await executeContextualMutation(allowsRepositorySwitch: false) { context in
-            let result: Result<Void, Error> = await withCheckedContinuation { continuation in
-                start { value in
-                    continuation.resume(returning: value)
-                }
-            }
+            let result = await operation(context)
             await finishSidePanelMutation(result, context: context, failureTitle: failureTitle)
             return result.inspectorActionResult
         }
@@ -726,23 +730,11 @@ final class MainMenuActionCoordinator: ObservableObject {
 
     /// Runs a dialog-owned mutation: failures return to the dialog instead of the global alert.
     private func executeDialogMutation(
-        start: (@escaping (Result<Void, Error>) -> Void) -> Void
-    ) async -> MainMenuDialogMutationResult {
-        await executeDialogMutation {
-            await withCheckedContinuation { continuation in
-                start { value in
-                    continuation.resume(returning: value)
-                }
-            }
-        }
-    }
-
-    private func executeDialogMutation(
-        operation: () async -> Result<Void, Error>
+        operation: (RepositoryOperationContext) async -> Result<Void, Error>
     ) async -> MainMenuDialogMutationResult {
         var failureMessage: String?
         let result = await executeContextualMutation(allowsRepositorySwitch: false) { context in
-            let result = await operation()
+            let result = await operation(context)
             await gitManager.refreshAsync(includeReflogHistory: false, context: context)
             onCommitCompleted?(context.repositoryPath)
             if case let .failure(error) = result {

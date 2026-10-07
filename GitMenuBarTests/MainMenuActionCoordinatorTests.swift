@@ -120,6 +120,81 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertNil(actionCoordinator.alert)
     }
 
+    func testCoordinatorCreateBranchRefreshesContextuallyExactlyOnce() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let gitManager = CountingRefreshGitManager(repositoryPath: repoURL.path)
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await actionCoordinator.createBranch(named: "feature/refresh-test")
+        XCTAssertEqual(result, .succeeded)
+        XCTAssertEqual(gitManager.contextualRefreshCount, 1)
+        XCTAssertEqual(gitManager.sessionlessRefreshCount, 0)
+        XCTAssertEqual(gitManager.sessionlessRefreshAsyncCount, 0)
+        XCTAssertEqual(gitManager.refreshedContextPaths, [repoURL.path])
+    }
+
+    func testCoordinatorRenameBranchRefreshesContextuallyExactlyOnce() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let gitManager = CountingRefreshGitManager(repositoryPath: repoURL.path)
+        let current = try runGit(["rev-parse", "--abbrev-ref", "HEAD"], in: repoURL)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await actionCoordinator.renameBranch(oldName: current, newName: "feature/refresh-renamed")
+        XCTAssertEqual(result, .succeeded)
+        XCTAssertEqual(gitManager.contextualRefreshCount, 1)
+        XCTAssertEqual(gitManager.sessionlessRefreshCount, 0)
+        XCTAssertEqual(gitManager.sessionlessRefreshAsyncCount, 0)
+        XCTAssertEqual(gitManager.refreshedContextPaths, [repoURL.path])
+    }
+
+    func testCoordinatorSwitchSidePanelBranchRefreshesContextuallyExactlyOnce() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["checkout", "-b", "feature/panel-target"], in: repoURL)
+        try runGit(["checkout", "main"], in: repoURL)
+
+        let gitManager = CountingRefreshGitManager(repositoryPath: repoURL.path)
+        let actionCoordinator = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await actionCoordinator.switchSidePanelBranch("feature/panel-target")
+        XCTAssertEqual(result, .succeeded)
+        XCTAssertEqual(gitManager.contextualRefreshCount, 1)
+        XCTAssertEqual(gitManager.sessionlessRefreshCount, 0)
+        XCTAssertEqual(gitManager.sessionlessRefreshAsyncCount, 0)
+        XCTAssertEqual(gitManager.refreshedContextPaths, [repoURL.path])
+    }
+
+    func testLegacyCallbackCreateBranchPreservesCompletionRefresh() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let gitManager = CountingRefreshGitManager(repositoryPath: repoURL.path)
+
+        let completed = expectation(description: "legacy create completes")
+        gitManager.createBranch(branchName: "feature/legacy-refresh") { result in
+            if case .success = result {
+                completed.fulfill()
+            }
+        }
+        await fulfillment(of: [completed], timeout: 5.0)
+
+        XCTAssertEqual(gitManager.sessionlessRefreshCount, 1)
+        XCTAssertEqual(gitManager.contextualRefreshCount, 0)
+    }
+
     func testCheckoutRemoteSidePanelBranchFailurePublishesAlert() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
@@ -794,5 +869,36 @@ private final class SidePanelGateGitManager: GitManager {
     func releaseApply(_ result: Result<Void, Error>) {
         applyContinuation?.resume(returning: result)
         applyContinuation = nil
+    }
+}
+
+@MainActor
+private final class CountingRefreshGitManager: GitManager {
+    var contextualRefreshCount = 0
+    var sessionlessRefreshAsyncCount = 0
+    var sessionlessRefreshCount = 0
+    var refreshedContextPaths: [String] = []
+
+    init(repositoryPath: String) {
+        super.init(repositoryPathOverride: repositoryPath)
+    }
+
+    override func refreshAsync(
+        includeReflogHistory: Bool? = nil,
+        context: RepositoryOperationContext
+    ) async {
+        contextualRefreshCount += 1
+        refreshedContextPaths.append(context.repositoryPath)
+        await super.refreshAsync(includeReflogHistory: includeReflogHistory, context: context)
+    }
+
+    override func refreshAsync(includeReflogHistory: Bool? = nil) async {
+        sessionlessRefreshAsyncCount += 1
+        await super.refreshAsync(includeReflogHistory: includeReflogHistory)
+    }
+
+    override func refresh(includeReflogHistory: Bool? = nil, completion: (() -> Void)? = nil) {
+        sessionlessRefreshCount += 1
+        super.refresh(includeReflogHistory: includeReflogHistory, completion: completion)
     }
 }

@@ -3,9 +3,10 @@ import Foundation
 extension GitBranchService {
     func performCleanupAsync(
         units: [GitCleanupUnit],
-        snapshot: GitWorktreeSnapshot
+        snapshot: GitWorktreeSnapshot,
+        repositoryPath: String? = nil
     ) async -> Result<GitCleanupBatchResult, Error> {
-        let repositoryPath = storedRepoPath
+        let repositoryPath = repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else { return .failure(GitExecution.missingRepositoryError()) }
         guard GitRepositoryContext.normalizedPath(repositoryPath) == GitRepositoryContext.normalizedPath(snapshot.repositoryPath) else {
             return .failure(cleanupError("The repository changed before cleanup started. Reload and try again."))
@@ -29,17 +30,15 @@ extension GitBranchService {
             )
         }
         cleanupProgress = nil
-        if !units.isEmpty {
-            refreshHandler {}
-        }
         return .success(result)
     }
 
     func performCleanupAsync(
         targets: [GitCleanupTarget],
-        snapshot: GitWorktreeSnapshot
+        snapshot: GitWorktreeSnapshot,
+        repositoryPath: String? = nil
     ) async -> Result<GitCleanupBatchResult, Error> {
-        let repositoryPath = storedRepoPath
+        let repositoryPath = repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else { return .failure(GitExecution.missingRepositoryError()) }
         guard GitRepositoryContext.normalizedPath(repositoryPath) == GitRepositoryContext.normalizedPath(snapshot.repositoryPath) else {
             return .failure(cleanupError("The repository changed before cleanup started. Reload and try again."))
@@ -63,9 +62,6 @@ extension GitBranchService {
             )
         }
         cleanupProgress = nil
-        if !targets.isEmpty {
-            refreshHandler {}
-        }
         return .success(result)
     }
 
