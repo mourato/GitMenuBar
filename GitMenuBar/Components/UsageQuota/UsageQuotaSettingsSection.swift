@@ -3,6 +3,8 @@ import SwiftUI
 struct UsageQuotaSettingsSection: View {
     @EnvironmentObject private var usageQuotaStore: UsageQuotaStore
     @EnvironmentObject private var preferences: UsageQuotaPresentationPreferences
+    @State private var sessionWarningsText = ""
+    @State private var weeklyWarningsText = ""
 
     var body: some View {
         Toggle("Show AI usage quotas", isOn: $usageQuotaStore.showAIUsageQuotas)
@@ -32,9 +34,42 @@ struct UsageQuotaSettingsSection: View {
         .pickerStyle(.segmented)
         .disabled(!usageQuotaStore.showAIUsageQuotas)
 
+        Toggle("Show pace markers", isOn: $preferences.showsPace)
+            .toggleStyle(.switch)
+            .disabled(!usageQuotaStore.showAIUsageQuotas)
+
+        Stepper(
+            "Workdays per week: \(preferences.workdaysPerWeek)",
+            value: $preferences.workdaysPerWeek,
+            in: 1 ... 7
+        )
+        .disabled(!usageQuotaStore.showAIUsageQuotas)
+
+        Picker("Workday ticks", selection: $preferences.workdayTickAppearance) {
+            ForEach(UsageQuotaPresentationPreferences.WorkdayTickAppearance.allCases) { appearance in
+                Text(appearance.title).tag(appearance)
+            }
+        }
+        .pickerStyle(.segmented)
+        .disabled(!usageQuotaStore.showAIUsageQuotas)
+
+        TextField("Session warnings", text: $sessionWarningsText)
+            .onSubmit(commitSessionWarnings)
+            .disabled(!usageQuotaStore.showAIUsageQuotas)
+
+        TextField("Weekly warnings", text: $weeklyWarningsText)
+            .onSubmit(commitWeeklyWarnings)
+            .disabled(!usageQuotaStore.showAIUsageQuotas)
+
+        Text("Warning markers draw at consumed percents, for example 50, 80. Press Return to apply.")
+            .font(WorkbenchTypography.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
         ForEach(Array(preferences.orderedProviderIDs.enumerated()), id: \.element) { index, providerID in
             providerRow(providerID, index: index)
         }
+        .onAppear(perform: seedWarningFields)
 
         Text(
             "Quota snapshots stay on this Mac. GitMenuBar uses credentials already stored by each provider "
@@ -121,6 +156,21 @@ struct UsageQuotaSettingsSection: View {
     private func selectedMetricsLabel(for providerID: UsageProviderID) -> String {
         let metrics = preferences.selectedMetrics(for: providerID)
         return metrics.isEmpty ? "Mark only" : metrics.map(\.title).joined(separator: ", ")
+    }
+
+    private func seedWarningFields() {
+        sessionWarningsText = UsageQuotaPace.canonicalThresholdsText(preferences.sessionWarningThresholds)
+        weeklyWarningsText = UsageQuotaPace.canonicalThresholdsText(preferences.weeklyWarningThresholds)
+    }
+
+    private func commitSessionWarnings() {
+        preferences.setSessionWarningThresholds(from: sessionWarningsText)
+        sessionWarningsText = UsageQuotaPace.canonicalThresholdsText(preferences.sessionWarningThresholds)
+    }
+
+    private func commitWeeklyWarnings() {
+        preferences.setWeeklyWarningThresholds(from: weeklyWarningsText)
+        weeklyWarningsText = UsageQuotaPace.canonicalThresholdsText(preferences.weeklyWarningThresholds)
     }
 }
 

@@ -78,6 +78,24 @@ final class UsageQuotaPresentationPreferences: ObservableObject {
         }
     }
 
+    enum WorkdayTickAppearance: String, CaseIterable, Identifiable {
+        case subtle
+        case hidden
+
+        var id: String {
+            rawValue
+        }
+
+        var title: String {
+            switch self {
+            case .subtle:
+                "Subtle"
+            case .hidden:
+                "Hidden"
+            }
+        }
+    }
+
     @Published var meterStyle: MeterStyle {
         didSet { defaults.set(meterStyle.rawValue, forKey: AppPreferences.Keys.usageQuotaMenuBarStyle) }
     }
@@ -92,6 +110,26 @@ final class UsageQuotaPresentationPreferences: ObservableObject {
 
     @Published private(set) var providerOrder: [UsageProviderID] {
         didSet { saveProviderOrder() }
+    }
+
+    @Published var sessionWarningThresholds: [Int] {
+        didSet { defaults.set(sessionWarningThresholds, forKey: AppPreferences.Keys.usageQuotaSessionWarnings) }
+    }
+
+    @Published var weeklyWarningThresholds: [Int] {
+        didSet { defaults.set(weeklyWarningThresholds, forKey: AppPreferences.Keys.usageQuotaWeeklyWarnings) }
+    }
+
+    @Published var workdaysPerWeek: Int {
+        didSet { defaults.set(workdaysPerWeek, forKey: AppPreferences.Keys.usageQuotaWorkdaysPerWeek) }
+    }
+
+    @Published var workdayTickAppearance: WorkdayTickAppearance {
+        didSet { defaults.set(workdayTickAppearance.rawValue, forKey: AppPreferences.Keys.usageQuotaWorkdayTickAppearance) }
+    }
+
+    @Published var showsPace: Bool {
+        didSet { defaults.set(showsPace, forKey: AppPreferences.Keys.usageQuotaShowsPace) }
     }
 
     private let defaults: UserDefaults
@@ -110,6 +148,17 @@ final class UsageQuotaPresentationPreferences: ObservableObject {
             .compactMap(UsageProviderID.init(rawValue:))
         providerOrder = storedOrder
         metricsByProvider = Self.loadMetrics(defaults: defaults)
+        sessionWarningThresholds = UsageQuotaPace.sanitizedThresholds(
+            Self.loadThresholds(defaults: defaults, key: AppPreferences.Keys.usageQuotaSessionWarnings)
+        )
+        weeklyWarningThresholds = UsageQuotaPace.sanitizedThresholds(
+            Self.loadThresholds(defaults: defaults, key: AppPreferences.Keys.usageQuotaWeeklyWarnings)
+        )
+        let storedWorkdays = defaults.object(forKey: AppPreferences.Keys.usageQuotaWorkdaysPerWeek) as? Int
+        workdaysPerWeek = Self.clampedWorkdays(storedWorkdays ?? 5)
+        workdayTickAppearance = defaults.string(forKey: AppPreferences.Keys.usageQuotaWorkdayTickAppearance)
+            .flatMap(WorkdayTickAppearance.init(rawValue:)) ?? .subtle
+        showsPace = defaults.object(forKey: AppPreferences.Keys.usageQuotaShowsPace) as? Bool ?? true
     }
 
     var orderedProviderIDs: [UsageProviderID] {
@@ -163,6 +212,36 @@ final class UsageQuotaPresentationPreferences: ObservableObject {
         providerOrder = order
     }
 
+    /// Commit freeform "50, 80" input; ignores input with no usable numbers.
+    func setSessionWarningThresholds(from text: String) {
+        guard let parsed = UsageQuotaPace.parseThresholds(text) else { return }
+        setSessionWarningThresholds(parsed)
+    }
+
+    /// Commit freeform "50, 80" input; ignores input with no usable numbers.
+    func setWeeklyWarningThresholds(from text: String) {
+        guard let parsed = UsageQuotaPace.parseThresholds(text) else { return }
+        setWeeklyWarningThresholds(parsed)
+    }
+
+    func setSessionWarningThresholds(_ thresholds: [Int]) {
+        let cleaned = UsageQuotaPace.sanitizedThresholds(thresholds)
+        guard cleaned != sessionWarningThresholds else { return }
+        sessionWarningThresholds = cleaned
+    }
+
+    func setWeeklyWarningThresholds(_ thresholds: [Int]) {
+        let cleaned = UsageQuotaPace.sanitizedThresholds(thresholds)
+        guard cleaned != weeklyWarningThresholds else { return }
+        weeklyWarningThresholds = cleaned
+    }
+
+    func setWorkdaysPerWeek(_ value: Int) {
+        let clamped = Self.clampedWorkdays(value)
+        guard clamped != workdaysPerWeek else { return }
+        workdaysPerWeek = clamped
+    }
+
     private func saveProviderOrder() {
         defaults.set(providerOrder.map(\.rawValue), forKey: AppPreferences.Keys.usageQuotaProviderOrder)
     }
@@ -182,5 +261,16 @@ final class UsageQuotaPresentationPreferences: ObservableObject {
             guard let providerID = UsageProviderID(rawValue: entry.key) else { return }
             result[providerID] = Array(entry.value.compactMap(Metric.init(rawValue:)).prefix(2))
         }
+    }
+
+    static func clampedWorkdays(_ value: Int) -> Int {
+        min(7, max(1, value))
+    }
+
+    private static func loadThresholds(defaults: UserDefaults, key: String) -> [Int] {
+        guard let raw = defaults.array(forKey: key) else {
+            return UsageQuotaPace.defaultWarningThresholds
+        }
+        return raw.compactMap { ($0 as? NSNumber)?.intValue }
     }
 }

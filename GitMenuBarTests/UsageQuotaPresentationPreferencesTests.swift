@@ -58,4 +58,73 @@ final class UsageQuotaPresentationPreferencesTests: XCTestCase {
 
         XCTAssertEqual(preferences.selectedMetrics(for: .codex), [.session, .credits])
     }
+
+    func testBarMarkerDefaults() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+
+        XCTAssertEqual(preferences.sessionWarningThresholds, [50, 80])
+        XCTAssertEqual(preferences.weeklyWarningThresholds, [50, 80])
+        XCTAssertEqual(preferences.workdaysPerWeek, 5)
+        XCTAssertEqual(preferences.workdayTickAppearance, .subtle)
+        XCTAssertTrue(preferences.showsPace)
+    }
+
+    func testPersistsBarMarkerPreferences() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.sessionWarningThresholds = [30, 90]
+        preferences.weeklyWarningThresholds = [60]
+        preferences.workdaysPerWeek = 3
+        preferences.workdayTickAppearance = .hidden
+        preferences.showsPace = false
+
+        let restored = UsageQuotaPresentationPreferences(defaults: defaults)
+
+        XCTAssertEqual(restored.sessionWarningThresholds, [30, 90])
+        XCTAssertEqual(restored.weeklyWarningThresholds, [60])
+        XCTAssertEqual(restored.workdaysPerWeek, 3)
+        XCTAssertEqual(restored.workdayTickAppearance, .hidden)
+        XCTAssertFalse(restored.showsPace)
+    }
+
+    func testWarningThresholdsAreValidated() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.setSessionWarningThresholds([90, 0, 200, 90])
+
+        XCTAssertEqual(preferences.sessionWarningThresholds, [1, 90, 99])
+
+        preferences.setWeeklyWarningThresholds([])
+
+        XCTAssertEqual(preferences.weeklyWarningThresholds, [])
+        XCTAssertEqual(UsageQuotaPresentationPreferences(defaults: defaults).weeklyWarningThresholds, [])
+    }
+
+    func testWarningThresholdsDefaultWhenUnset() {
+        XCTAssertEqual(UsageQuotaPresentationPreferences(defaults: defaults).sessionWarningThresholds, [50, 80])
+    }
+
+    func testWorkdaysPerWeekAreClamped() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.setWorkdaysPerWeek(0)
+
+        XCTAssertEqual(preferences.workdaysPerWeek, 1)
+
+        preferences.setWorkdaysPerWeek(9)
+
+        XCTAssertEqual(preferences.workdaysPerWeek, 7)
+    }
+
+    func testThresholdTextCommit() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.setSessionWarningThresholds(from: "90, 30")
+
+        XCTAssertEqual(preferences.sessionWarningThresholds, [30, 90])
+
+        preferences.setWeeklyWarningThresholds(from: "nothing usable")
+
+        XCTAssertEqual(preferences.weeklyWarningThresholds, [50, 80])
+
+        preferences.setWeeklyWarningThresholds(from: " ")
+
+        XCTAssertEqual(preferences.weeklyWarningThresholds, [])
+    }
 }
