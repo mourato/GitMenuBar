@@ -20,7 +20,7 @@ struct MainMenuView: View {
     @EnvironmentObject var aiCommitCoordinator: AICommitCoordinator
     @EnvironmentObject var actionCoordinator: MainMenuActionCoordinator
     @EnvironmentObject var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
-    @EnvironmentObject var shortcutActionBridge: MainMenuShortcutActionBridge
+    @Environment(MainMenuShortcutActionBridge.self) var shortcutActionBridge
     @EnvironmentObject var presentationModel: MainMenuPresentationModel
     @EnvironmentObject var projectMonitor: ProjectMonitorStore
     @EnvironmentObject var usageQuotaStore: UsageQuotaStore

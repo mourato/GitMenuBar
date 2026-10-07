@@ -11,7 +11,7 @@ import SwiftUI
 
 // swiftlint:disable file_length
 @MainActor
-final class StatusBarController: NSObject, ObservableObject {
+final class StatusBarController: NSObject {
     enum Constants {
         static let statusIconPointSize = NSSize(width: 18, height: 18)
         static let windowInitialSize = NSSize(width: WorkbenchMetrics.mainWindowInitialWidth, height: 720)
@@ -407,13 +407,13 @@ final class StatusBarController: NSObject, ObservableObject {
             }
         )
         .environmentObject(gitManager)
-        .environmentObject(loginItemManager)
+        .environment(loginItemManager)
         .environmentObject(githubAuthManager)
         .environmentObject(aiProviderStore)
         .environmentObject(aiCommitCoordinator)
         .environmentObject(actionCoordinator)
         .environmentObject(commitHistoryEditCoordinator)
-        .environmentObject(shortcutActionBridge)
+        .environment(shortcutActionBridge)
         .environmentObject(presentationModel)
         .environmentObject(usageQuotaStore)
         .environmentObject(usageQuotaPresentationPreferences)

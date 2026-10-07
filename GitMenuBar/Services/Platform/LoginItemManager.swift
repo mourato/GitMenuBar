@@ -4,11 +4,13 @@
 //
 
 import Foundation
+import Observation
 import ServiceManagement
 
 @MainActor
-class LoginItemManager: ObservableObject {
-    @Published var isEnabled: Bool = false
+@Observable
+class LoginItemManager {
+    var isEnabled: Bool = false
 
     private let loginItemIdentifier = "com.mourato.GitMenuBar"
 

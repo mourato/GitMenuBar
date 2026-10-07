@@ -2,13 +2,13 @@ import SwiftUI
 
 struct MainMenuPreviewHarness<Content: View>: View {
     @StateObject private var gitManager: GitManager
-    @StateObject private var loginItemManager = LoginItemManager()
+    @State private var loginItemManager = LoginItemManager()
     @StateObject private var githubAuthManager: GitHubAuthManager
     @StateObject private var aiProviderStore: AIProviderStore
     @StateObject private var aiCommitCoordinator: AICommitCoordinator
     @StateObject private var actionCoordinator: MainMenuActionCoordinator
     @StateObject private var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
-    @StateObject private var shortcutActionBridge = MainMenuShortcutActionBridge()
+    @State private var shortcutActionBridge = MainMenuShortcutActionBridge()
     @StateObject private var presentationModel = MainMenuPresentationModel()
     @StateObject private var usageQuotaStore = UsageQuotaStore()
     @StateObject private var projectMonitor: ProjectMonitorStore
@@ -76,13 +76,13 @@ struct MainMenuPreviewHarness<Content: View>: View {
     var body: some View {
         content
             .environmentObject(gitManager)
-            .environmentObject(loginItemManager)
+            .environment(loginItemManager)
             .environmentObject(githubAuthManager)
             .environmentObject(aiProviderStore)
             .environmentObject(aiCommitCoordinator)
             .environmentObject(actionCoordinator)
             .environmentObject(commitHistoryEditCoordinator)
-            .environmentObject(shortcutActionBridge)
+            .environment(shortcutActionBridge)
             .environmentObject(presentationModel)
             .environmentObject(usageQuotaStore)
             .environmentObject(projectMonitor)
