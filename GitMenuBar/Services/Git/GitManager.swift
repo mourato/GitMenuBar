@@ -43,7 +43,7 @@ class GitManager: ObservableObject {
     @Published var unmergedIntoDefaultBranches: [String] = []
 
     /// Token provider for authenticated git operations (push/pull)
-    var tokenProvider: (() -> String?)? {
+    var tokenProvider: (@Sendable () -> String?)? {
         didSet {
             commandRunner.tokenProvider = tokenProvider
         }

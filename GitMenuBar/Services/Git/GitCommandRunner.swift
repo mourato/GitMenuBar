@@ -63,8 +63,7 @@ enum GitPerformanceTrace {
     }
 }
 
-// Unchecked: tokenProvider is a non-Sendable closure set by the MainActor owner and read on worker threads.
-final class GitCommandRunner: @unchecked Sendable {
+final class GitCommandRunner: Sendable {
     // ponytail: one semaphore per touched path; replace with a weak registry only if path churn is measurable.
     private static let pathLockRegistry = GitPathCommandLockRegistry()
 
@@ -72,7 +71,12 @@ final class GitCommandRunner: @unchecked Sendable {
         static let tokenEnvironmentKey = "GITMENUBAR_GIT_ASKPASS_TOKEN"
     }
 
-    var tokenProvider: (() -> String?)?
+    private let tokenProviderStorage = Mutex<(@Sendable () -> String?)?>(nil)
+
+    var tokenProvider: (@Sendable () -> String?)? {
+        get { tokenProviderStorage.withLock { $0 } }
+        set { tokenProviderStorage.withLock { $0 = newValue } }
+    }
 
     func runGitCommand(
         in directory: String,
