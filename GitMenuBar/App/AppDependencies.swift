@@ -29,7 +29,7 @@ final class AppDependencies {
         if AppExecutionContext.usesEphemeralCredentialStores {
             aiKeychainStore = InMemoryAIAPIKeyStore()
         } else {
-            aiKeychainStore = CachedAIAPIKeyStore.shared
+            aiKeychainStore = AIKeychainStore()
         }
         aiCommitMessageService = AICommitMessageService(chatGPTGenerator: chatGPTSubscription)
         if aiProviderStore.preferences.chatGPTEnabled {

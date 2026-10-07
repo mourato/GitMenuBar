@@ -4,7 +4,6 @@ import Security
 enum AIKeychainStoreError: Error, Equatable {
     case keychain(OSStatus)
     case invalidPayload
-    case malformedLegacyItem(service: String)
 }
 
 protocol AIKeychainItemClient: Sendable {
@@ -198,96 +197,5 @@ final class InMemoryAIAPIKeyStore: AIAPIKeyStore, @unchecked Sendable {
 
     func deleteAPIKey(for credentialID: AIProviderCredentialID) throws {
         storage.removeValue(forKey: credentialID)
-    }
-}
-
-final class CachedAIAPIKeyStore: AIAPIKeyStore, @unchecked Sendable {
-    static let shared = CachedAIAPIKeyStore(backingStore: AIKeychainStore())
-    private enum CacheEntry { case missing, value(String) }
-    private let backingStore: any AIAPIKeyStore
-    private var storage: [AIProviderCredentialID: CacheEntry] = [:]
-    private var hasPreloadedAll = false
-    private let migrateIfNeeded: () -> Bool
-    private var hasCompletedMigration = false
-    private let lock = NSLock()
-
-    convenience init(backingStore: any AIAPIKeyStore) {
-        self.init(backingStore: backingStore, migrate: {
-            guard !AppExecutionContext.usesEphemeralCredentialStores else { return true }
-            return KeychainMigrator.migrateToUnifiedDomain(
-                destination: backingStore,
-                migrateGitHub: false,
-                migratePreferences: false
-            )
-        })
-    }
-
-    init(backingStore: any AIAPIKeyStore, migrate: @escaping () -> Bool) {
-        self.backingStore = backingStore
-        migrateIfNeeded = migrate
-    }
-
-    func preloadAllKeys() throws {
-        lock.lock(); defer { lock.unlock() }
-        ensureMigration()
-        let values = try backingStore.fetchAllAPIKeys()
-        storage = Dictionary(uniqueKeysWithValues: values.map { ($0.key, .value($0.value)) })
-        hasPreloadedAll = true
-    }
-
-    func saveAPIKey(_ apiKey: String, for credentialID: AIProviderCredentialID) throws {
-        lock.lock(); defer { lock.unlock() }
-        ensureMigration()
-        try backingStore.saveAPIKey(apiKey, for: credentialID)
-        storage[credentialID] = .value(apiKey)
-    }
-
-    func apiKey(for credentialID: AIProviderCredentialID) throws -> String? {
-        lock.lock(); defer { lock.unlock() }
-        ensureMigration()
-        if let entry = storage[credentialID] {
-            if case let .value(value) = entry {
-                return value
-            }
-            return nil
-        }
-        let value = try backingStore.apiKey(for: credentialID)
-        storage[credentialID] = value.map(CacheEntry.value) ?? .missing
-        return value
-    }
-
-    func fetchAllAPIKeys() throws -> [AIProviderCredentialID: String] {
-        lock.lock(); defer { lock.unlock() }
-        ensureMigration()
-        if !hasPreloadedAll {
-            let values = try backingStore.fetchAllAPIKeys()
-            storage = Dictionary(uniqueKeysWithValues: values.map { ($0.key, .value($0.value)) })
-            hasPreloadedAll = true
-        }
-        return storage.reduce(into: [:]) { result, entry in
-            if case let .value(value) = entry.value {
-                result[entry.key] = value
-            }
-        }
-    }
-
-    func replaceAPIKeys(_ values: [AIProviderCredentialID: String]) throws {
-        lock.lock(); defer { lock.unlock() }
-        ensureMigration()
-        try backingStore.replaceAPIKeys(values)
-        storage = Dictionary(uniqueKeysWithValues: values.map { ($0.key, .value($0.value)) })
-        hasPreloadedAll = true
-    }
-
-    func deleteAPIKey(for credentialID: AIProviderCredentialID) throws {
-        lock.lock(); defer { lock.unlock() }
-        ensureMigration()
-        try backingStore.deleteAPIKey(for: credentialID)
-        storage[credentialID] = .missing
-    }
-
-    private func ensureMigration() {
-        guard !hasCompletedMigration else { return }
-        hasCompletedMigration = migrateIfNeeded()
     }
 }
