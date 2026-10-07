@@ -1,20 +1,20 @@
 import Foundation
 import os.log
+import Synchronization
 
-private final class GitPathCommandLockRegistry: @unchecked Sendable {
-    private let registryLock = NSLock()
-    private var locks: [String: DispatchSemaphore] = [:]
+private final class GitPathCommandLockRegistry: Sendable {
+    private let locks = Mutex<[String: DispatchSemaphore]>([:])
 
     func lock(for directory: String) -> DispatchSemaphore {
         let path = directory.isEmpty ? "" : URL(fileURLWithPath: directory).standardizedFileURL.path
-        registryLock.lock()
-        defer { registryLock.unlock() }
-        if let lock = locks[path] {
-            return lock
+        return locks.withLock { registry in
+            if let existing = registry[path] {
+                return existing
+            }
+            let created = DispatchSemaphore(value: 1)
+            registry[path] = created
+            return created
         }
-        let lock = DispatchSemaphore(value: 1)
-        locks[path] = lock
-        return lock
     }
 }
 
@@ -63,6 +63,7 @@ enum GitPerformanceTrace {
     }
 }
 
+// Unchecked: tokenProvider is a non-Sendable closure set by the MainActor owner and read on worker threads.
 final class GitCommandRunner: @unchecked Sendable {
     // ponytail: one semaphore per touched path; replace with a weak registry only if path churn is measurable.
     private static let pathLockRegistry = GitPathCommandLockRegistry()
