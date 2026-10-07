@@ -31,48 +31,51 @@ private struct CommitDetailPreviewNamespace {
     @Namespace var animationNamespace
 }
 
-#Preview("Commit Detail") {
-    let previewNS = CommitDetailPreviewNamespace()
-    return CommitDetailPageView(
-        commit: CommitDetailPagePreviewData.commit,
-        currentHash: "abcdef1234567890",
-        remoteUrl: "https://github.com/example/repo.git",
-        isCommitInFuture: { _ in false },
-        animationNamespace: previewNS.animationNamespace,
-        onBack: {},
-        onRestoreCommit: { _ in },
-        onEditCommitMessage: { _ in },
-        onGenerateCommitMessage: { _ in }
-    )
-    .environmentObject(
-        GitHubAuthManager(
-            tokenStore: InMemoryGitHubTokenStore(),
-            preloadStoredToken: false
+#if DEBUG
+    #Preview("Commit Detail") {
+        let previewNS = CommitDetailPreviewNamespace()
+        return CommitDetailPageView(
+            commit: CommitDetailPagePreviewData.commit,
+            currentHash: "abcdef1234567890",
+            remoteUrl: "https://github.com/example/repo.git",
+            isCommitInFuture: { _ in false },
+            animationNamespace: previewNS.animationNamespace,
+            onBack: {},
+            onRestoreCommit: { _ in },
+            onEditCommitMessage: { _ in },
+            onGenerateCommitMessage: { _ in }
         )
-    )
-    .padding(.horizontal, WorkbenchMetrics.windowPadding)
-    .frame(width: 420, height: 580)
-}
+        .environmentObject(
+            GitHubAuthManager(
+                tokenStore: InMemoryGitHubTokenStore(),
+                preloadStoredToken: false
+            )
+        )
+        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+        .frame(width: 420, height: 580)
+    }
 
-#Preview("Commit Detail - Missing Commit") {
-    let previewNS = CommitDetailPreviewNamespace()
-    return CommitDetailPageView(
-        commit: nil,
-        currentHash: "abcdef1234567890",
-        remoteUrl: "https://github.com/example/repo.git",
-        isCommitInFuture: { _ in false },
-        animationNamespace: previewNS.animationNamespace,
-        onBack: {},
-        onRestoreCommit: { _ in },
-        onEditCommitMessage: { _ in },
-        onGenerateCommitMessage: { _ in }
-    )
-    .environmentObject(
-        GitHubAuthManager(
-            tokenStore: InMemoryGitHubTokenStore(),
-            preloadStoredToken: false
+    #Preview("Commit Detail - Missing Commit") {
+        let previewNS = CommitDetailPreviewNamespace()
+        return CommitDetailPageView(
+            commit: nil,
+            currentHash: "abcdef1234567890",
+            remoteUrl: "https://github.com/example/repo.git",
+            isCommitInFuture: { _ in false },
+            animationNamespace: previewNS.animationNamespace,
+            onBack: {},
+            onRestoreCommit: { _ in },
+            onEditCommitMessage: { _ in },
+            onGenerateCommitMessage: { _ in }
         )
-    )
-    .padding(.horizontal, WorkbenchMetrics.windowPadding)
-    .frame(width: 420)
-}
+        .environmentObject(
+            GitHubAuthManager(
+                tokenStore: InMemoryGitHubTokenStore(),
+                preloadStoredToken: false
+            )
+        )
+        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+        .frame(width: 420)
+    }
+
+#endif

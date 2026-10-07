@@ -218,17 +218,20 @@ struct CreateRepoContentView: View {
     }
 }
 
-#Preview {
-    CreateRepoContentView(
-        folderPath: "/tmp/example-project",
-        onDismiss: {},
-        onSuccess: { _ in }
-    )
-    .environmentObject(GitManager(repositoryPathOverride: "/tmp"))
-    .environmentObject(GitHubAuthManager(
-        tokenStore: InMemoryGitHubTokenStore(),
-        preloadStoredToken: false
-    ))
-    .padding()
-    .frame(width: 380)
-}
+#if DEBUG
+    #Preview {
+        CreateRepoContentView(
+            folderPath: "/tmp/example-project",
+            onDismiss: {},
+            onSuccess: { _ in }
+        )
+        .environmentObject(GitManager(repositoryPathOverride: "/tmp"))
+        .environmentObject(GitHubAuthManager(
+            tokenStore: InMemoryGitHubTokenStore(),
+            preloadStoredToken: false
+        ))
+        .padding()
+        .frame(width: 380)
+    }
+
+#endif

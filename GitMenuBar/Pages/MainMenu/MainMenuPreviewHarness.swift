@@ -25,12 +25,18 @@ struct MainMenuPreviewHarness<Content: View>: View {
     ) {
         let previewGitManager = GitManager(repositoryPathOverride: NSHomeDirectory())
         let previewProjectMonitor = ProjectMonitorStore()
-        let previewGitHubAuthManager = GitHubAuthManager(
-            tokenStore: InMemoryGitHubTokenStore(),
-            preloadStoredToken: false
-        )
-        let previewProviderStore = AIProviderStore()
-        let previewKeychainStore = InMemoryAIAPIKeyStore()
+        #if DEBUG
+            let previewGitHubAuthManager = GitHubAuthManager(
+                tokenStore: InMemoryGitHubTokenStore(),
+                preloadStoredToken: false
+            )
+            let previewProviderStore = AIProviderStore()
+            let previewKeychainStore = InMemoryAIAPIKeyStore()
+        #else
+            let previewGitHubAuthManager = GitHubAuthManager()
+            let previewProviderStore = AIProviderStore()
+            let previewKeychainStore = AIKeychainStore()
+        #endif
         let previewCoordinator = AICommitCoordinator(
             providerStore: previewProviderStore,
             keychainStore: previewKeychainStore,

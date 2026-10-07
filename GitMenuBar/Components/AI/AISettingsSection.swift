@@ -242,28 +242,31 @@ struct AISettingsSectionView: View {
     }
 }
 
-#Preview {
-    let gitManager = GitManager(repositoryPathOverride: "/tmp")
-    let providerStore = AIProviderStore()
-    let chatGPTSubscription = ChatGPTSubscriptionManager()
-    let coordinator = AICommitCoordinator(
-        providerStore: providerStore,
-        keychainStore: InMemoryAIAPIKeyStore(),
-        messageService: AICommitMessageService(chatGPTGenerator: chatGPTSubscription),
-        gitManager: gitManager,
-        chatGPTSubscription: chatGPTSubscription
-    )
+#if DEBUG
+    #Preview {
+        let gitManager = GitManager(repositoryPathOverride: "/tmp")
+        let providerStore = AIProviderStore()
+        let chatGPTSubscription = ChatGPTSubscriptionManager()
+        let coordinator = AICommitCoordinator(
+            providerStore: providerStore,
+            keychainStore: InMemoryAIAPIKeyStore(),
+            messageService: AICommitMessageService(chatGPTGenerator: chatGPTSubscription),
+            gitManager: gitManager,
+            chatGPTSubscription: chatGPTSubscription
+        )
 
-    return Form {
-        Section {
-            AISettingsSectionView()
-        } header: {
-            SettingsFormSectionHeader(title: "AI Commit Generation", icon: "sparkles")
+        return Form {
+            Section {
+                AISettingsSectionView()
+            } header: {
+                SettingsFormSectionHeader(title: "AI Commit Generation", icon: "sparkles")
+            }
         }
+        .formStyle(.grouped)
+        .environmentObject(providerStore)
+        .environmentObject(coordinator)
+        .environmentObject(chatGPTSubscription)
+        .frame(width: 560, height: 360)
     }
-    .formStyle(.grouped)
-    .environmentObject(providerStore)
-    .environmentObject(coordinator)
-    .environmentObject(chatGPTSubscription)
-    .frame(width: 560, height: 360)
-}
+
+#endif

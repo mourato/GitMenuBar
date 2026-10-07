@@ -26,11 +26,15 @@ final class AppDependencies {
         self.githubAuthManager = githubAuthManager
         self.appCommandCenter = appCommandCenter
 
-        if AppExecutionContext.usesEphemeralCredentialStores {
-            aiKeychainStore = InMemoryAIAPIKeyStore()
-        } else {
-            aiKeychainStore = CachedAIAPIKeyStore.shared
-        }
+        #if DEBUG
+            if AppExecutionContext.usesEphemeralCredentialStores {
+                aiKeychainStore = InMemoryAIAPIKeyStore()
+            } else {
+                aiKeychainStore = AIKeychainStore()
+            }
+        #else
+            aiKeychainStore = AIKeychainStore()
+        #endif
         aiCommitMessageService = AICommitMessageService(chatGPTGenerator: chatGPTSubscription)
         if aiProviderStore.preferences.chatGPTEnabled {
             _ = chatGPTSubscription.refresh()

@@ -38,9 +38,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        // Migrate non-AI credentials and preferences without touching AI keychain data.
-        KeychainMigrator.migrateToUnifiedDomain(migrateAI: false)
-
         // Configure activation policy based on preferences
         let showDockIcon = MainWindowPreferences.isShowDockIconEnabled()
         NSApp.setActivationPolicy(showDockIcon ? .regular : .accessory)

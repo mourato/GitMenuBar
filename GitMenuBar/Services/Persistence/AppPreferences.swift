@@ -21,7 +21,6 @@ enum AppPreferences {
         static let commitButtonAction = "commitButtonAction"
         static let appearanceMode = "appearanceMode"
         static let hasMigratedKeychainDomain = "hasMigratedKeychainDomain"
-        static let aiCredentialMigrationVersion = "aiCredentialMigrationVersion"
         static let showAIUsageQuotas = "showAIUsageQuotas"
         static let showClaudeCodeUsageQuota = "showClaudeCodeUsageQuota"
         static let showCodexUsageQuota = "showCodexUsageQuota"
