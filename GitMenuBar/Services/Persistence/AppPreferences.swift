@@ -34,6 +34,11 @@ enum AppPreferences {
         static let usageQuotaMenuBarVisibility = "usageQuotaMenuBarVisibility"
         static let usageQuotaProviderOrder = "usageQuotaProviderOrder"
         static let usageQuotaMetrics = "usageQuotaMetrics"
+        static let usageQuotaSessionWarnings = "usageQuotaSessionWarnings"
+        static let usageQuotaWeeklyWarnings = "usageQuotaWeeklyWarnings"
+        static let usageQuotaWorkdaysPerWeek = "usageQuotaWorkdaysPerWeek"
+        static let usageQuotaWorkdayTickAppearance = "usageQuotaWorkdayTickAppearance"
+        static let usageQuotaShowsPace = "usageQuotaShowsPace"
     }
 
     enum AppearanceMode: String, CaseIterable, Identifiable {

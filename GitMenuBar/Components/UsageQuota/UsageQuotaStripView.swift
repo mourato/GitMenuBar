@@ -86,13 +86,36 @@ private struct UsageQuotaDetailsPopover: View {
 private struct UsageQuotaProviderCard: View {
     let snapshot: UsageQuotaSnapshot
 
+    @EnvironmentObject private var preferences: UsageQuotaPresentationPreferences
+
+    private var showUsed: Bool {
+        preferences.valueStyle == .used
+    }
+
+    private var rowStyle: UsageQuotaMeterRowStyle {
+        UsageQuotaMeterRowStyle(
+            titleFont: WorkbenchTypography.captionStrong,
+            supportingFont: WorkbenchTypography.caption,
+            primary: .primary,
+            secondary: .secondary
+        )
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
             headerRow
 
             if let window = snapshot.primaryDisplayWindow {
-                UsageQuotaProgressBar(percent: window.remainingPercent)
-                metaRow(for: window)
+                meterRow(
+                    title: UsageQuotaPace.rowTitle(isSessionWindow: isSessionWindow(window), window: window),
+                    window: window,
+                    thresholds: thresholds(for: window)
+                )
+                if let creditsText = creditsLineText {
+                    Text(creditsText)
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
             } else if let creditsText = creditsLineText {
                 Text(creditsText)
                     .font(WorkbenchTypography.caption)
@@ -100,13 +123,21 @@ private struct UsageQuotaProviderCard: View {
             }
 
             if let weekly = secondaryWeeklyWindow {
-                weeklyRow(weekly)
+                meterRow(
+                    title: "Weekly",
+                    window: weekly,
+                    thresholds: preferences.weeklyWarningThresholds
+                )
             }
 
             if !snapshot.modelWindows.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
                     ForEach(Array(snapshot.modelWindows.enumerated()), id: \.offset) { _, window in
-                        modelRow(window)
+                        meterRow(
+                            title: window.label,
+                            window: window,
+                            thresholds: preferences.weeklyWarningThresholds
+                        )
                     }
                 }
             }
@@ -115,6 +146,32 @@ private struct UsageQuotaProviderCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(accessibilityValue)
+    }
+
+    private func meterRow(title: String, window: UsageWindow, thresholds: [Int]) -> some View {
+        UsageQuotaMeterRow(
+            title: title,
+            reading: UsageQuotaPace.reading(
+                for: window,
+                showUsed: showUsed,
+                thresholds: thresholds,
+                workdaysPerWeek: preferences.workdaysPerWeek,
+                showPace: preferences.showsPace
+            ),
+            style: rowStyle,
+            tint: UsageQuotaTrafficLightColor.swiftUI(for: window.remainingPercent),
+            trackColor: Color.primary.opacity(0.08),
+            barHeight: 4,
+            accessibilityLabel: "\(snapshot.displayName) \(title)"
+        )
+    }
+
+    private func isSessionWindow(_ window: UsageWindow) -> Bool {
+        snapshot.sessionWindow == window
+    }
+
+    private func thresholds(for window: UsageWindow) -> [Int] {
+        isSessionWindow(window) ? preferences.sessionWarningThresholds : preferences.weeklyWarningThresholds
     }
 
     private var headerRow: some View {
@@ -143,68 +200,7 @@ private struct UsageQuotaProviderCard: View {
             }
 
             Spacer(minLength: 0)
-
-            if let window = snapshot.primaryDisplayWindow {
-                UsageQuotaPercentLabel(percent: window.remainingPercent)
-            }
         }
-    }
-
-    private func metaRow(for window: UsageWindow) -> some View {
-        HStack(spacing: WorkbenchMetrics.sectionSpacing) {
-            metaItem(
-                systemImage: "gauge.with.dots.needle.33percent",
-                text: UsageQuotaFormatting.resetCountdown(until: window.resetAt)
-            )
-
-            metaItem(
-                systemImage: "clock",
-                text: UsageQuotaFormatting.resetClockTime(until: window.resetAt)
-            )
-
-            Spacer(minLength: 0)
-
-            if let creditsText = creditsLineText {
-                Text(creditsText)
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func metaItem(systemImage: String, text: String) -> some View {
-        HStack(spacing: WorkbenchMetrics.microSpacing) {
-            Image(systemName: systemImage)
-                .font(WorkbenchTypography.caption)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-
-            Text(text)
-                .font(WorkbenchTypography.caption)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private func weeklyRow(_ weekly: UsageWindow) -> some View {
-        Text("\(weekly.intervalChip) \(weekly.remainingPercent)%")
-            .font(WorkbenchTypography.caption)
-            .foregroundStyle(.secondary)
-    }
-
-    private func modelRow(_ window: UsageWindow) -> some View {
-        HStack(spacing: WorkbenchMetrics.microSpacing) {
-            Text(window.label)
-                .lineLimit(1)
-            Spacer(minLength: WorkbenchMetrics.microSpacing)
-            Text("\(window.remainingPercent)%")
-                .monospacedDigit()
-            Text(UsageQuotaFormatting.resetCountdown(until: window.resetAt))
-                .monospacedDigit()
-        }
-        .font(WorkbenchTypography.caption)
-        .foregroundStyle(.secondary)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(window.label) \(window.remainingPercent) percent remaining")
     }
 
     private var secondaryWeeklyWindow: UsageWindow? {
@@ -240,6 +236,20 @@ private struct UsageQuotaProviderCard: View {
     private var accessibilityValue: String {
         var parts: [String] = []
         if let window = snapshot.primaryDisplayWindow {
+            let reading = UsageQuotaPace.reading(
+                for: window,
+                showUsed: showUsed,
+                thresholds: thresholds(for: window),
+                workdaysPerWeek: preferences.workdaysPerWeek,
+                showPace: preferences.showsPace
+            )
+            parts.append(reading.percentText)
+            if let paceLeft = reading.paceLeftText {
+                parts.append(paceLeft)
+            }
+            if let paceRight = reading.paceRightText {
+                parts.append(paceRight)
+            }
             parts.append("resets in \(UsageQuotaFormatting.resetCountdown(until: window.resetAt))")
             let clockTime = UsageQuotaFormatting.resetClockTime(until: window.resetAt)
             if clockTime != "—" {
@@ -264,47 +274,5 @@ private struct UsageQuotaProviderCard: View {
             parts.append(note)
         }
         return parts.joined(separator: ", ")
-    }
-}
-
-private struct UsageQuotaPercentLabel: View {
-    let percent: Int
-
-    var body: some View {
-        HStack(spacing: WorkbenchMetrics.microSpacing) {
-            Circle()
-                .fill(trafficLightColor)
-                .frame(width: 6, height: 6)
-                .accessibilityHidden(true)
-
-            Text("\(percent)%")
-                .font(WorkbenchTypography.captionStrong)
-                .foregroundStyle(trafficLightColor)
-        }
-    }
-
-    private var trafficLightColor: Color {
-        UsageQuotaTrafficLightColor.swiftUI(for: percent)
-    }
-}
-
-private struct UsageQuotaProgressBar: View {
-    let percent: Int
-
-    var body: some View {
-        // Proportional meter fill needs measured width; static 4pt surface.
-        // swiftlint:disable:next swiftui_geometry_reader
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                Capsule(style: .continuous)
-                    .fill(Color.primary.opacity(0.08))
-
-                Capsule(style: .continuous)
-                    .fill(UsageQuotaTrafficLightColor.swiftUI(for: percent))
-                    .frame(width: max(0, geometry.size.width * CGFloat(percent) / 100))
-            }
-        }
-        .frame(height: 4)
-        .accessibilityHidden(true)
     }
 }
