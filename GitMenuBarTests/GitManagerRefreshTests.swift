@@ -30,7 +30,7 @@ final class GitManagerRefreshTests: XCTestCase {
             }
         }
 
-        await manager.refreshSelectedRepository(path: "/tmp/project-a") {
+        manager.refreshSelectedRepository(path: "/tmp/project-a") {
             completions += 1
         }
         await fulfillment(of: [firstStarted])
@@ -115,5 +115,83 @@ final class GitManagerRefreshTests: XCTestCase {
 
         XCTAssertEqual(events, ["fast-state", "fast", "detail-state", "final"])
         XCTAssertEqual(manager.remoteUrl, "https://github.com/example/project")
+    }
+
+    func testStartupWithEmptyPathDoesNotAdvanceGeneration() async {
+        let manager = StartupProbeGitManager(repositoryPath: "")
+        XCTAssertFalse(manager.refreshCalled)
+        XCTAssertEqual(manager.commitCount, 0)
+        XCTAssertTrue(manager.availableBranches.isEmpty)
+
+        var observedGeneration: Int?
+        manager.selectedRefreshOperation = { session in
+            observedGeneration = session.generation
+        }
+        await manager.refreshSelectedRepositoryAsync(path: "/tmp/project-a")
+        XCTAssertEqual(observedGeneration, 1)
+    }
+
+    func testStartupWithRepositoryPathReusesSelectedRefreshLifecycle() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let finished = expectation(description: "startup refresh completes")
+        let manager = StartupProbeGitManager(repositoryPath: repoURL.path, onFinished: finished)
+
+        XCTAssertTrue(manager.refreshCalled)
+        await fulfillment(of: [finished], timeout: 5.0)
+
+        XCTAssertEqual(manager.currentBranch, "main")
+        XCTAssertTrue(manager.availableBranches.contains("main"))
+        XCTAssertFalse(manager.currentHash.isEmpty)
+        XCTAssertEqual(manager.commitCount, 0)
+        XCTAssertFalse(manager.commitHistory.isEmpty)
+    }
+
+    func testStartupAheadCountUsesSingleBranchServiceSourceOfTruth() async throws {
+        let upstreamURL = try createTemporaryGitRepository(testName: "\(#function)_upstream")
+        let repoURL = try makeTemporaryTestDirectory(testName: "\(#function)_clone")
+        try runGit(["clone", upstreamURL.path, repoURL.path], in: repoURL.deletingLastPathComponent())
+        try runGit(["config", "user.email", "test@example.com"], in: repoURL)
+        try runGit(["config", "user.name", "GitMenuBar Tests"], in: repoURL)
+
+        try "update 1\n".write(to: repoURL.appendingPathComponent("file1.txt"), atomically: true, encoding: .utf8)
+        try runGit(["add", "file1.txt"], in: repoURL)
+        try runGit(["commit", "-m", "commit 1"], in: repoURL)
+
+        try "update 2\n".write(to: repoURL.appendingPathComponent("file2.txt"), atomically: true, encoding: .utf8)
+        try runGit(["add", "file2.txt"], in: repoURL)
+        try runGit(["commit", "-m", "commit 2"], in: repoURL)
+
+        let finished = expectation(description: "startup ahead count refresh completes")
+        let manager = StartupProbeGitManager(repositoryPath: repoURL.path, onFinished: finished)
+        await fulfillment(of: [finished], timeout: 5.0)
+
+        let expectedAheadCount = manager.branchService.trackingAheadCount(repositoryPath: repoURL.path)
+        XCTAssertEqual(expectedAheadCount, 2)
+        XCTAssertEqual(manager.commitCount, 2)
+        XCTAssertTrue(manager.isAheadOfRemote)
+    }
+}
+
+@MainActor
+private final class StartupProbeGitManager: GitManager {
+    var refreshCalled = false
+    var onFinished: XCTestExpectation?
+
+    init(repositoryPath: String, onFinished: XCTestExpectation? = nil) {
+        self.onFinished = onFinished
+        super.init(repositoryPathOverride: repositoryPath)
+    }
+
+    override func refreshSelectedRepository(
+        path: String? = nil,
+        includeReflogHistory: Bool? = nil,
+        completion: (() -> Void)? = nil
+    ) {
+        refreshCalled = true
+        let expectation = onFinished
+        super.refreshSelectedRepository(path: path, includeReflogHistory: includeReflogHistory) {
+            completion?()
+            expectation?.fulfill()
+        }
     }
 }

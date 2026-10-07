@@ -88,12 +88,10 @@ class GitManager: ObservableObject {
         }
         pipeBranchServiceState()
         pipeCommitHistoryServiceState()
-        updateLocalCommitCount()
-        updateUncommittedFiles()
-        updateBranchInfo()
-        updateRemoteUrl()
-        commitHistoryService.fetchCommitHistory(includeReflog: false)
-        fetchBranches()
+        if !storedRepoPath.isEmpty {
+            refreshSelectedRepository(path: nil, includeReflogHistory: false)
+            fetchBranches()
+        }
     }
 
     private func pipeBranchServiceState() {
@@ -408,9 +406,11 @@ class GitManager: ObservableObject {
         }
 
         if case .success = result, !skipUIUpdates {
-            await updateLocalCommitCountAsync()
             await updateUncommittedFilesAsync()
-            await updateBranchInfoAsync()
+            let aheadCount = await updateBranchInfoAsync()
+            await publishOnMainActor {
+                self.commitCount = aheadCount
+            }
         }
 
         return result
@@ -445,9 +445,11 @@ class GitManager: ObservableObject {
         }
 
         if case .success = result, !skipUIUpdates {
-            await updateLocalCommitCountAsync(session: session)
             await updateUncommittedFilesAsync(session: session)
-            _ = await updateBranchInfoAsync(session: session)
+            let aheadCount = await updateBranchInfoAsync(session: session)
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
+                self.commitCount = aheadCount
+            }
         }
 
         return result
@@ -842,22 +844,7 @@ class GitManager: ObservableObject {
         }
 
         let count = await runOnBackground {
-            let revListResult = self.executeGitCommand(in: repositoryPath, args: ["rev-list", "--count", "@{u}..HEAD"])
-
-            if revListResult.failure {
-                let revListFallback = self.executeGitCommand(in: repositoryPath, args: ["rev-list", "--count", "HEAD", "^origin/main"])
-                if let count = Int(revListFallback.output.trimmingCharacters(in: .whitespacesAndNewlines)), !revListFallback.failure {
-                    return count
-                }
-
-                let revListDefaultBranchFallback = self.executeGitCommand(
-                    in: repositoryPath,
-                    args: ["rev-list", "--count", "HEAD", "^origin/master"]
-                )
-                return Int(revListDefaultBranchFallback.output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
-            }
-
-            return Int(revListResult.output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+            self.branchService.trackingAheadCount(repositoryPath: repositoryPath)
         }
 
         await GitExecution.publishOnMainActor(ifCurrent: session) {
@@ -1455,8 +1442,9 @@ class GitManager: ObservableObject {
         branchService.updateBranchInfo(completion: completion)
     }
 
-    func updateBranchInfoAsync() async {
-        _ = await branchService.updateBranchInfoAsync()
+    @discardableResult
+    func updateBranchInfoAsync() async -> Int {
+        await branchService.updateBranchInfoAsync()
     }
 
     private func updateBranchInfoAsync(session: GitRefreshSession?) async -> Int {

@@ -58,8 +58,9 @@ extension GitBranchService {
         }
     }
 
-    func updateBranchInfoAsync() async {
-        _ = await updateBranchInfoAsync(session: nil)
+    @discardableResult
+    func updateBranchInfoAsync() async -> Int {
+        await updateBranchInfoAsync(session: nil)
     }
 
     func updateBranchInfoAsync(session: GitRefreshSession?) async -> Int {
@@ -116,7 +117,7 @@ extension GitBranchService {
         return snapshot.aheadCount
     }
 
-    private nonisolated func trackingAheadCount(repositoryPath: String) -> Int {
+    nonisolated func trackingAheadCount(repositoryPath: String) -> Int {
         let result = executeGitCommand(in: repositoryPath, args: ["rev-list", "--count", "@{u}..HEAD"])
         if !result.failure, let count = Int(result.output.trimmingCharacters(in: .whitespacesAndNewlines)) {
             return count
