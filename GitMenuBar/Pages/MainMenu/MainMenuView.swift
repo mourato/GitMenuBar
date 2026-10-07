@@ -15,14 +15,14 @@ struct MainMenuView: View {
     @State var repoConfirm = MainMenuRepositoryConfirmations()
     @FocusState var isCommentFieldFocused: Bool
     @FocusState var isMainKeyboardNavigationFocused: Bool
-    @EnvironmentObject var gitManager: GitManager
+    @Environment(GitManager.self) var gitManager
     @EnvironmentObject var githubAuthManager: GitHubAuthManager
     @EnvironmentObject var aiCommitCoordinator: AICommitCoordinator
     @Environment(MainMenuActionCoordinator.self) var actionCoordinator
     @Environment(CommitHistoryEditCoordinator.self) var commitHistoryEditCoordinator
     @Environment(MainMenuShortcutActionBridge.self) var shortcutActionBridge
     @Environment(MainMenuPresentationModel.self) var presentationModel
-    @EnvironmentObject var projectMonitor: ProjectMonitorStore
+    @Environment(ProjectMonitorStore.self) var projectMonitor
     @EnvironmentObject var usageQuotaStore: UsageQuotaStore
     @Environment(RepositorySelectionCoordinator.self) var repositorySelectionCoordinator
     @Environment(\.accessibilityReduceMotion) var reduceMotion
@@ -90,7 +90,7 @@ struct MainMenuView: View {
                         Task { await gitManager.refreshAsync(includeReflogHistory: false) }
                     }
                 )
-                .environmentObject(gitManager)
+                .environment(gitManager)
                 .environmentObject(githubAuthManager)
                 .padding(.horizontal, WorkbenchMetrics.windowPadding)
                 .padding(.bottom, WorkbenchMetrics.windowPadding)

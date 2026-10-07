@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ProjectsSidebarView: View {
-    @EnvironmentObject private var monitor: ProjectMonitorStore
+    @Environment(ProjectMonitorStore.self) private var monitor
     @AppStorage(AppPreferences.Keys.isCleanProjectsGroupCollapsed) private var isCleanGroupCollapsed = false
     @State private var renameProject: ProjectReference?
     @State private var renameDraft = ""
@@ -329,6 +329,6 @@ struct ProjectsSidebarView: View {
         onFetchAll: {},
         onOpenSettings: {}
     )
-    .environmentObject(ProjectMonitorStore())
+    .environment(ProjectMonitorStore())
     .environmentObject(UsageQuotaStore())
 }

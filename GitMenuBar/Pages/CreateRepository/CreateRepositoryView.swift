@@ -18,7 +18,7 @@ private enum CreateRepositoryFlowError: LocalizedError {
 
 /// Content view for creating a repository - designed to be embedded inline
 struct CreateRepoContentView: View {
-    @EnvironmentObject var gitManager: GitManager
+    @Environment(GitManager.self) var gitManager
     @EnvironmentObject var githubAuthManager: GitHubAuthManager
 
     let folderPath: String
@@ -225,7 +225,7 @@ struct CreateRepoContentView: View {
             onDismiss: {},
             onSuccess: { _ in }
         )
-        .environmentObject(GitManager(repositoryPathOverride: "/tmp"))
+        .environment(GitManager(repositoryPathOverride: "/tmp"))
         .environmentObject(GitHubAuthManager(
             tokenStore: InMemoryGitHubTokenStore(),
             preloadStoredToken: false

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct MainMenuPreviewHarness<Content: View>: View {
-    @StateObject private var gitManager: GitManager
+    @State private var gitManager: GitManager
     @State private var loginItemManager = LoginItemManager()
     @StateObject private var githubAuthManager: GitHubAuthManager
     @StateObject private var aiProviderStore: AIProviderStore
@@ -11,7 +11,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
     @State private var shortcutActionBridge = MainMenuShortcutActionBridge()
     @State private var presentationModel = MainMenuPresentationModel()
     @StateObject private var usageQuotaStore = UsageQuotaStore()
-    @StateObject private var projectMonitor: ProjectMonitorStore
+    @State private var projectMonitor: ProjectMonitorStore
     @State private var repositorySelectionCoordinator: RepositorySelectionCoordinator
 
     private let width: CGFloat
@@ -44,8 +44,8 @@ struct MainMenuPreviewHarness<Content: View>: View {
             gitManager: previewGitManager
         )
 
-        _gitManager = StateObject(wrappedValue: previewGitManager)
-        _projectMonitor = StateObject(wrappedValue: previewProjectMonitor)
+        _gitManager = State(wrappedValue: previewGitManager)
+        _projectMonitor = State(wrappedValue: previewProjectMonitor)
         _repositorySelectionCoordinator = State(
             wrappedValue: RepositorySelectionCoordinator(
                 gitManager: previewGitManager,
@@ -75,7 +75,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
 
     var body: some View {
         content
-            .environmentObject(gitManager)
+            .environment(gitManager)
             .environment(loginItemManager)
             .environmentObject(githubAuthManager)
             .environmentObject(aiProviderStore)
@@ -85,7 +85,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
             .environment(shortcutActionBridge)
             .environment(presentationModel)
             .environmentObject(usageQuotaStore)
-            .environmentObject(projectMonitor)
+            .environment(projectMonitor)
             .environment(repositorySelectionCoordinator)
             .frame(width: width)
             .modifier(TransparentTitlebarPreviewChrome(isVisible: showsTransparentTitlebar))

@@ -6,59 +6,61 @@
 import AppKit
 import Combine
 import Foundation
+import Observation
 
 // swiftlint:disable file_length
 @MainActor
-class GitManager: ObservableObject {
+@Observable
+class GitManager {
     private struct OperationWorkingTreeStatus: Sendable {
         let isValid: Bool
         let stagedFiles: [String]
         let changedFiles: [String]
     }
 
-    @Published var commitCount: Int = 0
-    @Published var isCommitting: Bool = false
-    @Published var uncommittedFiles: [String] = []
-    @Published var stagedFiles: [WorkingTreeFile] = []
-    @Published var changedFiles: [WorkingTreeFile] = []
-    @Published var currentBranch: String = "main"
-    @Published var isAheadOfRemote: Bool = false
-    @Published var remoteUrl: String = ""
-    @Published var commitHistory: [Commit] = []
-    @Published var isDetachedHead: Bool = false
-    @Published var currentHash: String = ""
-    @Published var lastActiveBranch: String = ""
-    @Published var worktreeSnapshot: GitWorktreeSnapshot?
-    @Published var cleanupProgress: GitCleanupProgress?
-    @Published var availableBranches: [String] = []
-    @Published var branchInfos: [BranchInfo] = []
-    @Published var defaultBranchName: String = "main"
-    @Published var isRemoteAhead: Bool = false
-    @Published var isBehindRemote: Bool = false
-    @Published var remoteBranchName: String = ""
-    @Published var behindCount: Int = 0
-    @Published var isPrivate: Bool = false
-    @Published private(set) var commitHistoryLimit = 25
-    @Published var stashes: [GitStashInfo] = []
-    @Published var unmergedIntoDefaultBranches: [String] = []
+    var commitCount: Int = 0
+    var isCommitting: Bool = false
+    var uncommittedFiles: [String] = []
+    var stagedFiles: [WorkingTreeFile] = []
+    var changedFiles: [WorkingTreeFile] = []
+    var currentBranch: String = "main"
+    var isAheadOfRemote: Bool = false
+    var remoteUrl: String = ""
+    var commitHistory: [Commit] = []
+    var isDetachedHead: Bool = false
+    var currentHash: String = ""
+    var lastActiveBranch: String = ""
+    var worktreeSnapshot: GitWorktreeSnapshot?
+    var cleanupProgress: GitCleanupProgress?
+    var availableBranches: [String] = []
+    var branchInfos: [BranchInfo] = []
+    var defaultBranchName: String = "main"
+    var isRemoteAhead: Bool = false
+    var isBehindRemote: Bool = false
+    var remoteBranchName: String = ""
+    var behindCount: Int = 0
+    var isPrivate: Bool = false
+    private(set) var commitHistoryLimit = 25
+    var stashes: [GitStashInfo] = []
+    var unmergedIntoDefaultBranches: [String] = []
 
     /// Token provider for authenticated git operations (push/pull)
-    var tokenProvider: (@Sendable () -> String?)? {
+    @ObservationIgnored var tokenProvider: (@Sendable () -> String?)? {
         didSet {
             commandRunner.tokenProvider = tokenProvider
         }
     }
 
     /// GitHub API client for checking repo existence
-    var githubAPIClient: GitHubAPIClient?
+    @ObservationIgnored var githubAPIClient: GitHubAPIClient?
 
     private let repositoryContext: GitRepositoryContext
     private nonisolated(unsafe) let commandRunner: GitCommandRunner
     private nonisolated(unsafe) let workingTreeParser: WorkingTreeParser
-    private var selectedRefreshTask: Task<Void, Never>?
-    private var selectedRefreshGeneration = 0
-    private var selectedRefreshPath = ""
-    var selectedRefreshOperation: ((GitRefreshSession) async -> Void)?
+    @ObservationIgnored private var selectedRefreshTask: Task<Void, Never>?
+    @ObservationIgnored private var selectedRefreshGeneration = 0
+    @ObservationIgnored private var selectedRefreshPath = ""
+    @ObservationIgnored var selectedRefreshOperation: ((GitRefreshSession) async -> Void)?
     let branchService: GitBranchService
     let stashService: GitStashService
     let atomicCommitService: GitAtomicCommitService
@@ -94,25 +96,58 @@ class GitManager: ObservableObject {
     }
 
     private func pipeBranchServiceState() {
-        branchService.$currentBranch.assign(to: &$currentBranch)
-        branchService.$isAheadOfRemote.assign(to: &$isAheadOfRemote)
-        branchService.$remoteBranchName.assign(to: &$remoteBranchName)
-        branchService.$behindCount.assign(to: &$behindCount)
-        branchService.$isBehindRemote.assign(to: &$isBehindRemote)
-        branchService.$isRemoteAhead.assign(to: &$isRemoteAhead)
-        branchService.$availableBranches.assign(to: &$availableBranches)
-        branchService.$branchInfos.assign(to: &$branchInfos)
-        branchService.$defaultBranchName.assign(to: &$defaultBranchName)
-        branchService.$currentHash.assign(to: &$currentHash)
-        branchService.$isDetachedHead.assign(to: &$isDetachedHead)
-        branchService.$lastActiveBranch.assign(to: &$lastActiveBranch)
-        branchService.$worktreeSnapshot.assign(to: &$worktreeSnapshot)
-        branchService.$cleanupProgress.assign(to: &$cleanupProgress)
+        mirrorServiceState()
+        startServiceMirroring()
     }
 
     private func pipeCommitHistoryServiceState() {
-        commitHistoryService.$commitHistory.assign(to: &$commitHistory)
-        commitHistoryService.$commitHistoryLimit.assign(to: &$commitHistoryLimit)
+        // Mirrored together with branch state in startServiceMirroring.
+    }
+
+    private func mirrorServiceState() {
+        currentBranch = branchService.currentBranch
+        isAheadOfRemote = branchService.isAheadOfRemote
+        remoteBranchName = branchService.remoteBranchName
+        behindCount = branchService.behindCount
+        isBehindRemote = branchService.isBehindRemote
+        isRemoteAhead = branchService.isRemoteAhead
+        availableBranches = branchService.availableBranches
+        branchInfos = branchService.branchInfos
+        defaultBranchName = branchService.defaultBranchName
+        currentHash = branchService.currentHash
+        isDetachedHead = branchService.isDetachedHead
+        lastActiveBranch = branchService.lastActiveBranch
+        worktreeSnapshot = branchService.worktreeSnapshot
+        cleanupProgress = branchService.cleanupProgress
+        commitHistory = commitHistoryService.commitHistory
+        commitHistoryLimit = commitHistoryService.commitHistoryLimit
+    }
+
+    private func startServiceMirroring() {
+        withObservationTracking {
+            _ = branchService.currentBranch
+            _ = branchService.isAheadOfRemote
+            _ = branchService.remoteBranchName
+            _ = branchService.behindCount
+            _ = branchService.isBehindRemote
+            _ = branchService.isRemoteAhead
+            _ = branchService.availableBranches
+            _ = branchService.branchInfos
+            _ = branchService.defaultBranchName
+            _ = branchService.currentHash
+            _ = branchService.isDetachedHead
+            _ = branchService.lastActiveBranch
+            _ = branchService.worktreeSnapshot
+            _ = branchService.cleanupProgress
+            _ = commitHistoryService.commitHistory
+            _ = commitHistoryService.commitHistoryLimit
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.mirrorServiceState()
+                self.startServiceMirroring()
+            }
+        }
     }
 
     private nonisolated var storedRepoPath: String {

@@ -1,21 +1,23 @@
 import Combine
 import Foundation
+import Observation
 
 @MainActor
-final class ProjectCleanupStore: ObservableObject {
-    @Published private(set) var rows: [ProjectCleanupRow] = []
-    @Published private(set) var loadState: ProjectCleanupLoadState = .idle
-    @Published private(set) var selectedPaths = Set<String>()
-    @Published private(set) var isRunning = false
-    @Published private(set) var cleanupProgress: GitCleanupProgress?
-    @Published private(set) var result: ProjectCleanupRunResult?
+@Observable
+final class ProjectCleanupStore {
+    private(set) var rows: [ProjectCleanupRow] = []
+    private(set) var loadState: ProjectCleanupLoadState = .idle
+    private(set) var selectedPaths = Set<String>()
+    private(set) var isRunning = false
+    private(set) var cleanupProgress: GitCleanupProgress?
+    private(set) var result: ProjectCleanupRunResult?
 
     private let projectMonitor: ProjectMonitorStore
     private let runner: GitCommandRunner
     private let analyzer: @Sendable (ProjectReference, Set<String>) -> ProjectCleanupAnalysisResult
     private let onAffectedPaths: @MainActor ([String]) -> Void
-    private var generation = 0
-    private var cleanupRunID = UUID()
+    @ObservationIgnored private var generation = 0
+    @ObservationIgnored private var cleanupRunID = UUID()
 
     init(
         projectMonitor: ProjectMonitorStore = ProjectMonitorStore(),

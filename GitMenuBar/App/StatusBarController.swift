@@ -268,13 +268,7 @@ final class StatusBarController: NSObject {
 
     private func setupAppCommandObservation() {
         let publishers: [AnyPublisher<Void, Never>] = [
-            gitManager.$stagedFiles.map { _ in () }.eraseToAnyPublisher(),
-            gitManager.$changedFiles.map { _ in () }.eraseToAnyPublisher(),
-            gitManager.$isAheadOfRemote.map { _ in () }.eraseToAnyPublisher(),
-            gitManager.$isRemoteAhead.map { _ in () }.eraseToAnyPublisher(),
-            gitManager.$remoteUrl.map { _ in () }.eraseToAnyPublisher(),
             githubAuthManager.$isAuthenticated.map { _ in () }.eraseToAnyPublisher(),
-            projectMonitor.$snapshots.map { _ in () }.eraseToAnyPublisher(),
             NotificationCenter.default.publisher(
                 for: UserDefaults.didChangeNotification,
                 object: UserDefaults.standard
@@ -293,6 +287,7 @@ final class StatusBarController: NSObject {
             .store(in: &cancellables)
 
         observePresentationRoute()
+        observeGitCommandState()
     }
 
     private func observePresentationRoute() {
@@ -304,6 +299,27 @@ final class StatusBarController: NSObject {
                 self.refreshAppCommands()
                 self.updateMainWindowToolbar()
                 self.observePresentationRoute()
+            }
+        }
+    }
+
+    private func observeGitCommandState() {
+        withObservationTracking {
+            _ = gitManager.stagedFiles
+            _ = gitManager.changedFiles
+            _ = gitManager.isAheadOfRemote
+            _ = gitManager.isRemoteAhead
+            _ = gitManager.remoteUrl
+            _ = gitManager.currentBranch
+            _ = gitManager.defaultBranchName
+            _ = gitManager.isBehindRemote
+            _ = projectMonitor.snapshots
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.refreshAppCommands()
+                self.updateMainWindowToolbar()
+                self.observeGitCommandState()
             }
         }
     }
@@ -420,7 +436,7 @@ final class StatusBarController: NSObject {
                 self?.setAutoHideSuspended(suspended)
             }
         )
-        .environmentObject(gitManager)
+        .environment(gitManager)
         .environment(loginItemManager)
         .environmentObject(githubAuthManager)
         .environmentObject(aiProviderStore)
@@ -431,9 +447,9 @@ final class StatusBarController: NSObject {
         .environment(presentationModel)
         .environmentObject(usageQuotaStore)
         .environmentObject(usageQuotaPresentationPreferences)
-        .environmentObject(projectMonitor)
+        .environment(projectMonitor)
         .environment(repositorySelectionCoordinator)
-        .environmentObject(projectCleanupStore)
+        .environment(projectCleanupStore)
 
         return AnyView(rootView)
     }

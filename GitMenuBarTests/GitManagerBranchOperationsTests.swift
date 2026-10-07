@@ -366,7 +366,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
 
     /// Locks in the facade wiring: branch state computed by `GitBranchService`
     /// must be reflected on `GitManager`'s public branch properties via the
-    /// Combine pipe.
+    /// observation mirror.
     func testBranchServiceStatePipesToManager() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         try runGit(["branch", "feature/test"], in: repoURL)
@@ -374,7 +374,7 @@ final class GitManagerBranchOperationsTests: XCTestCase {
 
         _ = await gitManager.branchService.resolveBranchInfoAsync()
 
-        // Allow the Combine `assign(to:)` pipe a tick to flush.
+        // Allow the observation mirror a tick to flush.
         try await Task.sleep(for: .milliseconds(100))
 
         XCTAssertEqual(

@@ -14,7 +14,7 @@ struct SidePanelDetailView: View {
     let onCreateBranch: () -> Void
     let onRenameBranch: (String) -> Void
 
-    @EnvironmentObject private var gitManager: GitManager
+    @Environment(GitManager.self) private var gitManager
     @Environment(MainMenuActionCoordinator.self) private var actionCoordinator
     @State private var stashPendingDrop: GitStashInfo?
 

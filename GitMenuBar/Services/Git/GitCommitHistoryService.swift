@@ -1,16 +1,18 @@
 import Foundation
+import Observation
 
 @MainActor
-final class GitCommitHistoryService: ObservableObject {
+@Observable
+final class GitCommitHistoryService {
     private static let defaultCommitHistoryLimit = 25
 
-    @Published var commitHistory: [Commit] = []
-    @Published private(set) var commitHistoryLimit = GitCommitHistoryService.defaultCommitHistoryLimit
+    var commitHistory: [Commit] = []
+    private(set) var commitHistoryLimit = GitCommitHistoryService.defaultCommitHistoryLimit
 
     private nonisolated(unsafe) let repositoryContext: GitRepositoryContext
     private let commandRunner: GitCommandRunner
     private nonisolated(unsafe) let commitHistoryParser: CommitHistoryParser
-    private var includesReflogCommitsInHistory = false
+    @ObservationIgnored private var includesReflogCommitsInHistory = false
 
     init(repositoryContext: GitRepositoryContext, commandRunner: GitCommandRunner) {
         self.repositoryContext = repositoryContext
