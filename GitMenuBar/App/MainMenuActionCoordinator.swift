@@ -513,7 +513,7 @@ final class MainMenuActionCoordinator: ObservableObject {
 
     func switchSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
         let result = await executeSidePanelMutation(failureTitle: "Branch Switch Failed") { context in
-            await gitManager.switchBranchAsync(branchName: branchName, context: context)
+            await gitManager.branchService.switchBranchAsync(branchName: branchName, repositoryPath: context.repositoryPath)
         }
         await reloadSidePanelBranchData()
         return result
@@ -521,7 +521,7 @@ final class MainMenuActionCoordinator: ObservableObject {
 
     func checkoutRemoteSidePanelBranch(_ branchName: String, remoteName: String = "origin") async -> MainMenuSidePanelActionResult {
         let result = await executeSidePanelMutation(failureTitle: "Checkout Failed") { context in
-            await gitManager.switchBranchAsync(branchName: "\(remoteName)/\(branchName)", context: context)
+            await gitManager.branchService.switchBranchAsync(branchName: "\(remoteName)/\(branchName)", repositoryPath: context.repositoryPath)
         }
         await reloadSidePanelBranchData()
         return result
@@ -529,7 +529,7 @@ final class MainMenuActionCoordinator: ObservableObject {
 
     func mergeSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
         let result = await executeSidePanelMutation(failureTitle: "Merge Failed") { context in
-            await gitManager.mergeBranchAsync(fromBranch: branchName, context: context)
+            await gitManager.branchService.mergeBranchAsync(fromBranch: branchName, repositoryPath: context.repositoryPath)
         }
         await reloadSidePanelBranchData()
         return result
@@ -541,7 +541,7 @@ final class MainMenuActionCoordinator: ObservableObject {
             return .skipped
         }
         let result = await executeSidePanelMutation(failureTitle: "Delete Failed") { context in
-            await gitManager.deleteBranchAsync(branchName: trimmed, force: force, context: context)
+            await gitManager.branchService.deleteBranchAsync(branchName: trimmed, force: force, repositoryPath: context.repositoryPath)
         }
         await reloadSidePanelBranchData()
         return result
@@ -564,13 +564,13 @@ final class MainMenuActionCoordinator: ObservableObject {
 
     func createBranch(named branchName: String) async -> MainMenuDialogMutationResult {
         await executeDialogMutation { context in
-            await gitManager.createBranchAsync(branchName: branchName, context: context)
+            await gitManager.branchService.createBranchAsync(branchName: branchName, repositoryPath: context.repositoryPath)
         }
     }
 
     func renameBranch(oldName: String, newName: String) async -> MainMenuDialogMutationResult {
         await executeDialogMutation { context in
-            await gitManager.renameBranchAsync(oldName: oldName, newName: newName, context: context)
+            await gitManager.branchService.renameBranchAsync(oldName: oldName, newName: newName, repositoryPath: context.repositoryPath)
         }
     }
 

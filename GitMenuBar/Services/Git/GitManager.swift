@@ -90,7 +90,6 @@ class GitManager: ObservableObject {
         pipeCommitHistoryServiceState()
         if !storedRepoPath.isEmpty {
             refreshSelectedRepository(path: nil, includeReflogHistory: false)
-            fetchBranches()
         }
     }
 
@@ -301,6 +300,8 @@ class GitManager: ObservableObject {
                 await operation(session)
             } else {
                 await refreshAsync(includeReflogHistory: includeReflogHistory, session: session)
+                guard !Task.isCancelled else { return }
+                await fetchBranchesAsync(session: session)
             }
             guard !Task.isCancelled else { return }
             await GitExecution.publishOnMainActor(ifCurrent: session) {
@@ -1943,58 +1944,20 @@ class GitManager: ObservableObject {
         }
     }
 
-    func switchBranchAsync(
-        branchName: String,
-        context: RepositoryOperationContext? = nil
-    ) async -> Result<Void, Error> {
-        await branchService.switchBranchAsync(branchName: branchName, repositoryPath: context?.repositoryPath)
-    }
-
     func switchBranch(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
         branchService.switchBranch(branchName: branchName, completion: completion)
-    }
-
-    func createBranchAsync(
-        branchName: String,
-        fromBranch: String? = nil,
-        context: RepositoryOperationContext? = nil
-    ) async -> Result<Void, Error> {
-        await branchService.createBranchAsync(branchName: branchName, fromBranch: fromBranch, repositoryPath: context?.repositoryPath)
     }
 
     func createBranch(branchName: String, fromBranch: String? = nil, completion: @escaping (Result<Void, Error>) -> Void) {
         branchService.createBranch(branchName: branchName, fromBranch: fromBranch, completion: completion)
     }
 
-    func mergeBranchAsync(
-        fromBranch: String,
-        context: RepositoryOperationContext? = nil
-    ) async -> Result<Void, Error> {
-        await branchService.mergeBranchAsync(fromBranch: fromBranch, repositoryPath: context?.repositoryPath)
-    }
-
     func mergeBranch(fromBranch: String, completion: @escaping (Result<Void, Error>) -> Void) {
         branchService.mergeBranch(fromBranch: fromBranch, completion: completion)
     }
 
-    func deleteBranchAsync(
-        branchName: String,
-        force: Bool = false,
-        context: RepositoryOperationContext? = nil
-    ) async -> Result<Void, Error> {
-        await branchService.deleteBranchAsync(branchName: branchName, force: force, repositoryPath: context?.repositoryPath)
-    }
-
     func deleteBranch(branchName: String, force: Bool = false, completion: @escaping (Result<Void, Error>) -> Void) {
         branchService.deleteBranch(branchName: branchName, force: force, completion: completion)
-    }
-
-    func renameBranchAsync(
-        oldName: String,
-        newName: String,
-        context: RepositoryOperationContext? = nil
-    ) async -> Result<Void, Error> {
-        await branchService.renameBranchAsync(oldName: oldName, newName: newName, repositoryPath: context?.repositoryPath)
     }
 
     func renameBranch(oldName: String, newName: String, completion: @escaping (Result<Void, Error>) -> Void) {

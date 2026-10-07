@@ -119,6 +119,7 @@ final class GitManagerRefreshTests: XCTestCase {
 
     func testStartupWithEmptyPathDoesNotAdvanceGeneration() async {
         let manager = StartupProbeGitManager(repositoryPath: "")
+        XCTAssertEqual(manager.refreshCount, 0)
         XCTAssertFalse(manager.refreshCalled)
         XCTAssertEqual(manager.commitCount, 0)
         XCTAssertTrue(manager.availableBranches.isEmpty)
@@ -136,6 +137,7 @@ final class GitManagerRefreshTests: XCTestCase {
         let finished = expectation(description: "startup refresh completes")
         let manager = StartupProbeGitManager(repositoryPath: repoURL.path, onFinished: finished)
 
+        XCTAssertEqual(manager.refreshCount, 1)
         XCTAssertTrue(manager.refreshCalled)
         await fulfillment(of: [finished], timeout: 5.0)
 
@@ -165,16 +167,81 @@ final class GitManagerRefreshTests: XCTestCase {
         let manager = StartupProbeGitManager(repositoryPath: repoURL.path, onFinished: finished)
         await fulfillment(of: [finished], timeout: 5.0)
 
-        let expectedAheadCount = manager.branchService.trackingAheadCount(repositoryPath: repoURL.path)
-        XCTAssertEqual(expectedAheadCount, 2)
         XCTAssertEqual(manager.commitCount, 2)
         XCTAssertTrue(manager.isAheadOfRemote)
+    }
+
+    func testFetchBranchesAsyncSupersessionAtSessionSeam() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        try runGit(["branch", "feature/ready"], in: repoURL)
+        let manager = GitManager(repositoryPathOverride: "")
+        manager.branchService.availableBranches = ["initial"]
+
+        var isCurrent = false
+        let supersededSession = GitRefreshSession(
+            repositoryPath: repoURL.path,
+            generation: 1,
+            isCurrent: { isCurrent },
+            fastCompletion: {}
+        )
+
+        // When session is not current (superseded), availableBranches must not be published
+        await manager.branchService.fetchBranchesAsync(session: supersededSession)
+        XCTAssertEqual(manager.availableBranches, ["initial"])
+
+        // When session is current, branches must be published deterministically
+        isCurrent = true
+        let activeSession = GitRefreshSession(
+            repositoryPath: repoURL.path,
+            generation: 2,
+            isCurrent: { isCurrent },
+            fastCompletion: {}
+        )
+        await manager.branchService.fetchBranchesAsync(session: activeSession)
+        XCTAssertTrue(manager.availableBranches.contains("feature/ready"))
+        XCTAssertTrue(manager.availableBranches.contains("main"))
+    }
+
+    func testSupersededSelectedRefreshCannotPublishStaleBranches() async {
+        let manager = GitManager(repositoryPathOverride: "")
+        let firstStarted = XCTestExpectation(description: "first refresh starts")
+        let secondFinished = XCTestExpectation(description: "second refresh finishes")
+
+        manager.selectedRefreshOperation = { [weak manager] session in
+            if session.generation == 1 {
+                firstStarted.fulfill()
+                while !Task.isCancelled {
+                    await Task.yield()
+                }
+                await GitExecution.publishOnMainActor(ifCurrent: session) {
+                    manager?.branchService.availableBranches = ["stale-branch"]
+                }
+                return
+            }
+
+            await GitExecution.publishOnMainActor(ifCurrent: session) {
+                manager?.branchService.availableBranches = ["fresh-branch"]
+            }
+            secondFinished.fulfill()
+        }
+
+        manager.refreshSelectedRepository(path: "/tmp/project-a")
+        await fulfillment(of: [firstStarted])
+
+        await manager.refreshSelectedRepository(path: "/tmp/project-b")
+        await fulfillment(of: [secondFinished])
+
+        XCTAssertEqual(manager.availableBranches, ["fresh-branch"])
     }
 }
 
 @MainActor
 private final class StartupProbeGitManager: GitManager {
-    var refreshCalled = false
+    var refreshCount = 0
+    var refreshCalled: Bool {
+        refreshCount > 0
+    }
+
     var onFinished: XCTestExpectation?
 
     init(repositoryPath: String, onFinished: XCTestExpectation? = nil) {
@@ -187,7 +254,7 @@ private final class StartupProbeGitManager: GitManager {
         includeReflogHistory: Bool? = nil,
         completion: (() -> Void)? = nil
     ) {
-        refreshCalled = true
+        refreshCount += 1
         let expectation = onFinished
         super.refreshSelectedRepository(path: path, includeReflogHistory: includeReflogHistory) {
             completion?()

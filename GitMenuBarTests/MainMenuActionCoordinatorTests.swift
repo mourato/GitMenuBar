@@ -684,8 +684,9 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         try "merged content".write(to: repoURL.appendingPathComponent("feature.txt"), atomically: true, encoding: .utf8)
         try runGit(["add", "."], in: repoURL)
         try runGit(["commit", "-m", "feat: merge fixture"], in: repoURL)
-        let manager = GitManager(repositoryPathOverride: repoURL.path)
+        let manager = CountingRefreshGitManager(repositoryPath: repoURL.path)
         await manager.refreshAsync()
+        manager.resetCounts()
         var refreshedPaths: [String] = []
         let coordinator = makeActionCoordinator(
             gitManager: manager,
@@ -702,13 +703,18 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: repoURL.appendingPathComponent("feature.txt"), encoding: .utf8), "merged content")
         XCTAssertTrue(manager.branchService.branchInfos.contains { $0.name == "feature/merge" })
         XCTAssertEqual(refreshedPaths, [repoURL.path])
+        XCTAssertEqual(manager.contextualRefreshCount, 1)
+        XCTAssertEqual(manager.sessionlessRefreshCount, 0)
+        XCTAssertEqual(manager.sessionlessRefreshAsyncCount, 0)
+        XCTAssertEqual(manager.refreshedContextPaths, [repoURL.path])
         XCTAssertNil(coordinator.alert)
         XCTAssertFalse(coordinator.isBusy)
     }
 
     func testMergeToDefaultFailureReturnsMessageWithoutGlobalAlert() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
-        let manager = GitManager(repositoryPathOverride: repoURL.path)
+        let manager = CountingRefreshGitManager(repositoryPath: repoURL.path)
+        manager.resetCounts()
         let coordinator = makeActionCoordinator(
             gitManager: manager,
             providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
@@ -720,6 +726,10 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
 
         guard case let .failed(message) = result else { return XCTFail("Expected merge failure") }
         XCTAssertTrue(message.contains("Merge failed"))
+        XCTAssertEqual(manager.contextualRefreshCount, 1)
+        XCTAssertEqual(manager.sessionlessRefreshCount, 0)
+        XCTAssertEqual(manager.sessionlessRefreshAsyncCount, 0)
+        XCTAssertEqual(manager.refreshedContextPaths, [repoURL.path])
         XCTAssertNil(coordinator.alert)
         XCTAssertFalse(coordinator.isBusy)
     }
@@ -727,8 +737,9 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
     func testMergeCleanupReturnsDialogResultAndReloadsBranches() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         try runGit(["branch", "feature/merged"], in: repoURL)
-        let manager = GitManager(repositoryPathOverride: repoURL.path)
+        let manager = CountingRefreshGitManager(repositoryPath: repoURL.path)
         await manager.refreshAsync()
+        manager.resetCounts()
         var refreshedPaths: [String] = []
         let coordinator = makeActionCoordinator(
             gitManager: manager,
@@ -744,6 +755,10 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertTrue(try runGit(["branch", "--list", "feature/merged"], in: repoURL).isEmpty)
         XCTAssertFalse(manager.branchService.branchInfos.contains { $0.name == "feature/merged" })
         XCTAssertEqual(refreshedPaths, [repoURL.path])
+        XCTAssertEqual(manager.contextualRefreshCount, 1)
+        XCTAssertEqual(manager.sessionlessRefreshCount, 0)
+        XCTAssertEqual(manager.sessionlessRefreshAsyncCount, 0)
+        XCTAssertEqual(manager.refreshedContextPaths, [repoURL.path])
         XCTAssertNil(coordinator.alert)
         XCTAssertFalse(coordinator.isBusy)
     }
@@ -751,7 +766,8 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
     func testMergeCleanupFailureReturnsMessageWithoutGlobalAlert() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         try runGit(["branch", "feature/merged"], in: repoURL)
-        let manager = GitManager(repositoryPathOverride: repoURL.path)
+        let manager = CountingRefreshGitManager(repositoryPath: repoURL.path)
+        manager.resetCounts()
         let coordinator = makeActionCoordinator(
             gitManager: manager,
             providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
@@ -764,8 +780,50 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         guard case let .failed(message) = result else { return XCTFail("Expected cleanup failure") }
         XCTAssertTrue(message.contains("Failed to delete remote branch"))
         XCTAssertTrue(try runGit(["branch", "--list", "feature/merged"], in: repoURL).contains("feature/merged"))
+        XCTAssertEqual(manager.contextualRefreshCount, 1)
+        XCTAssertEqual(manager.sessionlessRefreshCount, 0)
+        XCTAssertEqual(manager.sessionlessRefreshAsyncCount, 0)
+        XCTAssertEqual(manager.refreshedContextPaths, [repoURL.path])
         XCTAssertNil(coordinator.alert)
         XCTAssertFalse(coordinator.isBusy)
+    }
+
+    func testCoordinatorCreateBranchFailureRefreshesContextuallyExactlyOnce() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let manager = CountingRefreshGitManager(repositoryPath: repoURL.path)
+        manager.resetCounts()
+        let coordinator = makeActionCoordinator(
+            gitManager: manager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await coordinator.createBranch(named: "invalid..branch")
+        guard case .failed = result else { return XCTFail("Expected create branch failure") }
+        XCTAssertEqual(manager.contextualRefreshCount, 1)
+        XCTAssertEqual(manager.sessionlessRefreshCount, 0)
+        XCTAssertEqual(manager.sessionlessRefreshAsyncCount, 0)
+        XCTAssertEqual(manager.refreshedContextPaths, [repoURL.path])
+    }
+
+    func testCoordinatorRenameBranchFailureRefreshesContextuallyExactlyOnce() async throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let manager = CountingRefreshGitManager(repositoryPath: repoURL.path)
+        manager.resetCounts()
+        let coordinator = makeActionCoordinator(
+            gitManager: manager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+
+        let result = await coordinator.renameBranch(oldName: "nonexistent", newName: "invalid")
+        guard case .failed = result else { return XCTFail("Expected rename branch failure") }
+        XCTAssertEqual(manager.contextualRefreshCount, 1)
+        XCTAssertEqual(manager.sessionlessRefreshCount, 0)
+        XCTAssertEqual(manager.sessionlessRefreshAsyncCount, 0)
+        XCTAssertEqual(manager.refreshedContextPaths, [repoURL.path])
     }
 
     func makeActionCoordinator(
@@ -881,6 +939,13 @@ private final class CountingRefreshGitManager: GitManager {
 
     init(repositoryPath: String) {
         super.init(repositoryPathOverride: repositoryPath)
+    }
+
+    func resetCounts() {
+        contextualRefreshCount = 0
+        sessionlessRefreshAsyncCount = 0
+        sessionlessRefreshCount = 0
+        refreshedContextPaths.removeAll()
     }
 
     override func refreshAsync(

@@ -133,39 +133,10 @@ extension GitBranchService {
     }
 
     func fetchBranches(completion: (() -> Void)? = nil) {
-        guard !storedRepoPath.isEmpty else {
-            availableBranches = []
-            completion?()
-            return
-        }
-
-        Task { @MainActor in
-            let repositoryPath = storedRepoPath
-            // Get all branches (local and remote)
-            let result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["branch", "-a", "--format=%(refname:short)"])
-            }
-
-            if !result.failure {
-                var branches = result.output
-                    .components(separatedBy: .newlines)
-                    .filter { !$0.isEmpty }
-                    .map { branch in
-                        // Clean up remote branch names
-                        if branch.hasPrefix("origin/") {
-                            return String(branch.dropFirst(7)) // Remove "origin/"
-                        }
-                        return branch
-                    }
-                    .filter { $0 != "HEAD" && $0 != "origin" && !$0.contains("origin/HEAD") } // Remove HEAD and confusing origin entries
-
-                // Remove duplicates (local + remote same branch)
-                branches = Array(Set(branches)).sorted()
-
-                self.availableBranches = branches
-                completion?()
-            } else {
-                self.availableBranches = []
+        Task { [weak self] in
+            guard let self else { return }
+            await fetchBranchesAsync()
+            await publishOnMainActor {
                 completion?()
             }
         }
