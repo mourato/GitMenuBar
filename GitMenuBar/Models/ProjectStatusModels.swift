@@ -42,7 +42,7 @@ enum ProjectAttentionReason: Equatable {
     case error
 }
 
-struct ProjectStatusSnapshot: Equatable, Identifiable {
+struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
     let project: ProjectReference
     let branchName: String
     let isDetachedHead: Bool

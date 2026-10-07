@@ -39,14 +39,14 @@ struct GitHubRemoteReference: Equatable {
     let repository: String
 }
 
-enum GitHubPullRequestReviewState: Equatable {
+enum GitHubPullRequestReviewState: Equatable, Sendable {
     case approved
     case changesRequested
     case reviewRequired
     case unknown
 }
 
-enum GitHubChecksState: Equatable {
+enum GitHubChecksState: Equatable, Sendable {
     case passed
     case failing
     case pending
@@ -54,7 +54,7 @@ enum GitHubChecksState: Equatable {
     case unknown
 }
 
-struct GitHubPullRequestSummary: Equatable, Identifiable {
+struct GitHubPullRequestSummary: Equatable, Identifiable, Sendable {
     let number: Int
     let title: String
     let headBranch: String

@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 enum ClaudeCodeCLIUsage {
     private static let timeout: TimeInterval = 8
@@ -205,43 +206,44 @@ enum ClaudeCodeCLIUsage {
     }
 }
 
-private final class CaptureBuffer: @unchecked Sendable {
-    private let lock = NSLock()
-    private var data = Data()
-    private var result: Data?
-    private var continuation: CheckedContinuation<Data, Never>?
+private final class CaptureBuffer: Sendable {
+    private struct State: Sendable {
+        var data = Data()
+        var result: Data?
+        var continuation: CheckedContinuation<Data, Never>?
+    }
+
+    private let state = Mutex<State>(State())
 
     func append(_ chunk: Data) {
-        lock.lock()
-        defer { self.lock.unlock() }
-        guard result == nil else { return }
-        data.append(chunk)
+        state.withLock { state in
+            guard state.result == nil else { return }
+            state.data.append(chunk)
+        }
     }
 
     func finish(_ trailingData: Data) {
-        lock.lock()
-        guard self.result == nil else {
-            lock.unlock()
-            return
+        let (continuation, result) = state.withLock { state -> (CheckedContinuation<Data, Never>?, Data?) in
+            guard state.result == nil else { return (nil, nil) }
+            state.data.append(trailingData)
+            state.result = state.data
+            let continuation = state.continuation
+            state.continuation = nil
+            return (continuation, state.result)
         }
-        data.append(trailingData)
-        self.result = data
-        let continuation = continuation
-        self.continuation = nil
-        let result = result ?? Data()
-        lock.unlock()
-        continuation?.resume(returning: result)
+        if let result {
+            continuation?.resume(returning: result)
+        }
     }
 
     func wait() async -> Data {
         await withCheckedContinuation { continuation in
-            self.lock.lock()
-            if let result {
-                self.lock.unlock()
-                continuation.resume(returning: result)
-            } else {
-                self.continuation = continuation
-                self.lock.unlock()
+            state.withLock { state in
+                if let result = state.result {
+                    continuation.resume(returning: result)
+                } else {
+                    state.continuation = continuation
+                }
             }
         }
     }
