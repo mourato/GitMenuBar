@@ -1,6 +1,6 @@
 import Foundation
 
-protocol AtomicGroupingAIProviding {
+protocol AtomicGroupingAIProviding: Sendable {
     func generateRawResponse(
         prompt: String,
         provider: AIProviderConfig,
@@ -33,7 +33,7 @@ extension AtomicGroupingAIProviding {
 
 extension AICommitMessageService: AtomicGroupingAIProviding {}
 
-final class AICommitGrouperService: ObservableObject, @unchecked Sendable {
+final class AICommitGrouperService: Sendable {
     private let aiService: AtomicGroupingAIProviding
     private let messagePolicy: CommitMessagePolicy
 

@@ -1,5 +1,6 @@
 import Foundation
 
+// Unchecked: holds a MainActor-bound any ChatGPTCommitGenerating collaborator that cannot conform to Sendable.
 final class AICommitMessageService: @unchecked Sendable {
     struct ParsedDiffSection {
         let path: String

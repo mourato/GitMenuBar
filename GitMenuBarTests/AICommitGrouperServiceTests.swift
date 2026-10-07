@@ -1,7 +1,7 @@
 @testable import GitMenuBar
 import XCTest
 
-private struct StubGroupingAI: AtomicGroupingAIProviding {
+private struct StubGroupingAI: AtomicGroupingAIProviding, Sendable {
     var response: String
     var shouldThrow = false
 
