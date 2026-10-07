@@ -1,5 +1,4 @@
 import Foundation
-import Security
 
 struct ClaudeCodeUsageProvider: UsageQuotaProviding {
     let id: UsageProviderID = .claudeCode
@@ -7,7 +6,6 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
     private let homeDirectory: URL
     private let credentialsURL: URL
     private let keychainData: @Sendable () -> Data?
-    private let saveKeychainData: (@Sendable (Data) -> Bool)?
     private let session: URLSession
     private let now: @Sendable () -> Date
     private let cookieSessionKey: @Sendable () -> String?
@@ -44,7 +42,6 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
         session: URLSession = .shared,
         now: @escaping @Sendable () -> Date = Date.init,
         keychainData: (@Sendable () -> Data?)? = nil,
-        saveKeychainData: (@Sendable (Data) -> Bool)? = nil,
         cookieSessionKey: (@Sendable () -> String?)? = nil,
         cliSnapshot: (@Sendable () async -> UsageQuotaSnapshot?)? = nil
     ) {
@@ -63,17 +60,7 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
         self.credentialsURL = credentialsURL ?? configDirectory.appendingPathComponent(".credentials.json")
         self.session = session
         self.now = now
-        if let keychainData {
-            self.keychainData = keychainData
-            self.saveKeychainData = saveKeychainData
-        } else {
-            self.keychainData = {
-                Self.readKeychainData(service: Constants.keychainService)
-            }
-            self.saveKeychainData = saveKeychainData ?? { data in
-                Self.writeKeychainData(data, service: Constants.keychainService)
-            }
-        }
+        self.keychainData = keychainData ?? { Self.readKeychainData(service: Constants.keychainService) }
     }
 
     func fetchSnapshot() async -> UsageQuotaSnapshot {
@@ -170,7 +157,10 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
     }
 
     private func refreshCredentials(_ stored: StoredCredentials) async -> ClaudeCodeOAuthCredentials? {
-        guard let refreshToken = stored.credentials.refreshToken,
+        // Claude Code owns its keychain item. Refreshing would rotate the refresh token it holds,
+        // so keychain credentials are only read; Claude Code refreshes them on its next run.
+        guard stored.source == .file,
+              let refreshToken = stored.credentials.refreshToken,
               let url = URL(string: Constants.tokenEndpoint)
         else {
             return nil
@@ -239,12 +229,7 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
     }
 
     private func persistCredentials(_ data: Data, source: CredentialSource) -> Bool {
-        switch source {
-        case .file:
-            (try? data.write(to: credentialsURL, options: [.atomic])) != nil
-        case .keychain:
-            saveKeychainData?(data) ?? false
-        }
+        source == .file && (try? data.write(to: credentialsURL, options: [.atomic])) != nil
     }
 
     private static func formBody(_ fields: [(String, String)]) -> Data? {
@@ -280,43 +265,23 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
         return nil
     }
 
+    /// Reads through `/usr/bin/security`: Claude Code creates its item with that tool, so the item's
+    /// access list already trusts it and no keychain prompt appears, unlike `SecItemCopyMatching`.
     private static func readKeychainData(service: String) -> Data? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else {
-            return nil
-        }
-        return result as? Data
-    }
-
-    private static func writeKeychainData(_ data: Data, service: String) -> Bool {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service
-        ]
-        let updateStatus = SecItemUpdate(query as CFDictionary, [
-            kSecValueData as String: data
-        ] as CFDictionary)
-        if updateStatus == errSecSuccess {
-            return true
-        }
-        guard updateStatus == errSecItemNotFound else { return false }
-
-        var addQuery = query
-        addQuery[kSecValueData as String] = data
-        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-        if addStatus == errSecSuccess {
-            return true
-        }
-        guard addStatus == errSecDuplicateItem else { return false }
-        return SecItemUpdate(query as CFDictionary, [
-            kSecValueData as String: data
-        ] as CFDictionary) == errSecSuccess
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+        process.arguments = ["find-generic-password", "-s", service, "-w"]
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return nil }
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        guard let trimmed = String(bytes: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty
+        else { return nil }
+        return Data(trimmed.utf8)
     }
 
     private func modificationDate(for url: URL) -> Date {
