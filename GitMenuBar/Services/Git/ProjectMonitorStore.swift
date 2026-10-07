@@ -4,7 +4,7 @@ import Foundation
 @MainActor
 final class ProjectMonitorStore: ObservableObject {
     /// Immutable value data is filled once on the worker and only crosses back to the actor.
-    private struct SeedResult: @unchecked Sendable {
+    private struct SeedResult: Sendable {
         let candidates: [ProjectReference]
         let snapshots: [String: ProjectStatusSnapshot]
     }

@@ -1,6 +1,6 @@
 import Foundation
 
-final class GitStashService: @unchecked Sendable {
+final class GitStashService: Sendable {
     private let commandRunner: GitCommandRunner
 
     init(commandRunner: GitCommandRunner) {

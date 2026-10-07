@@ -65,14 +65,14 @@ struct CommitFileChange: Identifiable, Equatable, Hashable {
     }
 }
 
-struct LineDiffStats: Hashable {
+struct LineDiffStats: Hashable, Sendable {
     let added: Int
     let removed: Int
 
     static let zero = LineDiffStats(added: 0, removed: 0)
 }
 
-enum WorkingTreeFileStatus: String, Hashable {
+enum WorkingTreeFileStatus: String, Hashable, Sendable {
     case modified
     case deleted
     case untracked
@@ -104,7 +104,7 @@ enum WorkingTreeFileStatus: String, Hashable {
     }
 }
 
-struct WorkingTreeFile: Identifiable, Hashable {
+struct WorkingTreeFile: Identifiable, Hashable, Sendable {
     let path: String
     let lineDiff: LineDiffStats
     let status: WorkingTreeFileStatus

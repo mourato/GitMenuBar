@@ -1,5 +1,6 @@
 import CoreServices
 import Foundation
+import Synchronization
 
 enum MonitoredProjectFileRouter {
     static func affectedProjects(
@@ -24,26 +25,30 @@ private final class MonitoredProjectFileWatcherContext: Sendable {
     }
 }
 
-final class MonitoredProjectFileEventRelay: @unchecked Sendable {
+final class MonitoredProjectFileEventRelay: Sendable {
     typealias Handler = @MainActor @Sendable ([String], Bool) -> Void
 
+    private struct PendingDelivery: Sendable {
+        var paths = Set<String>()
+        var requiresFullRefresh = false
+        var deliveryScheduled = false
+    }
+
     private let handler: Handler
-    private let lock = NSLock()
-    private var pendingPaths = Set<String>()
-    private var pendingRequiresFullRefresh = false
-    private var deliveryScheduled = false
+    private let pending = Mutex<PendingDelivery>(PendingDelivery())
 
     init(handler: @escaping Handler) {
         self.handler = handler
     }
 
     func enqueue(paths: [String], requiresFullRefresh: Bool) {
-        lock.lock()
-        pendingPaths.formUnion(paths)
-        pendingRequiresFullRefresh = pendingRequiresFullRefresh || requiresFullRefresh
-        let shouldScheduleDelivery = !deliveryScheduled
-        deliveryScheduled = true
-        lock.unlock()
+        let shouldScheduleDelivery = pending.withLock { state -> Bool in
+            state.paths.formUnion(paths)
+            state.requiresFullRefresh = state.requiresFullRefresh || requiresFullRefresh
+            guard !state.deliveryScheduled else { return false }
+            state.deliveryScheduled = true
+            return true
+        }
 
         guard shouldScheduleDelivery else { return }
         Task { @MainActor [weak self] in
@@ -53,13 +58,14 @@ final class MonitoredProjectFileEventRelay: @unchecked Sendable {
 
     @MainActor
     private func deliver() {
-        lock.lock()
-        let paths = Array(pendingPaths)
-        let requiresFullRefresh = pendingRequiresFullRefresh
-        pendingPaths.removeAll()
-        pendingRequiresFullRefresh = false
-        deliveryScheduled = false
-        lock.unlock()
+        let (paths, requiresFullRefresh) = pending.withLock { state -> ([String], Bool) in
+            let paths = Array(state.paths)
+            let requiresFullRefresh = state.requiresFullRefresh
+            state.paths.removeAll()
+            state.requiresFullRefresh = false
+            state.deliveryScheduled = false
+            return (paths, requiresFullRefresh)
+        }
 
         handler(paths, requiresFullRefresh)
     }

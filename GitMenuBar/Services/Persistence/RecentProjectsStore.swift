@@ -1,6 +1,6 @@
 import Foundation
 
-struct ProjectReference: Codable, Equatable, Identifiable {
+struct ProjectReference: Codable, Equatable, Identifiable, Sendable {
     let path: String
     var name: String
 
