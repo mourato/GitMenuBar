@@ -36,6 +36,7 @@ struct OpenRouterUsageState: Codable, Equatable, Sendable {
     }
 }
 
+// Unchecked: wraps UserDefaults, which is thread-safe but not Sendable.
 struct OpenRouterUsageStateStore: @unchecked Sendable {
     private let defaults: UserDefaults
     private let key = "openRouterUsageState.v2"
