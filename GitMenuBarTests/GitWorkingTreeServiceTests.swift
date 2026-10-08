@@ -143,6 +143,54 @@ final class GitWorkingTreeServiceTests: XCTestCase {
         XCTAssertTrue(changed)
     }
 
+    func testDiscardRejectsEscapingPathsWithoutDeletingFiles() async throws {
+        let repository = try createTemporaryGitRepository(testName: #function)
+        let outside = try makeTemporaryTestDirectory(testName: #function + "-outside")
+        let victim = outside.appendingPathComponent("keep.txt")
+        try "keep\n".write(to: victim, atomically: true, encoding: .utf8)
+        try FileManager.default.createSymbolicLink(
+            at: repository.appendingPathComponent("outside"), withDestinationURL: outside
+        )
+        let service = GitWorkingTreeService(commandRunner: GitCommandRunner())
+        for path in ["", ".", "../" + outside.lastPathComponent + "/keep.txt", victim.path, "outside/keep.txt"] {
+            for status: WorkingTreeFileStatus in [.untracked, .modified] {
+                let result = await service.discardFileChangesAsync(path: path, status: status, in: repository.path)
+                guard case .failure = result else {
+                    XCTFail("Expected rejection of \(path)")
+                    continue
+                }
+                XCTAssertEqual(try String(contentsOf: victim, encoding: .utf8), "keep\n")
+                XCTAssertEqual(try String(contentsOf: repository.appendingPathComponent("README.md"), encoding: .utf8), "base\n")
+            }
+        }
+        // A final symlink is safe to remove without touching its destination.
+        try await service.discardFileChangesAsync(path: "outside", status: .untracked, in: repository.path).get()
+        XCTAssertEqual(try String(contentsOf: victim, encoding: .utf8), "keep\n")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: repository.appendingPathComponent("outside").path))
+    }
+
+    func testDiscardRejectsStaleBranchContextBeforeTrackedOrUntrackedDeletion() async throws {
+        let repository = try createTemporaryGitRepository(testName: #function)
+        let branch = try runGit(["rev-parse", "--abbrev-ref", "HEAD"], in: repository)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let context = RepositoryOperationContext(repositoryPath: repository.path, branchName: branch, refreshGeneration: 0)
+        let manager = GitManager(repositoryPathOverride: "")
+        try runGit(["checkout", "-b", "changed-branch"], in: repository)
+        for (path, status): (String, WorkingTreeFileStatus) in [("README.md", .modified), ("new.txt", .untracked)] {
+            let file = repository.appendingPathComponent(path)
+            try "keep\n".write(to: file, atomically: true, encoding: .utf8)
+            let result = await manager.discardFileChangesAsync(path: path, status: status, context: context)
+            guard case let .failure(error) = result else {
+                XCTFail("Expected stale-context failure")
+                continue
+            }
+            XCTAssertEqual(error.localizedDescription, GitOperationError.invalidState(
+                "The repository branch changed before the action started."
+            ).localizedDescription)
+            XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "keep\n")
+        }
+    }
+
     private func stagedPaths(in repository: URL) throws -> [String] {
         try runGit(["diff", "--cached", "--name-only", "--no-renames"], in: repository)
             .split(separator: "\n").map(String.init).sorted()

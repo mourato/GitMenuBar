@@ -96,7 +96,12 @@ final class GitWorkingTreeService {
         in repositoryPath: String
     ) async -> Result<Void, Error> {
         guard !repositoryPath.isEmpty else { return .failure(GitExecution.missingRepositoryError()) }
-        let fullPath = (repositoryPath as NSString).appendingPathComponent(path)
+        let fullPath: String
+        do {
+            fullPath = try discardTarget(path: path, in: repositoryPath)
+        } catch {
+            return .failure(error)
+        }
         var result: (output: String, failure: Bool)
 
         if status == .untracked {
@@ -139,6 +144,23 @@ final class GitWorkingTreeService {
             return .failure(GitOperationError.commandFailed("Failed to discard '\(path)': \(result.output)"))
         }
         return .success(())
+    }
+
+    /// Resolve parents, but preserve a final symlink so discard removes the link itself.
+    private func discardTarget(path: String, in repositoryPath: String) throws -> String {
+        guard !path.isEmpty, !(path as NSString).isAbsolutePath,
+              !(path as NSString).pathComponents.contains("..")
+        else {
+            throw GitOperationError.invalidInput("Discard requires a repository-relative file path.")
+        }
+        let root = URL(fileURLWithPath: repositoryPath).standardizedFileURL.resolvingSymlinksInPath()
+        let target = root.appendingPathComponent(path).standardizedFileURL
+        let parent = target.deletingLastPathComponent().resolvingSymlinksInPath()
+        let resolved = parent.appendingPathComponent(target.lastPathComponent).standardizedFileURL
+        guard resolved.path.hasPrefix(root.path + "/") else {
+            throw GitOperationError.invalidInput("Discard path must stay inside the repository.")
+        }
+        return resolved.path
     }
 
     func discardAllUnstagedChangesAsync(in repositoryPath: String) async -> Result<Void, Error> {
