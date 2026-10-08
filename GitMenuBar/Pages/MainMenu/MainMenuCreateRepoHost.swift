@@ -28,7 +28,7 @@ struct MainMenuCreateRepoHost: View {
                     actionCoordinator.resetForRepositorySwitch()
                 }
                 presentationModel.showMain(requestCommitFocus: true)
-                gitManager.updateRemoteUrl()
+                Task { await gitManager.updateRemoteUrlAsync() }
                 Task { await gitManager.refreshAsync(includeReflogHistory: false) }
             }
         )

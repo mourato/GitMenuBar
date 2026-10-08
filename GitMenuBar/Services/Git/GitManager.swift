@@ -567,20 +567,6 @@ class GitManager {
         return result
     }
 
-    func commitLocally(
-        _ message: String,
-        skipUIUpdates: Bool = false,
-        completion: ((Result<Void, Error>) -> Void)? = nil
-    ) {
-        Task { [weak self] in
-            guard let self else { return }
-            let result = await commitLocallyAsync(message, skipUIUpdates: skipUIUpdates)
-            await publishOnMainActor {
-                completion?(result)
-            }
-        }
-    }
-
     private func commitLocallyWithFallbackAsync(
         _ message: String,
         skipUIUpdates: Bool = false
@@ -616,20 +602,6 @@ class GitManager {
             skipUIUpdates: skipUIUpdates,
             context: context
         )
-    }
-
-    func commitLocallyWithFallback(
-        _ message: String,
-        skipUIUpdates: Bool = false,
-        completion: ((Result<Void, Error>) -> Void)? = nil
-    ) {
-        Task { [weak self] in
-            guard let self else { return }
-            let result = await commitLocallyWithFallbackAsync(message, skipUIUpdates: skipUIUpdates)
-            await publishOnMainActor {
-                completion?(result)
-            }
-        }
     }
 
     // MARK: - Repository Initialization
@@ -746,16 +718,6 @@ class GitManager {
         return true
     }
 
-    func pushToRemote(completion: ((Result<Void, Error>) -> Void)? = nil) {
-        Task { [weak self] in
-            guard let self else { return }
-            let result = await pushToRemoteAsync()
-            await publishOnMainActor {
-                completion?(result)
-            }
-        }
-    }
-
     func pushToRemoteAsync() async -> Result<Void, Error> {
         await pushToBranchAsync(branchName: currentBranch, force: false)
     }
@@ -830,12 +792,6 @@ class GitManager {
         }
     }
 
-    func updateRemoteUrl() {
-        Task { [weak self] in
-            await self?.updateRemoteUrlAsync()
-        }
-    }
-
     func updateRemoteUrlAsync() async {
         await updateRemoteUrlAsync(session: nil)
     }
@@ -862,16 +818,6 @@ class GitManager {
         }
     }
 
-    func updateLocalCommitCount(completion: (() -> Void)? = nil) {
-        Task { [weak self] in
-            guard let self else { return }
-            await updateLocalCommitCountAsync()
-            await publishOnMainActor {
-                completion?()
-            }
-        }
-    }
-
     func updateLocalCommitCountAsync() async {
         await updateLocalCommitCountAsync(session: nil)
     }
@@ -891,16 +837,6 @@ class GitManager {
 
         await GitExecution.publishOnMainActor(ifCurrent: session) {
             self.commitCount = count
-        }
-    }
-
-    func updateUncommittedFiles(completion: (() -> Void)? = nil) {
-        Task { [weak self] in
-            guard let self else { return }
-            await updateUncommittedFilesAsync()
-            await publishOnMainActor {
-                completion?()
-            }
         }
     }
 
@@ -980,13 +916,6 @@ class GitManager {
         }
     }
 
-    func stageFile(path: String, completion: ((Result<Void, Error>) -> Void)? = nil) {
-        Task { @MainActor in
-            let result = await stageFileAsync(path: path)
-            completion?(result)
-        }
-    }
-
     func stageFileAsync(path: String) async -> Result<Void, Error> {
         let repositoryPath = storedRepoPath
         guard !repositoryPath.isEmpty else {
@@ -1013,13 +942,6 @@ class GitManager {
             return .failure(GitOperationError.commandFailed("Failed to stage '\(path)': \(result.output)"))
         }
         return .success(())
-    }
-
-    func stageAllChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
-        Task { @MainActor in
-            let result = await stageAllChangesAsync()
-            completion?(result)
-        }
     }
 
     func stageAllChangesAsync() async -> Result<Void, Error> {
@@ -1052,13 +974,6 @@ class GitManager {
             return .failure(GitOperationError.commandFailed("Failed to stage all changes: \(result.output)"))
         }
         return .success(())
-    }
-
-    func unstageAllChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
-        Task { @MainActor in
-            let result = await unstageAllChangesAsync()
-            completion?(result)
-        }
     }
 
     func unstageAllChangesAsync() async -> Result<Void, Error> {
@@ -1097,13 +1012,6 @@ class GitManager {
             return .failure(GitOperationError.commandFailed("Failed to unstage all changes: \(result.output)"))
         }
         return .success(())
-    }
-
-    func unstageFile(path: String, completion: ((Result<Void, Error>) -> Void)? = nil) {
-        Task { @MainActor in
-            let result = await unstageFileAsync(path: path)
-            completion?(result)
-        }
     }
 
     func unstageFileAsync(path: String) async -> Result<Void, Error> {
@@ -1154,17 +1062,6 @@ class GitManager {
     func revealInFinder(path: String) {
         let fullPath = (storedRepoPath as NSString).appendingPathComponent(path)
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: fullPath)])
-    }
-
-    func discardFileChanges(
-        path: String,
-        status: WorkingTreeFileStatus,
-        completion: ((Result<Void, Error>) -> Void)? = nil
-    ) {
-        Task { @MainActor in
-            let result = await discardFileChangesAsync(path: path, status: status)
-            completion?(result)
-        }
     }
 
     func discardFileChangesAsync(
@@ -1278,9 +1175,8 @@ class GitManager {
                 return
             }
 
-            await updateUncommittedFiles {
-                completion?(.success(()))
-            }
+            await updateUncommittedFilesAsync()
+            completion?(.success(()))
         }
     }
 
@@ -1372,40 +1268,12 @@ class GitManager {
         }
     }
 
-    func isCommitPublishedToUpstream(_ hash: String, completion: @escaping (Result<Bool, Error>) -> Void) {
-        commitHistoryService.isCommitPublishedToUpstream(hash, completion: completion)
-    }
-
     func isCommitPublishedToUpstreamAsync(_ hash: String) async throws -> Bool {
         try await commitHistoryService.isCommitPublishedToUpstreamAsync(hash)
     }
 
-    func diffForCommit(_ hash: String, completion: @escaping (Result<String, Error>) -> Void) {
-        commitHistoryService.diffForCommit(hash, completion: completion)
-    }
-
     func diffForCommitAsync(_ hash: String) async throws -> String {
         try await commitHistoryService.diffForCommitAsync(hash)
-    }
-
-    func rewriteCommitMessage(
-        commitHash: String,
-        newMessage: String,
-        completion: @escaping (Result<Void, Error>) -> Void
-    ) {
-        Task { [weak self] in
-            guard let self else { return }
-            do {
-                try await rewriteCommitMessageAsync(commitHash: commitHash, newMessage: newMessage)
-                await publishOnMainActor {
-                    completion(.success(()))
-                }
-            } catch {
-                await publishOnMainActor {
-                    completion(.failure(error))
-                }
-            }
-        }
     }
 
     func rewriteCommitMessageAsync(commitHash: String, newMessage: String) async throws {
@@ -1480,10 +1348,6 @@ class GitManager {
         return sections.joined(separator: "\n\n")
     }
 
-    func updateBranchInfo(completion: (() -> Void)? = nil) {
-        branchService.updateBranchInfo(completion: completion)
-    }
-
     @discardableResult
     func updateBranchInfoAsync() async -> Int {
         await branchService.updateBranchInfoAsync()
@@ -1491,12 +1355,6 @@ class GitManager {
 
     private func updateBranchInfoAsync(session: GitRefreshSession?) async -> Int {
         await branchService.updateBranchInfoAsync(session: session)
-    }
-
-    func resetToLastCommit() {
-        Task { @MainActor in
-            _ = await resetToLastCommitAsync()
-        }
     }
 
     func resetToLastCommitAsync() async -> Result<Void, Error> {
@@ -1617,10 +1475,6 @@ class GitManager {
         }
     }
 
-    func fetchCommitHistory(limit: Int? = nil, includeReflog: Bool? = nil) {
-        commitHistoryService.fetchCommitHistory(limit: limit, includeReflog: includeReflog)
-    }
-
     func fetchCommitHistoryAsync(limit: Int? = nil, includeReflog: Bool? = nil) async {
         await commitHistoryService.fetchCommitHistoryAsync(limit: limit, includeReflog: includeReflog)
     }
@@ -1639,13 +1493,6 @@ class GitManager {
 
     func loadMoreCommitHistory(batchSize: Int = 25) {
         commitHistoryService.loadMoreCommitHistory(batchSize: batchSize)
-    }
-
-    func resetToCommit(_ hash: String) {
-        Task { @MainActor in
-            let context = makeRepositoryOperationContext()
-            _ = await resetToCommitAsync(hash: hash, context: context)
-        }
     }
 
     func resetToCommitAsync(
@@ -1706,10 +1553,6 @@ class GitManager {
     }
 
     // MARK: - Branch Management
-
-    func fetchBranches(completion: (() -> Void)? = nil) {
-        branchService.fetchBranches(completion: completion)
-    }
 
     func fetchBranchesAsync() async {
         await branchService.fetchBranchesAsync()
@@ -1837,16 +1680,6 @@ class GitManager {
         await branchService.checkRemoteStatusAsync(session: session)
     }
 
-    func checkRepoVisibility(completion: (() -> Void)? = nil) {
-        Task { [weak self] in
-            guard let self else { return }
-            await checkRepoVisibilityAsync()
-            await publishOnMainActor {
-                completion?()
-            }
-        }
-    }
-
     func checkRepoVisibilityAsync() async {
         await checkRepoVisibilityAsync(session: nil)
     }
@@ -1880,16 +1713,6 @@ class GitManager {
             }
         } catch {
             print("Error checking repo visibility: \(error)")
-        }
-    }
-
-    func pullFromRemote(rebase: Bool, completion: @escaping (Result<Void, Error>) -> Void) {
-        Task { [weak self] in
-            guard let self else { return }
-            let result = await pullFromRemoteAsync(rebase: rebase)
-            await publishOnMainActor {
-                completion(result)
-            }
         }
     }
 
@@ -1964,25 +1787,6 @@ class GitManager {
 
         print("Successfully created branch \(newBranchName) from remote")
         return .success(())
-    }
-
-    func pullToNewBranch(newBranchName: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard !storedRepoPath.isEmpty else {
-            completion(.failure(GitOperationError.noRepository))
-            return
-        }
-
-        Task { @MainActor in
-            let result = await pullToNewBranchAsync(newBranchName: newBranchName)
-            switch result {
-            case .success:
-                await refresh {
-                    completion(.success(()))
-                }
-            case let .failure(error):
-                completion(.failure(error))
-            }
-        }
     }
 
     func switchBranch(branchName: String, completion: @escaping (Result<Void, Error>) -> Void) {

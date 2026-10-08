@@ -3,23 +3,17 @@ import XCTest
 
 @MainActor
 final class GitManagerCommitMessageRewriteTests: XCTestCase {
-    func testRewriteHeadCommitMessageUpdatesHead() throws {
+    func testRewriteHeadCommitMessageUpdatesHead() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let fileURL = repoURL.appendingPathComponent("README.md")
         try "base\nhead rewrite\n".write(to: fileURL, atomically: true, encoding: .utf8)
         try runGit(["add", "README.md"], in: repoURL)
         try runGit(["commit", "-m", "feat: original head"], in: repoURL)
 
-        try withGitRepoPath(repoURL.path) {
+        try await withGitRepoPath(repoURL.path) {
             let gitManager = GitManager()
 
-            let expectation = expectation(description: "rewrite head commit")
-            gitManager.rewriteCommitMessage(commitHash: currentHeadHash(in: repoURL), newMessage: "feat: rewritten head") { result in
-                XCTAssertTrue(result.isSuccess)
-                expectation.fulfill()
-            }
-
-            wait(for: [expectation], timeout: 10)
+            try await gitManager.rewriteCommitMessageAsync(commitHash: currentHeadHash(in: repoURL), newMessage: "feat: rewritten head")
 
             let headSubject = try runGit(["log", "-1", "--pretty=%s"], in: repoURL)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -27,23 +21,17 @@ final class GitManagerCommitMessageRewriteTests: XCTestCase {
         }
     }
 
-    func testRewriteEarlierCommitMessagePreservesDescendants() throws {
+    func testRewriteEarlierCommitMessagePreservesDescendants() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
 
         try appendCommit(named: "second.txt", contents: "second\n", message: "feat: second", in: repoURL)
         let targetHash = currentHeadHash(in: repoURL)
         try appendCommit(named: "third.txt", contents: "third\n", message: "feat: third", in: repoURL)
 
-        try withGitRepoPath(repoURL.path) {
+        try await withGitRepoPath(repoURL.path) {
             let gitManager = GitManager()
 
-            let expectation = expectation(description: "rewrite historical commit")
-            gitManager.rewriteCommitMessage(commitHash: targetHash, newMessage: "feat: rewritten second") { result in
-                XCTAssertTrue(result.isSuccess)
-                expectation.fulfill()
-            }
-
-            wait(for: [expectation], timeout: 15)
+            try await gitManager.rewriteCommitMessageAsync(commitHash: targetHash, newMessage: "feat: rewritten second")
 
             let subjects = try runGit(["log", "--pretty=%s", "-3"], in: repoURL)
                 .components(separatedBy: .newlines)
@@ -52,7 +40,7 @@ final class GitManagerCommitMessageRewriteTests: XCTestCase {
         }
     }
 
-    func testRewriteCommitMessageRejectsMergeCommits() throws {
+    func testRewriteCommitMessageRejectsMergeCommits() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let defaultBranch = try runGit(["rev-parse", "--abbrev-ref", "HEAD"], in: repoURL)
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -63,25 +51,19 @@ final class GitManagerCommitMessageRewriteTests: XCTestCase {
         try appendCommit(named: "main.txt", contents: "main\n", message: "feat: main branch", in: repoURL)
         try runGit(["merge", "feature/history", "-m", "Merge branch 'feature/history'"], in: repoURL)
 
-        try withGitRepoPath(repoURL.path) {
+        try await withGitRepoPath(repoURL.path) {
             let gitManager = GitManager()
 
-            let expectation = expectation(description: "reject merge commit rewrite")
-            gitManager.rewriteCommitMessage(commitHash: currentHeadHash(in: repoURL), newMessage: "feat: rewrite merge") { result in
-                switch result {
-                case .success:
-                    XCTFail("Expected merge commit rewrite to fail")
-                case .failure:
-                    break
-                }
-                expectation.fulfill()
+            do {
+                try await gitManager.rewriteCommitMessageAsync(commitHash: currentHeadHash(in: repoURL), newMessage: "feat: rewrite merge")
+                XCTFail("Expected merge commit rewrite to fail")
+            } catch {
+                XCTAssertTrue(error.localizedDescription.contains("merge commits"))
             }
-
-            wait(for: [expectation], timeout: 10)
         }
     }
 
-    func testIsCommitPublishedToUpstreamDetectsRemoteCommit() throws {
+    func testIsCommitPublishedToUpstreamDetectsRemoteCommit() async throws {
         let remoteDirectory = try makeTemporaryTestDirectory(testName: #function)
 
         let remoteURL = remoteDirectory.appendingPathComponent("origin.git")
@@ -96,22 +78,13 @@ final class GitManagerCommitMessageRewriteTests: XCTestCase {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let localOnlyHash = currentHeadHash(in: repoURL)
 
-        try withGitRepoPath(repoURL.path) {
+        try await withGitRepoPath(repoURL.path) {
             let gitManager = GitManager()
 
-            let publishedExpectation = expectation(description: "published commit detected")
-            gitManager.isCommitPublishedToUpstream(publishedHash) { result in
-                XCTAssertEqual(try? result.get(), true)
-                publishedExpectation.fulfill()
-            }
-
-            let localExpectation = expectation(description: "local commit not published")
-            gitManager.isCommitPublishedToUpstream(localOnlyHash) { result in
-                XCTAssertEqual(try? result.get(), false)
-                localExpectation.fulfill()
-            }
-
-            wait(for: [publishedExpectation, localExpectation], timeout: 10)
+            let published = try await gitManager.isCommitPublishedToUpstreamAsync(publishedHash)
+            let local = try await gitManager.isCommitPublishedToUpstreamAsync(localOnlyHash)
+            XCTAssertTrue(published)
+            XCTAssertFalse(local)
         }
     }
 
@@ -124,15 +97,5 @@ final class GitManagerCommitMessageRewriteTests: XCTestCase {
 
     private func currentHeadHash(in repoURL: URL) -> String {
         (try? runGit(["rev-parse", "HEAD"], in: repoURL).trimmingCharacters(in: .whitespacesAndNewlines)) ?? ""
-    }
-}
-
-private extension Result where Success == Void {
-    var isSuccess: Bool {
-        if case .success = self {
-            return true
-        }
-
-        return false
     }
 }

@@ -274,8 +274,8 @@ extension MainMenuView {
 
                 await MainActor.run {
                     repoConfirm.isTogglingVisibility = false
-                    gitManager.checkRepoVisibility()
                 }
+                await gitManager.checkRepoVisibilityAsync()
             } catch {
                 await MainActor.run {
                     repoConfirm.isTogglingVisibility = false

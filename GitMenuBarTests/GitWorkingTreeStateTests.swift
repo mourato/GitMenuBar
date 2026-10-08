@@ -133,7 +133,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.stagedFiles.sectionSummary.removedLineCount, 0)
     }
 
-    func testStageAndUnstageFileMovesBetweenSections() throws {
+    func testStageAndUnstageFileMovesBetweenSections() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let fileURL = repoURL.appendingPathComponent("README.md")
         try "base\nunstaged\n".write(to: fileURL, atomically: true, encoding: .utf8)
@@ -143,20 +143,16 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["README.md"])
         XCTAssertTrue(gitManager.stagedFiles.isEmpty)
 
-        try waitForGitOperation {
-            gitManager.stageFile(path: "README.md", completion: $0)
-        }
+        try await gitManager.stageFileAsync(path: "README.md").get()
         let stagedStatus = try runGit(["status", "--porcelain"], in: repoURL)
         XCTAssertTrue(stagedStatus.contains("M  README.md"))
 
-        try waitForGitOperation {
-            gitManager.unstageFile(path: "README.md", completion: $0)
-        }
+        try await gitManager.unstageFileAsync(path: "README.md").get()
         let unstagedStatus = try runGit(["status", "--porcelain"], in: repoURL)
         XCTAssertTrue(unstagedStatus.contains(" M README.md"))
     }
 
-    func testStageAllChangesStagesTrackedAndUntrackedFiles() throws {
+    func testStageAllChangesStagesTrackedAndUntrackedFiles() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let trackedFile = repoURL.appendingPathComponent("README.md")
         let untrackedFile = repoURL.appendingPathComponent("NEW.md")
@@ -167,9 +163,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         waitForWorkingTreeUpdate(gitManager)
         XCTAssertTrue(gitManager.stagedFiles.isEmpty)
 
-        try waitForGitOperation {
-            gitManager.stageAllChanges(completion: $0)
-        }
+        try await gitManager.stageAllChangesAsync().get()
 
         waitForWorkingTreeUpdate(gitManager)
 
@@ -182,7 +176,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         )
     }
 
-    func testUnstageAllChangesMovesFilesBackToUnstagedSection() throws {
+    func testUnstageAllChangesMovesFilesBackToUnstagedSection() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let trackedFile = repoURL.appendingPathComponent("README.md")
         let untrackedFile = repoURL.appendingPathComponent("NEW.md")
@@ -195,16 +189,14 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.stagedFiles.map(\.path), ["NEW.md", "README.md"])
         XCTAssertTrue(gitManager.changedFiles.isEmpty)
 
-        try waitForGitOperation {
-            gitManager.unstageAllChanges(completion: $0)
-        }
+        try await gitManager.unstageAllChangesAsync().get()
 
         let status = try runGit(["status", "--porcelain"], in: repoURL)
         XCTAssertTrue(status.contains(" M README.md"))
         XCTAssertTrue(status.contains("?? NEW.md"))
     }
 
-    func testCommitLocallyCommitsOnlyStagedChanges() throws {
+    func testCommitLocallyCommitsOnlyStagedChanges() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let fileURL = repoURL.appendingPathComponent("README.md")
 
@@ -216,14 +208,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         waitForWorkingTreeUpdate(gitManager)
         XCTAssertTrue(gitManager.diffStaged().contains("+staged"))
 
-        let expectation = expectation(description: "commit staged only")
-        gitManager.commitLocally("feat: staged only") { result in
-            if case let .failure(error) = result {
-                XCTFail("Unexpected commit failure: \(error.localizedDescription)")
-            }
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: 3)
+        try await gitManager.commitLocallyAsync("feat: staged only", context: gitManager.makeRepositoryOperationContext()).get()
 
         let headCount = try runGit(["rev-list", "--count", "HEAD"], in: repoURL)
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -233,7 +218,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertTrue(unstagedDiff.contains("+unstaged"))
     }
 
-    func testCommitLocallyWithFallbackAutoStagesWhenNoStagedFilesExist() throws {
+    func testCommitLocallyWithFallbackAutoStagesWhenNoStagedFilesExist() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let trackedFile = repoURL.appendingPathComponent("README.md")
         let untrackedFile = repoURL.appendingPathComponent("NEW.md")
@@ -245,14 +230,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertTrue(gitManager.stagedFiles.isEmpty)
         XCTAssertFalse(gitManager.changedFiles.isEmpty)
 
-        let expectation = expectation(description: "fallback commit")
-        gitManager.commitLocallyWithFallback("feat: fallback commit") { result in
-            if case let .failure(error) = result {
-                XCTFail("Unexpected fallback commit failure: \(error.localizedDescription)")
-            }
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: 5)
+        try await gitManager.commitLocallyWithFallbackAsync("feat: fallback commit", context: gitManager.makeRepositoryOperationContext()).get()
 
         let headCount = try runGit(["rev-list", "--count", "HEAD"], in: repoURL)
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -290,24 +268,5 @@ final class GitWorkingTreeStateTests: XCTestCase {
             expectation.fulfill()
         }
         wait(for: [expectation], timeout: timeout)
-    }
-
-    private func waitForGitOperation(
-        timeout: TimeInterval = 3,
-        operation: (@escaping (Result<Void, Error>) -> Void) -> Void
-    ) throws {
-        let expectation = expectation(description: "git operation")
-        var operationResult: Result<Void, Error>?
-
-        operation { result in
-            operationResult = result
-            expectation.fulfill()
-        }
-
-        wait(for: [expectation], timeout: timeout)
-
-        if case let .failure(error) = operationResult {
-            throw error
-        }
     }
 }
