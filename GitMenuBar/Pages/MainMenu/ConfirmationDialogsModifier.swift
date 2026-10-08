@@ -12,7 +12,7 @@ struct BranchConfirmationDialogsModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .alert("Merge into \(dialogs.mergeTargetBranch)?", isPresented: $dialogs.showMergeConfirmation) {
-                Button("Merge", action: merge)
+                Button("Merge") { dialogs.merge(using: gitManager, errorCenter: errorCenter) }
                 Button("Cancel", role: .cancel) {
                     dialogs.mergeBranchName = ""
                     dialogs.mergeTargetBranch = ""
@@ -79,14 +79,6 @@ struct BranchConfirmationDialogsModifier: ViewModifier {
         }
 
         return "Are you sure you want to delete this branch? This action cannot be undone."
-    }
-
-    private func merge() {
-        gitManager.mergeBranch(fromBranch: dialogs.mergeBranchName) { result in
-            if case let .failure(error) = result {
-                errorCenter.merge = error.localizedDescription
-            }
-        }
     }
 
     private func switchCarryingChanges() {
@@ -175,28 +167,35 @@ struct RepositoryConfirmationDialogsModifier: ViewModifier {
         content
             .alert("Delete Repository?", isPresented: $confirmations.showDeleteConfirmation) {
                 Button("Cancel", role: .cancel) {}
-                Button("Delete", role: .destructive, action: deleteRepository)
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(confirmations.isDeleting)
+                Button("Delete", role: .destructive) {
+                    confirmations.deleteRepository(using: gitManager, authManager: githubAuthManager, errorCenter: errorCenter) {
+                        presentationModel.clearCreateRepoSuggestion()
+                        closeWindow()
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(confirmations.isDeleting)
             } message: {
                 Text("This will permanently delete the repository from GitHub. This action cannot be undone.")
             }
             .alert(repositoryActionSet.visibilityConfirmationTitle, isPresented: $confirmations.showVisibilityConfirmation) {
                 Button("Cancel", role: .cancel) {}
-                Button(repositoryActionSet.visibilityActionTitle, action: toggleRepoVisibility)
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(confirmations.isTogglingVisibility)
+                Button(repositoryActionSet.visibilityActionTitle) {
+                    confirmations.toggleRepoVisibility(using: gitManager, authManager: githubAuthManager, errorCenter: errorCenter)
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(confirmations.isTogglingVisibility)
             } message: {
                 Text(repositoryActionSet.visibilityConfirmationMessage)
             }
             .alert("Discard Changes?", isPresented: $workspace.showDiscardConfirmation) {
                 Button("Cancel", role: .cancel) {}
-                Button("Discard", role: .destructive, action: discardFile)
+                Button("Discard", role: .destructive) { workspace.discardFile(using: actionCoordinator) }
                     .keyboardShortcut(.defaultAction)
             }
             .alert("Discard All Unstaged Changes?", isPresented: $workspace.showDiscardAllConfirmation) {
                 Button("Cancel", role: .cancel) {}
-                Button("Discard All", role: .destructive, action: discardAll)
+                Button("Discard All", role: .destructive) { workspace.discardAll(using: gitManager, errorCenter: errorCenter) }
                     .keyboardShortcut(.defaultAction)
             } message: {
                 Text("Are you sure you want to discard all unstaged changes? This action cannot be undone.")
@@ -208,63 +207,6 @@ struct RepositoryConfirmationDialogsModifier: ViewModifier {
             } message: {
                 Text("This will relaunch the app immediately.")
             }
-    }
-
-    private func discardFile() {
-        if let path = workspace.discardFilePath, let status = workspace.discardFileStatus {
-            Task {
-                _ = await actionCoordinator.discardSidePanelFile(path: path, status: status)
-            }
-        }
-        workspace.discardFilePath = nil
-        workspace.discardFileStatus = nil
-    }
-
-    private func discardAll() {
-        gitManager.discardAllUnstagedChanges { result in
-            if case let .failure(error) = result {
-                errorCenter.discard = error.localizedDescription
-            }
-        }
-    }
-
-    private func deleteRepository() {
-        confirmations.isDeleting = true
-
-        Task {
-            do {
-                let repositoryService = GitHubRepositoryService(authManager: githubAuthManager)
-                try await repositoryService.deleteRepository(remoteURL: gitManager.remoteUrl)
-                confirmations.isDeleting = false
-                // Clear the remote URL since repo is deleted
-                gitManager.remoteUrl = ""
-                presentationModel.clearCreateRepoSuggestion()
-                closeWindow()
-            } catch {
-                confirmations.isDeleting = false
-                errorCenter.deleteRepository = error.localizedDescription
-            }
-        }
-    }
-
-    private func toggleRepoVisibility() {
-        confirmations.isTogglingVisibility = true
-        let newStatus = !gitManager.isPrivate
-
-        Task {
-            do {
-                let repositoryService = GitHubRepositoryService(authManager: githubAuthManager)
-                _ = try await repositoryService.updateVisibility(
-                    remoteURL: gitManager.remoteUrl,
-                    isPrivate: newStatus
-                )
-                confirmations.isTogglingVisibility = false
-                gitManager.checkRepoVisibility()
-            } catch {
-                confirmations.isTogglingVisibility = false
-                errorCenter.toggleVisibility = error.localizedDescription
-            }
-        }
     }
 
     private func restartApplication() {

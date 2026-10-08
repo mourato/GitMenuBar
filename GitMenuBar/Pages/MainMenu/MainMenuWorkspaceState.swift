@@ -82,4 +82,22 @@ final class MainMenuWorkspaceState {
 
         requestDiscard(path: file.path, status: file.status)
     }
+
+    func discardFile(using actionCoordinator: MainMenuActionCoordinator) {
+        if let path = discardFilePath, let status = discardFileStatus {
+            Task {
+                _ = await actionCoordinator.discardSidePanelFile(path: path, status: status)
+            }
+        }
+        discardFilePath = nil
+        discardFileStatus = nil
+    }
+
+    func discardAll(using gitManager: GitManager, errorCenter: MainMenuErrorCenter) {
+        gitManager.discardAllUnstagedChanges { result in
+            if case let .failure(error) = result {
+                errorCenter.discard = error.localizedDescription
+            }
+        }
+    }
 }

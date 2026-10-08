@@ -69,4 +69,12 @@ final class MainMenuBranchDialogs {
             }
         }
     }
+
+    func merge(using gitManager: GitManager, errorCenter: MainMenuErrorCenter) {
+        gitManager.mergeBranch(fromBranch: mergeBranchName) { result in
+            if case let .failure(error) = result {
+                errorCenter.merge = error.localizedDescription
+            }
+        }
+    }
 }
