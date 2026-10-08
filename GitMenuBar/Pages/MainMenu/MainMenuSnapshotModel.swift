@@ -20,8 +20,7 @@ final class MainMenuSnapshotModel {
         gitManager: GitManager,
         projectMonitor: ProjectMonitorStore,
         currentRepositoryPath: String,
-        isStagedSectionCollapsed: Bool,
-        isUnstagedSectionCollapsed: Bool,
+        collapsedSections: (staged: Bool, unstaged: Bool),
         isLoading: Bool
     ) {
         let normalizedPath = currentRepositoryPath.isEmpty
@@ -54,17 +53,23 @@ final class MainMenuSnapshotModel {
             remoteUrl: gitManager.remoteUrl,
             availableBranches: gitManager.availableBranches,
             currentBranch: gitManager.currentBranch,
-            isStagedSectionCollapsed: isStagedSectionCollapsed,
-            isUnstagedSectionCollapsed: isUnstagedSectionCollapsed,
+            isStagedSectionCollapsed: collapsedSections.staged,
+            isUnstagedSectionCollapsed: collapsedSections.unstaged,
             recentProjects: recentProjectReferences,
             currentRepoPath: currentRepositoryPath,
-            isCommitInFuture: { commit in
-                guard let currentIndex = gitManager.commitHistory.firstIndex(where: { $0.id == gitManager.currentHash }),
-                      let commitIndex = gitManager.commitHistory.firstIndex(where: { $0.id == commit.id })
-                else { return false }
-                return commitIndex < currentIndex
-            },
+            isCommitInFuture: { isCommitInFuture($0, gitManager: gitManager) },
             overview: overview
         )
+    }
+
+    func isCommitInFuture(_ commit: Commit, gitManager: GitManager) -> Bool {
+        // A commit is "future" if it appears before current HEAD in the history list
+        // This happens when we've reset backwards
+        guard let currentIndex = gitManager.commitHistory.firstIndex(where: { $0.id == gitManager.currentHash }),
+              let commitIndex = gitManager.commitHistory.firstIndex(where: { $0.id == commit.id })
+        else {
+            return false
+        }
+        return commitIndex < currentIndex
     }
 }

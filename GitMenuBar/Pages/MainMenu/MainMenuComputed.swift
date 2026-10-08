@@ -550,8 +550,7 @@ extension MainMenuView {
             gitManager: gitManager,
             projectMonitor: projectMonitor,
             currentRepositoryPath: currentRepositoryPath,
-            isStagedSectionCollapsed: isStagedSectionCollapsed,
-            isUnstagedSectionCollapsed: isUnstagedSectionCollapsed,
+            collapsedSections: (isStagedSectionCollapsed, isUnstagedSectionCollapsed),
             isLoading: presentationModel.isFastLoading
         )
     }

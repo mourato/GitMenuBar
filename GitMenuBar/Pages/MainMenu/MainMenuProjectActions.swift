@@ -5,9 +5,22 @@
 
 import AppKit
 
-extension MainMenuView {
+@MainActor
+struct MainMenuProjectActions {
+    let snapshotModel: MainMenuSnapshotModel
+    let projectMonitor: ProjectMonitorStore
+    let gitManager: GitManager
+    let repositorySelectionCoordinator: RepositorySelectionCoordinator
+    let actionCoordinator: MainMenuActionCoordinator
+    let dismissTransientPresentations: () -> Void
+    let refreshRenderSnapshot: () -> Void
+
+    private var currentRepositoryPath: String {
+        repositorySelectionCoordinator.selectedPath
+    }
+
     private var recentProjectsStore: RecentProjectsStore {
-        RecentProjectsStore()
+        snapshotModel.recentProjectsStore
     }
 
     func renameProject(path: String, name: String) {

@@ -6,6 +6,18 @@
 import SwiftUI
 
 extension MainMenuView {
+    private var projectActions: MainMenuProjectActions {
+        MainMenuProjectActions(
+            snapshotModel: snapshotModel,
+            projectMonitor: projectMonitor,
+            gitManager: gitManager,
+            repositorySelectionCoordinator: repositorySelectionCoordinator,
+            actionCoordinator: actionCoordinator,
+            dismissTransientPresentations: dismissTransientPresentations,
+            refreshRenderSnapshot: refreshRenderSnapshot
+        )
+    }
+
     private var footerSection: some View {
         MainMenuFooterSection(
             currentBranch: gitManager.currentBranch,
@@ -281,10 +293,10 @@ extension MainMenuView {
         MainMenuShellView(
             currentRepositoryPath: currentRepositoryPath,
             onSelectRepository: switchRepository,
-            onReveal: revealProjectInFinder,
+            onReveal: projectActions.revealProjectInFinder,
             onStopMonitoring: { projectMonitor.remove(path: $0) },
-            onRemove: removeProject,
-            onRename: renameProject,
+            onRemove: projectActions.removeProject,
+            onRename: projectActions.renameProject,
             onProjectCleanup: presentationModel.showProjectCleanup,
             onAddProject: selectDirectory,
             onRefreshAll: projectMonitor.refreshAll,
