@@ -83,7 +83,7 @@ struct SidePanelCommitWorkspaceView: View {
                 HStack {
                     Spacer(minLength: 0)
                     Button("Stash changes") {
-                        Task { _ = await actionCoordinator.saveSidePanelStash() }
+                        Task { _ = await actionCoordinator.sidePanel.saveSidePanelStash() }
                     }
                     .workbenchGhost()
                     .disabled(isCommitActionBusy || actionCoordinator.isBusy)
@@ -98,13 +98,13 @@ struct SidePanelCommitWorkspaceView: View {
                         selectedItemID: workspaceSelectedFileID,
                         onSelect: onSelectWorkspaceFile,
                         onStageToggle: { path in
-                            Task { _ = await actionCoordinator.unstageSidePanelFile(path: path) }
+                            Task { _ = await actionCoordinator.sidePanel.unstageSidePanelFile(path: path) }
                         },
                         onOpen: { gitManager.openFile(path: $0) },
                         onDiscard: onRequestDiscard,
                         onReveal: { gitManager.revealInFinder(path: $0) },
                         onAction: {
-                            Task { _ = await actionCoordinator.unstageAllSidePanelFiles() }
+                            Task { _ = await actionCoordinator.sidePanel.unstageAllSidePanelFiles() }
                         },
                         onDiscardAll: nil,
                         actionIcon: "minus.circle",
@@ -120,13 +120,13 @@ struct SidePanelCommitWorkspaceView: View {
                         selectedItemID: workspaceSelectedFileID,
                         onSelect: onSelectWorkspaceFile,
                         onStageToggle: { path in
-                            Task { _ = await actionCoordinator.stageSidePanelFile(path: path) }
+                            Task { _ = await actionCoordinator.sidePanel.stageSidePanelFile(path: path) }
                         },
                         onOpen: { gitManager.openFile(path: $0) },
                         onDiscard: onRequestDiscard,
                         onReveal: { gitManager.revealInFinder(path: $0) },
                         onAction: {
-                            Task { _ = await actionCoordinator.stageAllSidePanelFiles() }
+                            Task { _ = await actionCoordinator.sidePanel.stageAllSidePanelFiles() }
                         },
                         onDiscardAll: onDiscardAllUnstaged,
                         actionIcon: "plus.circle",

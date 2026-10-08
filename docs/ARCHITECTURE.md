@@ -60,6 +60,11 @@ Use this rule order:
   published state and delegates Git work to services
   (`GitBranchService`, `GitCommitHistoryService`, `GitRepositoryInitService`,
   `GitWorkingTreeService`). Git operations never live in views.
+- `MainMenuActionCoordinator` owns commit and sync flows; side-panel actions
+  live in `SidePanelActionCoordinator`, reached as
+  `actionCoordinator.sidePanel`.
+- `AppCommandRouter` routes menu-bar and palette `AppCommandID`
+  invocations; `StatusBarController` wires it to `AppCommandCenter`.
 - Main-menu features own their state and actions in feature models
   (`MainMenuWorkspaceState`, `MainMenuBranchDialogs`, `MainMenuSyncSheetState`,
   `MainMenuErrorCenter`, `MainMenuRepositoryOptionsState`,

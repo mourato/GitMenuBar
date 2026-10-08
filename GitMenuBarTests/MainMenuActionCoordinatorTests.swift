@@ -27,6 +27,24 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertFalse(actionCoordinator.canSwitchRepository(to: "/tmp/project-b"))
     }
 
+    func testSidePanelMutationIsSkippedAfterHostIsReleased() async throws {
+        let gitManager = GitManager(repositoryPathOverride: "")
+        var coordinator: MainMenuActionCoordinator? = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+        weak var releasedHost = coordinator
+        let sidePanel = try XCTUnwrap(coordinator).sidePanel
+        coordinator = nil
+
+        XCTAssertNil(releasedHost)
+        let result = await sidePanel.stageAllSidePanelFiles()
+        XCTAssertEqual(result, .skipped)
+        XCTAssertFalse(gitManager.isCommitting)
+    }
+
     func testDeleteRemoteSidePanelBranchBlankIsSkipped() async {
         let gitManager = GitManager(repositoryPathOverride: "")
         let actionCoordinator = makeActionCoordinator(
@@ -36,7 +54,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             session: makeMockedURLSession()
         )
 
-        let result = await actionCoordinator.deleteRemoteSidePanelBranch("   ")
+        let result = await actionCoordinator.sidePanel.deleteRemoteSidePanelBranch("   ")
         XCTAssertEqual(result, .skipped)
         XCTAssertNil(actionCoordinator.alert)
     }
@@ -171,7 +189,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             session: makeMockedURLSession()
         )
 
-        let result = await actionCoordinator.switchSidePanelBranch("feature/panel-target")
+        let result = await actionCoordinator.sidePanel.switchSidePanelBranch("feature/panel-target")
         XCTAssertEqual(result, .succeeded)
         XCTAssertEqual(gitManager.contextualRefreshCount, 1)
         XCTAssertEqual(gitManager.sessionlessRefreshCount, 0)
@@ -205,7 +223,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             session: makeMockedURLSession()
         )
 
-        let result = await actionCoordinator.checkoutRemoteSidePanelBranch("feature/missing")
+        let result = await actionCoordinator.sidePanel.checkoutRemoteSidePanelBranch("feature/missing")
         XCTAssertEqual(result, .failed)
         XCTAssertNotNil(actionCoordinator.alert)
     }
@@ -227,7 +245,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             branches: []
         )
 
-        let result = await actionCoordinator.performSidePanelCleanup(units: [], snapshot: snapshot)
+        let result = await actionCoordinator.sidePanel.performSidePanelCleanup(units: [], snapshot: snapshot)
         XCTAssertEqual(result, .skipped)
         XCTAssertNil(actionCoordinator.alert)
     }
@@ -241,7 +259,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             session: makeMockedURLSession()
         )
         gitManager.isCommitting = true
-        let result = await actionCoordinator.pushSidePanelBranch("main")
+        let result = await actionCoordinator.sidePanel.pushSidePanelBranch("main")
         XCTAssertEqual(result, .skipped)
     }
 
@@ -264,7 +282,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             session: makeMockedURLSession()
         )
 
-        let result = await actionCoordinator.applySidePanelStash(hash: hash)
+        let result = await actionCoordinator.sidePanel.applySidePanelStash(hash: hash)
         XCTAssertEqual(result, .failed)
         XCTAssertNotNil(actionCoordinator.alert)
         XCTAssertNil(actionCoordinator.success)
@@ -283,10 +301,10 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         manager.applyStarted = started
 
         let action = Task { @MainActor in
-            await coordinator.applySidePanelStash(hash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            await coordinator.sidePanel.applySidePanelStash(hash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         }
         await fulfillment(of: [started])
-        let duplicate = await coordinator.applySidePanelStash(hash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+        let duplicate = await coordinator.sidePanel.applySidePanelStash(hash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
         XCTAssertEqual(duplicate, .skipped)
         manager.selectedPath = "/tmp/project-b"
         manager.resetSelectedRepositoryState()

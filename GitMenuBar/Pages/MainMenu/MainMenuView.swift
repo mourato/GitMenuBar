@@ -196,7 +196,7 @@ struct MainMenuView: View {
         }
         .onChange(of: workspace.selectedSidePanelSelection) { _, selection in
             Task {
-                await actionCoordinator.prepareSidePanelSelection(selection)
+                await actionCoordinator.sidePanel.prepareSidePanelSelection(selection)
             }
         }
     }

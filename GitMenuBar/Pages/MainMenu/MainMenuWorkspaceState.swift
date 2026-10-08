@@ -86,7 +86,7 @@ final class MainMenuWorkspaceState {
     func discardFile(using actionCoordinator: MainMenuActionCoordinator) {
         if let path = discardFilePath, let status = discardFileStatus {
             Task {
-                _ = await actionCoordinator.discardSidePanelFile(path: path, status: status)
+                _ = await actionCoordinator.sidePanel.discardSidePanelFile(path: path, status: status)
             }
         }
         discardFilePath = nil

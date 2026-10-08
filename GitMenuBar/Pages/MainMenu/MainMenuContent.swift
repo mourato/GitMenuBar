@@ -190,7 +190,7 @@ extension MainMenuView {
                             branchDialogs.showDirtySwitchConfirmation = true
                         } else {
                             Task {
-                                _ = await actionCoordinator.switchSidePanelBranch(branch)
+                                _ = await actionCoordinator.sidePanel.switchSidePanelBranch(branch)
                             }
                         }
                     },

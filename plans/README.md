@@ -19,12 +19,11 @@ Active local execution briefs only. Completed and withdrawn plans live in
 | [073](073-measure-commit-push-switch-latency.md) | Establish the commit/push and project-switch latency baseline | P1 | IMPLEMENTED — baseline pending |
 | [074](074-de-duplicate-commit-push-refresh-work.md) | De-duplicate the Commit & Push critical path | P1 | IMPLEMENTED — measurement pending |
 | [075](075-switch-projects-during-path-bound-git-actions.md) | Switch projects while path-bound Git actions finish safely | P0 | IMPLEMENTED — manual/Instruments pending |
-| [085](085-split-side-panel-actions.md) | Split side-panel actions out of MainMenuActionCoordinator | P2 | IN PROGRESS — gate passed (973 lines) |
-| [086](086-main-menu-render-snapshot-model.md) | Move render snapshot and recent projects into an observable model | P2 | READY — scope reduced; starts after 085 merges |
+| [086](086-main-menu-render-snapshot-model.md) | Move render snapshot and recent projects into an observable model | P2 | IN PROGRESS — scope reduced (palette stays in view) |
 
 ## Archive notes
 
-- Plans `001`–`072`, `076`–`084`, and withdrawn Companion CLI briefs
+- Plans `001`–`072`, `076`–`085`, and withdrawn Companion CLI briefs
   (`036`–`038`, `068`, `072`) are under [`archive/`](archive/).
 - Stub `029` (never authored) was dropped from the index; it had no file.
 - Historical consolidate/optimize notes from 2026-07 lived only in the old
