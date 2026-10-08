@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class GitWorkingTreeStateTests: XCTestCase {
-    func testStagedFileAppearsOnlyInStagedSectionWithLineDiff() throws {
+    func testStagedFileAppearsOnlyInStagedSectionWithLineDiff() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let fileURL = repoURL.appendingPathComponent("README.md")
 
@@ -11,7 +11,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         try runGit(["add", "README.md"], in: repoURL)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         XCTAssertEqual(gitManager.stagedFiles.map(\.path), ["README.md"])
         XCTAssertTrue(gitManager.changedFiles.isEmpty)
@@ -23,14 +23,14 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.stagedFiles.sectionSummary.removedLineCount, 0)
     }
 
-    func testUnstagedFileAppearsOnlyInChangesSectionWithLineDiff() throws {
+    func testUnstagedFileAppearsOnlyInChangesSectionWithLineDiff() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let fileURL = repoURL.appendingPathComponent("README.md")
 
         try "base\nunstaged\n".write(to: fileURL, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         XCTAssertTrue(gitManager.stagedFiles.isEmpty)
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["README.md"])
@@ -42,7 +42,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.changedFiles.sectionSummary.removedLineCount, 0)
     }
 
-    func testPartiallyStagedFileAppearsInBothSections() throws {
+    func testPartiallyStagedFileAppearsInBothSections() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let fileURL = repoURL.appendingPathComponent("README.md")
 
@@ -51,7 +51,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         try "base\nstaged\nunstaged\n".write(to: fileURL, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         XCTAssertEqual(gitManager.stagedFiles.map(\.path), ["README.md"])
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["README.md"])
@@ -67,14 +67,14 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.changedFiles.sectionSummary.removedLineCount, 0)
     }
 
-    func testUntrackedFileReceivesAddedLineCount() throws {
+    func testUntrackedFileReceivesAddedLineCount() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let fileURL = repoURL.appendingPathComponent("NEW_FILE.md")
 
         try "one\ntwo\nthree\n".write(to: fileURL, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["NEW_FILE.md"])
         XCTAssertEqual(gitManager.changedFiles.first?.lineDiff.added, 3)
@@ -85,18 +85,18 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.changedFiles.sectionSummary.removedLineCount, 0)
     }
 
-    func testDeletedFileReceivesDeletedStatus() throws {
+    func testDeletedFileReceivesDeletedStatus() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         try FileManager.default.removeItem(at: repoURL.appendingPathComponent("README.md"))
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["README.md"])
         XCTAssertEqual(gitManager.changedFiles.first?.status, .deleted)
     }
 
-    func testUntrackedFilesInNewDirectoryAreEnumeratedPerFile() throws {
+    func testUntrackedFilesInNewDirectoryAreEnumeratedPerFile() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let nestedDirectory = repoURL.appendingPathComponent("newtree/sub", isDirectory: true)
         try FileManager.default.createDirectory(at: nestedDirectory, withIntermediateDirectories: true)
@@ -107,7 +107,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         try "three\n".write(to: secondFileURL, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["newtree/sub/f1.txt", "newtree/sub/f2.txt"])
         XCTAssertEqual(gitManager.changedFiles.sectionSummary.fileCountText, "2")
@@ -115,7 +115,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         XCTAssertEqual(gitManager.changedFiles.sectionSummary.removedLineCount, 0)
     }
 
-    func testBinaryNumstatMapsToNeutralCounts() throws {
+    func testBinaryNumstatMapsToNeutralCounts() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let fileURL = repoURL.appendingPathComponent("icon.bin")
         let data = Data([0x00, 0x01, 0x02, 0x03, 0x04])
@@ -123,7 +123,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         try runGit(["add", "icon.bin"], in: repoURL)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         XCTAssertEqual(gitManager.stagedFiles.map(\.path), ["icon.bin"])
         XCTAssertEqual(gitManager.stagedFiles.first?.lineDiff.added, 0)
@@ -260,14 +260,5 @@ final class GitWorkingTreeStateTests: XCTestCase {
 
         XCTAssertEqual(file.fileName, "README.md")
         XCTAssertEqual(file.directoryPath, "")
-    }
-
-    private func waitForWorkingTreeUpdate(_ gitManager: GitManager, timeout: TimeInterval = 3) {
-        let expectation = expectation(description: "working tree refresh")
-        Task {
-            await gitManager.updateUncommittedFilesAsync()
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: timeout)
     }
 }
