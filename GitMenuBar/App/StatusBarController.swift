@@ -177,8 +177,8 @@ final class StatusBarController: NSObject {
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.updateStatusItemAppearance()
-                self.observeUsageQuotaForStatusItem()
+                updateStatusItemAppearance()
+                observeUsageQuotaForStatusItem()
             }
         }
     }
@@ -284,8 +284,8 @@ final class StatusBarController: NSObject {
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.setAutoHideSuspended(self.githubAuthManager.isAuthenticating)
-                self.observeAuthenticatingState()
+                setAutoHideSuspended(githubAuthManager.isAuthenticating)
+                observeAuthenticatingState()
             }
         }
     }
@@ -313,9 +313,9 @@ final class StatusBarController: NSObject {
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.refreshAppCommands()
-                self.updateMainWindowToolbar()
-                self.observePresentationRoute()
+                refreshAppCommands()
+                updateMainWindowToolbar()
+                observePresentationRoute()
             }
         }
     }
@@ -335,9 +335,9 @@ final class StatusBarController: NSObject {
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.refreshAppCommands()
-                self.updateMainWindowToolbar()
-                self.observeGitCommandState()
+                refreshAppCommands()
+                updateMainWindowToolbar()
+                observeGitCommandState()
             }
         }
     }
