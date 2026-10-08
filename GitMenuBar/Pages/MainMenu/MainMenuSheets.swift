@@ -1,26 +1,19 @@
 import SwiftUI
 
 /// Attaches the main-menu sheets (branch dialogs, commit editor, sync
-/// options, atomic commits) to the content view. Sheet state arrives as
-/// bindings, stores arrive from the environment, and mutating actions
-/// arrive as closures owned by the composer.
+/// options, atomic commits) to the content view. Feature models own sheet
+/// state and actions; stores arrive from the environment.
 struct MainMenuSheetsModifier: ViewModifier {
-    @Binding var branchDialogs: MainMenuBranchDialogs
-    @Binding var errorCenter: MainMenuErrorCenter
-    @Binding var workspace: MainMenuWorkspaceState
-    @Binding var sync: MainMenuSyncSheetState
+    @Bindable var branchDialogs: MainMenuBranchDialogs
+    let errorCenter: MainMenuErrorCenter
+    @Bindable var workspace: MainMenuWorkspaceState
+    @Bindable var sync: MainMenuSyncSheetState
 
     @Environment(GitManager.self) private var gitManager
     @Environment(MainMenuActionCoordinator.self) private var actionCoordinator
     @Environment(CommitHistoryEditCoordinator.self) private var commitHistoryEditCoordinator
     @Environment(AICommitCoordinator.self) private var aiCommitCoordinator
-
-    let syncOptionsSubtitle: String
-    let onRenameBranch: () -> Void
-    let onSaveEditedCommitMessage: () -> Void
-    let onSyncWithRemote: () -> Void
-    let onCreateNewBranch: () -> Void
-    let onPullToNewBranch: () -> Void
+    @Environment(MainMenuPresentationModel.self) private var presentationModel
 
     func body(content: Content) -> some View {
         content
@@ -47,6 +40,14 @@ struct MainMenuSheetsModifier: ViewModifier {
             .sheet(isPresented: $workspace.showAtomicCommitSheet, content: atomicCommitSheet)
     }
 
+    private func saveEditedCommitMessage() {
+        Task {
+            if await commitHistoryEditCoordinator.saveDraftMessage() {
+                presentationModel.showMain()
+            }
+        }
+    }
+
     private func renameBranchSheet() -> some View {
         RenameBranchSheet(
             oldBranchName: branchDialogs.oldBranchName,
@@ -57,7 +58,7 @@ struct MainMenuSheetsModifier: ViewModifier {
                 branchDialogs.renameBranchNewName = ""
                 errorCenter.renameBranch = nil
             },
-            onRename: onRenameBranch
+            onRename: { branchDialogs.renameBranch(using: actionCoordinator, errorCenter: errorCenter) }
         )
     }
 
@@ -77,7 +78,7 @@ struct MainMenuSheetsModifier: ViewModifier {
                 onCancel: {
                     commitHistoryEditCoordinator.dismissEditor()
                 },
-                onSave: onSaveEditedCommitMessage
+                onSave: saveEditedCommitMessage
             )
         }
     }
@@ -87,7 +88,7 @@ struct MainMenuSheetsModifier: ViewModifier {
             Text("Sync with Remote")
                 .font(.headline.weight(.semibold))
 
-            Text(syncOptionsSubtitle)
+            Text("Remote has \(gitManager.behindCount) new commit\(gitManager.behindCount == 1 ? "" : "s")")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -98,7 +99,7 @@ struct MainMenuSheetsModifier: ViewModifier {
                     tone: .accent
                 ) {
                     sync.useRebase = false
-                    onSyncWithRemote()
+                    sync.syncWithRemote(using: actionCoordinator)
                 }
 
                 SyncOptionCard(
@@ -107,7 +108,7 @@ struct MainMenuSheetsModifier: ViewModifier {
                     tone: .warning
                 ) {
                     sync.useRebase = true
-                    onSyncWithRemote()
+                    sync.syncWithRemote(using: actionCoordinator)
                 }
 
                 SyncOptionCard(
@@ -142,7 +143,7 @@ struct MainMenuSheetsModifier: ViewModifier {
                 branchDialogs.newBranchName = ""
                 branchDialogs.createBranchError = nil
             },
-            onCreate: onCreateNewBranch
+            onCreate: { branchDialogs.createBranch(using: actionCoordinator) }
         )
     }
 
@@ -155,7 +156,7 @@ struct MainMenuSheetsModifier: ViewModifier {
                 sync.pullToNewBranchName = ""
                 errorCenter.sync = nil
             },
-            onPull: onPullToNewBranch
+            onPull: { sync.pullToNewBranch(using: actionCoordinator, errorCenter: errorCenter) }
         )
     }
 

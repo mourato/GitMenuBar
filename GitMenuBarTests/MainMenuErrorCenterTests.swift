@@ -56,4 +56,23 @@ final class MainMenuErrorCenterTests: XCTestCase {
 
         XCTAssertEqual(center.sync, "Sync Failed")
     }
+
+    func testActiveSourceFollowsBannerPriorityAndClearsThrough() {
+        let center = MainMenuErrorCenter()
+        XCTAssertNil(center.activeSource)
+
+        center.push = "Remote rejected"
+        center.discard = "File locked"
+
+        XCTAssertEqual(center.activeSource, .discard)
+        XCTAssertEqual(center.banner(for: .discard)?.title, "Discard Failed")
+        XCTAssertEqual(center.banner(for: .discard)?.message, "File locked")
+
+        center.clear(.discard)
+
+        XCTAssertEqual(center.activeSource, .push)
+        XCTAssertEqual(center.banner(for: .push)?.title, "Push Failed")
+        XCTAssertNil(center.banner(for: .discard))
+        XCTAssertNil(center.banner(for: .coordinatorAlert))
+    }
 }
