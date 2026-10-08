@@ -1,152 +1,84 @@
 import SwiftUI
 
-extension MainMenuView {
-    func applyMainViewOverlays(to view: some View) -> some View {
-        applySheets(to: view)
-    }
+/// Window-level overlay combining the transient presentation overlay
+/// (repository options / quota info) with the command palette overlay.
+/// Receives plain values and closures; reads no environment.
+struct MainMenuWindowOverlayView: View {
+    let isTransientPresented: Bool
+    let showsRepositoryOptions: Bool
+    let visibilityStatusDescription: String
+    let visibilityActionTitle: String
+    let quotaSnapshot: UsageQuotaSnapshot?
+    let onToggleVisibility: () -> Void
+    let onDeleteRepository: () -> Void
+    let onDismissTransient: () -> Void
+    let onRetryQuota: () -> Void
 
-    var mainWindowOverlayContent: some View {
+    let isCommandPalettePresented: Bool
+    @Binding var paletteQuery: String
+    let paletteItems: [MainMenuCommandPaletteItem]
+    @Binding var paletteSelectedItemID: String?
+    let onClosePalette: () -> Void
+    let onSelectPaletteItem: (MainMenuCommandPaletteItem) -> Void
+
+    var body: some View {
         ZStack {
-            transientPresentationOverlayContent
-            commandPaletteOverlayContent
-        }
-    }
-
-    var transientPresentationOverlayContent: some View {
-        MainMenuTransientOverlay(
-            isPresented: presentationModel.route == .main && hasTransientPresentation,
-            showsRepositoryOptions: repoOptions.showRepositoryOptionsPopover,
-            visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
-            visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
-            quotaSnapshot: presentationModel.quotaInfoSnapshot,
-            onToggleVisibility: confirmRepositoryVisibilityAction,
-            onDeleteRepository: confirmRepositoryDeleteAction,
-            onDismiss: dismissTransientPresentations,
-            onRetryQuota: {
-                dismissTransientPresentations()
-                usageQuotaStore.refresh(reason: .manual)
-            }
-        )
-    }
-
-    var branchSelectorOverlay: some View {
-        MainMenuBranchSelectorOverlay(
-            isDetachedHead: gitManager.isDetachedHead,
-            isRemoteAhead: gitManager.isRemoteAhead,
-            behindCount: gitManager.behindCount,
-            availableBranches: gitManager.availableBranches,
-            currentBranch: gitManager.currentBranch,
-            onCreateBranchFromDetached: {
-                dismissTransientPresentations()
-                branchDialogs.showCreateBranch = true
-            },
-            onQuickPull: {
-                dismissTransientPresentations()
-                sync.useRebase = false
-                syncWithRemote()
-            },
-            onSelectBranch: { branch in
-                dismissTransientPresentations()
-                guard branch != gitManager.currentBranch else { return }
-
-                if hasWorkingTreeChanges {
-                    branchDialogs.pendingSwitchBranch = branch
-                    branchDialogs.showDirtySwitchConfirmation = true
-                } else {
-                    gitManager.switchBranch(branchName: branch) { result in
-                        if case let .failure(error) = result {
-                            errorCenter.branchSwitch = error.localizedDescription
-                        }
-                    }
-                }
-            },
-            onMergeBranch: { branch in
-                dismissTransientPresentations()
-                if gitManager.currentBranch == "main" || gitManager.currentBranch == "master" {
-                    branchDialogs.mergeBranchName = branch
-                    branchDialogs.mergeTargetBranch = gitManager.currentBranch
-                    branchDialogs.showMergeConfirmation = true
-                } else {
-                    gitManager.mergeBranch(fromBranch: branch) { result in
-                        if case let .failure(error) = result {
-                            errorCenter.merge = error.localizedDescription
-                        }
-                    }
-                }
-            },
-            onDeleteBranch: { branch in
-                dismissTransientPresentations()
-                branchDialogs.branchNameToDelete = branch
-                branchDialogs.showBranchDeleteConfirmation = true
-            },
-            onRenameBranch: { branch in
-                dismissTransientPresentations()
-                branchDialogs.oldBranchName = branch
-                branchDialogs.renameBranchNewName = branch
-                branchDialogs.showRenameBranch = true
-            },
-            onMergeToDefaultBranch: { branch in
-                dismissTransientPresentations()
-                Task {
-                    guard let detectedDefaultBranch = await gitManager.getSelectedDefaultBranchNameAsync() else { return }
-                    branchDialogs.featureBranchName = branch
-                    branchDialogs.defaultBranchName = detectedDefaultBranch
-                    branchDialogs.showMergeToDefaultConfirmation = true
-                }
-            },
-            onNewBranch: {
-                dismissTransientPresentations()
-                branchDialogs.showCreateBranch = true
-            }
-        )
-    }
-
-    var commandPaletteOverlayContent: some View {
-        MainMenuCommandPaletteOverlay(
-            isPresented: palette.isPresented && presentationModel.route == .main,
-            query: $palette.query,
-            items: commandPaletteVisibleItems,
-            selectedItemID: $palette.selectedItemID,
-            onClose: closeCommandPalette,
-            onSelectItem: executeCommandPaletteItem
-        )
-    }
-
-    private func applySheets(to view: some View) -> some View {
-        view
-            .sheet(isPresented: $branchDialogs.showRenameBranch, content: renameBranchSheet)
-            .sheet(
-                isPresented: .init(
-                    get: { commitHistoryEditCoordinator.isEditorPresented },
-                    set: { isPresented in
-                        if !isPresented {
-                            commitHistoryEditCoordinator.dismissEditor()
-                        }
-                    }
-                )
-            ) { commitMessageEditorSheet() }
-            .sheet(
-                isPresented: Binding(
-                    get: { actionCoordinator.showSyncOptions },
-                    set: { actionCoordinator.showSyncOptions = $0 }
-                ),
-                content: syncOptionsSheet
+            MainMenuTransientOverlay(
+                isPresented: isTransientPresented,
+                showsRepositoryOptions: showsRepositoryOptions,
+                visibilityStatusDescription: visibilityStatusDescription,
+                visibilityActionTitle: visibilityActionTitle,
+                quotaSnapshot: quotaSnapshot,
+                onToggleVisibility: onToggleVisibility,
+                onDeleteRepository: onDeleteRepository,
+                onDismiss: onDismissTransient,
+                onRetryQuota: onRetryQuota
             )
-            .sheet(isPresented: $branchDialogs.showCreateBranch, content: createBranchSheet)
-            .sheet(isPresented: $sync.showPullToNewBranch, content: pullToNewBranchSheet)
-            .sheet(isPresented: $workspace.showAtomicCommitSheet, content: atomicCommitSheet)
+            MainMenuCommandPaletteOverlay(
+                isPresented: isCommandPalettePresented,
+                query: $paletteQuery,
+                items: paletteItems,
+                selectedItemID: $paletteSelectedItemID,
+                onClose: onClosePalette,
+                onSelectItem: onSelectPaletteItem
+            )
+        }
     }
+}
 
-    var deleteBranchWarningMessage: String {
-        let protectedBranches = ["main", "master", "develop"]
-        if gitManager.unmergedIntoDefaultBranches.contains(branchDialogs.branchNameToDelete) {
-            return "This branch is not merged into the default branch. Git will keep it unless you review its removal in Cleanup."
-        }
-        if protectedBranches.contains(branchDialogs.branchNameToDelete) {
-            return "WARNING: '\(branchDialogs.branchNameToDelete)' is a primary branch. Deleting it may cause serious issues."
-        }
+/// Branch selector popover wiring. Branch state arrives as plain values;
+/// selection, merge, delete, rename, and creation effects arrive as closures.
+struct MainMenuBranchSelectorHost: View {
+    let isDetachedHead: Bool
+    let isRemoteAhead: Bool
+    let behindCount: Int
+    let availableBranches: [String]
+    let currentBranch: String
+    let onCreateBranchFromDetached: () -> Void
+    let onQuickPull: () -> Void
+    let onSelectBranch: (String) -> Void
+    let onMergeBranch: (String) -> Void
+    let onDeleteBranch: (String) -> Void
+    let onRenameBranch: (String) -> Void
+    let onMergeToDefaultBranch: (String) -> Void
+    let onNewBranch: () -> Void
 
-        return "Are you sure you want to delete this branch? This action cannot be undone."
+    var body: some View {
+        MainMenuBranchSelectorOverlay(
+            isDetachedHead: isDetachedHead,
+            isRemoteAhead: isRemoteAhead,
+            behindCount: behindCount,
+            availableBranches: availableBranches,
+            currentBranch: currentBranch,
+            onCreateBranchFromDetached: onCreateBranchFromDetached,
+            onQuickPull: onQuickPull,
+            onSelectBranch: onSelectBranch,
+            onMergeBranch: onMergeBranch,
+            onDeleteBranch: onDeleteBranch,
+            onRenameBranch: onRenameBranch,
+            onMergeToDefaultBranch: onMergeToDefaultBranch,
+            onNewBranch: onNewBranch
+        )
     }
 }
 
