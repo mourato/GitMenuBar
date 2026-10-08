@@ -85,7 +85,7 @@ final class MainMenuActionCoordinator {
 
     let gitManager: GitManager
     private let aiCommitCoordinator: AICommitCoordinator
-    private let onCommitCompleted: (@MainActor (String) -> Void)?
+    let onCommitCompleted: (@MainActor (String) -> Void)?
     @ObservationIgnored private var activeOperationContext: RepositoryOperationContext?
     @ObservationIgnored private var activeOperationAllowsRepositorySwitch = false
 
@@ -704,7 +704,7 @@ final class MainMenuActionCoordinator {
         }
     }
 
-    private func executeContextualMutation(
+    func executeContextualMutation(
         allowsRepositorySwitch: Bool,
         operation: (RepositoryOperationContext) async -> MainMenuSidePanelActionResult
     ) async -> MainMenuSidePanelActionResult {
@@ -961,7 +961,7 @@ final class MainMenuActionCoordinator {
     }
 }
 
-private extension Result where Success == Void, Failure == Error {
+extension Result where Success == Void, Failure == Error {
     var inspectorActionResult: MainMenuSidePanelActionResult {
         switch self {
         case .success:
