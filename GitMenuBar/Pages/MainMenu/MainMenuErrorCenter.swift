@@ -43,39 +43,31 @@ final class MainMenuErrorCenter {
         }
     }
 
+    /// Pending errors in banner priority order, with their banner titles.
+    private var entries: [(source: MainMenuInlineBannerSource, banner: (title: String, message: String?))] {
+        [
+            (.deleteRepository, ("Delete Failed", deleteRepository)),
+            (.toggleVisibility, ("Visibility Update Failed", toggleVisibility)),
+            (.discard, ("Discard Failed", discard)),
+            (.sync, ("Sync Failed", sync)),
+            (.branchSwitch, ("Branch Switch Failed", branchSwitch)),
+            (.merge, ("Merge Failed", merge)),
+            (.deleteBranch, ("Delete Failed", deleteBranch)),
+            (.renameBranch, ("Rename Failed", renameBranch)),
+            (.restart, ("Restart Failed", restart)),
+            (.push, ("Push Failed", push))
+        ]
+    }
+
     /// First pending error in banner priority order.
     var activeSource: MainMenuInlineBannerSource? {
-        let sources: [(MainMenuInlineBannerSource, String?)] = [
-            (.deleteRepository, deleteRepository),
-            (.toggleVisibility, toggleVisibility),
-            (.discard, discard),
-            (.sync, sync),
-            (.branchSwitch, branchSwitch),
-            (.merge, merge),
-            (.deleteBranch, deleteBranch),
-            (.renameBranch, renameBranch),
-            (.restart, restart),
-            (.push, push)
-        ]
-        return sources.first { $0.1 != nil }?.0
+        entries.first { $0.banner.message != nil }?.source
     }
 
     func banner(for source: MainMenuInlineBannerSource) -> InlineStatusBanner? {
-        let content: (title: String, message: String?)
-        switch source {
-        case .deleteRepository: content = ("Delete Failed", deleteRepository)
-        case .toggleVisibility: content = ("Visibility Update Failed", toggleVisibility)
-        case .discard: content = ("Discard Failed", discard)
-        case .sync: content = ("Sync Failed", sync)
-        case .branchSwitch: content = ("Branch Switch Failed", branchSwitch)
-        case .merge: content = ("Merge Failed", merge)
-        case .deleteBranch: content = ("Delete Failed", deleteBranch)
-        case .renameBranch: content = ("Rename Failed", renameBranch)
-        case .restart: content = ("Restart Failed", restart)
-        case .push: content = ("Push Failed", push)
-        case .coordinatorAlert, .coordinatorSuccess: return nil
+        guard let entry = entries.first(where: { $0.source == source }), let message = entry.banner.message else {
+            return nil
         }
-        guard let message = content.message else { return nil }
-        return InlineStatusBanner(title: content.title, message: message, style: .error)
+        return InlineStatusBanner(title: entry.banner.title, message: message, style: .error)
     }
 }

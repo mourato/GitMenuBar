@@ -235,7 +235,6 @@ extension MainMenuView {
             onSelectPaletteItem: executeCommandPaletteItem
         )
     }
-
 }
 
 #Preview("Main Menu Root") {
