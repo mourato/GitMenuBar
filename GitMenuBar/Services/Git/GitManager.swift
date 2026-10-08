@@ -863,10 +863,10 @@ class GitManager {
         guard !repositoryPath.isEmpty else {
             return .failure(makeMissingRepositoryError())
         }
-        let result = await discardFileChangesOnDisk(
+        let result = await workingTreeService.discardFileChangesAsync(
             path: path,
             status: status,
-            repositoryPath: repositoryPath
+            in: repositoryPath
         )
         guard case .success = result else { return result }
         await updateUncommittedFilesAsync()
@@ -880,61 +880,11 @@ class GitManager {
     ) async -> Result<Void, Error> {
         guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
         guard await branchMatches(context) else { return .failure(staleOperationError()) }
-        return await discardFileChangesOnDisk(
+        return await workingTreeService.discardFileChangesAsync(
             path: path,
             status: status,
-            repositoryPath: context.repositoryPath
+            in: context.repositoryPath
         )
-    }
-
-    private func discardFileChangesOnDisk(
-        path: String,
-        status: WorkingTreeFileStatus,
-        repositoryPath: String
-    ) async -> Result<Void, Error> {
-        let fullPath = (repositoryPath as NSString).appendingPathComponent(path)
-        var result: (output: String, failure: Bool)
-
-        if status == .untracked {
-            do {
-                if FileManager.default.fileExists(atPath: fullPath) {
-                    try FileManager.default.removeItem(atPath: fullPath)
-                }
-                result = ("", false)
-            } catch {
-                result = (error.localizedDescription, true)
-            }
-        } else {
-            result = await runOnBackground {
-                self.executeGitCommand(
-                    in: repositoryPath,
-                    args: ["restore", "--staged", "--worktree", "--", path]
-                )
-            }
-            if result.failure {
-                _ = await runOnBackground {
-                    self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--", path])
-                }
-                result = await runOnBackground {
-                    self.executeGitCommand(in: repositoryPath, args: ["checkout", "--", path])
-                }
-
-                if FileManager.default.fileExists(atPath: fullPath) {
-                    let lsResult = await runOnBackground {
-                        self.executeGitCommand(in: repositoryPath, args: ["ls-files", "--error-unmatch", path])
-                    }
-                    if lsResult.failure {
-                        try? FileManager.default.removeItem(atPath: fullPath)
-                        result = ("", false)
-                    }
-                }
-            }
-        }
-
-        guard !result.failure else {
-            return .failure(GitOperationError.commandFailed("Failed to discard '\(path)': \(result.output)"))
-        }
-        return .success(())
     }
 
     func discardAllUnstagedChanges(completion: ((Result<Void, Error>) -> Void)? = nil) {
@@ -945,118 +895,46 @@ class GitManager {
 
         Task { @MainActor in
             let repositoryPath = storedRepoPath
-            // Restore tracked files
-            var result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["restore", "--", "."])
-            }
-            if result.failure {
-                result = await runOnBackground {
-                    self.executeGitCommand(in: repositoryPath, args: ["checkout", "--", "."])
-                }
-            }
-
-            // Clean untracked files
-            let cleanResult = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["clean", "-fd"])
-            }
-
-            if result.failure || cleanResult.failure {
-                let errorMsg = result.failure ? result.output : cleanResult.output
-                completion?(.failure(GitOperationError.commandFailed("Failed to discard untracked changes: \(errorMsg)")))
+            let result = await workingTreeService.discardAllUnstagedChangesAsync(in: repositoryPath)
+            guard case .success = result else {
+                completion?(result)
                 return
             }
-
             await updateUncommittedFilesAsync()
             completion?(.success(()))
         }
     }
 
     func diffStaged() -> String {
-        guard !storedRepoPath.isEmpty else {
-            return ""
-        }
-
-        let result = executeGitCommand(in: storedRepoPath, args: ["diff", "--cached", "--", "."])
-        if result.failure {
-            return ""
-        }
-        return result.output
-    }
-
-    func diffUnstaged() -> String {
-        guard !storedRepoPath.isEmpty else {
-            return ""
-        }
-
-        let trackedResult = executeGitCommand(in: storedRepoPath, args: ["diff", "--", "."])
-        let trackedDiff = trackedResult.failure ? "" : trackedResult.output
-        let untrackedDiff = diffForUntrackedFiles()
-        return [trackedDiff, untrackedDiff]
-            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            .joined(separator: "\n\n")
-    }
-
-    func diffAll() -> String {
-        let stagedDiff = diffStaged()
-        let unstagedDiff = diffUnstaged()
-        return [stagedDiff, unstagedDiff]
-            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            .joined(separator: "\n\n")
+        workingTreeService.diffStaged(in: storedRepoPath)
     }
 
     func diffStagedAsync() async -> String {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else { return "" }
-        return await runOnBackground {
-            let result = self.executeGitCommand(in: repositoryPath, args: ["diff", "--cached", "--", "."])
-            return result.failure ? "" : result.output
-        }
+        await workingTreeService.diffStagedAsync(in: storedRepoPath)
+    }
+
+    func diffUnstaged() -> String {
+        workingTreeService.diffUnstaged(in: storedRepoPath)
     }
 
     func diffUnstagedAsync() async -> String {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else { return "" }
-        return await runOnBackground {
-            let trackedResult = self.executeGitCommand(in: repositoryPath, args: ["diff", "--", "."])
-            let trackedDiff = trackedResult.failure ? "" : trackedResult.output
-            let untrackedDiff = self.diffForUntrackedFiles(at: repositoryPath)
-            return [trackedDiff, untrackedDiff]
-                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-                .joined(separator: "\n\n")
-        }
+        await workingTreeService.diffUnstagedAsync(in: storedRepoPath)
+    }
+
+    func diffAll() -> String {
+        workingTreeService.diffAll(in: storedRepoPath)
     }
 
     func diffAllAsync() async -> String {
-        async let stagedDiff = diffStagedAsync()
-        async let unstagedDiff = diffUnstagedAsync()
-        return await [stagedDiff, unstagedDiff]
-            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            .joined(separator: "\n\n")
+        await workingTreeService.diffAllAsync(in: storedRepoPath)
     }
 
     func hasUncommittedChanges() -> Bool {
-        guard !storedRepoPath.isEmpty else {
-            return false
-        }
-
-        return !executeGitCommand(in: storedRepoPath, args: ["status", "--porcelain"])
-            .output
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .isEmpty
+        workingTreeService.hasUncommittedChanges(in: storedRepoPath)
     }
 
     func hasUncommittedChangesAsync() async -> Bool {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else {
-            return false
-        }
-
-        return await runOnBackground {
-            !self.executeGitCommand(in: repositoryPath, args: ["status", "--porcelain"])
-                .output
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .isEmpty
-        }
+        await workingTreeService.hasUncommittedChangesAsync(in: storedRepoPath)
     }
 
     func isCommitPublishedToUpstreamAsync(_ hash: String) async throws -> Bool {
@@ -1109,34 +987,6 @@ class GitManager {
         case .success:
             await refreshAsync(includeReflogHistory: false)
         }
-    }
-
-    private nonisolated func diffForUntrackedFiles(at repositoryPath: String? = nil) -> String {
-        let path = repositoryPath ?? storedRepoPath
-        let untrackedResult = executeGitCommand(in: path, args: ["ls-files", "--others", "--exclude-standard"])
-        if untrackedResult.failure {
-            return ""
-        }
-
-        let files = untrackedResult.output
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
-        if files.isEmpty {
-            return ""
-        }
-
-        let sections = files.map { file -> String in
-            let diffResult = executeGitCommand(in: path, args: ["diff", "--no-index", "--", "/dev/null", file])
-            let output = diffResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
-            if output.isEmpty {
-                return "diff --git a/\(file) b/\(file)\nnew file mode 100644\n+<unable to render diff>"
-            }
-            return output
-        }
-
-        return sections.joined(separator: "\n\n")
     }
 
     @discardableResult
