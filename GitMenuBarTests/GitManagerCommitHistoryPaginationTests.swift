@@ -17,19 +17,19 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
             let gitManager = GitManager()
 
             await gitManager.fetchCommitHistoryAsync(limit: 25)
-            waitForHistoryUpdate(timeout: 6) {
+            await waitForHistoryUpdate(timeout: 6) {
                 gitManager.commitHistoryLimit == 25 && gitManager.commitHistory.count == 25
             }
 
             gitManager.loadMoreCommitHistory(batchSize: 25)
-            waitForHistoryUpdate(timeout: 6) {
+            await waitForHistoryUpdate(timeout: 6) {
                 gitManager.commitHistoryLimit == 50 && gitManager.commitHistory.count == 50
             }
 
             XCTAssertTrue(gitManager.canLoadMoreCommitHistory)
 
             gitManager.loadMoreCommitHistory(batchSize: 25)
-            waitForHistoryUpdate(timeout: 6) {
+            await waitForHistoryUpdate(timeout: 6) {
                 gitManager.commitHistoryLimit == 75 && gitManager.commitHistory.count == 61
             }
 
@@ -56,7 +56,7 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
             let gitManager = GitManager()
 
             await gitManager.fetchCommitHistoryAsync(limit: 10, includeReflog: false)
-            waitForHistoryUpdate(timeout: 6) {
+            await waitForHistoryUpdate(timeout: 6) {
                 gitManager.commitHistory.count == 2
             }
 
@@ -86,13 +86,13 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
         try await withGitRepoPath(repoURL.path) {
             let gitManager = GitManager()
 
-            waitForHistoryUpdate(timeout: 6) {
+            await waitForHistoryUpdate(timeout: 6) {
                 gitManager.commitHistory.count >= 3
             }
 
             try await gitManager.resetToCommitAsync(hash: targetHash, context: gitManager.makeRepositoryOperationContext()).get()
 
-            waitForHistoryUpdate(timeout: 6) {
+            await waitForHistoryUpdate(timeout: 6) {
                 gitManager.currentHash == targetHash &&
                     gitManager.commitHistory.contains(where: { $0.subject == "feat: future commit" })
             }
@@ -103,7 +103,7 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
         }
     }
 
-    private func waitForHistoryUpdate(timeout: TimeInterval, condition: @escaping () -> Bool) {
+    private func waitForHistoryUpdate(timeout: TimeInterval, condition: @escaping () -> Bool) async {
         let deadline = Date().addingTimeInterval(timeout)
 
         while Date() < deadline {
@@ -111,7 +111,7 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
                 return
             }
 
-            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+            try? await Task.sleep(for: .milliseconds(20))
         }
 
         XCTFail("Timed out waiting for commit history update.")
