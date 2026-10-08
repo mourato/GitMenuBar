@@ -214,8 +214,14 @@ extension MainMenuView {
             visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
             visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
             quotaSnapshot: presentationModel.quotaInfoSnapshot,
-            onToggleVisibility: confirmRepositoryVisibilityAction,
-            onDeleteRepository: confirmRepositoryDeleteAction,
+            onToggleVisibility: {
+                dismissTransientPresentations()
+                repoConfirm.showVisibilityConfirmation = true
+            },
+            onDeleteRepository: {
+                dismissTransientPresentations()
+                repoConfirm.showDeleteConfirmation = true
+            },
             onDismissTransient: dismissTransientPresentations,
             onRetryQuota: {
                 dismissTransientPresentations()

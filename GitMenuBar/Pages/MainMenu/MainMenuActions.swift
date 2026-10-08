@@ -210,7 +210,25 @@ extension MainMenuView {
             return
         }
 
-        requestRepositoryOptionsPopoverPresentation()
+        guard presentationModel.route == .main, canPresentRepositoryOptions else {
+            return
+        }
+
+        let hadTransientPresentation = hasTransientPresentation || palette.isPresented
+        if palette.isPresented {
+            closeCommandPalette()
+        }
+        dismissTransientPresentations()
+        repoOptions.requestPresentation(deferred: hadTransientPresentation)
+    }
+
+    func presentPendingRepositoryOptionsIfPossible() {
+        repoOptions.presentPendingIfPossible(
+            isUnobstructed: presentationModel.route == .main
+                && canPresentRepositoryOptions
+                && !branchDialogs.showBranchSelector
+                && !palette.isPresented
+        )
     }
 
     func closeCommandPalette() {
