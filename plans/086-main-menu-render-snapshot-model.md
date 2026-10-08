@@ -43,11 +43,18 @@ restart). Both groups remain view extensions, so they depend on the whole view.
    already reads; pass them via method arguments or `init`, not a protocol.
 2. Move project actions (`MainMenuProjectActions`) onto the model, or onto a
    feature type that receives the model.
-3. Move command-palette execution onto `MainMenuCommandPaletteState` (or a
-   sibling type) that receives the model and the coordinators it calls.
-4. `MainMenuView` keeps composition, `@FocusState`, and the `Esc` handler only.
+3. Project actions may receive narrow closures for view-owned effects
+   (`setAutoHideSuspended`, `dismissTransientPresentations`); focus stays in
+   the view.
 
-Out of scope: keyboard navigation (needs `@FocusState` on a view), visual
+Operator decision 2026-10-08 (scope reduced): command-palette execution stays
+on `MainMenuView`. A Plan 086 run hit the STOP condition: palette execution
+needs workspace, branch-dialog, confirmation, error, and sync state plus
+view-owned `@FocusState` (`MainMenuCommandPaletteActions.swift:71-91`,
+`MainMenuActions.swift:65-71,118-185`). The palette is cross-feature
+orchestration and belongs to the composition view.
+
+Out of scope: command-palette execution, keyboard navigation (needs `@FocusState` on a view), visual
 changes, StatusBarController, GitManager.
 
 ## Invariants
@@ -64,7 +71,6 @@ changes, StatusBarController, GitManager.
    files and members in `extension MainMenuView`.
 3. Introduce the model; move snapshot state and rebuild; build green.
 4. Move project actions; build and test.
-5. Move command-palette execution; build and test.
 6. Delete orphans created by the move; record after counts.
 
 ## Verification
@@ -76,4 +82,4 @@ changes, StatusBarController, GitManager.
 ## STOP conditions
 
 - Snapshot model needs the whole environment to compute.
-- Palette execution needs more than the model plus the coordinators it calls today.
+- Project actions need more than the model, `RecentProjectsStore`, the coordinators they call today, and narrow view closures.

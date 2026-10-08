@@ -1,7 +1,7 @@
 # Plan 082: Extract MainWindowController from StatusBarController
 
 > **Executor instructions**: Read this brief, `AGENTS.md`, and
-> [project workflow facts](../docs/agents/project-workflow.md) before editing.
+> [project workflow facts](../../docs/agents/project-workflow.md) before editing.
 > Work in a dedicated worktree. Follow the steps in order and run each
 > verification command. On a STOP condition, stop and report; do not widen
 > scope. Leave merge and push to the operator.
@@ -75,3 +75,11 @@ Out of scope: behavior changes, SwiftUI scene migration (`Window`/`MenuBarExtra`
 
 - Any invariant needs a behavior change to hold.
 - Extraction requires a protocol with one implementation.
+
+## Outcome
+
+DONE 2026-10-08. Merged as `ea71f5f`. `StatusBarController.swift` 1251 → 897
+lines; `MainWindowController` owns window lifecycle, placement, and frame
+autosave. Independent review: no findings. Operator manual checks (status-item
+toggle, second-monitor placement, frame restore, outside-click/`Esc`, Settings
+and Dock preference) pending.

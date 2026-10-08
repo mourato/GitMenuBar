@@ -37,6 +37,27 @@ Use this rule order:
 2. If the UI is reused by multiple features, move it to `Shared/UI`.
 3. If the code is not UI (Git operations, API, persistence, app lifecycle), keep it at the root infrastructure layer.
 
+## State and ownership
+
+- Observable state uses Swift Observation (`@Observable`), not
+  `ObservableObject`/`@Published`. Views read stores with
+  `@Environment(Type.self)` and bind with `@Bindable`; mark non-UI state
+  (tasks, caches, services, closures) `@ObservationIgnored`.
+- AppKit consumers (today `StatusBarController`) observe
+  stores with a `withObservationTracking` loop that re-arms on every change on
+  the main actor and captures `self` weakly.
+- `StatusBarController` owns the single `NSStatusItem`, context menu, and
+  shortcuts. `MainWindowController` (`NSWindowController`) owns the main
+  window lifecycle, placement, and frame autosave.
+- `GitManager` is the observable facade for the selected repository: it keeps
+  published state and delegates Git work to services
+  (`GitBranchService`, `GitCommitHistoryService`, `GitRepositoryInitService`,
+  `GitWorkingTreeService`). Git operations never live in views.
+- Main-menu features own their state and actions in feature models
+  (`MainMenuWorkspaceState`, `MainMenuBranchDialogs`, `MainMenuSyncSheetState`,
+  `MainMenuErrorCenter`, `MainMenuRepositoryOptionsState`,
+  `MainMenuRepositoryConfirmations`); `MainMenuView` is composition plus focus.
+
 ## Change Strategy
 
 - Keep file moves and behavioral changes in separate commits when possible.

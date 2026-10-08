@@ -19,7 +19,7 @@ dense, calm, and semantic—not a SaaS dashboard or marketing surface.
 - Main composition: `GitMenuBar/Pages/MainMenu/`
 - Settings: `GitMenuBar/Pages/Settings/`
 - Layout persistence: the stable `NSWindow.FrameAutosaveName` in
-  `StatusBarController`. `AppPreferences.Keys.inspectorColumnWidth` is a
+  `MainWindowController`. `AppPreferences.Keys.inspectorColumnWidth` is a
   legacy unused key retained for compatibility after the side-panel overlay.
 - Related decisions: [`docs/adr/0001-workbench-depth-and-token-naming.md`](adr/0001-workbench-depth-and-token-naming.md), [`docs/adr/0002-window-shell-material-and-titlebar-chrome.md`](adr/0002-window-shell-material-and-titlebar-chrome.md), [`docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md`](adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md), and [`docs/adr/0017-narrow-contextual-side-panel.md`](adr/0017-narrow-contextual-side-panel.md) (supersedes ADRs 0010–0015)
 

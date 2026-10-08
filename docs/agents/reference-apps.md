@@ -114,13 +114,13 @@ When studying T3Code, cross-reference:
 
 When studying Vorssaint, cross-reference:
 
-- `StatusBarController.swift` — `NSStatusItem` ownership and window management
-- `GitManager.swift` / `GitExecution.swift` — background dispatch vs sensor polling
+- `StatusBarController.swift` — `NSStatusItem` ownership; `MainWindowController.swift` — main window lifecycle and placement
+- `GitManager.swift` / `GitExecution.swift` / `GitWorkingTreeService.swift` — background dispatch vs sensor polling
 - `WindowOpenTrace` — metric-collection idioms for menu-open latency
 
 When studying Mimir, cross-reference:
 
-- `StatusBarController.swift` — status-item glyph and popover lifecycle
+- `StatusBarController.swift` — status-item glyph; `MainWindowController.swift` — window lifecycle
 - `Services/UsageQuota/*` — multi-provider quota aggregation (not AI commit adapters)
 - `Components/UsageQuota/UsageQuotaStripView.swift` — compact remaining-% + countdown presentation
 - `AppPreferences.swift` — local-first preference keys for opt-in quota UI

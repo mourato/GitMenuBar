@@ -1,7 +1,7 @@
 # Plan 084: Slim GitManager into a thin observable store
 
 > **Executor instructions**: Read this brief, `AGENTS.md`, and
-> [project workflow facts](../docs/agents/project-workflow.md) before editing.
+> [project workflow facts](../../docs/agents/project-workflow.md) before editing.
 > Work in a dedicated worktree. Follow the steps in order and run each
 > verification command. On a STOP condition, stop and report; do not widen
 > scope. Leave merge and push to the operator.
@@ -65,3 +65,19 @@ following `GitBranchService`. `GitManager` keeps published state and delegates.
 - Focused tests for the touched service (`make test-focused TEST_FILTER='GitMenuBarTests/<Name>'`); add tests for each new service's public operations.
 - `make build`, `make lint`, `make test`.
 - Manual: stage/unstage/discard a file; commit; push; pull; create repository flow.
+
+## Outcome
+
+DONE 2026-10-08. `GitManager.swift` 2009 → 1454 lines. C3 was split by
+operator decision to stay under the ~600 changed-line threshold.
+
+- C1 (`6ee6063`): callback wrappers removed; review removed two orphaned
+  commit implementations and blocking test waits.
+- C2 (`3065bf9`): `GitRepositoryInitService`.
+- C3a (`682aeaa`): stage/unstage into `GitWorkingTreeService`; review clean.
+- C3b (`e2be723`): discard/diff into `GitWorkingTreeService`; review confined
+  discard targets to repository-relative paths and surfaced fallback deletion
+  failures (intentional safety changes).
+
+Operator manual checks (stage/unstage/discard, diff views, commit, push, pull,
+repository creation) pending.
