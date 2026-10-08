@@ -4,17 +4,20 @@ This document defines how UI code is organized to keep AI-assisted edits and Xco
 
 ## Folder Conventions
 
-- `GitMenuBar/Features/`: feature-specific UI and view composition.
-- `GitMenuBar/Shared/UI/`: reusable UI components shared by multiple features.
-- Root `GitMenuBar/`: app bootstrap, platform services, managers, and non-feature infrastructure.
-
-Current feature folders:
-
-- `Features/MainMenu`
-- `Features/Settings`
-- `Features/Branches`
-- `Features/Projects`
-- `Features/CreateRepository`
+- `GitMenuBar/App/`: app bootstrap, AppKit shell (`StatusBarController`,
+  `MainWindowController`), command routing, and coordinators.
+- `GitMenuBar/Pages/`: top-level routes and their composition, one folder per
+  page (`MainMenu`, `Settings`, `CreateRepository`).
+- `GitMenuBar/Components/<Feature>/`: feature UI used by pages (`AI`,
+  `Branches`, `History`, `Projects`, `Settings`, `UsageQuota`, `WorkingTree`).
+- `GitMenuBar/Components/Common/`: UI shared across features, including the
+  design tokens (`WorkbenchMetrics`, `WorkbenchMotion`, and related types).
+- `GitMenuBar/Services/`: Git, GitHub, AI, credentials, persistence, platform,
+  and usage-quota infrastructure. No SwiftUI views.
+- `GitMenuBar/Models/`: value types shared by services and UI.
+- `GitMenuBar/Utils/`: small helpers without feature ownership.
+- `GitMenuBar/Support/`: preview doubles (`PreviewDoubles.swift`).
+- `GitMenuBar/Resources/`: bundled icons and assets beyond the asset catalog.
 
 ## Naming Conventions
 
@@ -26,16 +29,20 @@ Current feature folders:
 ## Preview Conventions
 
 - Keep `#Preview` blocks in the same file as the view whenever practical.
-- Keep feature preview harnesses near the feature (`Features/MainMenu/MainMenuPreviewHarness.swift`).
-- For shared components, include focused previews with realistic sample data.
+- Keep page preview harnesses near the page (`Pages/MainMenu/MainMenuPreviewHarness.swift`).
+- For shared components, include focused previews with realistic sample data
+  from `Support/PreviewDoubles.swift`.
+- Run `make check-preview` after UI changes.
 
 ## Where New UI Should Go
 
 Use this rule order:
 
-1. If the UI is used in exactly one feature, place it in that feature folder.
-2. If the UI is reused by multiple features, move it to `Shared/UI`.
-3. If the code is not UI (Git operations, API, persistence, app lifecycle), keep it at the root infrastructure layer.
+1. If the UI composes a route, place it in that page folder under `Pages/`.
+2. If the UI belongs to one feature, place it in `Components/<Feature>/`.
+3. If the UI is reused by multiple features, move it to `Components/Common/`.
+4. If the code is not UI (Git operations, API, persistence, app lifecycle),
+   keep it in `Services/`, `Models/`, or `App/`.
 
 ## State and ownership
 

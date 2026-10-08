@@ -1,7 +1,7 @@
 # Plan 083: Extract app command routing from StatusBarController
 
 > **Executor instructions**: Read this brief, `AGENTS.md`, and
-> [project workflow facts](../docs/agents/project-workflow.md) before editing.
+> [project workflow facts](../../docs/agents/project-workflow.md) before editing.
 > Work in a dedicated worktree. Follow the steps in order and run each
 > verification command. On a STOP condition, stop and report; do not widen
 > scope. Leave merge and push to the operator.
@@ -56,3 +56,12 @@ via `init`): `performAppCommand(_:)` (both overloads), `handleCoordinatorCommand
 - `make test-focused TEST_FILTER='GitMenuBarTests/MainMenuCommandPaletteResolverTests'`
 - Add one router test: invocation → expected coordinator call (test double).
 - `make build`, `make lint`, `make test`; manual menu-bar commands Commit, Sync, Choose Repository.
+
+## Outcome
+
+DONE 2026-10-08. Gate passed (~181 routing lines). `StatusBarController.swift`
+897 → 740 lines; `AppCommandRouter` (231 lines) owns command and
+recent-project routing. Independent review: no findings. Pre-existing
+behavior kept as-is: the Push command runs `performSync()`. Operator manual
+checks (menu-bar Commit, Sync, Choose Repository, disabled-command haptic,
+recent-project switch, non-Git create-repository route) pending.

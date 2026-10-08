@@ -21,6 +21,30 @@ final class StatusBarController: NSObject {
 
     var statusItem: NSStatusItem?
     private lazy var mainWindowController = MainWindowController(statusBarController: self)
+    private lazy var appCommandRouter = AppCommandRouter(
+        gitManager: gitManager,
+        githubAuthManager: githubAuthManager,
+        actionCoordinator: actionCoordinator,
+        repositorySelectionCoordinator: repositorySelectionCoordinator,
+        projectMonitor: projectMonitor,
+        presentationModel: presentationModel,
+        mainWindowController: { [mainWindowController] in mainWindowController },
+        openMainWindow: { [weak self] in self?.openMainWindow() },
+        openSettingsWindow: { [weak self] in self?.openSettingsWindow() },
+        handleCommandPaletteShortcut: { [weak self] in self?.handleCommandPaletteShortcut() },
+        presentMainWindowForActionFeedback: { [weak self] in self?.presentMainWindowForActionFeedback() },
+        openMainWindowWithCreateRepo: { [weak self] in self?.openMainWindowWithCreateRepo(path: $0) },
+        refreshAppCommands: { [weak self] in self?.refreshAppCommands() },
+        openMainWindowForRoute: { [weak self] route, path, isGitRepo, shouldRefresh, trace in
+            self?.openMainWindow(
+                route: route,
+                repositoryPath: path,
+                isGitRepo: isGitRepo,
+                shouldRefreshAfterPresentation: shouldRefresh,
+                trace: trace
+            )
+        }
+    )
     var contextMenu: NSMenu?
     private var cancellables = Set<AnyCancellable>()
     var baseStatusImage: NSImage?
@@ -91,8 +115,8 @@ final class StatusBarController: NSObject {
 
         super.init()
 
-        appCommandCenter.performInvocation = { [weak self] invocation in
-            self?.performAppCommand(invocation)
+        appCommandCenter.performInvocation = { [weak appCommandRouter] invocation in
+            appCommandRouter?.performAppCommand(invocation)
         }
 
         if MainWindowPreferences.isShowMenuBarIconEnabled() {
@@ -612,187 +636,6 @@ final class StatusBarController: NSObject {
         )
 
         appCommandCenter.apply(snapshot)
-    }
-
-    private func performAppCommand(_ invocation: AppCommandInvocation) {
-        switch invocation {
-        case let .command(commandID):
-            performAppCommand(commandID)
-        case let .recentProject(path):
-            selectRepository(path)
-        }
-    }
-
-    private func performAppCommand(_ commandID: AppCommandID) {
-        if handleCoordinatorCommand(commandID) {
-            return
-        }
-
-        let handlers: [AppCommandID: () -> Void] = [
-            .openWindow: openMainWindow,
-            .showSettings: openSettingsWindow,
-            .showCommandPalette: handleCommandPaletteShortcut,
-            .chooseRepository: chooseRepository,
-            .addProject: chooseRepository,
-            .refreshAllProjects: projectMonitor.refreshAll,
-            .fetchAllProjects: projectMonitor.fetchAll,
-            .revealRepositoryInFinder: revealCurrentRepositoryInFinder,
-            .openRepositoryOnGitHub: openCurrentRepositoryOnGitHub,
-            .showRepositoryOptions: presentRepositoryOptions,
-            .atomicCommits: openMainWindow,
-            .branchManagement: openMainWindow,
-            .createBranch: openMainWindow,
-            .mergeToDefault: openMainWindow,
-            .helpRepository: { self.open(urlString: "https://github.com/saihgupr/GitMenuBar") },
-            .reportIssue: { self.open(urlString: "https://github.com/saihgupr/GitMenuBar/issues/new/choose") },
-            .quit: { NSApplication.shared.terminate(nil) }
-        ]
-        handlers[commandID]?()
-    }
-
-    private func handleCoordinatorCommand(_ commandID: AppCommandID) -> Bool {
-        switch commandID {
-        case .commit:
-            performCommitCommand(shouldPushAfterCommit: false)
-        case .commitAndPush:
-            performCommitCommand(shouldPushAfterCommit: true)
-        case .sync:
-            performSyncCommand()
-        case .push:
-            performPushCommand()
-        case .pull:
-            performPullCommand()
-        default:
-            return false
-        }
-
-        return true
-    }
-
-    private func performCommitCommand(shouldPushAfterCommit: Bool) {
-        Task { @MainActor in
-            let result = await actionCoordinator.performCommit(
-                commentText: "",
-                forceAutomaticMessage: true,
-                shouldPushAfterCommit: shouldPushAfterCommit
-            )
-            if result.shouldOpenPopover {
-                presentMainWindowForActionFeedback()
-            }
-        }
-    }
-
-    private func performSyncCommand() {
-        Task { @MainActor in
-            let result = await actionCoordinator.performSync()
-            if result.shouldOpenPopover {
-                presentMainWindowForActionFeedback()
-            }
-        }
-    }
-
-    private func performPushCommand() {
-        Task { @MainActor in
-            let result = await actionCoordinator.performSync()
-            if result.shouldOpenPopover {
-                presentMainWindowForActionFeedback()
-            }
-        }
-    }
-
-    private func performPullCommand() {
-        Task { @MainActor in
-            let result = await actionCoordinator.syncWithRemote(rebase: false)
-            if result.shouldOpenPopover {
-                presentMainWindowForActionFeedback()
-            }
-        }
-    }
-
-    private func chooseRepository() {
-        mainWindowController.setAutoHideSuspended(true)
-        DirectoryPickerService().selectDirectory(activateApp: true) { [weak self] selectedPath in
-            guard let self else { return }
-            mainWindowController.setAutoHideSuspended(false)
-
-            guard let selectedPath else { return }
-            selectRepository(selectedPath)
-        }
-    }
-
-    private func selectRepository(_ path: String) {
-        guard actionCoordinator.canSwitchRepository(to: path) else { return }
-
-        let wasVisible = mainWindowController.isMainWindowVisible
-        let result = repositorySelectionCoordinator.select(
-            path: path,
-            allowsNonGitSelection: !githubAuthManager.isAuthenticated
-        )
-        refreshAppCommands()
-
-        guard case .selected = result else {
-            if case let .requiresRepositoryCreation(candidatePath) = result {
-                openMainWindowWithCreateRepo(path: candidatePath)
-            }
-            return
-        }
-
-        actionCoordinator.resetForRepositorySwitch()
-        openMainWindow()
-        guard wasVisible else { return }
-
-        let refreshGeneration = presentationModel.startRefresh()
-        gitManager.refreshSelectedRepository(
-            includeReflogHistory: false,
-            fastCompletion: { [weak self] in
-                self?.presentationModel.markFastPhaseReady(generation: refreshGeneration)
-            },
-            completion: { [weak self] in
-                self?.presentationModel.finishRefresh(generation: refreshGeneration)
-            }
-        )
-    }
-
-    private func revealCurrentRepositoryInFinder() {
-        guard let path = currentRepositoryPath() else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
-    }
-
-    private func openCurrentRepositoryOnGitHub() {
-        guard let reference = GitHubRemoteURLParser.parse(gitManager.remoteUrl) else {
-            return
-        }
-
-        open(urlString: "https://github.com/\(reference.owner)/\(reference.repository)")
-    }
-
-    private func presentRepositoryOptions() {
-        if mainWindowController.isMainWindowVisible {
-            presentationModel.showMain(requestCommitFocus: false)
-            presentationModel.requestRepositoryOptionsPresentation()
-            NSApp.activate(ignoringOtherApps: true)
-            mainWindowController.focus()
-            return
-        }
-
-        let trace = mainWindowController.beginWindowOpenTrace(trigger: "repository_options")
-        let repositoryPath = currentRepositoryPath()
-        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
-        openMainWindow(
-            route: .main,
-            repositoryPath: repositoryPath,
-            isGitRepo: isGitRepo,
-            shouldRefreshAfterPresentation: true,
-            trace: trace
-        )
-        Task { @MainActor [weak self] in
-            self?.presentationModel.requestRepositoryOptionsPresentation()
-        }
-    }
-
-    private func open(urlString: String) {
-        guard let url = URL(string: urlString) else { return }
-        NSWorkspace.shared.open(url)
     }
 
     private func initialRoute(for repositoryPath: String?, isGitRepo: Bool) -> MainMenuRoute {
