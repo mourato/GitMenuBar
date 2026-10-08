@@ -139,7 +139,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         try "base\nunstaged\n".write(to: fileURL, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
         XCTAssertEqual(gitManager.changedFiles.map(\.path), ["README.md"])
         XCTAssertTrue(gitManager.stagedFiles.isEmpty)
 
@@ -160,12 +160,12 @@ final class GitWorkingTreeStateTests: XCTestCase {
         try "new file\n".write(to: untrackedFile, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
         XCTAssertTrue(gitManager.stagedFiles.isEmpty)
 
         try await gitManager.stageAllChangesAsync().get()
 
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         let status = try runGit(["status", "--porcelain"], in: repoURL)
         XCTAssertTrue(status.contains("M  README.md"))
@@ -185,7 +185,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         try runGit(["add", "-A"], in: repoURL)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
         XCTAssertEqual(gitManager.stagedFiles.map(\.path), ["NEW.md", "README.md"])
         XCTAssertTrue(gitManager.changedFiles.isEmpty)
 
@@ -205,7 +205,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         try "base\nstaged\nunstaged\n".write(to: fileURL, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
         XCTAssertTrue(gitManager.diffStaged().contains("+staged"))
 
         try await gitManager.commitLocallyAsync("feat: staged only", context: gitManager.makeRepositoryOperationContext()).get()
@@ -226,7 +226,7 @@ final class GitWorkingTreeStateTests: XCTestCase {
         try "new file\n".write(to: untrackedFile, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
         XCTAssertTrue(gitManager.stagedFiles.isEmpty)
         XCTAssertFalse(gitManager.changedFiles.isEmpty)
 
