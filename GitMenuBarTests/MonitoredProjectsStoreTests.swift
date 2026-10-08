@@ -1,5 +1,5 @@
-import Combine
 @testable import GitMenuBar
+import Observation
 import XCTest
 
 final class MonitoredProjectsStoreTests: XCTestCase {
@@ -246,8 +246,12 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             Self.snapshot(path: project.path, branch: "newer")
         }
         let poller = Task {
-            while await monitor.snapshots["/tmp/project"]?.branchName != "newer" {
-                try? await Task.sleep(for: .milliseconds(10))
+            while monitor.snapshots["/tmp/project"]?.branchName != "newer" {
+                do {
+                    try await Task.sleep(for: .milliseconds(10))
+                } catch {
+                    return
+                }
             }
             newerSnapshotPublished.fulfill()
         }
@@ -322,13 +326,15 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         projectStore.add("/tmp/project-b")
         let monitor = ProjectMonitorStore(projectStore: projectStore)
         let allProjectsPublished = expectation(description: "all project snapshots published")
-        let poller = Task {
-            while await monitor.snapshots.count != 2 {
-                try? await Task.sleep(for: .milliseconds(10))
+        withObservationTracking {
+            _ = monitor.snapshots
+        } onChange: {
+            Task { @MainActor in
+                // Observation fires before mutation; inspect the completed batch on the actor.
+                XCTAssertEqual(monitor.snapshots.count, 2)
+                allProjectsPublished.fulfill()
             }
-            allProjectsPublished.fulfill()
         }
-        defer { poller.cancel() }
         monitor.refreshOperation = { project, _ in
             Self.snapshot(path: project.path, branch: "main")
         }
