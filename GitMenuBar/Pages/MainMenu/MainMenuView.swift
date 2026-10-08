@@ -16,14 +16,14 @@ struct MainMenuView: View {
     @FocusState var isCommentFieldFocused: Bool
     @FocusState var isMainKeyboardNavigationFocused: Bool
     @Environment(GitManager.self) var gitManager
-    @EnvironmentObject var githubAuthManager: GitHubAuthManager
-    @EnvironmentObject var aiCommitCoordinator: AICommitCoordinator
+    @Environment(GitHubAuthManager.self) var githubAuthManager
+    @Environment(AICommitCoordinator.self) var aiCommitCoordinator
     @Environment(MainMenuActionCoordinator.self) var actionCoordinator
     @Environment(CommitHistoryEditCoordinator.self) var commitHistoryEditCoordinator
     @Environment(MainMenuShortcutActionBridge.self) var shortcutActionBridge
     @Environment(MainMenuPresentationModel.self) var presentationModel
     @Environment(ProjectMonitorStore.self) var projectMonitor
-    @EnvironmentObject var usageQuotaStore: UsageQuotaStore
+    @Environment(UsageQuotaStore.self) var usageQuotaStore
     @Environment(RepositorySelectionCoordinator.self) var repositorySelectionCoordinator
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Environment(\.accessibilityReduceTransparency) var reduceTransparency
@@ -91,7 +91,7 @@ struct MainMenuView: View {
                     }
                 )
                 .environment(gitManager)
-                .environmentObject(githubAuthManager)
+                .environment(githubAuthManager)
                 .padding(.horizontal, WorkbenchMetrics.windowPadding)
                 .padding(.bottom, WorkbenchMetrics.windowPadding)
                 .transition(routeTransition)

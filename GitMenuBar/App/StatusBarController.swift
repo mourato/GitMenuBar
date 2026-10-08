@@ -155,15 +155,32 @@ final class StatusBarController: NSObject {
     }
 
     private func setupStatusItemObservation() {
-        let quotaChanges = usageQuotaStore.objectWillChange.map { _ in () }
-        let presentationChanges = usageQuotaPresentationPreferences.objectWillChange.map { _ in () }
-        Publishers.Merge(
-            quotaChanges,
-            presentationChanges
-        )
-        .receive(on: RunLoop.main)
-        .sink { [weak self] _ in self?.updateStatusItemAppearance() }
-        .store(in: &cancellables)
+        observeUsageQuotaForStatusItem()
+    }
+
+    private func observeUsageQuotaForStatusItem() {
+        withObservationTracking {
+            _ = usageQuotaStore.snapshots
+            _ = usageQuotaStore.showAIUsageQuotas
+            _ = usageQuotaStore.showClaudeCodeUsageQuota
+            _ = usageQuotaStore.showCodexUsageQuota
+            _ = usageQuotaStore.showCursorUsageQuota
+            _ = usageQuotaStore.showOpenRouterUsageQuota
+            _ = usageQuotaStore.showGeminiUsageQuota
+            _ = usageQuotaStore.showAntigravityUsageQuota
+            _ = usageQuotaPresentationPreferences.meterStyle
+            _ = usageQuotaPresentationPreferences.menuBarVisibility
+            _ = usageQuotaPresentationPreferences.providerOrder
+            for providerID in UsageProviderID.allCases {
+                _ = usageQuotaPresentationPreferences.selectedMetrics(for: providerID)
+            }
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.updateStatusItemAppearance()
+                self.observeUsageQuotaForStatusItem()
+            }
+        }
     }
 
     private func setupVisibilityPreferencesObservation() {
@@ -258,33 +275,33 @@ final class StatusBarController: NSObject {
     }
 
     private func setupAuthenticationObservation() {
-        githubAuthManager.$isAuthenticating
-            .receive(on: RunLoop.main)
-            .sink { [weak self] isAuthenticating in
-                self?.setAutoHideSuspended(isAuthenticating)
+        observeAuthenticatingState()
+    }
+
+    private func observeAuthenticatingState() {
+        withObservationTracking {
+            _ = githubAuthManager.isAuthenticating
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.setAutoHideSuspended(self.githubAuthManager.isAuthenticating)
+                self.observeAuthenticatingState()
             }
-            .store(in: &cancellables)
+        }
     }
 
     private func setupAppCommandObservation() {
-        let publishers: [AnyPublisher<Void, Never>] = [
-            githubAuthManager.$isAuthenticated.map { _ in () }.eraseToAnyPublisher(),
-            NotificationCenter.default.publisher(
-                for: UserDefaults.didChangeNotification,
-                object: UserDefaults.standard
-            )
-            .receive(on: RunLoop.main)
-            .map { _ in () }
-            .eraseToAnyPublisher()
-        ]
-
-        Publishers.MergeMany(publishers)
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in
-                self?.refreshAppCommands()
-                self?.updateMainWindowToolbar()
-            }
-            .store(in: &cancellables)
+        NotificationCenter.default.publisher(
+            for: UserDefaults.didChangeNotification,
+            object: UserDefaults.standard
+        )
+        .receive(on: RunLoop.main)
+        .map { _ in () }
+        .sink { [weak self] in
+            self?.refreshAppCommands()
+            self?.updateMainWindowToolbar()
+        }
+        .store(in: &cancellables)
 
         observePresentationRoute()
         observeGitCommandState()
@@ -313,6 +330,7 @@ final class StatusBarController: NSObject {
             _ = gitManager.currentBranch
             _ = gitManager.defaultBranchName
             _ = gitManager.isBehindRemote
+            _ = githubAuthManager.isAuthenticated
             _ = projectMonitor.snapshots
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
@@ -438,15 +456,15 @@ final class StatusBarController: NSObject {
         )
         .environment(gitManager)
         .environment(loginItemManager)
-        .environmentObject(githubAuthManager)
-        .environmentObject(aiProviderStore)
-        .environmentObject(aiCommitCoordinator)
+        .environment(githubAuthManager)
+        .environment(aiProviderStore)
+        .environment(aiCommitCoordinator)
         .environment(actionCoordinator)
         .environment(commitHistoryEditCoordinator)
         .environment(shortcutActionBridge)
         .environment(presentationModel)
-        .environmentObject(usageQuotaStore)
-        .environmentObject(usageQuotaPresentationPreferences)
+        .environment(usageQuotaStore)
+        .environment(usageQuotaPresentationPreferences)
         .environment(projectMonitor)
         .environment(repositorySelectionCoordinator)
         .environment(projectCleanupStore)

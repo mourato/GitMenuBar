@@ -72,8 +72,8 @@ private struct UsageQuotaStripPreviewHarness: View {
     var body: some View {
         if let defaults = UserDefaults(suiteName: previewDefaultsName) {
             UsageQuotaStripView()
-                .environmentObject(previewStore(defaults: defaults))
-                .environmentObject(UsageQuotaPresentationPreferences(defaults: defaults))
+                .environment(previewStore(defaults: defaults))
+                .environment(UsageQuotaPresentationPreferences(defaults: defaults))
                 .environment(MainMenuPresentationModel())
                 .frame(width: 380)
         }

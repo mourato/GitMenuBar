@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct UsageQuotaStripView: View {
-    @EnvironmentObject private var usageQuotaStore: UsageQuotaStore
+    @Environment(UsageQuotaStore.self) private var usageQuotaStore
     @State private var isPopoverPresented = false
 
     var body: some View {
@@ -86,7 +86,7 @@ private struct UsageQuotaDetailsPopover: View {
 private struct UsageQuotaProviderCard: View {
     let snapshot: UsageQuotaSnapshot
 
-    @EnvironmentObject private var preferences: UsageQuotaPresentationPreferences
+    @Environment(UsageQuotaPresentationPreferences.self) private var preferences
 
     private var showUsed: Bool {
         preferences.valueStyle == .used

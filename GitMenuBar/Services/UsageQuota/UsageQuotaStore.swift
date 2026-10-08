@@ -1,8 +1,10 @@
 import Combine
 import Foundation
+import Observation
 
 @MainActor
-final class UsageQuotaStore: ObservableObject {
+@Observable
+final class UsageQuotaStore {
     enum RefreshReason: String {
         case windowPresented
         case timer
@@ -16,8 +18,8 @@ final class UsageQuotaStore: ObservableObject {
         static let providerTimeout: TimeInterval = 8
     }
 
-    @Published private(set) var snapshots: [UsageQuotaSnapshot] = []
-    @Published var showAIUsageQuotas: Bool {
+    private(set) var snapshots: [UsageQuotaSnapshot] = []
+    var showAIUsageQuotas: Bool {
         didSet {
             guard showAIUsageQuotas != oldValue else { return }
             defaults.set(showAIUsageQuotas, forKey: AppPreferences.Keys.showAIUsageQuotas)
@@ -25,7 +27,7 @@ final class UsageQuotaStore: ObservableObject {
         }
     }
 
-    @Published var showClaudeCodeUsageQuota: Bool {
+    var showClaudeCodeUsageQuota: Bool {
         didSet {
             guard showClaudeCodeUsageQuota != oldValue else { return }
             defaults.set(showClaudeCodeUsageQuota, forKey: AppPreferences.Keys.showClaudeCodeUsageQuota)
@@ -33,7 +35,7 @@ final class UsageQuotaStore: ObservableObject {
         }
     }
 
-    @Published var showCodexUsageQuota: Bool {
+    var showCodexUsageQuota: Bool {
         didSet {
             guard showCodexUsageQuota != oldValue else { return }
             defaults.set(showCodexUsageQuota, forKey: AppPreferences.Keys.showCodexUsageQuota)
@@ -41,7 +43,7 @@ final class UsageQuotaStore: ObservableObject {
         }
     }
 
-    @Published var showCursorUsageQuota: Bool {
+    var showCursorUsageQuota: Bool {
         didSet {
             guard showCursorUsageQuota != oldValue else { return }
             defaults.set(showCursorUsageQuota, forKey: AppPreferences.Keys.showCursorUsageQuota)
@@ -49,7 +51,7 @@ final class UsageQuotaStore: ObservableObject {
         }
     }
 
-    @Published var showOpenRouterUsageQuota: Bool {
+    var showOpenRouterUsageQuota: Bool {
         didSet {
             guard showOpenRouterUsageQuota != oldValue else { return }
             defaults.set(showOpenRouterUsageQuota, forKey: AppPreferences.Keys.showOpenRouterUsageQuota)
@@ -57,7 +59,7 @@ final class UsageQuotaStore: ObservableObject {
         }
     }
 
-    @Published var showGeminiUsageQuota: Bool {
+    var showGeminiUsageQuota: Bool {
         didSet {
             guard showGeminiUsageQuota != oldValue else { return }
             defaults.set(showGeminiUsageQuota, forKey: AppPreferences.Keys.showGeminiUsageQuota)
@@ -65,7 +67,7 @@ final class UsageQuotaStore: ObservableObject {
         }
     }
 
-    @Published var showAntigravityUsageQuota: Bool {
+    var showAntigravityUsageQuota: Bool {
         didSet {
             guard showAntigravityUsageQuota != oldValue else { return }
             defaults.set(showAntigravityUsageQuota, forKey: AppPreferences.Keys.showAntigravityUsageQuota)
@@ -77,11 +79,11 @@ final class UsageQuotaStore: ObservableObject {
     private let snapshotStore: UsageQuotaSnapshotStore
     private let providers: [any UsageQuotaProviding]
     private let now: () -> Date
-    private var refreshTimer: Timer?
-    private var refreshTask: Task<Void, Never>?
-    private var refreshGeneration = 0
-    private var isRefreshInFlight = false
-    private var lastPresentationRefreshAt: Date?
+    @ObservationIgnored private var refreshTimer: Timer?
+    @ObservationIgnored private var refreshTask: Task<Void, Never>?
+    @ObservationIgnored private var refreshGeneration = 0
+    @ObservationIgnored private var isRefreshInFlight = false
+    @ObservationIgnored private var lastPresentationRefreshAt: Date?
 
     init(
         defaults: UserDefaults = .standard,

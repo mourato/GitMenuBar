@@ -236,7 +236,7 @@ private enum SettingsAppearance {
             githubAuthManager: githubAuthManager,
             onSetAutoHideSuspended: { _ in }
         )
-        .environmentObject(githubAuthManager)
+        .environment(githubAuthManager)
     }
 
     #Preview("AI Settings Pane") {
@@ -252,11 +252,11 @@ private enum SettingsAppearance {
         )
 
         return AISettingsPaneView()
-            .environmentObject(providerStore)
-            .environmentObject(coordinator)
-            .environmentObject(chatGPTSubscription)
-            .environmentObject(UsageQuotaStore())
-            .environmentObject(UsageQuotaPresentationPreferences())
+            .environment(providerStore)
+            .environment(coordinator)
+            .environment(chatGPTSubscription)
+            .environment(UsageQuotaStore())
+            .environment(UsageQuotaPresentationPreferences())
     }
 
 #endif

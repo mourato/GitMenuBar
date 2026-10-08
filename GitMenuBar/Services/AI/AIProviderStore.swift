@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 protocol AIProviderStoreDataStore {
     func data(forKey key: String) -> Data?
@@ -21,12 +22,14 @@ struct UserDefaultsAIProviderStoreDataStore: AIProviderStoreDataStore {
     }
 }
 
-final class AIProviderStore: ObservableObject {
+@MainActor
+@Observable
+final class AIProviderStore {
     /// App AI prefs use the app suite (same plist as `.standard` in the app).
     nonisolated(unsafe) static let sharedDefaults = UserDefaults(suiteName: "com.mourato.GitMenuBar") ?? .standard
 
-    @Published private(set) var providers: [AIProviderConfig] = []
-    @Published private(set) var preferences: AICommitPreferences = .default
+    private(set) var providers: [AIProviderConfig] = []
+    private(set) var preferences: AICommitPreferences = .default
 
     private let dataStore: any AIProviderStoreDataStore
     private let providersKey = "aiProviderConfigs.v1"

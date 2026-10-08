@@ -2,8 +2,8 @@ import AppKit
 import SwiftUI
 
 struct UsageQuotaMenuView: View {
-    @EnvironmentObject private var usageQuotaStore: UsageQuotaStore
-    @EnvironmentObject private var preferences: UsageQuotaPresentationPreferences
+    @Environment(UsageQuotaStore.self) private var usageQuotaStore
+    @Environment(UsageQuotaPresentationPreferences.self) private var preferences
 
     static let width: CGFloat = 320
 
@@ -378,8 +378,8 @@ private func usageQuotaMenuColor(for remainingPercent: Int) -> Color {
 }
 
 private struct UsageQuotaMenuPreviewHarness: View {
-    @StateObject private var store: UsageQuotaStore
-    @StateObject private var preferences: UsageQuotaPresentationPreferences
+    @State private var store: UsageQuotaStore
+    @State private var preferences: UsageQuotaPresentationPreferences
 
     init(snapshot: UsageQuotaSnapshot? = nil) {
         let snapshot = snapshot ?? UsageQuotaSnapshot(
@@ -402,14 +402,14 @@ private struct UsageQuotaMenuPreviewHarness: View {
         )
         let store = UsageQuotaStore(providers: [UsageQuotaPreviewProvider(snapshot: snapshot)])
         store.showAIUsageQuotas = true
-        _store = StateObject(wrappedValue: store)
-        _preferences = StateObject(wrappedValue: UsageQuotaPresentationPreferences())
+        _store = State(wrappedValue: store)
+        _preferences = State(wrappedValue: UsageQuotaPresentationPreferences())
     }
 
     var body: some View {
         UsageQuotaMenuView()
-            .environmentObject(store)
-            .environmentObject(preferences)
+            .environment(store)
+            .environment(preferences)
     }
 }
 

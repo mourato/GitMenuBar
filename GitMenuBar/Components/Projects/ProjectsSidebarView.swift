@@ -330,5 +330,5 @@ struct ProjectsSidebarView: View {
         onOpenSettings: {}
     )
     .environment(ProjectMonitorStore())
-    .environmentObject(UsageQuotaStore())
+    .environment(UsageQuotaStore())
 }

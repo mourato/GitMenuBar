@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AIProviderEditorSheet: View {
-    @EnvironmentObject private var aiCommitCoordinator: AICommitCoordinator
+    @Environment(AICommitCoordinator.self) private var aiCommitCoordinator
     @Environment(\.dismiss) private var dismiss
 
     let existingProvider: AIProviderConfig?
@@ -207,7 +207,7 @@ struct AIProviderEditorSheet: View {
         )
 
         AIProviderEditorSheet(existingProvider: nil, onSave: { _, _ in Result<Void, Error>.success(()) })
-            .environmentObject(coordinator)
+            .environment(coordinator)
     }
 
 #endif

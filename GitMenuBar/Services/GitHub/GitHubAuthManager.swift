@@ -5,6 +5,7 @@
 
 import AppKit
 import Foundation
+import Observation
 
 struct GitHubAuthSessionSnapshot {
     let token: String?
@@ -12,12 +13,13 @@ struct GitHubAuthSessionSnapshot {
 }
 
 @MainActor
-class GitHubAuthManager: ObservableObject {
-    @Published var isAuthenticated: Bool = false
-    @Published var username: String = ""
-    @Published var isAuthenticating: Bool = false
-    @Published var userCode: String = ""
-    @Published var authError: String = ""
+@Observable
+class GitHubAuthManager {
+    var isAuthenticated: Bool = false
+    var username: String = ""
+    var isAuthenticating: Bool = false
+    var userCode: String = ""
+    var authError: String = ""
 
     // Using GitHub CLI's official Client ID - no risk of account flagging!
     private let clientID = "178c6fc778ccc68e1d6a"
@@ -26,9 +28,9 @@ class GitHubAuthManager: ObservableObject {
     private let tokenStore: any GitHubTokenStore
 
     // Device flow state
-    private var deviceCode: String = ""
-    private var pollingInterval: Int = 5
-    private var authenticationTask: Task<Void, Never>?
+    @ObservationIgnored private var deviceCode: String = ""
+    @ObservationIgnored private var pollingInterval: Int = 5
+    @ObservationIgnored private var authenticationTask: Task<Void, Never>?
 
     init(
         tokenStore: (any GitHubTokenStore)? = nil,

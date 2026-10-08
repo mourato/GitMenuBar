@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct GitHubConnectionSection: View {
-    @EnvironmentObject private var githubAuthManager: GitHubAuthManager
+    @Environment(GitHubAuthManager.self) private var githubAuthManager
 
     let setAutoHideSuspended: (Bool) -> Void
 
@@ -122,7 +122,7 @@ struct GitHubConnectionSection: View {
             }
         }
         .formStyle(.grouped)
-        .environmentObject(authManager)
+        .environment(authManager)
         .frame(width: 560, height: 180)
     }
 

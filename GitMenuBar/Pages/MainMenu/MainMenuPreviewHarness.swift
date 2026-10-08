@@ -3,14 +3,14 @@ import SwiftUI
 struct MainMenuPreviewHarness<Content: View>: View {
     @State private var gitManager: GitManager
     @State private var loginItemManager = LoginItemManager()
-    @StateObject private var githubAuthManager: GitHubAuthManager
-    @StateObject private var aiProviderStore: AIProviderStore
-    @StateObject private var aiCommitCoordinator: AICommitCoordinator
+    @State private var githubAuthManager: GitHubAuthManager
+    @State private var aiProviderStore: AIProviderStore
+    @State private var aiCommitCoordinator: AICommitCoordinator
     @State private var actionCoordinator: MainMenuActionCoordinator
     @State private var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
     @State private var shortcutActionBridge = MainMenuShortcutActionBridge()
     @State private var presentationModel = MainMenuPresentationModel()
-    @StateObject private var usageQuotaStore = UsageQuotaStore()
+    @State private var usageQuotaStore = UsageQuotaStore()
     @State private var projectMonitor: ProjectMonitorStore
     @State private var repositorySelectionCoordinator: RepositorySelectionCoordinator
 
@@ -52,9 +52,9 @@ struct MainMenuPreviewHarness<Content: View>: View {
                 projectMonitor: previewProjectMonitor
             )
         )
-        _githubAuthManager = StateObject(wrappedValue: previewGitHubAuthManager)
-        _aiProviderStore = StateObject(wrappedValue: previewProviderStore)
-        _aiCommitCoordinator = StateObject(wrappedValue: previewCoordinator)
+        _githubAuthManager = State(wrappedValue: previewGitHubAuthManager)
+        _aiProviderStore = State(wrappedValue: previewProviderStore)
+        _aiCommitCoordinator = State(wrappedValue: previewCoordinator)
         _actionCoordinator = State(
             wrappedValue: MainMenuActionCoordinator(
                 gitManager: previewGitManager,
@@ -77,14 +77,14 @@ struct MainMenuPreviewHarness<Content: View>: View {
         content
             .environment(gitManager)
             .environment(loginItemManager)
-            .environmentObject(githubAuthManager)
-            .environmentObject(aiProviderStore)
-            .environmentObject(aiCommitCoordinator)
+            .environment(githubAuthManager)
+            .environment(aiProviderStore)
+            .environment(aiCommitCoordinator)
             .environment(actionCoordinator)
             .environment(commitHistoryEditCoordinator)
             .environment(shortcutActionBridge)
             .environment(presentationModel)
-            .environmentObject(usageQuotaStore)
+            .environment(usageQuotaStore)
             .environment(projectMonitor)
             .environment(repositorySelectionCoordinator)
             .frame(width: width)
