@@ -6,6 +6,18 @@
 import SwiftUI
 
 extension MainMenuView {
+    private var projectActions: MainMenuProjectActions {
+        MainMenuProjectActions(
+            snapshotModel: snapshotModel,
+            projectMonitor: projectMonitor,
+            gitManager: gitManager,
+            repositorySelectionCoordinator: repositorySelectionCoordinator,
+            actionCoordinator: actionCoordinator,
+            dismissTransientPresentations: dismissTransientPresentations,
+            refreshRenderSnapshot: refreshRenderSnapshot
+        )
+    }
+
     private var footerSection: some View {
         MainMenuFooterSection(
             currentBranch: gitManager.currentBranch,
@@ -111,7 +123,7 @@ extension MainMenuView {
                     suggestionPath: presentationModel.createRepoSuggestionPath,
                     currentRepoPath: currentRepoPath,
                     onCreateRepo: { presentationModel.showCreateRepo(path: $0) },
-                    overview: renderSnapshot.overview,
+                    overview: snapshotModel.renderSnapshot.overview,
                     commitActionTitle: resolvedCommitButtonAction.buttonTitle,
                     canCommit: actionCoordinator.canAutoCommit,
                     onCommit: performQuickCommit,
@@ -140,8 +152,8 @@ extension MainMenuView {
             if let selection = workspace.selectedSidePanelSelection {
                 MainMenuSidePanelHost(
                     selection: selection,
-                    projectName: renderSnapshot.currentProjectName,
-                    overview: renderSnapshot.overview,
+                    projectName: snapshotModel.renderSnapshot.currentProjectName,
+                    overview: snapshotModel.renderSnapshot.overview,
                     history: sidePanelHistory,
                     commitMessage: $workspace.commentText,
                     commitFieldFocus: $isCommentFieldFocused,
@@ -281,10 +293,10 @@ extension MainMenuView {
         MainMenuShellView(
             currentRepositoryPath: currentRepositoryPath,
             onSelectRepository: switchRepository,
-            onReveal: revealProjectInFinder,
+            onReveal: projectActions.revealProjectInFinder,
             onStopMonitoring: { projectMonitor.remove(path: $0) },
-            onRemove: removeProject,
-            onRename: renameProject,
+            onRemove: projectActions.removeProject,
+            onRename: projectActions.renameProject,
             onProjectCleanup: presentationModel.showProjectCleanup,
             onAddProject: selectDirectory,
             onRefreshAll: projectMonitor.refreshAll,

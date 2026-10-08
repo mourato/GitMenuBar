@@ -1,8 +1,8 @@
 # Plan 086: Move render snapshot and recent projects into an observable model
 
 > **Executor instructions**: Read this brief, `AGENTS.md`,
-> [project workflow facts](../docs/agents/project-workflow.md), and
-> [UI contract](../docs/ui.md) before editing. Work in a dedicated worktree.
+> [project workflow facts](../../docs/agents/project-workflow.md), and
+> [UI contract](../../docs/ui.md) before editing. Work in a dedicated worktree.
 > Follow the steps in order and run each verification command. On a STOP
 > condition, stop and report; do not widen scope. Leave merge and push to the
 > operator.
@@ -83,3 +83,14 @@ changes, StatusBarController, GitManager.
 
 - Snapshot model needs the whole environment to compute.
 - Project actions need more than the model, `RecentProjectsStore`, the coordinators they call today, and narrow view closures.
+
+## Outcome
+
+DONE 2026-10-08 (reduced scope). `MainMenuSnapshotModel` owns recent projects,
+the render snapshot, and its rebuild; project actions left `MainMenuView`.
+`MainMenuView` 244 → 243 lines, `@State` 9 → 8, extension members 90 → 86.
+Independent review: no defects; recommended keeping the model for testable
+snapshot ownership. Pre-existing gap noted, not changed: loading/sync flags
+have no dedicated snapshot rebuild trigger (follow up only if a stale overview
+reproduces). Operator manual checks (project add/remove/rename, sidebar and
+palette switching, palette commands, `Esc`/focus restoration) pending.

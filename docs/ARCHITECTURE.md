@@ -68,7 +68,9 @@ Use this rule order:
 - Main-menu features own their state and actions in feature models
   (`MainMenuWorkspaceState`, `MainMenuBranchDialogs`, `MainMenuSyncSheetState`,
   `MainMenuErrorCenter`, `MainMenuRepositoryOptionsState`,
-  `MainMenuRepositoryConfirmations`); `MainMenuView` is composition plus focus.
+  `MainMenuRepositoryConfirmations`, `MainMenuSnapshotModel` for recent projects
+  and the render snapshot); `MainMenuView` is composition, command-palette
+  execution, and focus.
 
 ## Change Strategy
 
