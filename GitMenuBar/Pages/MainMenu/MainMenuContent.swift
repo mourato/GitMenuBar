@@ -159,7 +159,7 @@ extension MainMenuView {
                     canShowSplitCommits: canShowAtomicCommits,
                     commitFocusToken: presentationModel.focusCommitFieldToken,
                     workspaceSelectedFileID: workspace.selectedMainItemID,
-                    onClose: clearSidePanelSelection,
+                    onClose: workspace.clearSidePanelSelection,
                     onCommitPrimaryAction: {
                         Task {
                             await performPrimaryAction()
@@ -174,11 +174,11 @@ extension MainMenuView {
                         }
                     },
                     onRequestCommitFocus: requestCommitFieldFocus,
-                    onSelectWorkspaceFile: { selectMainItem($0) },
+                    onSelectWorkspaceFile: { workspace.selectMainItem($0) },
                     onDiscardAllUnstaged: {
                         workspace.showDiscardAllConfirmation = true
                     },
-                    onRequestDiscard: requestDiscard,
+                    onRequestDiscard: workspace.requestDiscard,
                     onRequestDeleteBranch: { name in
                         branchDialogs.branchNameToDelete = name
                         branchDialogs.showBranchDeleteConfirmation = true
@@ -226,7 +226,7 @@ extension MainMenuView {
             canLoadMore: gitManager.canLoadMoreCommitHistory,
             animationNamespace: animationNamespace,
             isCommitInFuture: isCommitInFuture,
-            onSelectRow: { selectMainItem($0.id) },
+            onSelectRow: { workspace.selectMainItem($0.id) },
             onOpenCommit: { commitID in
                 workspace.selectedSidePanelSelection = .commit(id: commitID)
                 workspace.selectedMainItemID = .historyCommit(id: commitID)
@@ -310,7 +310,7 @@ extension MainMenuView {
 
     private func handleExitCommand() {
         if workspace.selectedSidePanelSelection != nil {
-            clearSidePanelSelection()
+            workspace.clearSidePanelSelection()
             return
         }
         if palette.isPresented {
@@ -348,12 +348,6 @@ extension MainMenuView {
         case .atomicCommits:
             startAtomicCommitFlow()
         }
-    }
-
-    private func requestDiscard(path: String, status: WorkingTreeFileStatus) {
-        workspace.discardFilePath = path
-        workspace.discardFileStatus = status
-        workspace.showDiscardConfirmation = true
     }
 
     private func requestCommitFieldFocus() {

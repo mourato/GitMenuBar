@@ -102,7 +102,7 @@ struct MainMenuView: View {
             synchronizeMainKeyboardNavigationFocus()
             handleCommandPalettePresentationRequest(presentationModel.showCommandPaletteToken)
             handleRepositoryOptionsPresentationRequest(presentationModel.showRepositoryOptionsToken)
-            synchronizeSelectedMainItem()
+            workspace.synchronizeSelectedMainItem(with: keyboardSelectableItems)
         }
         .onChange(of: presentationModel.showCommandPaletteToken) { _, token in
             handleCommandPalettePresentationRequest(token)
@@ -123,7 +123,7 @@ struct MainMenuView: View {
         }
         .onChange(of: presentationModel.route) { _, route in
             if route != .main {
-                clearSidePanelSelection()
+                workspace.clearSidePanelSelection()
                 closeCommandPalette()
                 dismissTransientPresentations()
                 if workspace.commentText.isEmpty {
@@ -174,7 +174,7 @@ struct MainMenuView: View {
         }
         .onChange(of: currentRepositoryPath) {
             workspace.selectedMainItemID = nil
-            clearSidePanelSelection()
+            workspace.clearSidePanelSelection()
             reloadRepositorySelectionSnapshot()
             refreshRenderSnapshot()
         }
@@ -188,7 +188,7 @@ struct MainMenuView: View {
             refreshRenderSnapshot()
         }
         .onChange(of: keyboardSelectableItems) {
-            synchronizeSelectedMainItem()
+            workspace.synchronizeSelectedMainItem(with: keyboardSelectableItems)
             synchronizeMainKeyboardNavigationFocus()
         }
         .onChange(of: projectMonitor.snapshots) {
