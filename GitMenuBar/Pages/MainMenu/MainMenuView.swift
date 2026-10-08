@@ -62,29 +62,7 @@ struct MainMenuView: View {
         VStack(spacing: WorkbenchMetrics.compactSpacing) {
             switch presentationModel.route {
             case let .createRepo(path):
-                CreateRepositoryPageView(
-                    folderPath: path,
-                    onCancel: {
-                        presentationModel.showMain(requestCommitFocus: true)
-                    },
-                    onSuccess: { path in
-                        guard actionCoordinator.canSwitchRepository(to: path) else { return }
-                        if case .selected = repositorySelectionCoordinator.select(
-                            path: path,
-                            allowsNonGitSelection: true
-                        ) {
-                            actionCoordinator.resetForRepositorySwitch()
-                        }
-                        presentationModel.showMain(requestCommitFocus: true)
-                        gitManager.updateRemoteUrl()
-                        Task { await gitManager.refreshAsync(includeReflogHistory: false) }
-                    }
-                )
-                .environment(gitManager)
-                .environment(githubAuthManager)
-                .padding(.horizontal, WorkbenchMetrics.windowPadding)
-                .padding(.bottom, WorkbenchMetrics.windowPadding)
-                .transition(routeTransition)
+                MainMenuCreateRepoHost(folderPath: path)
             case .main, .projectCleanup:
                 mainView
                     .transition(routeTransition)
