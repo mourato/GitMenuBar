@@ -43,3 +43,9 @@ struct MainMenuCreateRepoHost: View {
         MainMenuRouteTransition.transition(for: presentationModel.route, reduceMotion: reduceMotion)
     }
 }
+
+#Preview("Create Repo Host") {
+    MainMenuPreviewHarness(showsTransparentTitlebar: true) {
+        MainMenuCreateRepoHost(folderPath: "/tmp/example-project")
+    }
+}
