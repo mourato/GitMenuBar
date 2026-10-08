@@ -45,72 +45,6 @@ extension MainMenuView {
         ].joined(separator: "|")
     }
 
-    func synchronizeSelectedMainItem() {
-        guard let selectedMainItemID = workspace.selectedMainItemID else {
-            clearSidePanelSelection()
-            return
-        }
-
-        if keyboardSelectableItems.contains(selectedMainItemID) {
-            return
-        }
-
-        workspace.selectedMainItemID = nil
-        clearSidePanelSelection()
-    }
-
-    func clearSidePanelSelection() {
-        workspace.selectedSidePanelSelection = nil
-    }
-
-    func selectMainItem(_ itemID: MainMenuSelectableItem) {
-        workspace.selectedMainItemID = itemID
-        workspace.selectedSidePanelSelection = MainMenuSidePanelSelection(mainMenuItem: itemID)
-    }
-
-    func moveMainSelection(_ direction: MoveCommandDirection) {
-        guard let nextSelection = MainMenuSelectionNavigator.moveSelection(
-            currentSelection: workspace.selectedMainItemID,
-            items: keyboardSelectableItems,
-            direction: direction
-        ) else {
-            workspace.selectedMainItemID = nil
-            clearSidePanelSelection()
-            return
-        }
-
-        selectMainItem(nextSelection)
-    }
-
-    func activateSelectedMainItem() {
-        guard let selectedMainItemID = workspace.selectedMainItemID else {
-            return
-        }
-
-        switch selectedMainItemID {
-        case let .stagedFile(path), let .unstagedFile(path):
-            gitManager.openFile(path: path)
-        case let .historyCommit(id):
-            workspace.selectedSidePanelSelection = .commit(id: id)
-        }
-    }
-
-    func discardSelectedMainItemIfPossible() {
-        guard let selectedMainItemID = workspace.selectedMainItemID else {
-            return
-        }
-
-        guard case let .unstagedFile(path) = selectedMainItemID,
-              let file = gitManager.changedFiles.first(where: { $0.path == path })
-        else {
-            return
-        }
-
-        workspace.discardFilePath = file.path
-        workspace.discardFileStatus = file.status
-        workspace.showDiscardConfirmation = true
-    }
-
     func handleMainKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
         guard shouldHandleMainKeyboardShortcuts,
               !keyboardSelectableItems.isEmpty,
@@ -121,13 +55,13 @@ extension MainMenuView {
 
         switch keyPress.key {
         case .downArrow:
-            moveMainSelection(.down)
+            workspace.moveMainSelection(.down, in: keyboardSelectableItems)
         case .upArrow:
-            moveMainSelection(.up)
+            workspace.moveMainSelection(.up, in: keyboardSelectableItems)
         case .return:
-            activateSelectedMainItem()
+            workspace.activateSelectedMainItem(openFile: { gitManager.openFile(path: $0) })
         case .delete, .deleteForward:
-            discardSelectedMainItemIfPossible()
+            workspace.discardSelectedMainItemIfPossible(changedFiles: gitManager.changedFiles)
         default:
             return .ignored
         }
