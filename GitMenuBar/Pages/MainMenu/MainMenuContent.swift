@@ -34,7 +34,7 @@ extension MainMenuView {
             onQuickPull: {
                 dismissTransientPresentations()
                 sync.useRebase = false
-                syncWithRemote()
+                sync.syncWithRemote(using: actionCoordinator)
             },
             onSelectBranch: { branch in
                 dismissTransientPresentations()
@@ -300,20 +300,10 @@ extension MainMenuView {
             onShortcutAction: handleShortcutAction
         )
         .modifier(MainMenuSheetsModifier(
-            branchDialogs: $branchDialogs,
-            errorCenter: $errorCenter,
-            workspace: $workspace,
-            sync: $sync,
-            syncOptionsSubtitle: syncOptionsSubtitle,
-            onRenameBranch: renameBranch,
-            onSaveEditedCommitMessage: {
-                Task {
-                    await saveEditedCommitMessage()
-                }
-            },
-            onSyncWithRemote: syncWithRemote,
-            onCreateNewBranch: createNewBranch,
-            onPullToNewBranch: pullToNewBranch
+            branchDialogs: branchDialogs,
+            errorCenter: errorCenter,
+            workspace: workspace,
+            sync: sync
         ))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

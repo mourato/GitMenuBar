@@ -37,4 +37,36 @@ final class MainMenuBranchDialogs {
     var pendingCleanupOption: BranchCleanupOption?
     var featureBranchName = ""
     var defaultBranchName = ""
+
+    func createBranch(using actionCoordinator: MainMenuActionCoordinator) {
+        createBranchError = nil
+        let name = newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        Task {
+            switch await actionCoordinator.createBranch(named: name) {
+            case .succeeded:
+                showCreateBranch = false
+                newBranchName = ""
+            case let .failed(message):
+                createBranchError = message
+            }
+        }
+    }
+
+    func renameBranch(using actionCoordinator: MainMenuActionCoordinator, errorCenter: MainMenuErrorCenter) {
+        errorCenter.renameBranch = nil
+        let oldName = oldBranchName
+        let newName = renameBranchNewName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !newName.isEmpty else { return }
+        Task {
+            switch await actionCoordinator.renameBranch(oldName: oldName, newName: newName) {
+            case .succeeded:
+                showRenameBranch = false
+                renameBranchNewName = ""
+                oldBranchName = ""
+            case let .failed(message):
+                errorCenter.renameBranch = message
+            }
+        }
+    }
 }

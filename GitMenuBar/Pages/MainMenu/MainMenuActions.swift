@@ -49,26 +49,12 @@ extension MainMenuView {
             await submitComment()
             return
         }
-        await handleSyncResult(actionCoordinator.performSync())
+        await actionCoordinator.performSync().playHapticFeedback()
     }
 
     func syncRepository() {
         Task {
-            await handleSyncResult(actionCoordinator.performSync())
-        }
-    }
-
-    func syncWithRemote() {
-        Task {
-            await handleSyncResult(actionCoordinator.syncWithRemote(rebase: sync.useRebase))
-        }
-    }
-
-    private func handleSyncResult(_ result: MainMenuSyncExecutionResult) {
-        if result == .synced {
-            HapticFeedback.actionSucceeded()
-        } else if result == .failed {
-            HapticFeedback.actionFailed()
+            await actionCoordinator.performSync().playHapticFeedback()
         }
     }
 
@@ -126,53 +112,6 @@ extension MainMenuView {
         branchDialogs.showBranchSelector = true
         if gitManager.availableBranches.isEmpty {
             Task { await gitManager.fetchSelectedBranchesAsync() }
-        }
-    }
-
-    func createNewBranch() {
-        branchDialogs.createBranchError = nil
-        let name = branchDialogs.newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
-        Task {
-            switch await actionCoordinator.createBranch(named: name) {
-            case .succeeded:
-                branchDialogs.showCreateBranch = false
-                branchDialogs.newBranchName = ""
-            case let .failed(message):
-                branchDialogs.createBranchError = message
-            }
-        }
-    }
-
-    func renameBranch() {
-        errorCenter.renameBranch = nil
-        let oldName = branchDialogs.oldBranchName
-        let newName = branchDialogs.renameBranchNewName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !newName.isEmpty else { return }
-        Task {
-            switch await actionCoordinator.renameBranch(oldName: oldName, newName: newName) {
-            case .succeeded:
-                branchDialogs.showRenameBranch = false
-                branchDialogs.renameBranchNewName = ""
-                branchDialogs.oldBranchName = ""
-            case let .failed(message):
-                errorCenter.renameBranch = message
-            }
-        }
-    }
-
-    func pullToNewBranch() {
-        let name = sync.pullToNewBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
-
-        Task {
-            switch await actionCoordinator.pullToNewBranch(named: name) {
-            case .succeeded:
-                sync.showPullToNewBranch = false
-                sync.pullToNewBranchName = ""
-            case let .failed(message):
-                errorCenter.sync = message
-            }
         }
     }
 
@@ -332,13 +271,6 @@ extension MainMenuView {
 
     func startAutomaticCommitMessageEdit(for commit: Commit) async {
         await commitHistoryEditCoordinator.beginAIGeneratedEdit(for: commit)
-    }
-
-    func saveEditedCommitMessage() async {
-        let didRewrite = await commitHistoryEditCoordinator.saveDraftMessage()
-        if didRewrite {
-            presentationModel.showMain()
-        }
     }
 
     func confirmPublishedCommitRewrite() async {

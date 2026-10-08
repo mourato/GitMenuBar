@@ -230,9 +230,6 @@ extension MainMenuView {
         )
     }
 
-    var syncOptionsSubtitle: String {
-        "Remote has \(gitManager.behindCount) new commit\(gitManager.behindCount == 1 ? "" : "s")"
-    }
 }
 
 #Preview("Main Menu Root") {
