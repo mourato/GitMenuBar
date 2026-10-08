@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class GitManagerCommitHistoryPaginationTests: XCTestCase {
-    func testLoadMoreCommitHistoryIncreasesFetchLimitBy25() throws {
+    func testLoadMoreCommitHistoryIncreasesFetchLimitBy25() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
 
         for index in 1 ... 60 {
@@ -13,23 +13,23 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
             try runGit(["commit", "-m", "feat: commit \(index)"], in: repoURL)
         }
 
-        try withGitRepoPath(repoURL.path) {
+        try await withGitRepoPath(repoURL.path) {
             let gitManager = GitManager()
 
-            gitManager.fetchCommitHistory(limit: 25)
-            waitForHistoryUpdate(timeout: 6) {
+            await gitManager.fetchCommitHistoryAsync(limit: 25)
+            await waitForHistoryUpdate(timeout: 6) {
                 gitManager.commitHistoryLimit == 25 && gitManager.commitHistory.count == 25
             }
 
             gitManager.loadMoreCommitHistory(batchSize: 25)
-            waitForHistoryUpdate(timeout: 6) {
+            await waitForHistoryUpdate(timeout: 6) {
                 gitManager.commitHistoryLimit == 50 && gitManager.commitHistory.count == 50
             }
 
             XCTAssertTrue(gitManager.canLoadMoreCommitHistory)
 
             gitManager.loadMoreCommitHistory(batchSize: 25)
-            waitForHistoryUpdate(timeout: 6) {
+            await waitForHistoryUpdate(timeout: 6) {
                 gitManager.commitHistoryLimit == 75 && gitManager.commitHistory.count == 61
             }
 
@@ -37,7 +37,7 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
         }
     }
 
-    func testFetchCommitHistoryExcludesReflogOnlyCommitsByDefault() throws {
+    func testFetchCommitHistoryExcludesReflogOnlyCommitsByDefault() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
 
         let visibleFileURL = repoURL.appendingPathComponent("visible.txt")
@@ -52,11 +52,11 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
 
         try runGit(["reset", "--hard", "HEAD~1"], in: repoURL)
 
-        try withGitRepoPath(repoURL.path) {
+        try await withGitRepoPath(repoURL.path) {
             let gitManager = GitManager()
 
-            gitManager.fetchCommitHistory(limit: 10, includeReflog: false)
-            waitForHistoryUpdate(timeout: 6) {
+            await gitManager.fetchCommitHistoryAsync(limit: 10, includeReflog: false)
+            await waitForHistoryUpdate(timeout: 6) {
                 gitManager.commitHistory.count == 2
             }
 
@@ -67,7 +67,7 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
         }
     }
 
-    func testResetToCommitIncludesReflogCommitsForRestore() throws {
+    func testResetToCommitIncludesReflogCommitsForRestore() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
 
         let visibleFileURL = repoURL.appendingPathComponent("visible.txt")
@@ -83,16 +83,16 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
         let targetHash = try runGit(["rev-parse", "HEAD~1"], in: repoURL)
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        try withGitRepoPath(repoURL.path) {
+        try await withGitRepoPath(repoURL.path) {
             let gitManager = GitManager()
 
-            waitForHistoryUpdate(timeout: 6) {
+            await waitForHistoryUpdate(timeout: 6) {
                 gitManager.commitHistory.count >= 3
             }
 
-            gitManager.resetToCommit(targetHash)
+            try await gitManager.resetToCommitAsync(hash: targetHash, context: gitManager.makeRepositoryOperationContext()).get()
 
-            waitForHistoryUpdate(timeout: 6) {
+            await waitForHistoryUpdate(timeout: 6) {
                 gitManager.currentHash == targetHash &&
                     gitManager.commitHistory.contains(where: { $0.subject == "feat: future commit" })
             }
@@ -103,7 +103,7 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
         }
     }
 
-    private func waitForHistoryUpdate(timeout: TimeInterval, condition: @escaping () -> Bool) {
+    private func waitForHistoryUpdate(timeout: TimeInterval, condition: @escaping () -> Bool) async {
         let deadline = Date().addingTimeInterval(timeout)
 
         while Date() < deadline {
@@ -111,7 +111,7 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
                 return
             }
 
-            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+            try? await Task.sleep(for: .milliseconds(20))
         }
 
         XCTFail("Timed out waiting for commit history update.")

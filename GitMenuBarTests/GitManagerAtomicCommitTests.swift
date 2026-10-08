@@ -31,12 +31,18 @@ final class GitManagerAtomicCommitTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
         let initialExpectation = expectation(description: "working tree refresh")
-        gitManager.updateUncommittedFiles { initialExpectation.fulfill() }
+        Task {
+            await gitManager.updateUncommittedFilesAsync()
+            initialExpectation.fulfill()
+        }
         await fulfillment(of: [initialExpectation], timeout: 3)
 
         try "base\nchanged\n".write(to: fileURL, atomically: true, encoding: .utf8)
         let refreshExpectation = expectation(description: "working tree refresh after edit")
-        gitManager.updateUncommittedFiles { refreshExpectation.fulfill() }
+        Task {
+            await gitManager.updateUncommittedFilesAsync()
+            refreshExpectation.fulfill()
+        }
         await fulfillment(of: [refreshExpectation], timeout: 3)
 
         let diffs = await gitManager.diffForChangedFilesAsync()
@@ -230,7 +236,10 @@ final class GitManagerAtomicCommitTests: XCTestCase {
         changedLines[21] = "third"
         try (changedLines.joined(separator: "\n") + "\n").write(to: fileURL, atomically: true, encoding: .utf8)
         let initial = expectation(description: "refresh")
-        manager.updateUncommittedFiles { initial.fulfill() }
+        Task {
+            await manager.updateUncommittedFilesAsync()
+            initial.fulfill()
+        }
         await fulfillment(of: [initial], timeout: 3)
         let snapshot = try await manager.makeAtomicCommitSnapshotAsync()
         guard snapshot.hunks.count == 3 else {
@@ -299,7 +308,10 @@ final class GitManagerAtomicCommitTests: XCTestCase {
 
         let manager = GitManager(repositoryPathOverride: repoURL.path)
         let refresh = expectation(description: "refresh")
-        manager.updateUncommittedFiles { refresh.fulfill() }
+        Task {
+            await manager.updateUncommittedFilesAsync()
+            refresh.fulfill()
+        }
         await fulfillment(of: [refresh], timeout: 3)
         let snapshot = try await manager.makeAtomicCommitSnapshotAsync()
         guard snapshot.hunks.count == 3 else {
@@ -335,7 +347,10 @@ final class GitManagerAtomicCommitTests: XCTestCase {
 
         let manager = GitManager(repositoryPathOverride: repoURL.path)
         let refresh = expectation(description: "refresh")
-        manager.updateUncommittedFiles { refresh.fulfill() }
+        Task {
+            await manager.updateUncommittedFilesAsync()
+            refresh.fulfill()
+        }
         await fulfillment(of: [refresh], timeout: 3)
         let snapshot = try await manager.makeAtomicCommitSnapshotAsync()
         guard let hunk = snapshot.hunks.first else {

@@ -39,7 +39,7 @@ final class MainMenuRepositoryConfirmations {
                     isPrivate: newStatus
                 )
                 isTogglingVisibility = false
-                gitManager.checkRepoVisibility()
+                await gitManager.checkRepoVisibilityAsync()
             } catch {
                 isTogglingVisibility = false
                 errorCenter.toggleVisibility = error.localizedDescription

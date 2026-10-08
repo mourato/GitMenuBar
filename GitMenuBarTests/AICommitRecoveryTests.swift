@@ -159,7 +159,8 @@ final class AICommitRecoveryTests: XCTestCase {
 
     private func waitForWorkingTreeUpdate(_ gitManager: GitManager, timeout: TimeInterval = 3) async {
         let expectation = expectation(description: "working tree refresh")
-        gitManager.updateUncommittedFiles {
+        Task {
+            await gitManager.updateUncommittedFilesAsync()
             expectation.fulfill()
         }
         await fulfillment(of: [expectation], timeout: timeout)
