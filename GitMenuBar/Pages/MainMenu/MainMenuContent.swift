@@ -111,7 +111,7 @@ extension MainMenuView {
                     suggestionPath: presentationModel.createRepoSuggestionPath,
                     currentRepoPath: currentRepoPath,
                     onCreateRepo: { presentationModel.showCreateRepo(path: $0) },
-                    overview: renderSnapshot.overview,
+                    overview: snapshotModel.renderSnapshot.overview,
                     commitActionTitle: resolvedCommitButtonAction.buttonTitle,
                     canCommit: actionCoordinator.canAutoCommit,
                     onCommit: performQuickCommit,
@@ -140,8 +140,8 @@ extension MainMenuView {
             if let selection = workspace.selectedSidePanelSelection {
                 MainMenuSidePanelHost(
                     selection: selection,
-                    projectName: renderSnapshot.currentProjectName,
-                    overview: renderSnapshot.overview,
+                    projectName: snapshotModel.renderSnapshot.currentProjectName,
+                    overview: snapshotModel.renderSnapshot.overview,
                     history: sidePanelHistory,
                     commitMessage: $workspace.commentText,
                     commitFieldFocus: $isCommentFieldFocused,

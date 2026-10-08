@@ -13,7 +13,7 @@ extension MainMenuView {
     func renameProject(path: String, name: String) {
         recentProjectsStore.rename(path: path, name: name)
         projectMonitor.rename(path: path, name: name)
-        recentProjectReferences = recentProjectsStore.recentProjects()
+        snapshotModel.reloadRecentProjects()
         refreshRenderSnapshot()
     }
 
@@ -24,7 +24,7 @@ extension MainMenuView {
     func removeProject(path: String) {
         recentProjectsStore.remove(path: path)
         projectMonitor.remove(path: path)
-        recentProjectReferences = recentProjectsStore.recentProjects()
+        snapshotModel.reloadRecentProjects()
         if RecentProjectsStore.normalize(path) == RecentProjectsStore.normalize(currentRepositoryPath) {
             clearCurrentRepositoryPath()
             dismissTransientPresentations()

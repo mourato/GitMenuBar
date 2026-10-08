@@ -37,8 +37,7 @@ struct MainMenuView: View {
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
     @State var palette = MainMenuCommandPaletteState()
 
-    @State var recentProjectReferences = RecentProjectsStore().recentProjects()
-    @State var renderSnapshot = MainMenuRenderSnapshot.empty
+    @State var snapshotModel = MainMenuSnapshotModel()
 
     let closeWindow: () -> Void
     let openSettingsWindow: () -> Void
@@ -178,7 +177,7 @@ struct MainMenuView: View {
             reloadRepositorySelectionSnapshot()
             refreshRenderSnapshot()
         }
-        .onChange(of: recentProjectReferences) {
+        .onChange(of: snapshotModel.recentProjectReferences) {
             refreshRenderSnapshot()
         }
         .onChange(of: isStagedSectionCollapsed) {
