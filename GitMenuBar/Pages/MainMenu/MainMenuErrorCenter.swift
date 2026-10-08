@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 @Observable
 @MainActor
@@ -41,5 +41,33 @@ final class MainMenuErrorCenter {
         case .coordinatorAlert, .coordinatorSuccess:
             break
         }
+    }
+
+    /// Pending errors in banner priority order, with their banner titles.
+    private var entries: [(source: MainMenuInlineBannerSource, banner: (title: String, message: String?))] {
+        [
+            (.deleteRepository, ("Delete Failed", deleteRepository)),
+            (.toggleVisibility, ("Visibility Update Failed", toggleVisibility)),
+            (.discard, ("Discard Failed", discard)),
+            (.sync, ("Sync Failed", sync)),
+            (.branchSwitch, ("Branch Switch Failed", branchSwitch)),
+            (.merge, ("Merge Failed", merge)),
+            (.deleteBranch, ("Delete Failed", deleteBranch)),
+            (.renameBranch, ("Rename Failed", renameBranch)),
+            (.restart, ("Restart Failed", restart)),
+            (.push, ("Push Failed", push))
+        ]
+    }
+
+    /// First pending error in banner priority order.
+    var activeSource: MainMenuInlineBannerSource? {
+        entries.first { $0.banner.message != nil }?.source
+    }
+
+    func banner(for source: MainMenuInlineBannerSource) -> InlineStatusBanner? {
+        guard let entry = entries.first(where: { $0.source == source }), let message = entry.banner.message else {
+            return nil
+        }
+        return InlineStatusBanner(title: entry.banner.title, message: message, style: .error)
     }
 }

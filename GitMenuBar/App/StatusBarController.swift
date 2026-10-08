@@ -14,41 +14,18 @@ import SwiftUI
 final class StatusBarController: NSObject {
     enum Constants {
         static let statusIconPointSize = NSSize(width: 18, height: 18)
-        static let windowInitialSize = NSSize(width: WorkbenchMetrics.mainWindowInitialWidth, height: 720)
-        static let windowMinimumHeight: CGFloat = 420
-        static let windowMinimumSize = NSSize(width: WorkbenchMetrics.mainWindowMinimumWidth, height: windowMinimumHeight)
-        static let autoHideBlurEvaluationDelay: TimeInterval = 0.08
-        static let windowAutosaveName = NSWindow.FrameAutosaveName("GitMenuBar.MainWindow")
-        static let screenCaptureUIBundleIdentifier = "com.apple.screencaptureui"
         static let appFocusedShortcutIDs: [GlobalShortcutID] = [
             .commandPalette, .commit, .sync, .atomicCommits, .push, .branchManagement, .createBranch
         ]
     }
 
-    private struct WindowOpenTrace {
-        let id: Int
-        let startedAt: CFAbsoluteTime
-        let trigger: String
-    }
-
-    private enum WindowPlacementStrategy {
-        case statusItemAnchor
-        case mousePointerMonitor
-    }
-
     var statusItem: NSStatusItem?
-    private var mainWindow: NSWindow?
-    private var mainWindowToolbarController: MainWindowToolbarController?
+    private lazy var mainWindowController = MainWindowController(statusBarController: self)
     var contextMenu: NSMenu?
     private var cancellables = Set<AnyCancellable>()
     var baseStatusImage: NSImage?
     private var remoteExistenceByPath: [String: RemoteExistenceState] = [:]
-    private var nextWindowOpenTraceID = 0
-    private var hasPositionedWindowInitially = false
-    private var isAutoHideSuspended = false
     private var shortcutQueue = MainWindowShortcutQueue()
-
-    private let windowDelegate = MainWindowLifecycleDelegate()
 
     let dependencies: AppDependencies
     let gitManager: GitManager
@@ -87,7 +64,7 @@ final class StatusBarController: NSObject {
     private lazy var settingsWindowController = dependencies.makeSettingsWindowController(
         aiCommitCoordinator: aiCommitCoordinator,
         onSetAutoHideSuspended: { [weak self] suspended in
-            self?.setAutoHideSuspended(suspended)
+            self?.mainWindowController.setAutoHideSuspended(suspended)
         }
     )
 
@@ -124,7 +101,7 @@ final class StatusBarController: NSObject {
         setupVisibilityPreferencesObservation()
         setupShortcutHandlers()
         setupContextMenu()
-        setupMainWindow()
+        updateMainWindowToolbar()
         setupStatusItemObservation()
         setupAuthenticationObservation()
         setupAppCommandObservation()
@@ -276,7 +253,7 @@ final class StatusBarController: NSObject {
     }
 
     private func setupAuthenticationObservation() {
-        setAutoHideSuspended(githubAuthManager.isAuthenticating)
+        mainWindowController.setAutoHideSuspended(githubAuthManager.isAuthenticating)
         observeAuthenticatingState()
     }
 
@@ -286,7 +263,7 @@ final class StatusBarController: NSObject {
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                setAutoHideSuspended(githubAuthManager.isAuthenticating)
+                mainWindowController.setAutoHideSuspended(githubAuthManager.isAuthenticating)
                 observeAuthenticatingState()
             }
         }
@@ -349,61 +326,6 @@ final class StatusBarController: NSObject {
         rebuildContextMenu()
     }
 
-    private func setupMainWindow() {
-        let contentRect = NSRect(origin: .zero, size: Constants.windowInitialSize)
-        let window = NSWindow(
-            contentRect: contentRect,
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-
-        window.collectionBehavior.insert([.fullScreenPrimary, .participatesInCycle])
-        window.tabbingMode = .disallowed
-
-        configureMainWindowAppearance(window)
-        window.title = "GitMenuBar"
-        let toolbarController = MainWindowToolbarController(target: self)
-        toolbarController.install(in: window)
-        mainWindowToolbarController = toolbarController
-        window.isReleasedWhenClosed = false
-        window.setContentSize(Constants.windowInitialSize)
-        window.contentMinSize = Constants.windowMinimumSize
-        window.setFrameAutosaveName(Constants.windowAutosaveName)
-        hasPositionedWindowInitially = window.setFrameUsingName(Constants.windowAutosaveName, force: false)
-        normalizeMainWindowSize(window)
-
-        let contentController = WorkbenchWindowChrome.makeHostedContentController(rootView: makeRootView())
-        window.contentViewController = contentController
-        WorkbenchWindowChrome.configureTransparentWindow(window)
-
-        windowDelegate.onShouldClose = { [weak self] in
-            self?.hideMainWindow()
-            return false
-        }
-        windowDelegate.onDidResignKey = { [weak self] in
-            self?.handleMainWindowDidResignKey()
-        }
-        windowDelegate.onDidMoveOrResize = { [weak self] in
-            self?.persistMainWindowFrameIfPossible()
-        }
-        windowDelegate.onDidEndLiveResize = { [weak self] in
-            self?.mainWindow?.invalidateShadow()
-        }
-
-        window.delegate = windowDelegate
-
-        mainWindow = window
-        updateMainWindowToolbar()
-    }
-
-    private func configureMainWindowAppearance(_ window: NSWindow) {
-        window.styleMask.insert(.fullSizeContentView)
-        window.titlebarSeparatorStyle = .none
-        window.hasShadow = true
-        window.isMovableByWindowBackground = false
-    }
-
     private func updateMainWindowToolbar() {
         let shouldShowSidebarItem = switch presentationModel.route {
         case .createRepo:
@@ -417,7 +339,7 @@ final class StatusBarController: NSObject {
         case .main, .createRepo:
             false
         }
-        mainWindowToolbarController?.update(
+        mainWindowController.updateToolbar(
             title: mainWindowTitle,
             showsSidebarItem: shouldShowSidebarItem,
             showsBackItem: needsBackItem
@@ -444,80 +366,15 @@ final class StatusBarController: NSObject {
         presentationModel.showMain()
     }
 
-    private func makeRootView() -> AnyView {
-        let rootView = MainMenuView(
-            closeWindow: { [weak self] in
-                self?.hideMainWindow()
-            },
-            openSettingsWindow: { [weak self] in
-                self?.openSettingsWindow()
-            },
-            setAutoHideSuspended: { [weak self] suspended in
-                self?.setAutoHideSuspended(suspended)
-            }
-        )
-        .environment(gitManager)
-        .environment(loginItemManager)
-        .environment(githubAuthManager)
-        .environment(aiProviderStore)
-        .environment(aiCommitCoordinator)
-        .environment(actionCoordinator)
-        .environment(commitHistoryEditCoordinator)
-        .environment(shortcutActionBridge)
-        .environment(presentationModel)
-        .environment(usageQuotaStore)
-        .environment(usageQuotaPresentationPreferences)
-        .environment(projectMonitor)
-        .environment(repositorySelectionCoordinator)
-        .environment(projectCleanupStore)
-
-        return AnyView(rootView)
-    }
-
-    private func setAutoHideSuspended(_ suspended: Bool) {
-        isAutoHideSuspended = suspended
-    }
-
-    private func handleMainWindowDidResignKey() {
-        guard shouldAutoHideOnBlur, !isMainWindowPresentingSheet else { return }
-
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(Constants.autoHideBlurEvaluationDelay))
-            guard let self,
-                  shouldAutoHideOnBlur,
-                  !self.isMainWindowPresentingSheet,
-                  !self.isSystemScreenCaptureUIFrontmost
-            else { return }
-
-            hideMainWindow()
-        }
-    }
-
-    private var isMainWindowPresentingSheet: Bool {
-        mainWindow?.attachedSheet != nil
-    }
-
-    private var shouldAutoHideOnBlur: Bool {
-        MainWindowPreferences.isAutoHideOnBlurEnabled() && !isAutoHideSuspended
-    }
-
-    private var isSystemScreenCaptureUIFrontmost: Bool {
-        NSWorkspace.shared.frontmostApplication?.bundleIdentifier == Constants.screenCaptureUIBundleIdentifier
-    }
-
-    private var isMainWindowVisible: Bool {
-        mainWindow?.isVisible == true
-    }
-
     private func handleActionShortcut(_ action: MainMenuShortcutAction) {
         shortcutQueue.enqueue(action)
 
-        if isMainWindowVisible, presentationModel.route == .main {
+        if mainWindowController.isMainWindowVisible, presentationModel.route == .main {
             flushPendingShortcutActionsIfReady()
             return
         }
 
-        let trace = beginWindowOpenTrace(trigger: "shortcut_\(describe(shortcutAction: action))")
+        let trace = mainWindowController.beginWindowOpenTrace(trigger: "shortcut_\(describe(shortcutAction: action))")
         let repositoryPath = currentRepositoryPath()
         let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
 
@@ -531,17 +388,17 @@ final class StatusBarController: NSObject {
     }
 
     private func handleCommandPaletteShortcut() {
-        if isMainWindowVisible {
+        if mainWindowController.isMainWindowVisible {
             presentationModel.showMain(requestCommitFocus: false)
             NSApp.activate(ignoringOtherApps: true)
-            mainWindow?.makeKeyAndOrderFront(nil)
+            mainWindowController.focus()
             Task { @MainActor [weak self] in
                 self?.presentationModel.requestCommandPalettePresentation()
             }
             return
         }
 
-        let trace = beginWindowOpenTrace(trigger: "shortcut_commandPalette")
+        let trace = mainWindowController.beginWindowOpenTrace(trigger: "shortcut_commandPalette")
         let repositoryPath = currentRepositoryPath()
         let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
 
@@ -559,7 +416,7 @@ final class StatusBarController: NSObject {
 
     private func flushPendingShortcutActionsIfReady() {
         let actions = shortcutQueue.dequeueAllIfReady(
-            isWindowVisible: isMainWindowVisible,
+            isWindowVisible: mainWindowController.isMainWindowVisible,
             isMainRoute: presentationModel.route == .main
         )
 
@@ -599,7 +456,7 @@ final class StatusBarController: NSObject {
     }
 
     private func toggleMainWindowFromShortcut() {
-        let placementStrategy: WindowPlacementStrategy = MainWindowPreferences
+        let placementStrategy: MainWindowController.WindowPlacementStrategy = MainWindowPreferences
             .isToggleShortcutUsingMouseMonitorEnabled()
             ? .mousePointerMonitor
             : .statusItemAnchor
@@ -611,18 +468,13 @@ final class StatusBarController: NSObject {
         toggleMainWindow(placementStrategy: .statusItemAnchor)
     }
 
-    private func toggleMainWindow(placementStrategy: WindowPlacementStrategy) {
-        if isMainWindowVisible {
-            if NSApp.isActive, mainWindow?.isKeyWindow == true {
-                hideMainWindow()
-            } else {
-                NSApp.activate(ignoringOtherApps: true)
-                mainWindow?.makeKeyAndOrderFront(nil)
-            }
+    private func toggleMainWindow(placementStrategy: MainWindowController.WindowPlacementStrategy) {
+        if mainWindowController.isMainWindowVisible {
+            mainWindowController.toggleVisibleWindow()
             return
         }
 
-        let trace = beginWindowOpenTrace(trigger: "toggle")
+        let trace = mainWindowController.beginWindowOpenTrace(trigger: "toggle")
         let repositoryPath = currentRepositoryPath()
         let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
         let initialRoute = initialRoute(for: repositoryPath, isGitRepo: isGitRepo)
@@ -642,16 +494,16 @@ final class StatusBarController: NSObject {
         repositoryPath: String?,
         isGitRepo: Bool,
         shouldRefreshAfterPresentation: Bool,
-        trace: WindowOpenTrace,
-        placementStrategy: WindowPlacementStrategy = .statusItemAnchor
+        trace: MainWindowController.WindowOpenTrace,
+        placementStrategy: MainWindowController.WindowPlacementStrategy = .statusItemAnchor
     ) {
         presentationModel.prepareForPresentation(route: route, requestCommitFocus: route == .main)
         if route != .main {
             presentationModel.clearCreateRepoSuggestion()
         }
 
-        logWindowOpen(trace, message: "route resolved to \(describe(route: route))")
-        presentMainWindow(trace: trace, placementStrategy: placementStrategy)
+        mainWindowController.logWindowOpen(trace, message: "route resolved to \(describe(route: route))")
+        mainWindowController.open(trace: trace, placementStrategy: placementStrategy)
 
         if shouldRefreshAfterPresentation {
             refreshMainWindowData(trace: trace)
@@ -661,171 +513,6 @@ final class StatusBarController: NSObject {
         }
 
         validateRemoteIfNeeded(path: repositoryPath, isGitRepo: isGitRepo, trace: trace)
-    }
-
-    private func presentMainWindow(trace: WindowOpenTrace, placementStrategy: WindowPlacementStrategy) {
-        guard let mainWindow else { return }
-
-        if mainWindow.isMiniaturized {
-            mainWindow.deminiaturize(nil)
-        }
-
-        if mainWindow.isVisible {
-            NSApp.activate(ignoringOtherApps: true)
-            mainWindow.makeKeyAndOrderFront(nil)
-            refreshUsageQuotaOnWindowPresented()
-            return
-        }
-
-        if restoreMainWindowFrameIfAvailable(mainWindow) {
-            normalizeMainWindowSize(mainWindow)
-            if let screen = mainWindow.screen ?? NSScreen.main {
-                fitMainWindowWidthToVisibleFrame(mainWindow, visibleFrame: screen.visibleFrame)
-                clampMainWindowOriginToVisibleFrame(mainWindow, visibleFrame: screen.visibleFrame)
-            }
-            hasPositionedWindowInitially = true
-        } else {
-            switch placementStrategy {
-            case .mousePointerMonitor:
-                if let screen = screenContainingMousePointer() {
-                    positionMainWindow(on: screen, window: mainWindow)
-                    hasPositionedWindowInitially = true
-                } else if !hasPositionedWindowInitially {
-                    positionMainWindowRelativeToStatusItem(mainWindow)
-                    hasPositionedWindowInitially = true
-                }
-            case .statusItemAnchor:
-                if !hasPositionedWindowInitially {
-                    positionMainWindowRelativeToStatusItem(mainWindow)
-                    hasPositionedWindowInitially = true
-                }
-            }
-        }
-
-        mainWindow.alphaValue = 1
-        NSApp.activate(ignoringOtherApps: true)
-        mainWindow.makeKeyAndOrderFront(nil)
-        logWindowOpen(trace, message: "window visible")
-        refreshUsageQuotaOnWindowPresented()
-    }
-
-    private func refreshUsageQuotaOnWindowPresented() {
-        usageQuotaStore.refresh(reason: .windowPresented)
-    }
-
-    private func positionMainWindowRelativeToStatusItem(_ window: NSWindow) {
-        guard let button = statusItem?.button,
-              let buttonWindow = button.window,
-              let screen = buttonWindow.screen ?? NSScreen.main
-        else {
-            window.center()
-            return
-        }
-
-        let buttonRectInWindow = button.convert(button.bounds, to: nil)
-        let buttonRectInScreen = buttonWindow.convertToScreen(buttonRectInWindow)
-        let visibleFrame = screen.visibleFrame
-
-        fitMainWindowWidthToVisibleFrame(window, visibleFrame: visibleFrame)
-
-        var originX = buttonRectInScreen.maxX - window.frame.width
-        var originY = buttonRectInScreen.minY - window.frame.height - 8
-
-        let minX = visibleFrame.minX + 8
-        let maxX = max(minX, visibleFrame.maxX - window.frame.width - 8)
-        originX = min(max(originX, minX), maxX)
-
-        let minY = visibleFrame.minY + 8
-        let maxY = max(minY, visibleFrame.maxY - window.frame.height - 20)
-
-        if originY < minY {
-            originY = maxY
-        }
-        originY = min(max(originY, minY), maxY)
-
-        window.setFrameOrigin(NSPoint(x: originX, y: originY))
-    }
-
-    private func screenContainingMousePointer() -> NSScreen? {
-        let mouseLocation = NSEvent.mouseLocation
-        return NSScreen.screens.first { screen in
-            NSMouseInRect(mouseLocation, screen.frame, false)
-        } ?? NSScreen.main
-    }
-
-    private func positionMainWindow(on screen: NSScreen, window: NSWindow) {
-        let visibleFrame = screen.visibleFrame
-        let margin: CGFloat = 12
-
-        fitMainWindowWidthToVisibleFrame(window, visibleFrame: visibleFrame)
-
-        let minX = visibleFrame.minX + margin
-        let maxX = max(minX, visibleFrame.maxX - window.frame.width - margin)
-        let minY = visibleFrame.minY + margin
-        let maxY = max(minY, visibleFrame.maxY - window.frame.height - margin)
-
-        let originX = max(minX, maxX)
-        let originY = max(minY, maxY)
-
-        window.setFrameOrigin(NSPoint(x: originX, y: originY))
-    }
-
-    private func fitMainWindowWidthToVisibleFrame(_ window: NSWindow, visibleFrame: NSRect) {
-        let margin: CGFloat = 8
-        let maxFrameWidth = visibleFrame.width - (margin * 2)
-        guard maxFrameWidth > 0, window.frame.width > maxFrameWidth else { return }
-
-        let currentContentSize = window.contentRect(forFrameRect: window.frame).size
-        let frameChromeWidth = window.frame.width - currentContentSize.width
-        let maxContentWidth = maxFrameWidth - frameChromeWidth
-        guard maxContentWidth >= window.contentMinSize.width else { return }
-
-        window.setContentSize(
-            NSSize(width: maxContentWidth, height: currentContentSize.height)
-        )
-    }
-
-    private func clampMainWindowOriginToVisibleFrame(_ window: NSWindow, visibleFrame: NSRect) {
-        let margin: CGFloat = 8
-        let minX = visibleFrame.minX + margin
-        let maxX = max(minX, visibleFrame.maxX - window.frame.width - margin)
-        let minY = visibleFrame.minY + margin
-        let maxY = max(minY, visibleFrame.maxY - window.frame.height - margin)
-        let originX = min(max(window.frame.minX, minX), maxX)
-        let originY = min(max(window.frame.minY, minY), maxY)
-
-        window.setFrameOrigin(NSPoint(x: originX, y: originY))
-    }
-
-    private func normalizeMainWindowSize(_ window: NSWindow) {
-        let currentContentRect = window.contentRect(forFrameRect: window.frame)
-        let normalizedContentSize = NSSize(
-            width: max(currentContentRect.width, Constants.windowMinimumSize.width),
-            height: max(currentContentRect.height, Constants.windowMinimumSize.height)
-        )
-
-        guard normalizedContentSize != currentContentRect.size else { return }
-        window.setContentSize(normalizedContentSize)
-    }
-
-    private func hideMainWindow() {
-        guard let mainWindow, mainWindow.isVisible else { return }
-
-        persistMainWindowFrame(mainWindow)
-        mainWindow.orderOut(nil)
-    }
-
-    private func persistMainWindowFrame(_ window: NSWindow) {
-        window.saveFrame(usingName: Constants.windowAutosaveName)
-    }
-
-    private func persistMainWindowFrameIfPossible() {
-        guard let mainWindow else { return }
-        persistMainWindowFrame(mainWindow)
-    }
-
-    private func restoreMainWindowFrameIfAvailable(_ window: NSWindow) -> Bool {
-        window.setFrameUsingName(Constants.windowAutosaveName, force: false)
     }
 
     private func openSettingsWindow() {
@@ -838,13 +525,13 @@ final class StatusBarController: NSObject {
 
     /// Opens the main window programmatically (used when app is launched with a folder path)
     func openMainWindow() {
-        if isMainWindowVisible {
+        if mainWindowController.isMainWindowVisible {
             NSApp.activate(ignoringOtherApps: true)
-            mainWindow?.makeKeyAndOrderFront(nil)
+            mainWindowController.focus()
             return
         }
 
-        let trace = beginWindowOpenTrace(trigger: "programmatic")
+        let trace = mainWindowController.beginWindowOpenTrace(trigger: "programmatic")
         let repositoryPath = currentRepositoryPath()
         let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
         let initialRoute = initialRoute(for: repositoryPath, isGitRepo: isGitRepo)
@@ -859,15 +546,15 @@ final class StatusBarController: NSObject {
     }
 
     private func presentMainWindowForActionFeedback() {
-        if isMainWindowVisible {
+        if mainWindowController.isMainWindowVisible {
             presentationModel.showMain(requestCommitFocus: true)
             NSApp.activate(ignoringOtherApps: true)
-            mainWindow?.makeKeyAndOrderFront(nil)
+            mainWindowController.focus()
             flushPendingShortcutActionsIfReady()
             return
         }
 
-        let trace = beginWindowOpenTrace(trigger: "context_action")
+        let trace = mainWindowController.beginWindowOpenTrace(trigger: "context_action")
         let repositoryPath = currentRepositoryPath()
         let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
 
@@ -882,7 +569,7 @@ final class StatusBarController: NSObject {
 
     /// Opens the main window directly showing the create repo view (used when opening a non-git folder)
     func openMainWindowWithCreateRepo(path: String) {
-        let trace = beginWindowOpenTrace(trigger: "create_repo")
+        let trace = mainWindowController.beginWindowOpenTrace(trigger: "create_repo")
         openMainWindow(
             route: .createRepo(path: path),
             repositoryPath: path,
@@ -1023,10 +710,10 @@ final class StatusBarController: NSObject {
     }
 
     private func chooseRepository() {
-        setAutoHideSuspended(true)
+        mainWindowController.setAutoHideSuspended(true)
         DirectoryPickerService().selectDirectory(activateApp: true) { [weak self] selectedPath in
             guard let self else { return }
-            setAutoHideSuspended(false)
+            mainWindowController.setAutoHideSuspended(false)
 
             guard let selectedPath else { return }
             selectRepository(selectedPath)
@@ -1036,7 +723,7 @@ final class StatusBarController: NSObject {
     private func selectRepository(_ path: String) {
         guard actionCoordinator.canSwitchRepository(to: path) else { return }
 
-        let wasVisible = isMainWindowVisible
+        let wasVisible = mainWindowController.isMainWindowVisible
         let result = repositorySelectionCoordinator.select(
             path: path,
             allowsNonGitSelection: !githubAuthManager.isAuthenticated
@@ -1080,15 +767,15 @@ final class StatusBarController: NSObject {
     }
 
     private func presentRepositoryOptions() {
-        if isMainWindowVisible {
+        if mainWindowController.isMainWindowVisible {
             presentationModel.showMain(requestCommitFocus: false)
             presentationModel.requestRepositoryOptionsPresentation()
             NSApp.activate(ignoringOtherApps: true)
-            mainWindow?.makeKeyAndOrderFront(nil)
+            mainWindowController.focus()
             return
         }
 
-        let trace = beginWindowOpenTrace(trigger: "repository_options")
+        let trace = mainWindowController.beginWindowOpenTrace(trigger: "repository_options")
         let repositoryPath = currentRepositoryPath()
         let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
         openMainWindow(
@@ -1129,9 +816,9 @@ final class StatusBarController: NSObject {
         return true
     }
 
-    private func refreshMainWindowData(trace: WindowOpenTrace) {
+    private func refreshMainWindowData(trace: MainWindowController.WindowOpenTrace) {
         let refreshGeneration = presentationModel.startRefresh()
-        logWindowOpen(trace, message: "refresh started")
+        mainWindowController.logWindowOpen(trace, message: "refresh started")
 
         gitManager.refreshSelectedRepository(
             fastCompletion: { [weak self] in
@@ -1142,12 +829,12 @@ final class StatusBarController: NSObject {
 
                 presentationModel.finishRefresh(generation: refreshGeneration)
                 flushPendingShortcutActionsIfReady()
-                logWindowOpen(trace, message: "refresh completed")
+                mainWindowController.logWindowOpen(trace, message: "refresh completed")
             }
         )
     }
 
-    private func validateRemoteIfNeeded(path: String?, isGitRepo: Bool, trace: WindowOpenTrace) {
+    private func validateRemoteIfNeeded(path: String?, isGitRepo: Bool, trace: MainWindowController.WindowOpenTrace) {
         guard let path, isGitRepo, githubAuthManager.isAuthenticated else {
             presentationModel.clearCreateRepoSuggestion()
             return
@@ -1164,13 +851,13 @@ final class StatusBarController: NSObject {
         }
 
         remoteExistenceByPath[path] = .checking
-        logWindowOpen(trace, message: "remote validation started")
+        mainWindowController.logWindowOpen(trace, message: "remote validation started")
 
         gitManager.remoteRepositoryExists(at: path) { [weak self] exists in
             guard let self else { return }
 
             remoteExistenceByPath[path] = exists ? .exists : .missing
-            logWindowOpen(trace, message: "remote validation completed (\(exists ? "exists" : "missing"))")
+            mainWindowController.logWindowOpen(trace, message: "remote validation completed (\(exists ? "exists" : "missing"))")
 
             guard let currentPath = currentRepositoryPath(),
                   RecentProjectsStore.normalize(currentPath) == RecentProjectsStore.normalize(path) else { return }
@@ -1184,23 +871,6 @@ final class StatusBarController: NSObject {
                 presentationModel.suggestCreateRepo(path: path)
             }
         }
-    }
-
-    private func beginWindowOpenTrace(trigger: String) -> WindowOpenTrace {
-        nextWindowOpenTraceID += 1
-        let trace = WindowOpenTrace(
-            id: nextWindowOpenTraceID,
-            startedAt: CFAbsoluteTimeGetCurrent(),
-            trigger: trigger
-        )
-
-        print("[WindowOpen #\(trace.id)] trigger=\(trigger) +0ms")
-        return trace
-    }
-
-    private func logWindowOpen(_ trace: WindowOpenTrace, message: String) {
-        let elapsedMilliseconds = Int((CFAbsoluteTimeGetCurrent() - trace.startedAt) * 1000)
-        print("[WindowOpen #\(trace.id)] trigger=\(trace.trigger) +\(elapsedMilliseconds)ms \(message)")
     }
 
     private func describe(route: MainMenuRoute) -> String {
@@ -1223,29 +893,5 @@ final class StatusBarController: NSObject {
         case .atomicCommits:
             "atomicCommits"
         }
-    }
-}
-
-private final class MainWindowLifecycleDelegate: NSObject, NSWindowDelegate {
-    var onShouldClose: (() -> Bool)?
-    var onDidResignKey: (() -> Void)?
-    var onDidMoveOrResize: (() -> Void)?
-    var onDidEndLiveResize: (() -> Void)?
-
-    func windowShouldClose(_: NSWindow) -> Bool {
-        onShouldClose?() ?? true
-    }
-
-    func windowDidResignKey(_: Notification) {
-        onDidResignKey?()
-    }
-
-    func windowDidMove(_: Notification) {
-        onDidMoveOrResize?()
-    }
-
-    func windowDidEndLiveResize(_: Notification) {
-        onDidEndLiveResize?()
-        onDidMoveOrResize?()
     }
 }
