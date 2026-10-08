@@ -359,38 +359,7 @@ extension MainMenuView {
         if actionCoordinator.success != nil {
             return .coordinatorSuccess
         }
-        if errorCenter.deleteRepository != nil {
-            return .deleteRepository
-        }
-        if errorCenter.toggleVisibility != nil {
-            return .toggleVisibility
-        }
-        if errorCenter.discard != nil {
-            return .discard
-        }
-        if errorCenter.sync != nil {
-            return .sync
-        }
-        if errorCenter.branchSwitch != nil {
-            return .branchSwitch
-        }
-        if errorCenter.merge != nil {
-            return .merge
-        }
-        if errorCenter.deleteBranch != nil {
-            return .deleteBranch
-        }
-        if errorCenter.renameBranch != nil {
-            return .renameBranch
-        }
-        if errorCenter.restart != nil {
-            return .restart
-        }
-        if errorCenter.push != nil {
-            return .push
-        }
-
-        return nil
+        return errorCenter.activeSource
     }
 
     var inlineStatusBanner: InlineStatusBanner? {
@@ -401,26 +370,8 @@ extension MainMenuView {
         case .coordinatorSuccess:
             guard let success = actionCoordinator.success else { return nil }
             return InlineStatusBanner(title: success.title, message: success.message, style: .info)
-        case .deleteRepository:
-            return banner(title: "Delete Failed", message: errorCenter.deleteRepository)
-        case .toggleVisibility:
-            return banner(title: "Visibility Update Failed", message: errorCenter.toggleVisibility)
-        case .discard:
-            return banner(title: "Discard Failed", message: errorCenter.discard)
-        case .sync:
-            return banner(title: "Sync Failed", message: errorCenter.sync)
-        case .branchSwitch:
-            return banner(title: "Branch Switch Failed", message: errorCenter.branchSwitch)
-        case .merge:
-            return banner(title: "Merge Failed", message: errorCenter.merge)
-        case .deleteBranch:
-            return banner(title: "Delete Failed", message: errorCenter.deleteBranch)
-        case .renameBranch:
-            return banner(title: "Rename Failed", message: errorCenter.renameBranch)
-        case .restart:
-            return banner(title: "Restart Failed", message: errorCenter.restart)
-        case .push:
-            return banner(title: "Push Failed", message: errorCenter.push)
+        case let .some(source):
+            return errorCenter.banner(for: source)
         case .none:
             return nil
         }
@@ -586,11 +537,6 @@ extension MainMenuView {
     var displayedGenerationError: String? {
         guard hasWorkingTreeChanges, !hasVisibleCommitMessage, !hasWhitespaceOnlyCommitInput else { return nil }
         return aiCommitCoordinator.generationError
-    }
-
-    private func banner(title: String, message: String?) -> InlineStatusBanner? {
-        guard let message else { return nil }
-        return InlineStatusBanner(title: title, message: message, style: .error)
     }
 }
 
