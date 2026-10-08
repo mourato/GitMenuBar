@@ -415,49 +415,6 @@ class GitManager {
         )
     }
 
-    private func commitLocallyAsync(
-        _ message: String,
-        skipUIUpdates: Bool = false
-    ) async -> Result<Void, Error> {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else {
-            return .failure(makeMissingRepositoryError())
-        }
-
-        await publishOnMainActor {
-            self.isCommitting = true
-        }
-
-        let result: Result<Void, Error> = await runOnBackground {
-            let commitResult = self.executeGitCommand(
-                in: repositoryPath,
-                args: ["commit", "--no-gpg-sign", "--allow-empty-message", "--cleanup=verbatim", "-m", message]
-            )
-
-            guard !commitResult.failure else {
-                return .failure(
-                    GitOperationError.commandFailed("Failed to create commit: \(commitResult.output)")
-                )
-            }
-
-            return .success(())
-        }
-
-        await publishOnMainActor {
-            self.isCommitting = false
-        }
-
-        if case .success = result, !skipUIUpdates {
-            await updateUncommittedFilesAsync()
-            let aheadCount = await updateBranchInfoAsync()
-            await publishOnMainActor {
-                self.commitCount = aheadCount
-            }
-        }
-
-        return result
-    }
-
     func commitLocallyAsync(
         _ message: String,
         skipUIUpdates: Bool = false,
@@ -565,23 +522,6 @@ class GitManager {
         )
         await refreshAsync()
         return result
-    }
-
-    private func commitLocallyWithFallbackAsync(
-        _ message: String,
-        skipUIUpdates: Bool = false
-    ) async -> Result<Void, Error> {
-        await updateUncommittedFilesAsync()
-        let shouldAutoStage = stagedFiles.isEmpty && !changedFiles.isEmpty
-
-        if shouldAutoStage {
-            let stageResult = await stageAllChangesAsync()
-            guard case .success = stageResult else {
-                return stageResult
-            }
-        }
-
-        return await commitLocallyAsync(message, skipUIUpdates: skipUIUpdates)
     }
 
     func commitLocallyWithFallbackAsync(
