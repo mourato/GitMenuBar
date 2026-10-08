@@ -127,6 +127,7 @@ class GitManager {
     @ObservationIgnored private var selectedRefreshGeneration = 0
     @ObservationIgnored private var selectedRefreshPath = ""
     @ObservationIgnored var selectedRefreshOperation: ((GitRefreshSession) async -> Void)?
+    let workingTreeService: GitWorkingTreeService
     let repositoryInitService: GitRepositoryInitService
     let branchService: GitBranchService
     let stashService: GitStashService
@@ -137,6 +138,7 @@ class GitManager {
         repositoryContext = GitRepositoryContext(overridePath: repositoryPathOverride)
         commandRunner = GitCommandRunner()
         workingTreeParser = WorkingTreeParser(runner: commandRunner)
+        workingTreeService = GitWorkingTreeService(commandRunner: commandRunner)
         repositoryInitService = GitRepositoryInitService(commandRunner: commandRunner)
         let branchService = GitBranchService(
             repositoryContext: repositoryContext,
@@ -786,139 +788,59 @@ class GitManager {
     }
 
     func stageFileAsync(path: String) async -> Result<Void, Error> {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else {
-            return .failure(makeMissingRepositoryError())
+        let result = await workingTreeService.stageFileAsync(path: path, in: storedRepoPath)
+        if case .success = result {
+            await updateUncommittedFilesAsync()
         }
-
-        let result = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["add", "--", path])
-        }
-        guard !result.failure else {
-            return .failure(GitOperationError.commandFailed("Failed to stage '\(path)': \(result.output)"))
-        }
-        await updateUncommittedFilesAsync()
-        return .success(())
+        return result
     }
 
     func stageFileAsync(path: String, context: RepositoryOperationContext) async -> Result<Void, Error> {
         guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
         guard await branchMatches(context) else { return .failure(staleOperationError()) }
-        let result = await runOnBackground {
-            self.executeGitCommand(in: context.repositoryPath, args: ["add", "--", path])
-        }
-        guard !result.failure else {
-            return .failure(GitOperationError.commandFailed("Failed to stage '\(path)': \(result.output)"))
-        }
-        return .success(())
+        return await workingTreeService.stageFileAsync(path: path, in: context.repositoryPath)
     }
 
     func stageAllChangesAsync() async -> Result<Void, Error> {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else {
-            return .failure(makeMissingRepositoryError())
+        let result = await workingTreeService.stageAllChangesAsync(in: storedRepoPath)
+        if case .success = result {
+            await updateUncommittedFilesAsync()
         }
-
-        let result = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["add", "-A"])
-        }
-
-        guard !result.failure else {
-            return .failure(
-                GitOperationError.commandFailed("Failed to stage all changes: \(result.output)")
-            )
-        }
-
-        await updateUncommittedFilesAsync()
-        return .success(())
+        return result
     }
 
     func stageAllChangesAsync(context: RepositoryOperationContext) async -> Result<Void, Error> {
         guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
         guard await branchMatches(context) else { return .failure(staleOperationError()) }
-        let result = await runOnBackground {
-            self.executeGitCommand(in: context.repositoryPath, args: ["add", "-A"])
-        }
-        guard !result.failure else {
-            return .failure(GitOperationError.commandFailed("Failed to stage all changes: \(result.output)"))
-        }
-        return .success(())
+        return await workingTreeService.stageAllChangesAsync(in: context.repositoryPath)
     }
 
     func unstageAllChangesAsync() async -> Result<Void, Error> {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else {
-            return .failure(makeMissingRepositoryError())
+        let result = await workingTreeService.unstageAllChangesAsync(in: storedRepoPath)
+        if case .success = result {
+            await updateUncommittedFilesAsync()
         }
-
-        var result = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--", "."])
-        }
-        if result.failure {
-            result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--", "."])
-            }
-        }
-        guard !result.failure else {
-            return .failure(GitOperationError.commandFailed("Failed to unstage all changes: \(result.output)"))
-        }
-        await updateUncommittedFilesAsync()
-        return .success(())
+        return result
     }
 
     func unstageAllChangesAsync(context: RepositoryOperationContext) async -> Result<Void, Error> {
         guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
         guard await branchMatches(context) else { return .failure(staleOperationError()) }
-        var result = await runOnBackground {
-            self.executeGitCommand(in: context.repositoryPath, args: ["restore", "--staged", "--", "."])
-        }
-        if result.failure {
-            result = await runOnBackground {
-                self.executeGitCommand(in: context.repositoryPath, args: ["reset", "HEAD", "--", "."])
-            }
-        }
-        guard !result.failure else {
-            return .failure(GitOperationError.commandFailed("Failed to unstage all changes: \(result.output)"))
-        }
-        return .success(())
+        return await workingTreeService.unstageAllChangesAsync(in: context.repositoryPath)
     }
 
     func unstageFileAsync(path: String) async -> Result<Void, Error> {
-        let repositoryPath = storedRepoPath
-        guard !repositoryPath.isEmpty else {
-            return .failure(makeMissingRepositoryError())
+        let result = await workingTreeService.unstageFileAsync(path: path, in: storedRepoPath)
+        if case .success = result {
+            await updateUncommittedFilesAsync()
         }
-
-        var result = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["restore", "--staged", "--", path])
-        }
-        if result.failure {
-            result = await runOnBackground {
-                self.executeGitCommand(in: repositoryPath, args: ["reset", "HEAD", "--", path])
-            }
-        }
-        guard !result.failure else {
-            return .failure(GitOperationError.commandFailed("Failed to unstage '\(path)': \(result.output)"))
-        }
-        await updateUncommittedFilesAsync()
-        return .success(())
+        return result
     }
 
     func unstageFileAsync(path: String, context: RepositoryOperationContext) async -> Result<Void, Error> {
         guard !context.repositoryPath.isEmpty else { return .failure(makeMissingRepositoryError()) }
         guard await branchMatches(context) else { return .failure(staleOperationError()) }
-        var result = await runOnBackground {
-            self.executeGitCommand(in: context.repositoryPath, args: ["restore", "--staged", "--", path])
-        }
-        if result.failure {
-            result = await runOnBackground {
-                self.executeGitCommand(in: context.repositoryPath, args: ["reset", "HEAD", "--", path])
-            }
-        }
-        guard !result.failure else {
-            return .failure(GitOperationError.commandFailed("Failed to unstage '\(path)': \(result.output)"))
-        }
-        return .success(())
+        return await workingTreeService.unstageFileAsync(path: path, in: context.repositoryPath)
     }
 
     // MARK: - File Operations
