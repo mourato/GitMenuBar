@@ -133,8 +133,13 @@ final class GitWorkingTreeService {
                         self.executeGitCommand(in: repositoryPath, args: ["ls-files", "--error-unmatch", path])
                     }
                     if lsResult.failure {
-                        try? FileManager.default.removeItem(atPath: fullPath)
-                        result = ("", false)
+                        do {
+                            let target = try discardTarget(path: path, in: repositoryPath)
+                            try FileManager.default.removeItem(atPath: target)
+                            result = ("", false)
+                        } catch {
+                            result = (error.localizedDescription, true)
+                        }
                     }
                 }
             }
