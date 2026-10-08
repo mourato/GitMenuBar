@@ -77,89 +77,14 @@ struct MainMenuView: View {
             WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
             value: palette.isPresented
         )
-        .confirmationDialogs(
-            dialogs: branchDialogs,
-            showDeleteConfirmation: $repoConfirm.showDeleteConfirmation,
-            showVisibilityConfirmation: $repoConfirm.showVisibilityConfirmation,
-            showDiscardConfirmation: $workspace.showDiscardConfirmation,
-            showDiscardAllConfirmation: $workspace.showDiscardAllConfirmation,
-            showRestartConfirmation: $repoConfirm.showRestartConfirmation,
-            isDeleting: repoConfirm.isDeleting,
-            isTogglingVisibility: repoConfirm.isTogglingVisibility,
-            visibilityConfirmationTitle: repositoryActionSet.visibilityConfirmationTitle,
-            visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
-            visibilityConfirmationMessage: repositoryActionSet.visibilityConfirmationMessage,
-            deleteBranchWarningMessage: deleteBranchWarningMessage,
-            onDeleteRepository: deleteRepository,
-            onToggleVisibility: toggleRepoVisibility,
-            onDiscardConfirm: {
-                if let path = workspace.discardFilePath, let status = workspace.discardFileStatus {
-                    Task {
-                        _ = await actionCoordinator.discardSidePanelFile(path: path, status: status)
-                    }
-                }
-                workspace.discardFilePath = nil
-                workspace.discardFileStatus = nil
-            },
-            onDiscardAll: {
-                gitManager.discardAllUnstagedChanges { result in
-                    if case let .failure(error) = result {
-                        errorCenter.discard = error.localizedDescription
-                    }
-                }
-            },
-            onRestart: restartApplication,
-            onMerge: {
-                gitManager.mergeBranch(fromBranch: branchDialogs.mergeBranchName) { result in
-                    if case let .failure(error) = result {
-                        errorCenter.merge = error.localizedDescription
-                    }
-                }
-            },
-            onCancelMerge: {
-                branchDialogs.mergeBranchName = ""
-                branchDialogs.mergeTargetBranch = ""
-            },
-            onDirtySwitch: {
-                let branch = branchDialogs.pendingSwitchBranch
-                branchDialogs.pendingSwitchBranch = ""
-                guard !branch.isEmpty else { return }
-                Task {
-                    _ = await actionCoordinator.switchSidePanelBranch(branch)
-                }
-            },
-            onCancelDirtySwitch: {
-                branchDialogs.pendingSwitchBranch = ""
-            },
-            onDeleteBranch: {
-                let name = branchDialogs.branchNameToDelete
-                branchDialogs.branchNameToDelete = ""
-                Task {
-                    _ = await actionCoordinator.deleteSidePanelBranch(name)
-                }
-            },
-            onCancelDeleteBranch: {
-                branchDialogs.branchNameToDelete = ""
-            },
-            onMergeToDefault: performMergeToDefault,
-            onCancelMergeToDefault: {
-                branchDialogs.featureBranchName = ""
-                branchDialogs.defaultBranchName = ""
-            },
-            onMergeCleanupDeleteLocal: { performMergeCleanup(option: .deleteLocal) },
-            onMergeCleanupDeleteLocalAndRemote: { requestRemoteCleanupConfirmation(option: .deleteLocalAndRemote) },
-            onMergeCleanupDeleteRemoteOnly: { requestRemoteCleanupConfirmation(option: .deleteRemoteOnly) },
-            onMergeCleanupKeep: dismissMergeCleanup,
-            onRemoteCleanupDelete: {
-                if let option = branchDialogs.pendingCleanupOption {
-                    performMergeCleanup(option: option)
-                }
-                branchDialogs.pendingCleanupOption = nil
-            },
-            onRemoteCleanupCancel: {
-                branchDialogs.pendingCleanupOption = nil
-            }
-        )
+        .modifier(BranchConfirmationDialogsModifier(dialogs: branchDialogs, errorCenter: errorCenter))
+        .modifier(RepositoryConfirmationDialogsModifier(
+            confirmations: repoConfirm,
+            workspace: workspace,
+            errorCenter: errorCenter,
+            repositoryActionSet: repositoryActionSet,
+            closeWindow: closeWindow
+        ))
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
@@ -303,18 +228,6 @@ extension MainMenuView {
             onClosePalette: closeCommandPalette,
             onSelectPaletteItem: executeCommandPaletteItem
         )
-    }
-
-    var deleteBranchWarningMessage: String {
-        let protectedBranches = ["main", "master", "develop"]
-        if gitManager.unmergedIntoDefaultBranches.contains(branchDialogs.branchNameToDelete) {
-            return "This branch is not merged into the default branch. Git will keep it unless you review its removal in Cleanup."
-        }
-        if protectedBranches.contains(branchDialogs.branchNameToDelete) {
-            return "WARNING: '\(branchDialogs.branchNameToDelete)' is a primary branch. Deleting it may cause serious issues."
-        }
-
-        return "Are you sure you want to delete this branch? This action cannot be undone."
     }
 
     var syncOptionsSubtitle: String {

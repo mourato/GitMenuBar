@@ -236,55 +236,6 @@ extension MainMenuView {
         }
     }
 
-    func deleteRepository() {
-        repoConfirm.isDeleting = true
-
-        Task {
-            do {
-                let repositoryService = GitHubRepositoryService(authManager: githubAuthManager)
-                try await repositoryService.deleteRepository(remoteURL: gitManager.remoteUrl)
-
-                await MainActor.run {
-                    repoConfirm.isDeleting = false
-                    // Clear the remote URL since repo is deleted
-                    gitManager.remoteUrl = ""
-                    presentationModel.clearCreateRepoSuggestion()
-                    closeWindow()
-                }
-            } catch {
-                await MainActor.run {
-                    repoConfirm.isDeleting = false
-                    errorCenter.deleteRepository = error.localizedDescription
-                }
-            }
-        }
-    }
-
-    func toggleRepoVisibility() {
-        repoConfirm.isTogglingVisibility = true
-        let newStatus = !gitManager.isPrivate
-
-        Task {
-            do {
-                let repositoryService = GitHubRepositoryService(authManager: githubAuthManager)
-                _ = try await repositoryService.updateVisibility(
-                    remoteURL: gitManager.remoteUrl,
-                    isPrivate: newStatus
-                )
-
-                await MainActor.run {
-                    repoConfirm.isTogglingVisibility = false
-                    gitManager.checkRepoVisibility()
-                }
-            } catch {
-                await MainActor.run {
-                    repoConfirm.isTogglingVisibility = false
-                    errorCenter.toggleVisibility = error.localizedDescription
-                }
-            }
-        }
-    }
-
     func selectDirectory() {
         setAutoHideSuspended(true)
         DirectoryPickerService().selectDirectory(activateApp: true) { path in
@@ -394,23 +345,6 @@ extension MainMenuView {
         let didRewrite = await commitHistoryEditCoordinator.confirmPublishedRewrite()
         if didRewrite {
             presentationModel.showMain()
-        }
-    }
-
-    func restartApplication() {
-        let appURL = URL(fileURLWithPath: Bundle.main.bundlePath)
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
-
-        NSWorkspace.shared.openApplication(at: appURL, configuration: configuration) { _, error in
-            Task { @MainActor in
-                if let error {
-                    errorCenter.restart = error.localizedDescription
-                    return
-                }
-
-                NSApplication.shared.terminate(nil)
-            }
         }
     }
 
