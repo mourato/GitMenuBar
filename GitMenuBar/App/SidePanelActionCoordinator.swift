@@ -1,17 +1,13 @@
 import Foundation
-import Observation
 
 @MainActor
-@Observable
 final class SidePanelActionCoordinator {
-    @ObservationIgnored private unowned let host: MainMenuActionCoordinator
-
-    private var gitManager: GitManager {
-        host.gitManager
-    }
+    private weak var host: MainMenuActionCoordinator?
+    private let gitManager: GitManager
 
     init(host: MainMenuActionCoordinator) {
         self.host = host
+        gitManager = host.gitManager
     }
 
     func prepareSidePanelSelection(_ selection: MainMenuSidePanelSelection?) async {
@@ -36,7 +32,8 @@ final class SidePanelActionCoordinator {
     }
 
     func pushSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.pushNamedLocalBranchAsync(branchName: branchName, context: context)
             await finishSidePanelMutation(result, context: context, failureTitle: "Push Failed")
             if gitManager.isCurrent(context) {
@@ -47,7 +44,8 @@ final class SidePanelActionCoordinator {
     }
 
     func publishSidePanelBranch(_ branchName: String) async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.publishBranchAsync(branchName: branchName, context: context)
             await finishSidePanelMutation(result, context: context, failureTitle: "Publish Failed")
             if gitManager.isCurrent(context) {
@@ -58,7 +56,8 @@ final class SidePanelActionCoordinator {
     }
 
     func pullSidePanelBranch(rebase: Bool) async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.pullFromRemoteAsync(rebase: rebase, context: context)
             await finishSidePanelMutation(result, context: context, failureTitle: "Pull Failed")
             return result.inspectorActionResult
@@ -66,7 +65,8 @@ final class SidePanelActionCoordinator {
     }
 
     func applySidePanelStash(hash: String) async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.applyStashAsync(hash: hash, context: context)
             await finishSidePanelMutation(result, context: context, failureTitle: "Apply Stash Failed")
             if gitManager.isCurrent(context) {
@@ -80,7 +80,8 @@ final class SidePanelActionCoordinator {
     }
 
     func dropSidePanelStash(hash: String) async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.dropStashAsync(hash: hash, context: context)
             await finishSidePanelMutation(result, context: context, failureTitle: "Drop Stash Failed")
             if gitManager.isCurrent(context) {
@@ -91,7 +92,8 @@ final class SidePanelActionCoordinator {
     }
 
     func saveSidePanelStash(message: String = "GitMenuBar stash") async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
             let result = await gitManager.saveStashAsync(message: message, context: context)
             await finishSidePanelMutation(result, context: context, failureTitle: "Stash Failed")
             if gitManager.isCurrent(context) {
@@ -102,7 +104,8 @@ final class SidePanelActionCoordinator {
     }
 
     func popSidePanelStash(hash: String) async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: true) { context in
             let applied = await gitManager.applyStashAsync(hash: hash, context: context)
             switch applied {
             case .success:
@@ -163,6 +166,7 @@ final class SidePanelActionCoordinator {
     }
 
     func deleteRemoteSidePanelBranch(_ branchName: String, remoteName: String = "origin") async -> MainMenuSidePanelActionResult {
+        guard let host else { return .skipped }
         let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return .skipped
@@ -178,6 +182,7 @@ final class SidePanelActionCoordinator {
     }
 
     func performSidePanelCleanup(units: [GitCleanupUnit], snapshot: GitWorktreeSnapshot) async -> MainMenuSidePanelActionResult {
+        guard let host else { return .skipped }
         guard !units.isEmpty else {
             return .skipped
         }
@@ -223,7 +228,8 @@ final class SidePanelActionCoordinator {
     }
 
     func stageSidePanelFile(path: String) async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
             let result = await gitManager.stageFileAsync(path: path, context: context)
             await finishSidePanelMutation(result, context: context, failureTitle: "Stage Failed")
             return result.inspectorActionResult
@@ -231,7 +237,8 @@ final class SidePanelActionCoordinator {
     }
 
     func unstageSidePanelFile(path: String) async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
             let result = await gitManager.unstageFileAsync(path: path, context: context)
             await finishSidePanelMutation(result, context: context, failureTitle: "Unstage Failed")
             return result.inspectorActionResult
@@ -239,7 +246,8 @@ final class SidePanelActionCoordinator {
     }
 
     func stageAllSidePanelFiles() async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
             let result = await gitManager.stageAllChangesAsync(context: context)
             await finishSidePanelMutation(result, context: context, failureTitle: "Stage Failed")
             return result.inspectorActionResult
@@ -247,7 +255,8 @@ final class SidePanelActionCoordinator {
     }
 
     func unstageAllSidePanelFiles() async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
             let result = await gitManager.unstageAllChangesAsync(context: context)
             await finishSidePanelMutation(result, context: context, failureTitle: "Unstage Failed")
             return result.inspectorActionResult
@@ -258,7 +267,8 @@ final class SidePanelActionCoordinator {
         path: String,
         status: WorkingTreeFileStatus
     ) async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
             let result = await gitManager.discardFileChangesAsync(
                 path: path,
                 status: status,
@@ -273,7 +283,8 @@ final class SidePanelActionCoordinator {
     /// the full operation because the underlying reset path is not yet a fully
     /// selected-refresh-generation-bound UI transaction.
     func resetSidePanelCommit(hash: String) async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
             let result = await gitManager.resetToCommitAsync(hash: hash, context: context)
             await finishSidePanelMutation(result, context: context, failureTitle: "Reset Failed")
             return result.inspectorActionResult
@@ -284,7 +295,8 @@ final class SidePanelActionCoordinator {
         failureTitle: String,
         operation: (RepositoryOperationContext) async -> Result<Void, Error>
     ) async -> MainMenuSidePanelActionResult {
-        await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
+        guard let host else { return .skipped }
+        return await host.executeContextualMutation(allowsRepositorySwitch: false) { context in
             let result = await operation(context)
             await finishSidePanelMutation(result, context: context, failureTitle: failureTitle)
             return result.inspectorActionResult
@@ -296,6 +308,7 @@ final class SidePanelActionCoordinator {
         context: RepositoryOperationContext,
         failureTitle: String
     ) async {
+        guard let host else { return }
         await gitManager.refreshAsync(includeReflogHistory: false, context: context)
         host.onCommitCompleted?(context.repositoryPath)
         switch result {

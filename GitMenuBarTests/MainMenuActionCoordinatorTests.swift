@@ -27,6 +27,24 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         XCTAssertFalse(actionCoordinator.canSwitchRepository(to: "/tmp/project-b"))
     }
 
+    func testSidePanelMutationIsSkippedAfterHostIsReleased() async throws {
+        let gitManager = GitManager(repositoryPathOverride: "")
+        var coordinator: MainMenuActionCoordinator? = makeActionCoordinator(
+            gitManager: gitManager,
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            apiKeyStore: InMemoryAIAPIKeyStore(),
+            session: makeMockedURLSession()
+        )
+        weak var releasedHost = coordinator
+        let sidePanel = try XCTUnwrap(coordinator).sidePanel
+        coordinator = nil
+
+        XCTAssertNil(releasedHost)
+        let result = await sidePanel.stageAllSidePanelFiles()
+        XCTAssertEqual(result, .skipped)
+        XCTAssertFalse(gitManager.isCommitting)
+    }
+
     func testDeleteRemoteSidePanelBranchBlankIsSkipped() async {
         let gitManager = GitManager(repositoryPathOverride: "")
         let actionCoordinator = makeActionCoordinator(
