@@ -21,7 +21,7 @@ struct HistorySidePanelView: View {
         }
         .sidePanelResetAlert(commit: $pendingReset) { commit in
             Task {
-                _ = await actionCoordinator.resetSidePanelCommit(hash: commit.id)
+                _ = await actionCoordinator.sidePanel.resetSidePanelCommit(hash: commit.id)
             }
         }
     }

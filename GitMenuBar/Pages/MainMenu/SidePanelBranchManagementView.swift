@@ -38,7 +38,7 @@ struct SidePanelBranchManagementView: View {
             Button("Delete", role: .destructive) {
                 guard let branch = deleteRemoteBranch else { return }
                 deleteRemoteBranch = nil
-                Task { _ = await actionCoordinator.deleteRemoteSidePanelBranch(branch.name, remoteName: branch.remoteName ?? "origin") }
+                Task { _ = await actionCoordinator.sidePanel.deleteRemoteSidePanelBranch(branch.name, remoteName: branch.remoteName ?? "origin") }
             }
             Button("Cancel", role: .cancel) { deleteRemoteBranch = nil }
         } message: {
@@ -171,14 +171,14 @@ struct SidePanelBranchManagementView: View {
             onPush: needsPush(info) ? {
                 Task {
                     if info.trackingStatus == .noRemote {
-                        _ = await actionCoordinator.publishSidePanelBranch(info.name)
+                        _ = await actionCoordinator.sidePanel.publishSidePanelBranch(info.name)
                     } else {
-                        _ = await actionCoordinator.pushSidePanelBranch(info.name)
+                        _ = await actionCoordinator.sidePanel.pushSidePanelBranch(info.name)
                     }
                 }
             } : nil,
             onMerge: gitManager.unmergedIntoDefaultBranches.contains(info.name) && !info.isCurrent ? {
-                Task { _ = await actionCoordinator.mergeSidePanelBranch(info.name) }
+                Task { _ = await actionCoordinator.sidePanel.mergeSidePanelBranch(info.name) }
             } : nil,
             onDeleteRemote: nil,
             onCheckoutLocally: nil
@@ -195,7 +195,7 @@ struct SidePanelBranchManagementView: View {
             onMerge: nil,
             onDeleteRemote: { deleteRemoteBranch = info },
             onCheckoutLocally: {
-                Task { _ = await actionCoordinator.checkoutRemoteSidePanelBranch(info.name, remoteName: info.remoteName ?? "origin") }
+                Task { _ = await actionCoordinator.sidePanel.checkoutRemoteSidePanelBranch(info.name, remoteName: info.remoteName ?? "origin") }
             }
         )
     }
@@ -282,7 +282,7 @@ struct SidePanelBranchManagementView: View {
         guard !units.isEmpty else { return }
         dismissCleanupConfirmation()
         Task {
-            _ = await actionCoordinator.performSidePanelCleanup(units: units, snapshot: snapshot)
+            _ = await actionCoordinator.sidePanel.performSidePanelCleanup(units: units, snapshot: snapshot)
             selectedCleanupIDs.subtract(Set(units.map(\.id)))
         }
     }

@@ -70,7 +70,7 @@ struct SidePanelDetailView: View {
             Button("Drop", role: .destructive) {
                 if let stashPendingDrop {
                     Task {
-                        _ = await actionCoordinator.dropSidePanelStash(hash: stashPendingDrop.hash)
+                        _ = await actionCoordinator.sidePanel.dropSidePanelStash(hash: stashPendingDrop.hash)
                     }
                 }
                 stashPendingDrop = nil
@@ -114,12 +114,12 @@ struct SidePanelDetailView: View {
                     .workbenchGhost()
                     if staged {
                         Button("Unstage") {
-                            Task { _ = await actionCoordinator.unstageSidePanelFile(path: file.path) }
+                            Task { _ = await actionCoordinator.sidePanel.unstageSidePanelFile(path: file.path) }
                         }
                         .workbenchGhost()
                     } else {
                         Button("Stage") {
-                            Task { _ = await actionCoordinator.stageSidePanelFile(path: file.path) }
+                            Task { _ = await actionCoordinator.sidePanel.stageSidePanelFile(path: file.path) }
                         }
                         .workbenchGhost()
                         if file.status != .untracked {
@@ -150,9 +150,9 @@ struct SidePanelDetailView: View {
                 Button(pushSyncPrimaryTitle) {
                     Task {
                         if isCurrentBranchUnpublished {
-                            _ = await actionCoordinator.publishSidePanelBranch(gitManager.currentBranch)
+                            _ = await actionCoordinator.sidePanel.publishSidePanelBranch(gitManager.currentBranch)
                         } else {
-                            _ = await actionCoordinator.pushSidePanelBranch(gitManager.currentBranch)
+                            _ = await actionCoordinator.sidePanel.pushSidePanelBranch(gitManager.currentBranch)
                         }
                     }
                 }
@@ -167,11 +167,11 @@ struct SidePanelDetailView: View {
                 .accessibilityHint("Pushes the current local branch to origin without force")
                 Menu("Pull") {
                     Button("Pull") {
-                        Task { _ = await actionCoordinator.pullSidePanelBranch(rebase: false) }
+                        Task { _ = await actionCoordinator.sidePanel.pullSidePanelBranch(rebase: false) }
                     }
                     .disabled(!canPull)
                     Button("Pull with Rebase") {
-                        Task { _ = await actionCoordinator.pullSidePanelBranch(rebase: true) }
+                        Task { _ = await actionCoordinator.sidePanel.pullSidePanelBranch(rebase: true) }
                     }
                     .disabled(!canPull)
                 }
@@ -255,7 +255,7 @@ struct SidePanelDetailView: View {
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 0)
                 Button("Stash changes") {
-                    Task { _ = await actionCoordinator.saveSidePanelStash() }
+                    Task { _ = await actionCoordinator.sidePanel.saveSidePanelStash() }
                 }
                 .workbenchGhost()
                 .disabled(actionCoordinator.isBusy || !hasWorkingTreeChanges)
@@ -276,11 +276,11 @@ struct SidePanelDetailView: View {
                         HStack(spacing: WorkbenchMetrics.compactSpacing) {
                             Menu("Apply") {
                                 Button("Apply") {
-                                    Task { _ = await actionCoordinator.applySidePanelStash(hash: stash.hash) }
+                                    Task { _ = await actionCoordinator.sidePanel.applySidePanelStash(hash: stash.hash) }
                                 }
                                 .disabled(actionCoordinator.isBusy)
                                 Button("Apply and drop") {
-                                    Task { _ = await actionCoordinator.popSidePanelStash(hash: stash.hash) }
+                                    Task { _ = await actionCoordinator.sidePanel.popSidePanelStash(hash: stash.hash) }
                                 }
                                 .disabled(actionCoordinator.isBusy)
                             }

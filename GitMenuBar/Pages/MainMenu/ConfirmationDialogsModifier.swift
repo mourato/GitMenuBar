@@ -86,7 +86,7 @@ struct BranchConfirmationDialogsModifier: ViewModifier {
         dialogs.pendingSwitchBranch = ""
         guard !branch.isEmpty else { return }
         Task {
-            _ = await actionCoordinator.switchSidePanelBranch(branch)
+            _ = await actionCoordinator.sidePanel.switchSidePanelBranch(branch)
         }
     }
 
@@ -94,7 +94,7 @@ struct BranchConfirmationDialogsModifier: ViewModifier {
         let name = dialogs.branchNameToDelete
         dialogs.branchNameToDelete = ""
         Task {
-            _ = await actionCoordinator.deleteSidePanelBranch(name)
+            _ = await actionCoordinator.sidePanel.deleteSidePanelBranch(name)
         }
     }
 
