@@ -17,4 +17,22 @@ final class MainMenuRepositoryOptionsState {
         lastHandledToken = token
         return true
     }
+
+    /// Shows the popover now, or defers it until competing presentations close.
+    func requestPresentation(deferred: Bool) {
+        pendingPresentation = deferred
+        if !deferred {
+            showRepositoryOptionsPopover = true
+        }
+    }
+
+    /// Shows a deferred popover once `isUnobstructed` and the project selector is closed.
+    func presentPendingIfPossible(isUnobstructed: Bool) {
+        guard pendingPresentation, isUnobstructed, !showProjectSelector else {
+            return
+        }
+
+        pendingPresentation = false
+        showRepositoryOptionsPopover = true
+    }
 }
