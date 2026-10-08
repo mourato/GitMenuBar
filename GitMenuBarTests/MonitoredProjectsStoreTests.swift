@@ -1,5 +1,5 @@
-import Combine
 @testable import GitMenuBar
+import Observation
 import XCTest
 
 final class MonitoredProjectsStoreTests: XCTestCase {
@@ -245,12 +245,17 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         monitor.refreshOperation = { project, _ in
             Self.snapshot(path: project.path, branch: "newer")
         }
-        let observation = monitor.$snapshots.sink { snapshots in
-            if snapshots["/tmp/project"]?.branchName == "newer" {
-                newerSnapshotPublished.fulfill()
+        let poller = Task {
+            while monitor.snapshots["/tmp/project"]?.branchName != "newer" {
+                do {
+                    try await Task.sleep(for: .milliseconds(10))
+                } catch {
+                    return
+                }
             }
+            newerSnapshotPublished.fulfill()
         }
-        defer { observation.cancel() }
+        defer { poller.cancel() }
 
         monitor.fetchAll()
         await fulfillment(of: [started])
@@ -321,21 +326,24 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         projectStore.add("/tmp/project-b")
         let monitor = ProjectMonitorStore(projectStore: projectStore)
         let allProjectsPublished = expectation(description: "all project snapshots published")
-        var publicationCount = 0
-        let observation = monitor.$snapshots.dropFirst().sink { snapshots in
-            publicationCount += 1
-            if snapshots.count == 2 {
-                XCTAssertEqual(publicationCount, 1)
+        withObservationTracking {
+            _ = monitor.snapshots
+        } onChange: {
+            Task { @MainActor in
+                // Observation fires before mutation; inspect the completed batch on the actor.
+                XCTAssertEqual(monitor.snapshots.count, 2)
                 allProjectsPublished.fulfill()
             }
         }
-        defer { observation.cancel() }
         monitor.refreshOperation = { project, _ in
             Self.snapshot(path: project.path, branch: "main")
         }
 
         monitor.refreshAll()
         await fulfillment(of: [allProjectsPublished], timeout: 3)
+        XCTAssertEqual(monitor.snapshots.count, 2)
+        XCTAssertEqual(monitor.snapshots["/tmp/project-a"]?.branchName, "main")
+        XCTAssertEqual(monitor.snapshots["/tmp/project-b"]?.branchName, "main")
     }
 
     func testSnapshotVisibleStateIgnoresRefreshTimestamp() {

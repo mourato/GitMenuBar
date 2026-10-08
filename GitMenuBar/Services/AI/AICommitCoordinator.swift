@@ -1,14 +1,16 @@
 import Foundation
+import Observation
 
 @MainActor
-final class AICommitCoordinator: ObservableObject {
+@Observable
+final class AICommitCoordinator {
     private struct GenerationDependencies {
         let configuration: AICommitGenerationConfiguration
     }
 
-    @Published private(set) var isGenerating: Bool = false
-    @Published var generationError: String?
-    @Published private(set) var automaticRetryAvailable = false
+    private(set) var isGenerating: Bool = false
+    var generationError: String?
+    private(set) var automaticRetryAvailable = false
 
     private let providerStore: AIProviderStore
     private let keychainStore: any AIAPIKeyStore
@@ -16,7 +18,7 @@ final class AICommitCoordinator: ObservableObject {
     private let gitManager: GitManager
     private let grouper: AICommitGrouperService
     private let chatGPTSubscription: ChatGPTSubscriptionManager?
-    private var messageGenerationFailureCount = 0
+    @ObservationIgnored private var messageGenerationFailureCount = 0
 
     init(
         providerStore: AIProviderStore,

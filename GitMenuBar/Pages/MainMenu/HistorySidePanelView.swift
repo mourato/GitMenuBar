@@ -6,8 +6,8 @@ struct HistorySidePanelView: View {
     let history: SidePanelHistoryModel
     let onClose: () -> Void
 
-    @EnvironmentObject private var gitManager: GitManager
-    @EnvironmentObject private var actionCoordinator: MainMenuActionCoordinator
+    @Environment(GitManager.self) private var gitManager
+    @Environment(MainMenuActionCoordinator.self) private var actionCoordinator
     @State private var pendingReset: Commit?
 
     var body: some View {

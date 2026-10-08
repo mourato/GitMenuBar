@@ -1,8 +1,10 @@
 import Combine
 import Foundation
+import Observation
 
 @MainActor
-final class UsageQuotaPresentationPreferences: ObservableObject {
+@Observable
+final class UsageQuotaPresentationPreferences {
     enum MeterStyle: String, CaseIterable, Identifiable {
         case text
         case bars
@@ -96,39 +98,39 @@ final class UsageQuotaPresentationPreferences: ObservableObject {
         }
     }
 
-    @Published var meterStyle: MeterStyle {
+    var meterStyle: MeterStyle {
         didSet { defaults.set(meterStyle.rawValue, forKey: AppPreferences.Keys.usageQuotaMenuBarStyle) }
     }
 
-    @Published var valueStyle: ValueStyle {
+    var valueStyle: ValueStyle {
         didSet { defaults.set(valueStyle.rawValue, forKey: AppPreferences.Keys.usageQuotaValueStyle) }
     }
 
-    @Published var menuBarVisibility: MenuBarVisibility {
+    var menuBarVisibility: MenuBarVisibility {
         didSet { defaults.set(menuBarVisibility.rawValue, forKey: AppPreferences.Keys.usageQuotaMenuBarVisibility) }
     }
 
-    @Published private(set) var providerOrder: [UsageProviderID] {
+    private(set) var providerOrder: [UsageProviderID] {
         didSet { saveProviderOrder() }
     }
 
-    @Published var sessionWarningThresholds: [Int] {
+    var sessionWarningThresholds: [Int] {
         didSet { defaults.set(sessionWarningThresholds, forKey: AppPreferences.Keys.usageQuotaSessionWarnings) }
     }
 
-    @Published var weeklyWarningThresholds: [Int] {
+    var weeklyWarningThresholds: [Int] {
         didSet { defaults.set(weeklyWarningThresholds, forKey: AppPreferences.Keys.usageQuotaWeeklyWarnings) }
     }
 
-    @Published var workdaysPerWeek: Int {
+    var workdaysPerWeek: Int {
         didSet { defaults.set(workdaysPerWeek, forKey: AppPreferences.Keys.usageQuotaWorkdaysPerWeek) }
     }
 
-    @Published var workdayTickAppearance: WorkdayTickAppearance {
+    var workdayTickAppearance: WorkdayTickAppearance {
         didSet { defaults.set(workdayTickAppearance.rawValue, forKey: AppPreferences.Keys.usageQuotaWorkdayTickAppearance) }
     }
 
-    @Published var showsPace: Bool {
+    var showsPace: Bool {
         didSet { defaults.set(showsPace, forKey: AppPreferences.Keys.usageQuotaShowsPace) }
     }
 
@@ -179,7 +181,6 @@ final class UsageQuotaPresentationPreferences: ObservableObject {
             }
         }
         guard unique != selectedMetrics(for: providerID) else { return }
-        objectWillChange.send()
         metricsByProvider[providerID] = unique
         saveMetrics()
     }

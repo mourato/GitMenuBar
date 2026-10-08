@@ -11,7 +11,7 @@ import SwiftUI
 
 // swiftlint:disable file_length
 @MainActor
-final class StatusBarController: NSObject, ObservableObject {
+final class StatusBarController: NSObject {
     enum Constants {
         static let statusIconPointSize = NSSize(width: 18, height: 18)
         static let windowInitialSize = NSSize(width: WorkbenchMetrics.mainWindowInitialWidth, height: 720)
@@ -155,15 +155,33 @@ final class StatusBarController: NSObject, ObservableObject {
     }
 
     private func setupStatusItemObservation() {
-        let quotaChanges = usageQuotaStore.objectWillChange.map { _ in () }
-        let presentationChanges = usageQuotaPresentationPreferences.objectWillChange.map { _ in () }
-        Publishers.Merge(
-            quotaChanges,
-            presentationChanges
-        )
-        .receive(on: RunLoop.main)
-        .sink { [weak self] _ in self?.updateStatusItemAppearance() }
-        .store(in: &cancellables)
+        observeUsageQuotaForStatusItem()
+    }
+
+    private func observeUsageQuotaForStatusItem() {
+        withObservationTracking {
+            _ = usageQuotaStore.snapshots
+            _ = usageQuotaStore.showAIUsageQuotas
+            _ = usageQuotaStore.showClaudeCodeUsageQuota
+            _ = usageQuotaStore.showCodexUsageQuota
+            _ = usageQuotaStore.showCursorUsageQuota
+            _ = usageQuotaStore.showOpenRouterUsageQuota
+            _ = usageQuotaStore.showGeminiUsageQuota
+            _ = usageQuotaStore.showAntigravityUsageQuota
+            _ = usageQuotaPresentationPreferences.valueStyle
+            _ = usageQuotaPresentationPreferences.meterStyle
+            _ = usageQuotaPresentationPreferences.menuBarVisibility
+            _ = usageQuotaPresentationPreferences.providerOrder
+            for providerID in UsageProviderID.allCases {
+                _ = usageQuotaPresentationPreferences.selectedMetrics(for: providerID)
+            }
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                updateStatusItemAppearance()
+                observeUsageQuotaForStatusItem()
+            }
+        }
     }
 
     private func setupVisibilityPreferencesObservation() {
@@ -258,40 +276,72 @@ final class StatusBarController: NSObject, ObservableObject {
     }
 
     private func setupAuthenticationObservation() {
-        githubAuthManager.$isAuthenticating
-            .receive(on: RunLoop.main)
-            .sink { [weak self] isAuthenticating in
-                self?.setAutoHideSuspended(isAuthenticating)
+        setAutoHideSuspended(githubAuthManager.isAuthenticating)
+        observeAuthenticatingState()
+    }
+
+    private func observeAuthenticatingState() {
+        withObservationTracking {
+            _ = githubAuthManager.isAuthenticating
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                setAutoHideSuspended(githubAuthManager.isAuthenticating)
+                observeAuthenticatingState()
             }
-            .store(in: &cancellables)
+        }
     }
 
     private func setupAppCommandObservation() {
-        let publishers: [AnyPublisher<Void, Never>] = [
-            gitManager.$stagedFiles.map { _ in () }.eraseToAnyPublisher(),
-            gitManager.$changedFiles.map { _ in () }.eraseToAnyPublisher(),
-            gitManager.$isAheadOfRemote.map { _ in () }.eraseToAnyPublisher(),
-            gitManager.$isRemoteAhead.map { _ in () }.eraseToAnyPublisher(),
-            gitManager.$remoteUrl.map { _ in () }.eraseToAnyPublisher(),
-            githubAuthManager.$isAuthenticated.map { _ in () }.eraseToAnyPublisher(),
-            projectMonitor.$snapshots.map { _ in () }.eraseToAnyPublisher(),
-            presentationModel.$route.map { _ in () }.eraseToAnyPublisher(),
-            NotificationCenter.default.publisher(
-                for: UserDefaults.didChangeNotification,
-                object: UserDefaults.standard
-            )
-            .receive(on: RunLoop.main)
-            .map { _ in () }
-            .eraseToAnyPublisher()
-        ]
+        NotificationCenter.default.publisher(
+            for: UserDefaults.didChangeNotification,
+            object: UserDefaults.standard
+        )
+        .receive(on: RunLoop.main)
+        .map { _ in () }
+        .sink { [weak self] in
+            self?.refreshAppCommands()
+            self?.updateMainWindowToolbar()
+        }
+        .store(in: &cancellables)
 
-        Publishers.MergeMany(publishers)
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in
-                self?.refreshAppCommands()
-                self?.updateMainWindowToolbar()
+        observePresentationRoute()
+        observeGitCommandState()
+    }
+
+    private func observePresentationRoute() {
+        withObservationTracking {
+            _ = presentationModel.route
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                refreshAppCommands()
+                updateMainWindowToolbar()
+                observePresentationRoute()
             }
-            .store(in: &cancellables)
+        }
+    }
+
+    private func observeGitCommandState() {
+        withObservationTracking {
+            _ = gitManager.stagedFiles
+            _ = gitManager.changedFiles
+            _ = gitManager.isAheadOfRemote
+            _ = gitManager.isRemoteAhead
+            _ = gitManager.remoteUrl
+            _ = gitManager.currentBranch
+            _ = gitManager.defaultBranchName
+            _ = gitManager.isBehindRemote
+            _ = githubAuthManager.isAuthenticated
+            _ = projectMonitor.snapshots
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                refreshAppCommands()
+                updateMainWindowToolbar()
+                observeGitCommandState()
+            }
+        }
     }
 
     private func setupContextMenu() {
@@ -406,20 +456,20 @@ final class StatusBarController: NSObject, ObservableObject {
                 self?.setAutoHideSuspended(suspended)
             }
         )
-        .environmentObject(gitManager)
-        .environmentObject(loginItemManager)
-        .environmentObject(githubAuthManager)
-        .environmentObject(aiProviderStore)
-        .environmentObject(aiCommitCoordinator)
-        .environmentObject(actionCoordinator)
-        .environmentObject(commitHistoryEditCoordinator)
-        .environmentObject(shortcutActionBridge)
-        .environmentObject(presentationModel)
-        .environmentObject(usageQuotaStore)
-        .environmentObject(usageQuotaPresentationPreferences)
-        .environmentObject(projectMonitor)
-        .environmentObject(repositorySelectionCoordinator)
-        .environmentObject(projectCleanupStore)
+        .environment(gitManager)
+        .environment(loginItemManager)
+        .environment(githubAuthManager)
+        .environment(aiProviderStore)
+        .environment(aiCommitCoordinator)
+        .environment(actionCoordinator)
+        .environment(commitHistoryEditCoordinator)
+        .environment(shortcutActionBridge)
+        .environment(presentationModel)
+        .environment(usageQuotaStore)
+        .environment(usageQuotaPresentationPreferences)
+        .environment(projectMonitor)
+        .environment(repositorySelectionCoordinator)
+        .environment(projectCleanupStore)
 
         return AnyView(rootView)
     }

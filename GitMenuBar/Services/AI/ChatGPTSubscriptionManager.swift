@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import Observation
 
 @MainActor
 protocol ChatGPTCommitGenerating: AnyObject {
@@ -7,17 +8,18 @@ protocol ChatGPTCommitGenerating: AnyObject {
 }
 
 @MainActor
-final class ChatGPTSubscriptionManager: ObservableObject, ChatGPTCommitGenerating {
+@Observable
+final class ChatGPTSubscriptionManager: ChatGPTCommitGenerating {
     private static let idleShutdown: Duration = .seconds(600)
 
     private let client: CodexAppServerClient
     private let turns: CodexTurnRunner
-    private var refreshTask: Task<Void, Never>?
-    private var idleTask: Task<Void, Never>?
+    @ObservationIgnored private var refreshTask: Task<Void, Never>?
+    @ObservationIgnored private var idleTask: Task<Void, Never>?
 
-    @Published private(set) var phase: ChatGPTSubscription.Phase = .idle
-    @Published private(set) var account: ChatGPTSubscription.Account?
-    @Published private(set) var models: [ChatGPTSubscription.Model] = []
+    private(set) var phase: ChatGPTSubscription.Phase = .idle
+    private(set) var account: ChatGPTSubscription.Account?
+    private(set) var models: [ChatGPTSubscription.Model] = []
 
     init(supportDirectory: URL? = nil) {
         let supportDirectory = supportDirectory ?? Self.defaultSupportDirectory()

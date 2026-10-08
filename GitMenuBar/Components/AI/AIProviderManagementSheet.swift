@@ -24,8 +24,8 @@ struct AIProviderManagementSheet: View {
         }
     }
 
-    @EnvironmentObject private var aiProviderStore: AIProviderStore
-    @EnvironmentObject private var aiCommitCoordinator: AICommitCoordinator
+    @Environment(AIProviderStore.self) private var aiProviderStore
+    @Environment(AICommitCoordinator.self) private var aiCommitCoordinator
     @Environment(\.dismiss) private var dismiss
 
     @State private var editorPresentation: EditorPresentation?
@@ -91,7 +91,7 @@ struct AIProviderManagementSheet: View {
             AIProviderEditorSheet(existingProvider: presentation.existingProvider) { provider, apiKey in
                 save(provider, apiKey: apiKey)
             }
-            .environmentObject(aiCommitCoordinator)
+            .environment(aiCommitCoordinator)
         }
         .alert("Delete provider?", isPresented: $showingDeleteConfirmation) {
             Button("Delete", role: .destructive) { deletePendingProvider() }
@@ -160,6 +160,7 @@ struct AIProviderManagementSheet: View {
 }
 
 #if DEBUG
+    @MainActor
     private func makeAIProviderManagementPreviewStore(populated: Bool) -> AIProviderStore {
         let store = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
         if populated {
@@ -184,8 +185,8 @@ struct AIProviderManagementSheet: View {
         )
 
         AIProviderManagementSheet()
-            .environmentObject(providerStore)
-            .environmentObject(coordinator)
+            .environment(providerStore)
+            .environment(coordinator)
     }
 
     #Preview("AI Provider Management with providers") {
@@ -198,8 +199,8 @@ struct AIProviderManagementSheet: View {
         )
 
         AIProviderManagementSheet()
-            .environmentObject(providerStore)
-            .environmentObject(coordinator)
+            .environment(providerStore)
+            .environment(coordinator)
     }
 
 #endif

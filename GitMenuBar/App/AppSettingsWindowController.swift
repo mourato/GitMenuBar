@@ -51,7 +51,7 @@ final class AppSettingsWindowController {
                     githubAuthManager: githubAuthManager,
                     onSetAutoHideSuspended: onSetAutoHideSuspended
                 )
-                .environmentObject(githubAuthManager)
+                .environment(githubAuthManager)
             }
         )
         let aiPane = Settings.Pane(
@@ -61,11 +61,11 @@ final class AppSettingsWindowController {
                 ?? NSImage(),
             contentView: {
                 AISettingsPaneView()
-                    .environmentObject(aiProviderStore)
-                    .environmentObject(aiCommitCoordinator)
-                    .environmentObject(chatGPTSubscription)
-                    .environmentObject(usageQuotaStore)
-                    .environmentObject(usageQuotaPresentationPreferences)
+                    .environment(aiProviderStore)
+                    .environment(aiCommitCoordinator)
+                    .environment(chatGPTSubscription)
+                    .environment(usageQuotaStore)
+                    .environment(usageQuotaPresentationPreferences)
             }
         )
         let shortcutsPane = Settings.Pane(

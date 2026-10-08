@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ProjectCleanupPage: View {
-    @EnvironmentObject private var store: ProjectCleanupStore
+    @Environment(ProjectCleanupStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var presentedSheet: ProjectCleanupSheet?
 
@@ -180,13 +180,13 @@ private enum ProjectCleanupSheet: Identifiable {
 
 #Preview("Project Cleanup") {
     ProjectCleanupPage()
-        .environmentObject(ProjectCleanupStore())
+        .environment(ProjectCleanupStore())
         .frame(width: 700, height: 500)
 }
 
 #Preview("Project Cleanup Mixed") {
     ProjectCleanupPage()
-        .environmentObject(
+        .environment(
             ProjectCleanupStore.preview(
                 rows: [
                     .previewEligible,

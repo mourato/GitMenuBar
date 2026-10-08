@@ -1,5 +1,6 @@
-import Combine
 @testable import GitMenuBar
+import Observation
+import Synchronization
 import XCTest
 
 @MainActor
@@ -61,18 +62,28 @@ final class RepositorySelectionCoordinatorTests: XCTestCase {
     func testSelectionPublishesOnlyActualPathChanges() throws {
         let fixture = try Fixture(isGitRepository: false)
         defer { fixture.remove() }
-        var changes: [String] = []
-        let observation = fixture.coordinator.$selectedPath
-            .dropFirst()
-            .sink { changes.append($0) }
 
+        let changes = Mutex(0)
+        withObservationTracking {
+            _ = fixture.coordinator.selectedPath
+        } onChange: {
+            changes.withLock { $0 += 1 }
+        }
         _ = fixture.coordinator.select(path: fixture.path, allowsNonGitSelection: true)
-        _ = fixture.coordinator.select(path: fixture.path + "/.", allowsNonGitSelection: true)
-        _ = fixture.coordinator.select(path: fixture.secondPath, allowsNonGitSelection: true)
+        XCTAssertEqual(fixture.coordinator.selectedPath, fixture.normalizedPath)
+        XCTAssertEqual(changes.withLock { $0 }, 1)
 
-        XCTAssertEqual(changes, [fixture.normalizedPath, fixture.normalizedSecondPath])
+        withObservationTracking {
+            _ = fixture.coordinator.selectedPath
+        } onChange: {
+            changes.withLock { $0 += 1 }
+        }
+        _ = fixture.coordinator.select(path: fixture.path + "/.", allowsNonGitSelection: true)
+        XCTAssertEqual(changes.withLock { $0 }, 1)
+
+        _ = fixture.coordinator.select(path: fixture.secondPath, allowsNonGitSelection: true)
         XCTAssertEqual(fixture.coordinator.selectedPath, fixture.normalizedSecondPath)
-        withExtendedLifetime(observation) {}
+        XCTAssertEqual(changes.withLock { $0 }, 2)
     }
 
     @MainActor

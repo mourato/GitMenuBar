@@ -15,16 +15,16 @@ struct MainMenuView: View {
     @State var repoConfirm = MainMenuRepositoryConfirmations()
     @FocusState var isCommentFieldFocused: Bool
     @FocusState var isMainKeyboardNavigationFocused: Bool
-    @EnvironmentObject var gitManager: GitManager
-    @EnvironmentObject var githubAuthManager: GitHubAuthManager
-    @EnvironmentObject var aiCommitCoordinator: AICommitCoordinator
-    @EnvironmentObject var actionCoordinator: MainMenuActionCoordinator
-    @EnvironmentObject var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
-    @EnvironmentObject var shortcutActionBridge: MainMenuShortcutActionBridge
-    @EnvironmentObject var presentationModel: MainMenuPresentationModel
-    @EnvironmentObject var projectMonitor: ProjectMonitorStore
-    @EnvironmentObject var usageQuotaStore: UsageQuotaStore
-    @EnvironmentObject var repositorySelectionCoordinator: RepositorySelectionCoordinator
+    @Environment(GitManager.self) var gitManager
+    @Environment(GitHubAuthManager.self) var githubAuthManager
+    @Environment(AICommitCoordinator.self) var aiCommitCoordinator
+    @Environment(MainMenuActionCoordinator.self) var actionCoordinator
+    @Environment(CommitHistoryEditCoordinator.self) var commitHistoryEditCoordinator
+    @Environment(MainMenuShortcutActionBridge.self) var shortcutActionBridge
+    @Environment(MainMenuPresentationModel.self) var presentationModel
+    @Environment(ProjectMonitorStore.self) var projectMonitor
+    @Environment(UsageQuotaStore.self) var usageQuotaStore
+    @Environment(RepositorySelectionCoordinator.self) var repositorySelectionCoordinator
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Environment(\.accessibilityReduceTransparency) var reduceTransparency
     @Environment(\.colorSchemeContrast) var colorSchemeContrast
@@ -36,16 +36,6 @@ struct MainMenuView: View {
     var commitButtonAction = AppPreferences.CommitButtonAction.defaultAction.rawValue
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
     @State var palette = MainMenuCommandPaletteState()
-
-    // Rename branch states
-
-    // Merge confirmation states
-
-    // Merge-to-default states
-
-    // Switch confirmation states
-
-    // Delete confirmation states
 
     @State var recentProjectReferences = RecentProjectsStore().recentProjects()
     @State var renderSnapshot = MainMenuRenderSnapshot.empty
@@ -72,29 +62,7 @@ struct MainMenuView: View {
         VStack(spacing: WorkbenchMetrics.compactSpacing) {
             switch presentationModel.route {
             case let .createRepo(path):
-                CreateRepositoryPageView(
-                    folderPath: path,
-                    onCancel: {
-                        presentationModel.showMain(requestCommitFocus: true)
-                    },
-                    onSuccess: { path in
-                        guard actionCoordinator.canSwitchRepository(to: path) else { return }
-                        if case .selected = repositorySelectionCoordinator.select(
-                            path: path,
-                            allowsNonGitSelection: true
-                        ) {
-                            actionCoordinator.resetForRepositorySwitch()
-                        }
-                        presentationModel.showMain(requestCommitFocus: true)
-                        gitManager.updateRemoteUrl()
-                        Task { await gitManager.refreshAsync(includeReflogHistory: false) }
-                    }
-                )
-                .environmentObject(gitManager)
-                .environmentObject(githubAuthManager)
-                .padding(.horizontal, WorkbenchMetrics.windowPadding)
-                .padding(.bottom, WorkbenchMetrics.windowPadding)
-                .transition(routeTransition)
+                MainMenuCreateRepoHost(folderPath: path)
             case .main, .projectCleanup:
                 mainView
                     .transition(routeTransition)
@@ -195,7 +163,7 @@ struct MainMenuView: View {
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
-            mainWindowOverlayContent
+            windowOverlayContent
         }
         .focusable()
         .focusEffectDisabled()
@@ -312,6 +280,45 @@ struct MainMenuView: View {
 extension MainMenuView {
     private var routeTransition: AnyTransition {
         MainMenuRouteTransition.transition(for: presentationModel.route, reduceMotion: reduceMotion)
+    }
+
+    private var windowOverlayContent: some View {
+        MainMenuWindowOverlayView(
+            isTransientPresented: presentationModel.route == .main && hasTransientPresentation,
+            showsRepositoryOptions: repoOptions.showRepositoryOptionsPopover,
+            visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
+            visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
+            quotaSnapshot: presentationModel.quotaInfoSnapshot,
+            onToggleVisibility: confirmRepositoryVisibilityAction,
+            onDeleteRepository: confirmRepositoryDeleteAction,
+            onDismissTransient: dismissTransientPresentations,
+            onRetryQuota: {
+                dismissTransientPresentations()
+                usageQuotaStore.refresh(reason: .manual)
+            },
+            isCommandPalettePresented: palette.isPresented && presentationModel.route == .main,
+            paletteQuery: $palette.query,
+            paletteItems: commandPaletteVisibleItems,
+            paletteSelectedItemID: $palette.selectedItemID,
+            onClosePalette: closeCommandPalette,
+            onSelectPaletteItem: executeCommandPaletteItem
+        )
+    }
+
+    var deleteBranchWarningMessage: String {
+        let protectedBranches = ["main", "master", "develop"]
+        if gitManager.unmergedIntoDefaultBranches.contains(branchDialogs.branchNameToDelete) {
+            return "This branch is not merged into the default branch. Git will keep it unless you review its removal in Cleanup."
+        }
+        if protectedBranches.contains(branchDialogs.branchNameToDelete) {
+            return "WARNING: '\(branchDialogs.branchNameToDelete)' is a primary branch. Deleting it may cause serious issues."
+        }
+
+        return "Are you sure you want to delete this branch? This action cannot be undone."
+    }
+
+    var syncOptionsSubtitle: String {
+        "Remote has \(gitManager.behindCount) new commit\(gitManager.behindCount == 1 ? "" : "s")"
     }
 }
 

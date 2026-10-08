@@ -1,6 +1,7 @@
 @testable import GitMenuBar
 import XCTest
 
+@MainActor
 final class AIProviderStoreTests: XCTestCase {
     private var dataStore: InMemoryAIProviderStoreDataStore!
 

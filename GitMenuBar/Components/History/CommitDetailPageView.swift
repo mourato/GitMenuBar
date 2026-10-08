@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 struct CommitDetailPageView: View {
-    @EnvironmentObject var githubAuthManager: GitHubAuthManager
+    @Environment(GitHubAuthManager.self) var githubAuthManager
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     let commit: Commit?

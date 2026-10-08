@@ -22,8 +22,8 @@ struct CommitWorkflowView: View {
     let onRequestFocus: () -> Void
     let focusCommitFieldToken: Int
 
-    @ObservedObject var actionCoordinator: MainMenuActionCoordinator
-    @ObservedObject var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
+    @Bindable var actionCoordinator: MainMenuActionCoordinator
+    @Bindable var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
 
     var body: some View {
         CommitComposerSectionView(
@@ -154,8 +154,8 @@ struct CommitWorkflowView: View {
 }
 
 private struct CommitWorkflowPreviewContent: View {
-    @EnvironmentObject private var actionCoordinator: MainMenuActionCoordinator
-    @EnvironmentObject private var commitHistoryEditCoordinator: CommitHistoryEditCoordinator
+    @Environment(MainMenuActionCoordinator.self) private var actionCoordinator
+    @Environment(CommitHistoryEditCoordinator.self) private var commitHistoryEditCoordinator
     @State private var message = ""
     @FocusState private var isFocused: Bool
 

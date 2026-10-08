@@ -45,8 +45,8 @@ extension StatusBarController {
         let quotaItem = NSMenuItem()
         let hostedView = NSHostingView(
             rootView: UsageQuotaMenuView()
-                .environmentObject(usageQuotaStore)
-                .environmentObject(usageQuotaPresentationPreferences)
+                .environment(usageQuotaStore)
+                .environment(usageQuotaPresentationPreferences)
         )
         hostedView.frame = NSRect(origin: .zero, size: hostedView.fittingSize)
         quotaItem.view = hostedView

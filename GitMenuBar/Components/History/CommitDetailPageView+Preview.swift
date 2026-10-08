@@ -45,7 +45,7 @@ private struct CommitDetailPreviewNamespace {
             onEditCommitMessage: { _ in },
             onGenerateCommitMessage: { _ in }
         )
-        .environmentObject(
+        .environment(
             GitHubAuthManager(
                 tokenStore: InMemoryGitHubTokenStore(),
                 preloadStoredToken: false
@@ -68,7 +68,7 @@ private struct CommitDetailPreviewNamespace {
             onEditCommitMessage: { _ in },
             onGenerateCommitMessage: { _ in }
         )
-        .environmentObject(
+        .environment(
             GitHubAuthManager(
                 tokenStore: InMemoryGitHubTokenStore(),
                 preloadStoredToken: false

@@ -1,7 +1,9 @@
 import Foundation
+import Observation
 
 @MainActor
-final class RepositorySelectionCoordinator: ObservableObject {
+@Observable
+final class RepositorySelectionCoordinator {
     enum Result: Equatable {
         case selected(path: String)
         case requiresRepositoryCreation(path: String)
@@ -11,7 +13,7 @@ final class RepositorySelectionCoordinator: ObservableObject {
     private let projectMonitor: ProjectMonitorStore
     private let defaults: UserDefaults
     private let recentProjectsStore: RecentProjectsStore
-    @Published private(set) var selectedPath: String
+    private(set) var selectedPath: String
 
     init(
         gitManager: GitManager,

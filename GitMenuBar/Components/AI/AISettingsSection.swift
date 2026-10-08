@@ -1,9 +1,9 @@
 import SwiftUI
 
 struct AISettingsSectionView: View {
-    @EnvironmentObject private var aiProviderStore: AIProviderStore
-    @EnvironmentObject private var aiCommitCoordinator: AICommitCoordinator
-    @EnvironmentObject private var chatGPTSubscription: ChatGPTSubscriptionManager
+    @Environment(AIProviderStore.self) private var aiProviderStore
+    @Environment(AICommitCoordinator.self) private var aiCommitCoordinator
+    @Environment(ChatGPTSubscriptionManager.self) private var chatGPTSubscription
 
     @State private var showingProviderManagement = false
 
@@ -28,8 +28,8 @@ struct AISettingsSectionView: View {
         }
         .sheet(isPresented: $showingProviderManagement) {
             AIProviderManagementSheet()
-                .environmentObject(aiProviderStore)
-                .environmentObject(aiCommitCoordinator)
+                .environment(aiProviderStore)
+                .environment(aiCommitCoordinator)
         }
     }
 
@@ -263,9 +263,9 @@ struct AISettingsSectionView: View {
             }
         }
         .formStyle(.grouped)
-        .environmentObject(providerStore)
-        .environmentObject(coordinator)
-        .environmentObject(chatGPTSubscription)
+        .environment(providerStore)
+        .environment(coordinator)
+        .environment(chatGPTSubscription)
         .frame(width: 560, height: 360)
     }
 

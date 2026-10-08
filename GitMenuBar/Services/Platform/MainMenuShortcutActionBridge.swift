@@ -1,4 +1,5 @@
 import Combine
+import Observation
 
 enum MainMenuShortcutAction: Equatable {
     case commit
@@ -7,8 +8,9 @@ enum MainMenuShortcutAction: Equatable {
 }
 
 @MainActor
-final class MainMenuShortcutActionBridge: ObservableObject {
-    let actions = PassthroughSubject<MainMenuShortcutAction, Never>()
+@Observable
+final class MainMenuShortcutActionBridge {
+    @ObservationIgnored let actions = PassthroughSubject<MainMenuShortcutAction, Never>()
 
     func send(_ action: MainMenuShortcutAction) {
         actions.send(action)

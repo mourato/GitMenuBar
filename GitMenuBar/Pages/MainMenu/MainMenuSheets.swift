@@ -1,7 +1,53 @@
 import SwiftUI
 
-extension MainMenuView {
-    func renameBranchSheet() -> some View {
+/// Attaches the main-menu sheets (branch dialogs, commit editor, sync
+/// options, atomic commits) to the content view. Sheet state arrives as
+/// bindings, stores arrive from the environment, and mutating actions
+/// arrive as closures owned by the composer.
+struct MainMenuSheetsModifier: ViewModifier {
+    @Binding var branchDialogs: MainMenuBranchDialogs
+    @Binding var errorCenter: MainMenuErrorCenter
+    @Binding var workspace: MainMenuWorkspaceState
+    @Binding var sync: MainMenuSyncSheetState
+
+    @Environment(GitManager.self) private var gitManager
+    @Environment(MainMenuActionCoordinator.self) private var actionCoordinator
+    @Environment(CommitHistoryEditCoordinator.self) private var commitHistoryEditCoordinator
+    @Environment(AICommitCoordinator.self) private var aiCommitCoordinator
+
+    let syncOptionsSubtitle: String
+    let onRenameBranch: () -> Void
+    let onSaveEditedCommitMessage: () -> Void
+    let onSyncWithRemote: () -> Void
+    let onCreateNewBranch: () -> Void
+    let onPullToNewBranch: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $branchDialogs.showRenameBranch, content: renameBranchSheet)
+            .sheet(
+                isPresented: .init(
+                    get: { commitHistoryEditCoordinator.isEditorPresented },
+                    set: { isPresented in
+                        if !isPresented {
+                            commitHistoryEditCoordinator.dismissEditor()
+                        }
+                    }
+                )
+            ) { commitMessageEditorSheet() }
+            .sheet(
+                isPresented: Binding(
+                    get: { actionCoordinator.showSyncOptions },
+                    set: { actionCoordinator.showSyncOptions = $0 }
+                ),
+                content: syncOptionsSheet
+            )
+            .sheet(isPresented: $branchDialogs.showCreateBranch, content: createBranchSheet)
+            .sheet(isPresented: $sync.showPullToNewBranch, content: pullToNewBranchSheet)
+            .sheet(isPresented: $workspace.showAtomicCommitSheet, content: atomicCommitSheet)
+    }
+
+    private func renameBranchSheet() -> some View {
         RenameBranchSheet(
             oldBranchName: branchDialogs.oldBranchName,
             newBranchName: $branchDialogs.renameBranchNewName,
@@ -11,33 +57,32 @@ extension MainMenuView {
                 branchDialogs.renameBranchNewName = ""
                 errorCenter.renameBranch = nil
             },
-            onRename: renameBranch
+            onRename: onRenameBranch
         )
     }
 
     @ViewBuilder
-    func commitMessageEditorSheet() -> some View {
+    private func commitMessageEditorSheet() -> some View {
         if let editingCommit = commitHistoryEditCoordinator.editingCommit {
             CommitMessageEditorSheet(
                 title: commitHistoryEditCoordinator.editMode.title,
                 commit: editingCommit,
-                message: $commitHistoryEditCoordinator.draftMessage,
+                message: Binding(
+                    get: { commitHistoryEditCoordinator.draftMessage },
+                    set: { commitHistoryEditCoordinator.draftMessage = $0 }
+                ),
                 isPublishedCommit: commitHistoryEditCoordinator.isPublishedCommit,
                 isSaving: commitHistoryEditCoordinator.isSaving,
                 errorMessage: commitHistoryEditCoordinator.inlineError,
                 onCancel: {
                     commitHistoryEditCoordinator.dismissEditor()
                 },
-                onSave: {
-                    Task {
-                        await saveEditedCommitMessage()
-                    }
-                }
+                onSave: onSaveEditedCommitMessage
             )
         }
     }
 
-    func syncOptionsSheet() -> some View {
+    private func syncOptionsSheet() -> some View {
         VStack(spacing: 16) {
             Text("Sync with Remote")
                 .font(.headline.weight(.semibold))
@@ -53,7 +98,7 @@ extension MainMenuView {
                     tone: .accent
                 ) {
                     sync.useRebase = false
-                    syncWithRemote()
+                    onSyncWithRemote()
                 }
 
                 SyncOptionCard(
@@ -62,7 +107,7 @@ extension MainMenuView {
                     tone: .warning
                 ) {
                     sync.useRebase = true
-                    syncWithRemote()
+                    onSyncWithRemote()
                 }
 
                 SyncOptionCard(
@@ -87,11 +132,7 @@ extension MainMenuView {
         .frame(width: 320)
     }
 
-    var syncOptionsSubtitle: String {
-        "Remote has \(gitManager.behindCount) new commit\(gitManager.behindCount == 1 ? "" : "s")"
-    }
-
-    func createBranchSheet() -> some View {
+    private func createBranchSheet() -> some View {
         CreateBranchSheet(
             branchName: $branchDialogs.newBranchName,
             currentBranch: gitManager.currentBranch,
@@ -101,11 +142,11 @@ extension MainMenuView {
                 branchDialogs.newBranchName = ""
                 branchDialogs.createBranchError = nil
             },
-            onCreate: createNewBranch
+            onCreate: onCreateNewBranch
         )
     }
 
-    func pullToNewBranchSheet() -> some View {
+    private func pullToNewBranchSheet() -> some View {
         PullToNewBranchSheet(
             branchName: $sync.pullToNewBranchName,
             errorMessage: errorCenter.sync,
@@ -114,11 +155,11 @@ extension MainMenuView {
                 sync.pullToNewBranchName = ""
                 errorCenter.sync = nil
             },
-            onPull: pullToNewBranch
+            onPull: onPullToNewBranch
         )
     }
 
-    func atomicCommitSheet() -> some View {
+    private func atomicCommitSheet() -> some View {
         AtomicCommitReviewSheet(
             gitManager: gitManager,
             makeSnapshot: { [gitManager] in

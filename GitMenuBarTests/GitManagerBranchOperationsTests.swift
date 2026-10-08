@@ -1,4 +1,5 @@
 @testable import GitMenuBar
+import Observation
 import XCTest
 
 @MainActor
@@ -364,18 +365,51 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertEqual(infos.first { $0.name == "main" }?.lastCommitDate, Date(timeIntervalSince1970: 100))
     }
 
+    func testServiceStateIsImmediatelyVisibleAndResetDoesNotRestoreOldBranch() async {
+        let manager = GitManager(repositoryPathOverride: "")
+        manager.branchService.currentBranch = "old-project"
+        XCTAssertEqual(manager.makeRepositoryOperationContext().branchName, "old-project")
+
+        manager.resetSelectedRepositoryState()
+        manager.commitHistoryService.commitHistory = []
+        await Task.yield()
+
+        XCTAssertEqual(manager.currentBranch, "")
+        XCTAssertEqual(manager.branchService.currentBranch, "")
+    }
+
+    func testFacadeObservationTracksRepeatedServiceChanges() {
+        let manager = GitManager(repositoryPathOverride: "")
+        let firstChange = expectation(description: "first branch change")
+        withObservationTracking {
+            _ = manager.currentBranch
+        } onChange: {
+            firstChange.fulfill()
+        }
+        manager.branchService.currentBranch = "first"
+        XCTAssertEqual(manager.currentBranch, "first")
+        XCTAssertEqual(XCTWaiter.wait(for: [firstChange], timeout: 0), .completed)
+
+        let secondChange = expectation(description: "second branch change")
+        withObservationTracking {
+            _ = manager.currentBranch
+        } onChange: {
+            secondChange.fulfill()
+        }
+        manager.branchService.currentBranch = "second"
+        XCTAssertEqual(manager.currentBranch, "second")
+        XCTAssertEqual(XCTWaiter.wait(for: [secondChange], timeout: 0), .completed)
+    }
+
     /// Locks in the facade wiring: branch state computed by `GitBranchService`
     /// must be reflected on `GitManager`'s public branch properties via the
-    /// Combine pipe.
+    /// observable service properties.
     func testBranchServiceStatePipesToManager() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         try runGit(["branch", "feature/test"], in: repoURL)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
         _ = await gitManager.branchService.resolveBranchInfoAsync()
-
-        // Allow the Combine `assign(to:)` pipe a tick to flush.
-        try await Task.sleep(for: .milliseconds(100))
 
         XCTAssertEqual(
             gitManager.branchInfos,

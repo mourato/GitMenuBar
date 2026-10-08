@@ -2,7 +2,7 @@ import CryptoKit
 import Foundation
 
 @MainActor
-final class GitAtomicCommitService: ObservableObject {
+final class GitAtomicCommitService {
     private struct HunkExecutionContext {
         let snapshot: AtomicCommitSnapshot
         let originalHead: String

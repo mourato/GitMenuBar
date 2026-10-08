@@ -16,9 +16,10 @@ struct GitMenuBarApp: App {
             EmptyView()
         }
         .commands {
-            GitMenuBarCommandMenus(commandCenter: appDelegate.appCommandCenter)
+            GitMenuBarCommandMenus()
             SidebarCommands()
         }
+        .environment(appDelegate.appCommandCenter)
     }
 }
 

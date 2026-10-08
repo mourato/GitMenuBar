@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 // swiftlint:disable file_length
 
@@ -67,25 +68,26 @@ enum MainMenuDialogMutationResult: Equatable {
 }
 
 @MainActor
-final class MainMenuActionCoordinator: ObservableObject {
+@Observable
+final class MainMenuActionCoordinator {
     private enum CommitMessageInputState: Equatable {
         case empty
         case whitespaceOnly(raw: String)
         case manual(trimmed: String)
     }
 
-    @Published var alert: MainMenuActionAlert?
-    @Published var success: MainMenuActionAlert?
-    @Published var showSyncOptions = false
-    @Published var whitespaceCommitPrompt: MainMenuWhitespaceCommitPrompt?
-    @Published private(set) var isExecutingPrimaryAction = false
-    @Published var operationStatus: MainMenuOperationStatus?
+    var alert: MainMenuActionAlert?
+    var success: MainMenuActionAlert?
+    var showSyncOptions = false
+    var whitespaceCommitPrompt: MainMenuWhitespaceCommitPrompt?
+    private(set) var isExecutingPrimaryAction = false
+    var operationStatus: MainMenuOperationStatus?
 
     let gitManager: GitManager
     private let aiCommitCoordinator: AICommitCoordinator
     private let onCommitCompleted: (@MainActor (String) -> Void)?
-    private var activeOperationContext: RepositoryOperationContext?
-    private var activeOperationAllowsRepositorySwitch = false
+    @ObservationIgnored private var activeOperationContext: RepositoryOperationContext?
+    @ObservationIgnored private var activeOperationAllowsRepositorySwitch = false
 
     init(
         gitManager: GitManager,

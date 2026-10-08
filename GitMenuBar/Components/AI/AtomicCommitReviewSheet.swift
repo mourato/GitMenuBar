@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AtomicCommitReviewSheet: View {
-    @ObservedObject var gitManager: GitManager
+    @Bindable var gitManager: GitManager
     let makeSnapshot: () async throws -> AtomicCommitSnapshot
     let generateGroups: (AtomicCommitSnapshot) async throws -> [AtomicCommitGroup]
     let onCancel: () -> Void

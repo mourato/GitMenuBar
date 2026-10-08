@@ -1,32 +1,34 @@
 import Combine
 import Foundation
+import Observation
 
 @MainActor
-final class ProjectMonitorStore: ObservableObject {
+@Observable
+final class ProjectMonitorStore {
     /// Immutable value data is filled once on the worker and only crosses back to the actor.
     private struct SeedResult: Sendable {
         let candidates: [ProjectReference]
         let snapshots: [String: ProjectStatusSnapshot]
     }
 
-    @Published private(set) var snapshots: [String: ProjectStatusSnapshot] = [:]
+    private(set) var snapshots: [String: ProjectStatusSnapshot] = [:]
 
     private let projectStore: MonitoredProjectsStore
     private let runner: GitCommandRunner
-    private nonisolated(unsafe) var refreshTimer: Timer?
-    private var fileWatcher: MonitoredProjectFileWatcher?
-    private var fileEventRelay: MonitoredProjectFileEventRelay?
-    private var fileEventDebounceTask: Task<Void, Never>?
-    private var isRefreshing = false
-    private var refreshGeneration = 0
-    private var fetchGeneration = 0
-    private var pendingRefreshPaths = Set<String>()
-    private var pendingLocalRefreshPaths = Set<String>()
-    private var pendingFullRefresh = false
+    @ObservationIgnored private nonisolated(unsafe) var refreshTimer: Timer?
+    @ObservationIgnored private var fileWatcher: MonitoredProjectFileWatcher?
+    @ObservationIgnored private var fileEventRelay: MonitoredProjectFileEventRelay?
+    @ObservationIgnored private var fileEventDebounceTask: Task<Void, Never>?
+    @ObservationIgnored private var isRefreshing = false
+    @ObservationIgnored private var refreshGeneration = 0
+    @ObservationIgnored private var fetchGeneration = 0
+    @ObservationIgnored private var pendingRefreshPaths = Set<String>()
+    @ObservationIgnored private var pendingLocalRefreshPaths = Set<String>()
+    @ObservationIgnored private var pendingFullRefresh = false
 
     #if DEBUG
-        var fetchOperation: ((ProjectReference, GitCommandRunner) -> ProjectStatusSnapshot)?
-        var refreshOperation: ((ProjectReference, GitCommandRunner) -> ProjectStatusSnapshot)?
+        @ObservationIgnored var fetchOperation: ((ProjectReference, GitCommandRunner) -> ProjectStatusSnapshot)?
+        @ObservationIgnored var refreshOperation: ((ProjectReference, GitCommandRunner) -> ProjectStatusSnapshot)?
     #endif
 
     init(projectStore: MonitoredProjectsStore = MonitoredProjectsStore(), runner: GitCommandRunner = GitCommandRunner()) {

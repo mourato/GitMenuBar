@@ -1,16 +1,28 @@
 import SwiftUI
 
 struct UsageQuotaSettingsSection: View {
-    @EnvironmentObject private var usageQuotaStore: UsageQuotaStore
-    @EnvironmentObject private var preferences: UsageQuotaPresentationPreferences
+    @Environment(UsageQuotaStore.self) private var usageQuotaStore
+    @Environment(UsageQuotaPresentationPreferences.self) private var preferences
     @State private var sessionWarningsText = ""
     @State private var weeklyWarningsText = ""
 
     var body: some View {
-        Toggle("Show AI usage quotas", isOn: $usageQuotaStore.showAIUsageQuotas)
-            .toggleStyle(.switch)
+        Toggle(
+            "Show AI usage quotas",
+            isOn: Binding(
+                get: { usageQuotaStore.showAIUsageQuotas },
+                set: { usageQuotaStore.showAIUsageQuotas = $0 }
+            )
+        )
+        .toggleStyle(.switch)
 
-        Picker("Status item", selection: $preferences.menuBarVisibility) {
+        Picker(
+            "Status item",
+            selection: Binding(
+                get: { preferences.menuBarVisibility },
+                set: { preferences.menuBarVisibility = $0 }
+            )
+        ) {
             ForEach(UsageQuotaPresentationPreferences.MenuBarVisibility.allCases) { visibility in
                 Text(visibility.title).tag(visibility)
             }
@@ -18,7 +30,13 @@ struct UsageQuotaSettingsSection: View {
         .pickerStyle(.segmented)
         .disabled(!usageQuotaStore.showAIUsageQuotas)
 
-        Picker("Figures", selection: $preferences.meterStyle) {
+        Picker(
+            "Figures",
+            selection: Binding(
+                get: { preferences.meterStyle },
+                set: { preferences.meterStyle = $0 }
+            )
+        ) {
             ForEach(UsageQuotaPresentationPreferences.MeterStyle.allCases) { style in
                 Text(style.title).tag(style)
             }
@@ -26,7 +44,13 @@ struct UsageQuotaSettingsSection: View {
         .pickerStyle(.segmented)
         .disabled(!usageQuotaStore.showAIUsageQuotas)
 
-        Picker("Count", selection: $preferences.valueStyle) {
+        Picker(
+            "Count",
+            selection: Binding(
+                get: { preferences.valueStyle },
+                set: { preferences.valueStyle = $0 }
+            )
+        ) {
             ForEach(UsageQuotaPresentationPreferences.ValueStyle.allCases) { style in
                 Text(style.title).tag(style)
             }
@@ -34,18 +58,33 @@ struct UsageQuotaSettingsSection: View {
         .pickerStyle(.segmented)
         .disabled(!usageQuotaStore.showAIUsageQuotas)
 
-        Toggle("Show pace markers", isOn: $preferences.showsPace)
-            .toggleStyle(.switch)
-            .disabled(!usageQuotaStore.showAIUsageQuotas)
+        Toggle(
+            "Show pace markers",
+            isOn: Binding(
+                get: { preferences.showsPace },
+                set: { preferences.showsPace = $0 }
+            )
+        )
+        .toggleStyle(.switch)
+        .disabled(!usageQuotaStore.showAIUsageQuotas)
 
         Stepper(
             "Workdays per week: \(preferences.workdaysPerWeek)",
-            value: $preferences.workdaysPerWeek,
+            value: Binding(
+                get: { preferences.workdaysPerWeek },
+                set: { preferences.workdaysPerWeek = $0 }
+            ),
             in: 1 ... 7
         )
         .disabled(!usageQuotaStore.showAIUsageQuotas)
 
-        Picker("Workday ticks", selection: $preferences.workdayTickAppearance) {
+        Picker(
+            "Workday ticks",
+            selection: Binding(
+                get: { preferences.workdayTickAppearance },
+                set: { preferences.workdayTickAppearance = $0 }
+            )
+        ) {
             ForEach(UsageQuotaPresentationPreferences.WorkdayTickAppearance.allCases) { appearance in
                 Text(appearance.title).tag(appearance)
             }
@@ -197,8 +236,8 @@ struct UsageQuotaSettingsSection: View {
             }
         }
         .formStyle(.grouped)
-        .environmentObject(UsageQuotaStore(providers: providers))
-        .environmentObject(UsageQuotaPresentationPreferences())
+        .environment(UsageQuotaStore(providers: providers))
+        .environment(UsageQuotaPresentationPreferences())
         .frame(width: 560, height: 280)
     }
 
