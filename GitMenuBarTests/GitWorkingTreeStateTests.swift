@@ -264,7 +264,8 @@ final class GitWorkingTreeStateTests: XCTestCase {
 
     private func waitForWorkingTreeUpdate(_ gitManager: GitManager, timeout: TimeInterval = 3) {
         let expectation = expectation(description: "working tree refresh")
-        gitManager.updateUncommittedFiles {
+        Task {
+            await gitManager.updateUncommittedFilesAsync()
             expectation.fulfill()
         }
         wait(for: [expectation], timeout: timeout)
