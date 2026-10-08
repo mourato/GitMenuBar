@@ -168,6 +168,7 @@ final class StatusBarController: NSObject {
             _ = usageQuotaStore.showOpenRouterUsageQuota
             _ = usageQuotaStore.showGeminiUsageQuota
             _ = usageQuotaStore.showAntigravityUsageQuota
+            _ = usageQuotaPresentationPreferences.valueStyle
             _ = usageQuotaPresentationPreferences.meterStyle
             _ = usageQuotaPresentationPreferences.menuBarVisibility
             _ = usageQuotaPresentationPreferences.providerOrder
@@ -275,6 +276,7 @@ final class StatusBarController: NSObject {
     }
 
     private func setupAuthenticationObservation() {
+        setAutoHideSuspended(githubAuthManager.isAuthenticating)
         observeAuthenticatingState()
     }
 
