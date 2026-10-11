@@ -4,12 +4,15 @@ import Observation
 @MainActor
 @Observable
 final class ProjectMonitorStore {
+    /// Immutable value data is filled once on the worker and only crosses back to the actor.
     private struct SeedResult: Sendable {
         let candidates: [ProjectReference]
         let snapshots: [String: ProjectStatusSnapshot]
     }
 
     private(set) var snapshots: [String: ProjectStatusSnapshot] = [:]
+
+    private(set) var agentActivities: [String: [AgentProjectActivity]] = [:]
 
     private let projectStore: MonitoredProjectsStore
     private let runner: GitCommandRunner
@@ -125,6 +128,7 @@ final class ProjectMonitorStore {
         projectStore.remove(path: path)
         let normalizedPath = RecentProjectsStore.normalize(path)
         snapshots.removeValue(forKey: normalizedPath)
+        agentActivities.removeValue(forKey: normalizedPath)
         pendingRefreshPaths.remove(normalizedPath)
         pendingLocalRefreshPaths.remove(normalizedPath)
         reconfigureFileWatcher()
@@ -154,8 +158,7 @@ final class ProjectMonitorStore {
                 unmergedBranchCount: snapshot.unmergedBranchCount,
                 stashCount: snapshot.stashCount,
                 lastActivityAt: snapshot.lastActivityAt,
-                pullRequests: snapshot.pullRequests,
-                activeAgents: snapshot.activeAgents
+                pullRequests: snapshot.pullRequests
             )
         ])
     }
@@ -242,19 +245,9 @@ final class ProjectMonitorStore {
     }
 
     private func updateAgentActivities(_ activitiesByPath: [String: [AgentProjectActivity]]) {
-        var nextSnapshots = snapshots
-        var didChange = false
-        for project in monitoredProjects {
-            let path = project.path
-            guard let current = nextSnapshots[path] else { continue }
-            let detected = activitiesByPath[path] ?? []
-            if current.activeAgents != detected {
-                nextSnapshots[path] = current.withActiveAgents(detected)
-                didChange = true
-            }
-        }
-        guard didChange else { return }
-        snapshots = nextSnapshots
+        agentActivities = Dictionary(uniqueKeysWithValues: monitoredProjects.map { project in
+            (project.path, activitiesByPath[project.path] ?? [])
+        })
     }
 
     private func refresh(projects: [ProjectReference], remotePaths: Set<String>) {
@@ -328,12 +321,9 @@ final class ProjectMonitorStore {
         var nextSnapshots = snapshots
         var didChange = false
 
-        for var snapshot in updates {
+        for snapshot in updates {
             let path = snapshot.project.path
             guard monitoredPaths.contains(path) else { continue }
-            if snapshot.activeAgents.isEmpty, let existing = nextSnapshots[path], !existing.activeAgents.isEmpty {
-                snapshot = snapshot.withActiveAgents(existing.activeAgents)
-            }
             guard nextSnapshots[path].map({ !$0.hasSameVisibleState(as: snapshot) }) ?? true else { continue }
             nextSnapshots[path] = snapshot
             didChange = true
