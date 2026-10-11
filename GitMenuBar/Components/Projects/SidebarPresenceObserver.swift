@@ -18,6 +18,7 @@ struct SidebarPresenceObserver: NSViewRepresentable {
     static func dismantleNSView(_ view: PresenceView, coordinator _: ()) {
         view.observation = nil
         view.onVisibilityChange(false)
+        view.onVisibilityChange = { _ in }
     }
 
     final class PresenceView: NSView {

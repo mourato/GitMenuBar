@@ -239,9 +239,10 @@ final class AgentSessionQuerierTests: XCTestCase {
         let claude = temporaryDirectoryURL.appendingPathComponent("claude")
         let cursor = temporaryDirectoryURL.appendingPathComponent("cursor")
         for base in [claude, cursor] {
-            try FileManager.default.createDirectory(
-                at: base.appendingPathComponent("-a-bc"), withIntermediateDirectories: true
-            )
+            let project = base.appendingPathComponent("-a-bc")
+            let transcriptDirectory = base == cursor ? project.appendingPathComponent("agent-transcripts/session") : project
+            try FileManager.default.createDirectory(at: transcriptDirectory, withIntermediateDirectories: true)
+            try Data().write(to: transcriptDirectory.appendingPathComponent("session.jsonl"))
         }
         let querier = SystemAgentSessionQuerier(
             claudeProjectsDirectory: claude, cursorProjectsDirectory: cursor,
@@ -251,6 +252,29 @@ final class AgentSessionQuerierTests: XCTestCase {
         let results = await querier.recentActivities(for: ["/a/b", "/a/bc"], now: now)
         XCTAssertEqual(results["/a/b"], [])
         XCTAssertEqual(Set((results["/a/bc"] ?? []).map(\.harness)), [.claudeCode, .cursor])
+    }
+
+    func testCursorIDEFilesDoNotSignalRecentButNestedAgentTranscriptDoes() async throws {
+        let now = Date()
+        let path = "/tmp/cursor-project"
+        let cursor = temporaryDirectoryURL.appendingPathComponent("cursor")
+        let project = cursor.appendingPathComponent("-tmp-cursor-project")
+        let terminals = project.appendingPathComponent("terminals")
+        try FileManager.default.createDirectory(at: terminals, withIntermediateDirectories: true)
+        try Data().write(to: terminals.appendingPathComponent("terminal.jsonl"))
+        let querier = SystemAgentSessionQuerier(
+            claudeProjectsDirectory: temporaryDirectoryURL.appendingPathComponent("missing"),
+            cursorProjectsDirectory: cursor,
+            codexDatabaseURL: temporaryDirectoryURL.appendingPathComponent("missing"),
+            opencodeDatabaseURL: temporaryDirectoryURL.appendingPathComponent("missing")
+        )
+        let ideOnly = await querier.recentActivities(for: [path], now: now)
+        XCTAssertEqual(ideOnly[path], [])
+        let transcripts = project.appendingPathComponent("agent-transcripts/session/subagents")
+        try FileManager.default.createDirectory(at: transcripts, withIntermediateDirectories: true)
+        try Data().write(to: transcripts.appendingPathComponent("agent.jsonl"))
+        let agentSession = await querier.recentActivities(for: [path], now: now)
+        XCTAssertEqual(agentSession[path]?.map(\.harness), [.cursor])
     }
 
     func testAgentProjectActivityAccessibilityDescription() {

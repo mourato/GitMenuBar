@@ -3,14 +3,14 @@ import Foundation
 
 // MARK: - Process Querying Protocol & Models
 
-public struct RunningAgentProcess: Sendable, Equatable {
-    public let pid: pid_t
-    public let name: String
-    public let binaryPath: String
-    public let cwd: String
-    public let arguments: [String]
+struct RunningAgentProcess: Sendable, Equatable {
+    let pid: pid_t
+    let name: String
+    let binaryPath: String
+    let cwd: String
+    let arguments: [String]
 
-    public init(pid: pid_t, name: String, binaryPath: String, cwd: String, arguments: [String] = []) {
+    init(pid: pid_t, name: String, binaryPath: String, cwd: String, arguments: [String] = []) {
         self.pid = pid
         self.name = name
         self.binaryPath = binaryPath
@@ -19,16 +19,14 @@ public struct RunningAgentProcess: Sendable, Equatable {
     }
 }
 
-public protocol AgentProcessQuerying: Sendable {
+protocol AgentProcessQuerying: Sendable {
     func runningProcesses() async -> [RunningAgentProcess]
 }
 
 // MARK: - Darwin Process Scanner
 
-public final class DarwinAgentProcessScanner: AgentProcessQuerying, @unchecked Sendable {
-    public init() {}
-
-    public func runningProcesses() async -> [RunningAgentProcess] {
+struct DarwinAgentProcessScanner: AgentProcessQuerying {
+    func runningProcesses() async -> [RunningAgentProcess] {
         let task = Task.detached(priority: .utility) { Self.scanProcesses() }
         return await withTaskCancellationHandler {
             await task.value
@@ -115,14 +113,14 @@ public final class DarwinAgentProcessScanner: AgentProcessQuerying, @unchecked S
 
 // MARK: - Agent Activity Detector Service
 
-public actor AgentActivityDetector {
-    public static let recentWindowSeconds: TimeInterval = 2 * 3600
+actor AgentActivityDetector {
+    static let recentWindowSeconds: TimeInterval = 2 * 3600
 
     private let processQuerier: any AgentProcessQuerying
     private let sessionQuerier: any AgentSessionQuerying
     private let nowProvider: @Sendable () -> Date
 
-    public init(
+    init(
         processQuerier: any AgentProcessQuerying = DarwinAgentProcessScanner(),
         sessionQuerier: any AgentSessionQuerying = SystemAgentSessionQuerier(),
         nowProvider: @Sendable @escaping () -> Date = Date.init
@@ -132,7 +130,7 @@ public actor AgentActivityDetector {
         self.nowProvider = nowProvider
     }
 
-    public func detectAgents(for projectPaths: [String]) async -> [String: [AgentProjectActivity]] {
+    func detectAgents(for projectPaths: [String]) async -> [String: [AgentProjectActivity]] {
         guard !Task.isCancelled, !projectPaths.isEmpty else { return [:] }
         let now = nowProvider()
 
@@ -163,8 +161,7 @@ public actor AgentActivityDetector {
         for process in processes {
             // Multi-project servers' launch cwd does not identify their active projects.
             guard process.name != "codex-app-server",
-                  URL(fileURLWithPath: process.binaryPath).lastPathComponent != "codex-app-server",
-                  !process.arguments.dropFirst().contains("app-server") else { continue }
+                  URL(fileURLWithPath: process.binaryPath).lastPathComponent != "codex-app-server" else { continue }
             guard Self.isMatchingPath(processCwd: process.cwd, projectPath: projectPath) else {
                 continue
             }
@@ -172,6 +169,7 @@ public actor AgentActivityDetector {
                 continue
             }
 
+            guard harness != .codex || !process.arguments.dropFirst().contains("app-server") else { continue }
             if runningByHarness[harness] == nil {
                 runningByHarness[harness] = AgentProjectActivity(harness: harness, status: .running)
             }
@@ -218,7 +216,7 @@ public actor AgentActivityDetector {
 
     // MARK: - Static Helpers & Classifiers
 
-    public static func harness(forProcessName processName: String, binaryPath: String, arguments: [String] = []) -> AgentHarnessID? {
+    static func harness(forProcessName processName: String, binaryPath: String, arguments: [String] = []) -> AgentHarnessID? {
         let name = processName.trimmingCharacters(in: .whitespacesAndNewlines)
         let lowerName = name.lowercased()
         let binaryName = URL(fileURLWithPath: binaryPath).lastPathComponent.lowercased()
@@ -257,11 +255,11 @@ public actor AgentActivityDetector {
         return nil
     }
 
-    public static func isCandidateAgentProcess(name: String, binaryPath: String) -> Bool {
+    static func isCandidateAgentProcess(name: String, binaryPath: String) -> Bool {
         harness(forProcessName: name, binaryPath: binaryPath) != nil
     }
 
-    public static func parseEpochTimestamp(rawTime: Int64) -> Date {
+    static func parseEpochTimestamp(rawTime: Int64) -> Date {
         if rawTime > 10_000_000_000 {
             Date(timeIntervalSince1970: Double(rawTime) / 1000.0)
         } else {
@@ -269,7 +267,7 @@ public actor AgentActivityDetector {
         }
     }
 
-    public static func normalizePath(_ path: String) -> String {
+    static func normalizePath(_ path: String) -> String {
         guard !path.isEmpty else { return "" }
         let url = URL(fileURLWithPath: path).resolvingSymlinksInPath().standardized
         let resolved = url.path
@@ -279,7 +277,7 @@ public actor AgentActivityDetector {
         return resolved
     }
 
-    public static func isMatchingPath(processCwd: String, projectPath: String) -> Bool {
+    static func isMatchingPath(processCwd: String, projectPath: String) -> Bool {
         guard !processCwd.isEmpty, !projectPath.isEmpty else { return false }
         let normCwd = normalizePath(processCwd)
         let normProj = normalizePath(projectPath)
@@ -291,12 +289,12 @@ public actor AgentActivityDetector {
         return normCwd == normProj || normCwd.hasPrefix(normProj + "/")
     }
 
-    public static func isWithinRecentThreshold(date: Date, relativeTo now: Date) -> Bool {
+    static func isWithinRecentThreshold(date: Date, relativeTo now: Date) -> Bool {
         let elapsed = now.timeIntervalSince(date)
         return elapsed >= -60 && elapsed <= recentWindowSeconds
     }
 
-    public static func candidateSlugs(for projectPath: String) -> [String] {
+    static func candidateSlugs(for projectPath: String) -> [String] {
         let norm = normalizePath(projectPath)
         var slugs = Set<String>()
 

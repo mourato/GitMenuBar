@@ -4,32 +4,32 @@ import SQLite3
 
 // MARK: - Session Querying Protocol
 
-public protocol AgentSessionQuerying: Sendable {
+protocol AgentSessionQuerying: Sendable {
     func recentActivities(for projectPaths: [String], now: Date) async -> [String: [AgentProjectActivity]]
 }
 
 // MARK: - System Agent Session Querier
 
-public final class SystemAgentSessionQuerier: AgentSessionQuerying, @unchecked Sendable {
-    public let claudeProjectsDirectory: URL
-    public let cursorProjectsDirectory: URL
+struct SystemAgentSessionQuerier: AgentSessionQuerying {
+    let claudeProjectsDirectory: URL
+    let cursorProjectsDirectory: URL
     private let codexDatabaseURL: URL?
     private let codexDirectory: URL
-    public let opencodeDatabaseURL: URL
+    let opencodeDatabaseURL: URL
 
-    public static let defaultClaudeProjectsDirectory = URL(
+    static let defaultClaudeProjectsDirectory = URL(
         fileURLWithPath: NSString(string: "~/.claude/projects").expandingTildeInPath
     )
-    public static let defaultCursorProjectsDirectory = URL(
+    static let defaultCursorProjectsDirectory = URL(
         fileURLWithPath: NSString(string: "~/.cursor/projects").expandingTildeInPath
     )
-    public static let defaultCodexDirectory = URL(
+    static let defaultCodexDirectory = URL(
         fileURLWithPath: NSString(string: "~/.codex").expandingTildeInPath
     )
-    public static let defaultOpenCodeDatabaseURL = URL(
+    static let defaultOpenCodeDatabaseURL = URL(
         fileURLWithPath: NSString(string: "~/.local/share/opencode/opencode.db").expandingTildeInPath
     )
-    public init(
+    init(
         claudeProjectsDirectory: URL = defaultClaudeProjectsDirectory,
         cursorProjectsDirectory: URL = defaultCursorProjectsDirectory,
         codexDatabaseURL: URL? = nil,
@@ -43,8 +43,8 @@ public final class SystemAgentSessionQuerier: AgentSessionQuerying, @unchecked S
         self.opencodeDatabaseURL = opencodeDatabaseURL
     }
 
-    public func recentActivities(for projectPaths: [String], now: Date) async -> [String: [AgentProjectActivity]] {
-        let task = Task.detached(priority: .utility) { self.scanSessions(for: projectPaths, now: now) }
+    func recentActivities(for projectPaths: [String], now: Date) async -> [String: [AgentProjectActivity]] {
+        let task = Task.detached(priority: .utility) { scanSessions(for: projectPaths, now: now) }
         return await withTaskCancellationHandler {
             await task.value
         } onCancel: {
@@ -74,7 +74,7 @@ public final class SystemAgentSessionQuerier: AgentSessionQuerying, @unchecked S
             if let date = findRecentProjectDirectory(in: claudeProjectsDirectory, projectPath: projectPath, now: now) {
                 activities.append(AgentProjectActivity(harness: .claudeCode, status: .recent(date)))
             }
-            if let date = findRecentProjectDirectory(in: cursorProjectsDirectory, projectPath: projectPath, now: now) {
+            if let date = findRecentProjectDirectory(in: cursorProjectsDirectory, projectPath: projectPath, now: now, transcriptsSubdirectory: "agent-transcripts") {
                 activities.append(AgentProjectActivity(harness: .cursor, status: .recent(date)))
             }
             if let date = codex[projectPath] {
@@ -88,7 +88,9 @@ public final class SystemAgentSessionQuerier: AgentSessionQuerying, @unchecked S
         return results
     }
 
-    private func findRecentProjectDirectory(in baseDirectory: URL, projectPath: String, now: Date) -> Date? {
+    private func findRecentProjectDirectory(
+        in baseDirectory: URL, projectPath: String, now: Date, transcriptsSubdirectory: String? = nil
+    ) -> Date? {
         let fileManager = FileManager.default
         var isDir: ObjCBool = false
         guard fileManager.fileExists(atPath: baseDirectory.path, isDirectory: &isDir), isDir.boolValue else {
@@ -100,9 +102,10 @@ public final class SystemAgentSessionQuerier: AgentSessionQuerying, @unchecked S
 
         for slug in candidateSlugs {
             guard !Task.isCancelled else { return nil }
-            let candidateURL = baseDirectory.appendingPathComponent(slug)
+            let projectURL = baseDirectory.appendingPathComponent(slug)
+            let candidateURL = transcriptsSubdirectory.map { projectURL.appendingPathComponent($0) } ?? projectURL
             guard fileManager.fileExists(atPath: candidateURL.path) else { continue }
-            if let mtime = latestModificationDate(at: candidateURL, fileManager: fileManager) {
+            if let mtime = latestTranscriptDate(at: candidateURL, fileManager: fileManager) {
                 if latestDate == nil || mtime > (latestDate ?? .distantPast) {
                     latestDate = mtime
                 }
@@ -112,26 +115,19 @@ public final class SystemAgentSessionQuerier: AgentSessionQuerying, @unchecked S
         return AgentActivityDetector.isWithinRecentThreshold(date: latest, relativeTo: now) ? latest : nil
     }
 
-    private func latestModificationDate(at url: URL, fileManager: FileManager) -> Date? {
-        var isDir: ObjCBool = false
-        guard fileManager.fileExists(atPath: url.path, isDirectory: &isDir) else { return nil }
-        var latest = (try? fileManager.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
-
-        if isDir.boolValue,
-           let contents = try? fileManager.contentsOfDirectory(
-               at: url,
-               includingPropertiesForKeys: [.contentModificationDateKey],
-               options: [.skipsHiddenFiles]
-           )
-        {
-            for item in contents {
-                guard !Task.isCancelled else { return nil }
-                if let mod = (try? item.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate {
-                    if latest == nil || mod > (latest ?? .distantPast) {
-                        latest = mod
-                    }
-                }
-            }
+    private func latestTranscriptDate(at url: URL, fileManager: FileManager) -> Date? {
+        guard let enumerator = fileManager.enumerator(
+            at: url, includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey, .isSymbolicLinkKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
+        ) else { return nil }
+        var latest: Date?
+        for case let item as URL in enumerator {
+            guard !Task.isCancelled else { return nil }
+            guard item.pathExtension == "jsonl",
+                  let values = try? item.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey, .isSymbolicLinkKey]),
+                  values.isRegularFile == true, values.isSymbolicLink != true,
+                  let date = values.contentModificationDate else { continue }
+            latest = max(latest ?? .distantPast, date)
         }
         return latest
     }

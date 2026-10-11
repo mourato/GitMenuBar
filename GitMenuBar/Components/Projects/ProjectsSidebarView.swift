@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProjectsSidebarView: View {
     @Environment(ProjectMonitorStore.self) private var monitor
+    @AppStorage(AppPreferences.Keys.showAgentActivity) private var showAgentActivity = true
     @AppStorage(AppPreferences.Keys.isCleanProjectsGroupCollapsed) private var isCleanGroupCollapsed = false
     @State private var renameProject: ProjectReference?
     @State private var renameDraft = ""
@@ -179,14 +180,19 @@ struct ProjectsSidebarView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+            .layoutPriority(1)
 
             Spacer(minLength: 0)
 
-            if !(monitor.agentActivities[snapshot.project.path] ?? []).isEmpty {
-                HStack(spacing: WorkbenchMetrics.microSpacing) {
-                    ForEach(monitor.agentActivities[snapshot.project.path] ?? []) { activity in
-                        AgentBadgeIconView(activity: activity)
+            if showAgentActivity, !(monitor.agentActivities[snapshot.project.path] ?? []).isEmpty {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: WorkbenchMetrics.microSpacing) {
+                        ForEach(monitor.agentActivities[snapshot.project.path] ?? []) { activity in
+                            AgentBadgeIconView(activity: activity)
+                        }
                     }
+                    .fixedSize()
+                    Color.clear.frame(width: 0, height: 0)
                 }
             }
 
@@ -250,7 +256,7 @@ struct ProjectsSidebarView: View {
 
     private func accessibilityLabel(for snapshot: ProjectStatusSnapshot) -> String {
         var parts = [snapshot.project.name, statusSummary(for: snapshot)]
-        if !(monitor.agentActivities[snapshot.project.path] ?? []).isEmpty {
+        if showAgentActivity, !(monitor.agentActivities[snapshot.project.path] ?? []).isEmpty {
             let agentDescriptions = (monitor.agentActivities[snapshot.project.path] ?? []).map(\.accessibilityDescription).joined(separator: ", ")
             parts.append(agentDescriptions)
         }

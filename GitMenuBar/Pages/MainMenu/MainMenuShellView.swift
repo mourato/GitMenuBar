@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MainMenuShellView<Detail: View, SidePanel: View>: View {
     @Environment(ProjectMonitorStore.self) private var monitor
+    @AppStorage(AppPreferences.Keys.showAgentActivity) private var showAgentActivity = true
 
     let currentRepositoryPath: String
     let onSelectRepository: (String) -> Void
@@ -25,7 +26,7 @@ struct MainMenuShellView<Detail: View, SidePanel: View>: View {
     let onShortcutAction: (MainMenuShortcutAction) -> Void
 
     var body: some View {
-        let sidebarVisible = sidebarVisibility.wrappedValue != .detailOnly
+        let sidebarVisible = sidebarVisibility.wrappedValue != .detailOnly && showAgentActivity
         NavigationSplitView(columnVisibility: sidebarVisibility) {
             ProjectsSidebarView(
                 currentPath: currentRepositoryPath,

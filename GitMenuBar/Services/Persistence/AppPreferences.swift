@@ -6,6 +6,7 @@ enum AppPreferences {
         static let recentRepoPaths = "recentRepoPaths"
         static let monitoredProjects = "monitoredProjects"
         static let monitoredProjectsSeeded = "monitoredProjectsSeeded"
+        static let showAgentActivity = "showAgentActivity"
         static let isProjectsSidebarCollapsed = "isProjectsSidebarCollapsed"
         // Legacy split-width preference; unused after side-panel overlay (Plan 081).
         static let inspectorColumnWidth = "inspectorColumnWidth"

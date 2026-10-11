@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct GeneralSettingsPaneView: View {
+    @AppStorage(AppPreferences.Keys.showAgentActivity) private var showAgentActivity = true
     @AppStorage(AppPreferences.Keys.showDockIcon) private var showDockIcon =
         MainWindowPreferences.defaultShowDockIcon
     @AppStorage(AppPreferences.Keys.showMenuBarIcon) private var showMenuBarIcon =
@@ -69,6 +70,15 @@ struct GeneralSettingsPaneView: View {
                 SettingsFormSectionHeader(title: "App Behavior", icon: "app.badge")
             } footer: {
                 Text("At least one icon (Dock or Menu Bar) must remain enabled so you can access GitMenuBar.")
+            }
+
+            Section {
+                Toggle("Show agent activity", isOn: $showAgentActivity)
+                    .toggleStyle(.switch)
+            } header: {
+                SettingsFormSectionHeader(title: "Projects", icon: "folder")
+            } footer: {
+                Text("Shows running and recent coding agents using local processes and session data while the sidebar is visible.")
             }
 
             Section {

@@ -39,7 +39,9 @@ final class ProjectMonitorStoreTests: XCTestCase {
         let projects = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
         let path = RecentProjectsStore.normalize("/tmp/stale-agent-project")
         projects.add(path)
-        let sessions = SuspendedAgentSessionQuerier(path: path)
+        let started = expectation(description: "agent query started")
+        let finished = expectation(description: "agent query finished")
+        let sessions = SuspendedAgentSessionQuerier(path: path, started: started, finished: finished)
         let monitor = ProjectMonitorStore(
             projectStore: projects,
             agentDetector: AgentActivityDetector(processQuerier: MockAgentProcessQuerier(), sessionQuerier: sessions)
@@ -48,13 +50,13 @@ final class ProjectMonitorStoreTests: XCTestCase {
         let initialCount = await sessions.queryCount
         XCTAssertEqual(initialCount, 0)
         monitor.setAgentActivityVisible(true)
-        await sessions.waitUntilStarted()
+        await fulfillment(of: [started], timeout: 5)
         await monitor.refreshAgentActivity()
         let overlappingCount = await sessions.queryCount
         XCTAssertEqual(overlappingCount, 1)
         monitor.setAgentActivityVisible(false)
         await sessions.release()
-        await sessions.waitUntilFinished()
+        await fulfillment(of: [finished], timeout: 5)
         await Task.yield()
         XCTAssertTrue(monitor.agentActivities.isEmpty)
         await monitor.refreshAgentActivity()
@@ -75,45 +77,33 @@ final class ProjectMonitorStoreTests: XCTestCase {
 
 private actor SuspendedAgentSessionQuerier: AgentSessionQuerying {
     let path: String
+    let started: XCTestExpectation
+    let finished: XCTestExpectation
     private(set) var queryCount = 0
     private var continuation: CheckedContinuation<Void, Never>?
-    private var started: CheckedContinuation<Void, Never>?
-    private var finished: CheckedContinuation<Void, Never>?
-    private var didFinish = false
+    private var released = false
 
-    init(path: String) {
+    init(path: String, started: XCTestExpectation, finished: XCTestExpectation) {
         self.path = path
+        self.started = started
+        self.finished = finished
     }
 
     func recentActivities(for _: [String], now _: Date) async -> [String: [AgentProjectActivity]] {
         queryCount += 1
-        await withCheckedContinuation { continuation in
-            self.continuation = continuation
-            started?.resume()
-            started = nil
+        if !released {
+            await withCheckedContinuation { continuation in
+                self.continuation = continuation
+                started.fulfill()
+            }
         }
-        didFinish = true
-        finished?.resume()
-        finished = nil
+        finished.fulfill()
         return [path: [AgentProjectActivity(harness: .codex, status: .running)]]
     }
 
-    func waitUntilStarted() async {
-        if continuation != nil {
-            return
-        }
-        await withCheckedContinuation { started = $0 }
-    }
-
     func release() {
+        released = true
         continuation?.resume()
         continuation = nil
-    }
-
-    func waitUntilFinished() async {
-        if didFinish {
-            return
-        }
-        await withCheckedContinuation { finished = $0 }
     }
 }

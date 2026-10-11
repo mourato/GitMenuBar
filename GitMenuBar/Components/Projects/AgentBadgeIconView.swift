@@ -26,7 +26,7 @@ struct AgentBadgeIconView: View {
 
     @ViewBuilder
     private var agentImage: some View {
-        if let nsImage = AgentIconCache.image(for: activity.harness) {
+        if let nsImage = SVGIconLoader.image(resourceName: activity.harness.iconResourceName) {
             Image(nsImage: nsImage)
                 .renderingMode(.template)
                 .resizable()
@@ -64,45 +64,6 @@ struct AgentBadgeIconView: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: date, relativeTo: Date())
-    }
-}
-
-/// Thread-safe image caching for SVG agent icons.
-private enum AgentIconCache {
-    private nonisolated(unsafe) static let cache = NSCache<NSString, NSImage>()
-
-    static func image(for harness: AgentHarnessID) -> NSImage? {
-        let resourceName = harness.iconResourceName
-        let cacheKey = resourceName as NSString
-
-        if let cached = cache.object(forKey: cacheKey) {
-            return cached
-        }
-
-        let resourceURL = Bundle.main.url(
-            forResource: resourceName,
-            withExtension: "svg"
-        ) ?? Bundle.main.url(
-            forResource: resourceName,
-            withExtension: "svg",
-            subdirectory: "Resources/ProviderIcons"
-        ) ?? Bundle.main.url(
-            forResource: resourceName,
-            withExtension: "svg",
-            subdirectory: "ProviderIcons"
-        )
-
-        guard let resourceURL,
-              let data = try? Data(contentsOf: resourceURL),
-              let image = NSImage(data: data)
-        else {
-            return nil
-        }
-
-        image.size = NSSize(width: 16, height: 16)
-        image.isTemplate = true
-        cache.setObject(image, forKey: cacheKey)
-        return image
     }
 }
 

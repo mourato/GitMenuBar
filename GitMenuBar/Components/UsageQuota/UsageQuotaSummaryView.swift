@@ -85,9 +85,8 @@ struct ProviderIconView: View {
     }
 }
 
+@MainActor
 private enum ProviderIconRenderer {
-    private nonisolated(unsafe) static let cache = NSCache<NSString, NSImage>()
-
     static func image(for providerID: UsageProviderID) -> NSImage? {
         let resourceName = switch providerID {
         case .claudeCode:
@@ -104,25 +103,7 @@ private enum ProviderIconRenderer {
             "ProviderIcon-antigravity"
         }
 
-        let cacheKey = resourceName as NSString
-        if let cachedImage = cache.object(forKey: cacheKey) {
-            return cachedImage
-        }
-
-        guard let resourceURL = Bundle.main.url(
-            forResource: resourceName,
-            withExtension: "svg"
-        ),
-            let data = try? Data(contentsOf: resourceURL),
-            let image = NSImage(data: data)
-        else {
-            return nil
-        }
-
-        image.size = NSSize(width: 18, height: 18)
-        image.isTemplate = true
-        cache.setObject(image, forKey: cacheKey)
-        return image
+        return SVGIconLoader.image(resourceName: resourceName)
     }
 }
 
