@@ -167,7 +167,7 @@ final class AgentSessionQuerierTests: XCTestCase {
         XCTAssertTrue(harnesses.contains(.opencode))
     }
 
-    func testAntigravityRecentDetectionFromLocalProject() async throws {
+    func testGeminiDirectoryDoesNotSignalAntigravity() async throws {
         let projectDir = temporaryDirectoryURL.appendingPathComponent("testProject")
         try FileManager.default.createDirectory(at: projectDir, withIntermediateDirectories: true)
 
@@ -182,17 +182,32 @@ final class AgentSessionQuerierTests: XCTestCase {
             claudeProjectsDirectory: temporaryDirectoryURL.appendingPathComponent("no_claude"),
             cursorProjectsDirectory: temporaryDirectoryURL.appendingPathComponent("no_cursor"),
             codexDatabaseURL: temporaryDirectoryURL.appendingPathComponent("no_codex"),
-            opencodeDatabaseURL: temporaryDirectoryURL.appendingPathComponent("no_opencode"),
-            antigravityDirectory: temporaryDirectoryURL.appendingPathComponent("no_antigravity"),
-            geminiDirectory: temporaryDirectoryURL.appendingPathComponent("no_gemini")
+            opencodeDatabaseURL: temporaryDirectoryURL.appendingPathComponent("no_opencode")
         )
 
         let result = await querier.recentActivities(for: [projectDir.path], now: fixedNow)
         let activities = result[projectDir.path] ?? []
 
-        XCTAssertEqual(activities.count, 1)
-        XCTAssertEqual(activities.first?.harness, .antigravity)
-        XCTAssertEqual(activities.first?.accessibilityDescription, "Antigravity agent recent")
+        XCTAssertTrue(activities.isEmpty)
+    }
+
+    func testProjectSlugsDoNotMatchLongerProjectNames() async throws {
+        let now = Date()
+        let claude = temporaryDirectoryURL.appendingPathComponent("claude")
+        let cursor = temporaryDirectoryURL.appendingPathComponent("cursor")
+        for base in [claude, cursor] {
+            try FileManager.default.createDirectory(
+                at: base.appendingPathComponent("-a-bc"), withIntermediateDirectories: true
+            )
+        }
+        let querier = SystemAgentSessionQuerier(
+            claudeProjectsDirectory: claude, cursorProjectsDirectory: cursor,
+            codexDatabaseURL: temporaryDirectoryURL.appendingPathComponent("missing"),
+            opencodeDatabaseURL: temporaryDirectoryURL.appendingPathComponent("missing")
+        )
+        let results = await querier.recentActivities(for: ["/a/b", "/a/bc"], now: now)
+        XCTAssertEqual(results["/a/b"], [])
+        XCTAssertEqual(Set((results["/a/bc"] ?? []).map(\.harness)), [.claudeCode, .cursor])
     }
 
     func testAgentProjectActivityAccessibilityDescription() {

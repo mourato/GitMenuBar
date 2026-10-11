@@ -40,6 +40,23 @@ final class AgentActivityDetectorTests: XCTestCase {
         try super.tearDownWithError()
     }
 
+    func testClaudeInstallPathsAndCursorAgentOnly() {
+        XCTAssertEqual(AgentActivityDetector.harness(
+            forProcessName: "node", binaryPath: "/opt/homebrew/bin/node",
+            arguments: ["node", "/opt/lib/node_modules/@anthropic-ai/claude-code/cli.js", "--resume"]
+        ), .claudeCode)
+        XCTAssertEqual(AgentActivityDetector.harness(
+            forProcessName: "2.1.0", binaryPath: "/Users/test/.local/share/claude/versions/2.1.0"
+        ), .claudeCode)
+        XCTAssertNil(AgentActivityDetector.harness(
+            forProcessName: "node", binaryPath: "/opt/homebrew/bin/node", arguments: ["node", "server.js"]
+        ))
+        XCTAssertEqual(AgentActivityDetector.harness(forProcessName: "cursor-agent", binaryPath: "/bin/cursor-agent"), .cursor)
+        for name in ["Cursor", "Cursor Helper", "cursor", "cursor-server"] {
+            XCTAssertNil(AgentActivityDetector.harness(forProcessName: name, binaryPath: "/bin/" + name))
+        }
+    }
+
     // MARK: - Path Normalization & Matching Tests
 
     func testPathNormalization() {
@@ -103,19 +120,10 @@ final class AgentActivityDetectorTests: XCTestCase {
             .opencode
         )
 
-        // Cursor
-        XCTAssertEqual(
-            AgentActivityDetector.harness(forProcessName: "Cursor", binaryPath: "/Applications/Cursor.app/Contents/MacOS/Cursor"),
-            .cursor
-        )
-        XCTAssertEqual(
-            AgentActivityDetector.harness(forProcessName: "cursor", binaryPath: "/usr/local/bin/cursor"),
-            .cursor
-        )
-        XCTAssertEqual(
-            AgentActivityDetector.harness(forProcessName: "Cursor Helper", binaryPath: ""),
-            .cursor
-        )
+        // Cursor IDE and helpers are not agent processes.
+        XCTAssertNil(AgentActivityDetector.harness(forProcessName: "Cursor", binaryPath: "/Applications/Cursor.app/Contents/MacOS/Cursor"))
+        XCTAssertNil(AgentActivityDetector.harness(forProcessName: "cursor", binaryPath: "/usr/local/bin/cursor"))
+        XCTAssertNil(AgentActivityDetector.harness(forProcessName: "Cursor Helper", binaryPath: ""))
 
         // Antigravity
         XCTAssertEqual(
@@ -137,7 +145,7 @@ final class AgentActivityDetectorTests: XCTestCase {
         XCTAssertTrue(AgentActivityDetector.isCandidateAgentProcess(name: "claude", binaryPath: ""))
         XCTAssertTrue(AgentActivityDetector.isCandidateAgentProcess(name: "codex", binaryPath: ""))
         XCTAssertTrue(AgentActivityDetector.isCandidateAgentProcess(name: "opencode", binaryPath: ""))
-        XCTAssertTrue(AgentActivityDetector.isCandidateAgentProcess(name: "Cursor", binaryPath: ""))
+        XCTAssertFalse(AgentActivityDetector.isCandidateAgentProcess(name: "Cursor", binaryPath: ""))
         XCTAssertTrue(AgentActivityDetector.isCandidateAgentProcess(name: "agy_acp_server", binaryPath: ""))
         XCTAssertTrue(AgentActivityDetector.isCandidateAgentProcess(name: "localharness_external", binaryPath: ""))
         XCTAssertFalse(AgentActivityDetector.isCandidateAgentProcess(name: "bash", binaryPath: "/bin/bash"))

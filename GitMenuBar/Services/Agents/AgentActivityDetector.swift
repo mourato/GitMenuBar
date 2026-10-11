@@ -8,12 +8,14 @@ public struct RunningAgentProcess: Sendable, Equatable {
     public let name: String
     public let binaryPath: String
     public let cwd: String
+    public let arguments: [String]
 
-    public init(pid: pid_t, name: String, binaryPath: String, cwd: String) {
+    public init(pid: pid_t, name: String, binaryPath: String, cwd: String, arguments: [String] = []) {
         self.pid = pid
         self.name = name
         self.binaryPath = binaryPath
         self.cwd = cwd
+        self.arguments = arguments
     }
 }
 
@@ -30,6 +32,37 @@ public final class DarwinAgentProcessScanner: AgentProcessQuerying, @unchecked S
         await Task.detached(priority: .userInitiated) {
             Self.scanProcesses()
         }.value
+    }
+
+    private static func processArguments(pid: pid_t) -> [String] {
+        var mib = [CTL_KERN, KERN_PROCARGS2, pid]
+        var size = 0
+        guard sysctl(&mib, UInt32(mib.count), nil, &size, nil, 0) == 0,
+              size > MemoryLayout<Int32>.size else { return [] }
+        var bytes = [UInt8](repeating: 0, count: size)
+        guard sysctl(&mib, UInt32(mib.count), &bytes, &size, nil, 0) == 0 else { return [] }
+        let argc = bytes.withUnsafeBytes { $0.loadUnaligned(as: Int32.self) }
+        guard argc > 0 else { return [] }
+        var offset = MemoryLayout<Int32>.size
+        // KERN_PROCARGS2 stores executable path, padding, then argc NUL-terminated arguments.
+        while offset < size, bytes[offset] != 0 {
+            offset += 1
+        }
+        while offset < size, bytes[offset] == 0 {
+            offset += 1
+        }
+        var arguments: [String] = []
+        for _ in 0 ..< argc {
+            let start = offset
+            while offset < size, bytes[offset] != 0 {
+                offset += 1
+            }
+            guard offset < size else { return [] }
+            guard let argument = String(bytes: bytes[start ..< offset], encoding: .utf8) else { return [] }
+            arguments.append(argument)
+            offset += 1
+        }
+        return arguments
     }
 
     private static func scanProcesses() -> [RunningAgentProcess] {
@@ -55,7 +88,8 @@ public final class DarwinAgentProcessScanner: AgentProcessQuerying, @unchecked S
             let pathLen = proc_pidpath(pid, &pathBuffer, UInt32(pathBuffer.count))
             let binaryPath = pathLen > 0 ? String(cString: pathBuffer) : ""
 
-            guard AgentActivityDetector.isCandidateAgentProcess(name: name, binaryPath: binaryPath) else {
+            let arguments = processArguments(pid: pid)
+            guard AgentActivityDetector.harness(forProcessName: name, binaryPath: binaryPath, arguments: arguments) != nil else {
                 continue
             }
 
@@ -67,7 +101,7 @@ public final class DarwinAgentProcessScanner: AgentProcessQuerying, @unchecked S
                     cwd = ptr.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) { String(cString: $0) }
                 }
             }
-            results.append(RunningAgentProcess(pid: pid, name: name, binaryPath: binaryPath, cwd: cwd))
+            results.append(RunningAgentProcess(pid: pid, name: name, binaryPath: binaryPath, cwd: cwd, arguments: arguments))
         }
         return results
     }
@@ -161,7 +195,7 @@ public actor AgentActivityDetector {
             guard Self.isMatchingPath(processCwd: process.cwd, projectPath: projectPath) else {
                 continue
             }
-            guard let harness = Self.harness(forProcessName: process.name, binaryPath: process.binaryPath) else {
+            guard let harness = Self.harness(forProcessName: process.name, binaryPath: process.binaryPath, arguments: process.arguments) else {
                 continue
             }
 
@@ -211,7 +245,7 @@ public actor AgentActivityDetector {
 
     // MARK: - Static Helpers & Classifiers
 
-    public static func harness(forProcessName processName: String, binaryPath: String) -> AgentHarnessID? {
+    public static func harness(forProcessName processName: String, binaryPath: String, arguments: [String] = []) -> AgentHarnessID? {
         let name = processName.trimmingCharacters(in: .whitespacesAndNewlines)
         let lowerName = name.lowercased()
         let binaryName = URL(fileURLWithPath: binaryPath).lastPathComponent.lowercased()
@@ -222,9 +256,13 @@ public actor AgentActivityDetector {
             return .antigravity
         }
 
+        let nativeClaude = binaryPath.contains("/.local/share/claude/versions/")
+            && URL(fileURLWithPath: binaryPath).deletingLastPathComponent().lastPathComponent == "versions"
+        let npmClaude = binaryName == "node" && arguments.dropFirst().contains {
+            $0.hasSuffix("/@anthropic-ai/claude-code/cli.js")
+        }
         if lowerName == "claude" || binaryName == "claude" ||
-            lowerName == "claude-code" || binaryName == "claude-code" ||
-            lowerName.hasPrefix("claude-") || binaryName.hasPrefix("claude-")
+            lowerName == "claude-code" || binaryName == "claude-code" || nativeClaude || npmClaude
         {
             return .claudeCode
         }
@@ -239,9 +277,7 @@ public actor AgentActivityDetector {
             return .opencode
         }
 
-        if lowerName == "cursor" || binaryName == "cursor" ||
-            lowerName.hasPrefix("cursor") || binaryName.hasPrefix("cursor")
-        {
+        if lowerName == "cursor-agent" || binaryName == "cursor-agent" {
             return .cursor
         }
 

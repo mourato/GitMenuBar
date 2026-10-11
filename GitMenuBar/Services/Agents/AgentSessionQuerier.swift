@@ -14,8 +14,6 @@ public final class SystemAgentSessionQuerier: AgentSessionQuerying, @unchecked S
     public let cursorProjectsDirectory: URL
     public let codexDatabaseURL: URL
     public let opencodeDatabaseURL: URL
-    public let antigravityDirectory: URL
-    public let geminiDirectory: URL
 
     public static let defaultClaudeProjectsDirectory = URL(
         fileURLWithPath: NSString(string: "~/.claude/projects").expandingTildeInPath
@@ -29,27 +27,16 @@ public final class SystemAgentSessionQuerier: AgentSessionQuerying, @unchecked S
     public static let defaultOpenCodeDatabaseURL = URL(
         fileURLWithPath: NSString(string: "~/.local/share/opencode/opencode.db").expandingTildeInPath
     )
-    public static let defaultAntigravityDirectory = URL(
-        fileURLWithPath: NSString(string: "~/.t3/userdata/providers/antigravity").expandingTildeInPath
-    )
-    public static let defaultGeminiDirectory = URL(
-        fileURLWithPath: NSString(string: "~/.gemini").expandingTildeInPath
-    )
-
     public init(
         claudeProjectsDirectory: URL = defaultClaudeProjectsDirectory,
         cursorProjectsDirectory: URL = defaultCursorProjectsDirectory,
         codexDatabaseURL: URL = defaultCodexDatabaseURL,
-        opencodeDatabaseURL: URL = defaultOpenCodeDatabaseURL,
-        antigravityDirectory: URL = defaultAntigravityDirectory,
-        geminiDirectory: URL = defaultGeminiDirectory
+        opencodeDatabaseURL: URL = defaultOpenCodeDatabaseURL
     ) {
         self.claudeProjectsDirectory = claudeProjectsDirectory
         self.cursorProjectsDirectory = cursorProjectsDirectory
         self.codexDatabaseURL = codexDatabaseURL
         self.opencodeDatabaseURL = opencodeDatabaseURL
-        self.antigravityDirectory = antigravityDirectory
-        self.geminiDirectory = geminiDirectory
     }
 
     public func recentActivities(for projectPaths: [String], now: Date) async -> [String: [AgentProjectActivity]] {
@@ -73,9 +60,6 @@ public final class SystemAgentSessionQuerier: AgentSessionQuerying, @unchecked S
             }
             if let date = checkOpenCodeRecent(for: projectPath, now: now) {
                 activities.append(AgentProjectActivity(harness: .opencode, status: .recent(date)))
-            }
-            if let date = checkAntigravityRecent(for: projectPath, now: now) {
-                activities.append(AgentProjectActivity(harness: .antigravity, status: .recent(date)))
             }
             results[projectPath] = activities
         }
@@ -219,94 +203,6 @@ public final class SystemAgentSessionQuerier: AgentSessionQuerying, @unchecked S
             }
         }
 
-        return latestDate
-    }
-
-    private func checkAntigravityRecent(for projectPath: String, now: Date) -> Date? {
-        if let localMtime = checkProjectLocalGemini(projectPath: projectPath, now: now) {
-            return localMtime
-        }
-        if let geminiMtime = checkGeminiRegistry(projectPath: projectPath, now: now) {
-            return geminiMtime
-        }
-        return checkAntigravityDirectory(projectPath: projectPath, now: now)
-    }
-
-    private func checkProjectLocalGemini(projectPath: String, now: Date) -> Date? {
-        let localGemini = URL(fileURLWithPath: projectPath).appendingPathComponent(".gemini")
-        guard let localMtime = latestModificationDate(at: localGemini, fileManager: .default),
-              AgentActivityDetector.isWithinRecentThreshold(date: localMtime, relativeTo: now)
-        else {
-            return nil
-        }
-        return localMtime
-    }
-
-    private func checkGeminiRegistry(projectPath: String, now: Date) -> Date? {
-        let fileManager = FileManager.default
-        let projectsJsonURL = geminiDirectory.appendingPathComponent("projects.json")
-        guard fileManager.fileExists(atPath: projectsJsonURL.path),
-              let data = try? Data(contentsOf: projectsJsonURL),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let projects = json["projects"] as? [String: Any]
-        else {
-            return nil
-        }
-
-        let normalizedProj = AgentActivityDetector.normalizePath(projectPath)
-        for (candidatePath, _) in projects where AgentActivityDetector.isMatchingPath(
-            processCwd: candidatePath,
-            projectPath: normalizedProj
-        ) {
-            let historyDir = geminiDirectory.appendingPathComponent("history")
-            if let historyDate = latestModificationDate(at: historyDir, fileManager: fileManager),
-               AgentActivityDetector.isWithinRecentThreshold(date: historyDate, relativeTo: now)
-            {
-                return historyDate
-            }
-            if let mtime = (try? fileManager.attributesOfItem(atPath: projectsJsonURL.path))?[.modificationDate] as? Date,
-               AgentActivityDetector.isWithinRecentThreshold(date: mtime, relativeTo: now)
-            {
-                return mtime
-            }
-        }
-        return nil
-    }
-
-    private func checkAntigravityDirectory(projectPath: String, now: Date) -> Date? {
-        let fileManager = FileManager.default
-        guard fileManager.fileExists(atPath: antigravityDirectory.path) else { return nil }
-        let candidateSlugs = AgentActivityDetector.candidateSlugs(for: projectPath)
-
-        guard let enumerator = fileManager.enumerator(
-            at: antigravityDirectory,
-            includingPropertiesForKeys: [.contentModificationDateKey, .isDirectoryKey],
-            options: [.skipsHiddenFiles]
-        ) else {
-            return nil
-        }
-
-        var latestDate: Date?
-        let maxDepth = antigravityDirectory.pathComponents.count + 4
-
-        for case let itemURL as URL in enumerator {
-            if itemURL.pathComponents.count > maxDepth {
-                enumerator.skipDescendants()
-                continue
-            }
-            guard let values = try? itemURL.resourceValues(forKeys: [.contentModificationDateKey]),
-                  let modDate = values.contentModificationDate,
-                  AgentActivityDetector.isWithinRecentThreshold(date: modDate, relativeTo: now)
-            else {
-                continue
-            }
-
-            let pathString = itemURL.path
-            let matchesSlug = candidateSlugs.contains(where: { pathString.contains($0) })
-            if matchesSlug, latestDate == nil || modDate > (latestDate ?? .distantPast) {
-                latestDate = modDate
-            }
-        }
         return latestDate
     }
 }
