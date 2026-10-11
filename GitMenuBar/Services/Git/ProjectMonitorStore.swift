@@ -272,9 +272,12 @@ final class ProjectMonitorStore {
     }
 
     private func updateAgentActivities(_ activitiesByPath: [String: [AgentProjectActivity]]) {
-        agentActivities = Dictionary(uniqueKeysWithValues: monitoredProjects.map { project in
+        let next = Dictionary(uniqueKeysWithValues: monitoredProjects.map { project in
             (project.path, activitiesByPath[project.path] ?? [])
         })
+        // Skip unchanged polls so the sidebar does not re-render every cycle.
+        guard next != agentActivities else { return }
+        agentActivities = next
     }
 
     private func refresh(projects: [ProjectReference], remotePaths: Set<String>) {
