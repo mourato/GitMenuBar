@@ -1,11 +1,9 @@
-import Combine
 import Foundation
 import Observation
 
 @MainActor
 @Observable
 final class ProjectMonitorStore {
-    /// Immutable value data is filled once on the worker and only crosses back to the actor.
     private struct SeedResult: Sendable {
         let candidates: [ProjectReference]
         let snapshots: [String: ProjectStatusSnapshot]
@@ -15,7 +13,9 @@ final class ProjectMonitorStore {
 
     private let projectStore: MonitoredProjectsStore
     private let runner: GitCommandRunner
+    private let agentDetector: AgentActivityDetector
     @ObservationIgnored private nonisolated(unsafe) var refreshTimer: Timer?
+    @ObservationIgnored private nonisolated(unsafe) var agentTimer: Timer?
     @ObservationIgnored private var fileWatcher: MonitoredProjectFileWatcher?
     @ObservationIgnored private var fileEventRelay: MonitoredProjectFileEventRelay?
     @ObservationIgnored private var fileEventDebounceTask: Task<Void, Never>?
@@ -31,16 +31,25 @@ final class ProjectMonitorStore {
         @ObservationIgnored var refreshOperation: ((ProjectReference, GitCommandRunner) -> ProjectStatusSnapshot)?
     #endif
 
-    init(projectStore: MonitoredProjectsStore = MonitoredProjectsStore(), runner: GitCommandRunner = GitCommandRunner()) {
+    init(
+        projectStore: MonitoredProjectsStore = MonitoredProjectsStore(),
+        runner: GitCommandRunner = GitCommandRunner(),
+        agentDetector: AgentActivityDetector = AgentActivityDetector()
+    ) {
         self.projectStore = projectStore
         self.runner = runner
+        self.agentDetector = agentDetector
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refreshAll() }
+        }
+        agentTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+            Task { @MainActor in await self?.refreshAgentActivity() }
         }
     }
 
     deinit {
         refreshTimer?.invalidate()
+        agentTimer?.invalidate()
         fileEventDebounceTask?.cancel()
     }
 
@@ -92,6 +101,9 @@ final class ProjectMonitorStore {
         isRefreshing = false
         reconfigureFileWatcher()
         refreshPendingPathsIfNeeded()
+        Task { [weak self] in
+            await self?.refreshAgentActivity()
+        }
         if !isRefreshing, projectStore.monitoredProjects().contains(where: { snapshots[$0.path] == nil }) {
             refreshAll()
         }
@@ -142,7 +154,8 @@ final class ProjectMonitorStore {
                 unmergedBranchCount: snapshot.unmergedBranchCount,
                 stashCount: snapshot.stashCount,
                 lastActivityAt: snapshot.lastActivityAt,
-                pullRequests: snapshot.pullRequests
+                pullRequests: snapshot.pullRequests,
+                activeAgents: snapshot.activeAgents
             )
         ])
     }
@@ -220,6 +233,30 @@ final class ProjectMonitorStore {
         }
     }
 
+    func refreshAgentActivity() async {
+        let projects = monitoredProjects
+        guard !projects.isEmpty else { return }
+        let paths = projects.map(\.path)
+        let activities = await agentDetector.detectAgents(for: paths)
+        updateAgentActivities(activities)
+    }
+
+    private func updateAgentActivities(_ activitiesByPath: [String: [AgentProjectActivity]]) {
+        var nextSnapshots = snapshots
+        var didChange = false
+        for project in monitoredProjects {
+            let path = project.path
+            guard let current = nextSnapshots[path] else { continue }
+            let detected = activitiesByPath[path] ?? []
+            if current.activeAgents != detected {
+                nextSnapshots[path] = current.withActiveAgents(detected)
+                didChange = true
+            }
+        }
+        guard didChange else { return }
+        snapshots = nextSnapshots
+    }
+
     private func refresh(projects: [ProjectReference], remotePaths: Set<String>) {
         guard !isRefreshing, !projects.isEmpty else { return }
         refreshGeneration += 1
@@ -264,6 +301,9 @@ final class ProjectMonitorStore {
                 guard generation == refreshGeneration else { return }
                 publishSnapshots(results)
                 isRefreshing = false
+                Task { [weak self] in
+                    await self?.refreshAgentActivity()
+                }
                 if pendingFullRefresh {
                     pendingFullRefresh = false
                     pendingRefreshPaths.removeAll()
@@ -288,9 +328,12 @@ final class ProjectMonitorStore {
         var nextSnapshots = snapshots
         var didChange = false
 
-        for snapshot in updates {
+        for var snapshot in updates {
             let path = snapshot.project.path
             guard monitoredPaths.contains(path) else { continue }
+            if snapshot.activeAgents.isEmpty, let existing = nextSnapshots[path], !existing.activeAgents.isEmpty {
+                snapshot = snapshot.withActiveAgents(existing.activeAgents)
+            }
             guard nextSnapshots[path].map({ !$0.hasSameVisibleState(as: snapshot) }) ?? true else { continue }
             nextSnapshots[path] = snapshot
             didChange = true

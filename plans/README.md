@@ -20,6 +20,7 @@ Active local execution briefs only. Completed and withdrawn plans live in
 | [074](074-de-duplicate-commit-push-refresh-work.md) | De-duplicate the Commit & Push critical path | P1 | IMPLEMENTED — measurement pending |
 | [075](075-switch-projects-during-path-bound-git-actions.md) | Switch projects while path-bound Git actions finish safely | P0 | IMPLEMENTED — manual/Instruments pending |
 | [087](087-preview-state-coverage.md) | Close preview gaps and cover key UI states | P3 | READY |
+| [088](088-harden-sidebar-agent-activity.md) | Harden sidebar agent-activity badges | P2 | READY |
 
 ## Archive notes
 

@@ -1,0 +1,320 @@
+import Darwin
+import Foundation
+
+// MARK: - Process Querying Protocol & Models
+
+public struct RunningAgentProcess: Sendable, Equatable {
+    public let pid: pid_t
+    public let name: String
+    public let binaryPath: String
+    public let cwd: String
+
+    public init(pid: pid_t, name: String, binaryPath: String, cwd: String) {
+        self.pid = pid
+        self.name = name
+        self.binaryPath = binaryPath
+        self.cwd = cwd
+    }
+}
+
+public protocol AgentProcessQuerying: Sendable {
+    func runningProcesses() async -> [RunningAgentProcess]
+}
+
+// MARK: - Darwin Process Scanner
+
+public final class DarwinAgentProcessScanner: AgentProcessQuerying, @unchecked Sendable {
+    public init() {}
+
+    public func runningProcesses() async -> [RunningAgentProcess] {
+        await Task.detached(priority: .userInitiated) {
+            Self.scanProcesses()
+        }.value
+    }
+
+    private static func scanProcesses() -> [RunningAgentProcess] {
+        let count = proc_listpids(UInt32(PROC_ALL_PIDS), 0, nil, 0)
+        guard count > 0 else { return [] }
+
+        let capacity = max(Int(count) / MemoryLayout<pid_t>.size + 64, 256)
+        var pids = [pid_t](repeating: 0, count: capacity)
+        let bytesWritten = proc_listpids(UInt32(PROC_ALL_PIDS), 0, &pids, Int32(capacity * MemoryLayout<pid_t>.size))
+        guard bytesWritten > 0 else { return [] }
+        let totalPids = min(capacity, Int(bytesWritten) / MemoryLayout<pid_t>.size)
+
+        var results: [RunningAgentProcess] = []
+        var nameBuffer = [CChar](repeating: 0, count: 1024)
+        var pathBuffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
+
+        for index in 0 ..< totalPids {
+            let pid = pids[index]
+            guard pid > 0 else { continue }
+
+            let nameLen = proc_name(pid, &nameBuffer, UInt32(nameBuffer.count))
+            let name = nameLen > 0 ? String(cString: nameBuffer) : ""
+            let pathLen = proc_pidpath(pid, &pathBuffer, UInt32(pathBuffer.count))
+            let binaryPath = pathLen > 0 ? String(cString: pathBuffer) : ""
+
+            guard AgentActivityDetector.isCandidateAgentProcess(name: name, binaryPath: binaryPath) else {
+                continue
+            }
+
+            var vpi = proc_vnodepathinfo()
+            let size = Int32(MemoryLayout<proc_vnodepathinfo>.size)
+            var cwd = ""
+            if proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, &vpi, size) == size {
+                withUnsafePointer(to: &vpi.pvi_cdir.vip_path) { ptr in
+                    cwd = ptr.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) { String(cString: $0) }
+                }
+            }
+            results.append(RunningAgentProcess(pid: pid, name: name, binaryPath: binaryPath, cwd: cwd))
+        }
+        return results
+    }
+}
+
+// MARK: - Agent Activity Detector Service
+
+public actor AgentActivityDetector {
+    public static let shared = AgentActivityDetector()
+    public static let recentWindowSeconds: TimeInterval = 2 * 3600
+    public static let defaultCacheTTL: TimeInterval = 5.0
+
+    private struct CacheEntry {
+        let timestamp: Date
+        let activities: [AgentProjectActivity]
+    }
+
+    private let processQuerier: any AgentProcessQuerying
+    private let sessionQuerier: any AgentSessionQuerying
+    private let cacheTTL: TimeInterval
+    private let nowProvider: @Sendable () -> Date
+    private var cache: [String: CacheEntry] = [:]
+
+    public init(
+        processQuerier: any AgentProcessQuerying = DarwinAgentProcessScanner(),
+        sessionQuerier: any AgentSessionQuerying = SystemAgentSessionQuerier(),
+        cacheTTL: TimeInterval = defaultCacheTTL,
+        nowProvider: @Sendable @escaping () -> Date = Date.init
+    ) {
+        self.processQuerier = processQuerier
+        self.sessionQuerier = sessionQuerier
+        self.cacheTTL = cacheTTL
+        self.nowProvider = nowProvider
+    }
+
+    public func detectAgents(
+        for projectPaths: [String],
+        forceRefresh: Bool = false
+    ) async -> [String: [AgentProjectActivity]] {
+        let now = nowProvider()
+
+        if !forceRefresh {
+            var allCached = true
+            var cachedResults: [String: [AgentProjectActivity]] = [:]
+
+            for path in projectPaths {
+                let norm = Self.normalizePath(path)
+                if let entry = cache[norm], now.timeIntervalSince(entry.timestamp) < cacheTTL {
+                    cachedResults[path] = entry.activities
+                } else {
+                    allCached = false
+                    break
+                }
+            }
+            if allCached {
+                return cachedResults
+            }
+        }
+
+        async let runningProcessesAsync = processQuerier.runningProcesses()
+        async let recentSessionsAsync = sessionQuerier.recentActivities(for: projectPaths, now: now)
+
+        let runningProcesses = await runningProcessesAsync
+        let recentSessions = await recentSessionsAsync
+        var finalResults: [String: [AgentProjectActivity]] = [:]
+
+        for path in projectPaths {
+            let runningForProject = findRunningActivities(in: runningProcesses, for: path)
+            let recentForProject = recentSessions[path] ?? []
+            let merged = mergeActivities(running: runningForProject, recent: recentForProject)
+
+            let norm = Self.normalizePath(path)
+            cache[norm] = CacheEntry(timestamp: now, activities: merged)
+            finalResults[path] = merged
+        }
+
+        return finalResults
+    }
+
+    public func clearCache() {
+        cache.removeAll()
+    }
+
+    private func findRunningActivities(
+        in processes: [RunningAgentProcess],
+        for projectPath: String
+    ) -> [AgentProjectActivity] {
+        var runningByHarness: [AgentHarnessID: AgentProjectActivity] = [:]
+
+        for process in processes {
+            guard Self.isMatchingPath(processCwd: process.cwd, projectPath: projectPath) else {
+                continue
+            }
+            guard let harness = Self.harness(forProcessName: process.name, binaryPath: process.binaryPath) else {
+                continue
+            }
+
+            if runningByHarness[harness] == nil {
+                runningByHarness[harness] = AgentProjectActivity(harness: harness, status: .running)
+            }
+        }
+        return Array(runningByHarness.values)
+    }
+
+    private func mergeActivities(
+        running: [AgentProjectActivity],
+        recent: [AgentProjectActivity]
+    ) -> [AgentProjectActivity] {
+        var mergedByHarness: [AgentHarnessID: AgentProjectActivity] = [:]
+
+        for activity in running {
+            mergedByHarness[activity.harness] = activity
+        }
+
+        for activity in recent {
+            if let existing = mergedByHarness[activity.harness] {
+                if !existing.status.isRunning,
+                   let existingDate = existing.status.lastActivityDate,
+                   let newDate = activity.status.lastActivityDate,
+                   newDate > existingDate
+                {
+                    mergedByHarness[activity.harness] = activity
+                }
+            } else {
+                mergedByHarness[activity.harness] = activity
+            }
+        }
+
+        return mergedByHarness.values.sorted { first, second in
+            if first.status.isRunning != second.status.isRunning {
+                return first.status.isRunning && !second.status.isRunning
+            }
+            let firstDate = first.status.lastActivityDate ?? .distantPast
+            let secondDate = second.status.lastActivityDate ?? .distantPast
+            if firstDate != secondDate {
+                return firstDate > secondDate
+            }
+            return first.harness.rawValue < second.harness.rawValue
+        }
+    }
+
+    // MARK: - Static Helpers & Classifiers
+
+    public static func harness(forProcessName processName: String, binaryPath: String) -> AgentHarnessID? {
+        let name = processName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowerName = name.lowercased()
+        let binaryName = URL(fileURLWithPath: binaryPath).lastPathComponent.lowercased()
+
+        if lowerName.contains("agy_acp_server") || binaryName.contains("agy_acp_server") ||
+            lowerName.contains("localharness_external") || binaryName.contains("localharness_external")
+        {
+            return .antigravity
+        }
+
+        if lowerName == "claude" || binaryName == "claude" ||
+            lowerName == "claude-code" || binaryName == "claude-code" ||
+            lowerName.hasPrefix("claude-") || binaryName.hasPrefix("claude-")
+        {
+            return .claudeCode
+        }
+
+        if lowerName == "codex" || binaryName == "codex" ||
+            lowerName == "codex-app-server" || binaryName == "codex-app-server"
+        {
+            return .codex
+        }
+
+        if lowerName == "opencode" || binaryName == "opencode" {
+            return .opencode
+        }
+
+        if lowerName == "cursor" || binaryName == "cursor" ||
+            lowerName.hasPrefix("cursor") || binaryName.hasPrefix("cursor")
+        {
+            return .cursor
+        }
+
+        return nil
+    }
+
+    public static func isCandidateAgentProcess(name: String, binaryPath: String) -> Bool {
+        harness(forProcessName: name, binaryPath: binaryPath) != nil
+    }
+
+    public static func parseEpochTimestamp(rawTime: Int64) -> Date {
+        if rawTime > 10_000_000_000 {
+            Date(timeIntervalSince1970: Double(rawTime) / 1000.0)
+        } else {
+            Date(timeIntervalSince1970: Double(rawTime))
+        }
+    }
+
+    public static func normalizePath(_ path: String) -> String {
+        guard !path.isEmpty else { return "" }
+        let url = URL(fileURLWithPath: path).resolvingSymlinksInPath().standardized
+        let resolved = url.path
+        if resolved.count > 1, resolved.hasSuffix("/") {
+            return String(resolved.dropLast())
+        }
+        return resolved
+    }
+
+    public static func isMatchingPath(processCwd: String, projectPath: String) -> Bool {
+        guard !processCwd.isEmpty, !projectPath.isEmpty else { return false }
+        let normCwd = normalizePath(processCwd)
+        let normProj = normalizePath(projectPath)
+        guard !normCwd.isEmpty, !normProj.isEmpty else { return false }
+
+        if normProj == "/" {
+            return normCwd == "/"
+        }
+        return normCwd == normProj || normCwd.hasPrefix(normProj + "/")
+    }
+
+    public static func isWithinRecentThreshold(date: Date, relativeTo now: Date) -> Bool {
+        let elapsed = now.timeIntervalSince(date)
+        return elapsed >= -60 && elapsed <= recentWindowSeconds
+    }
+
+    public static func candidateSlugs(for projectPath: String) -> [String] {
+        let norm = normalizePath(projectPath)
+        var slugs = Set<String>()
+
+        let slashReplaced = norm.replacingOccurrences(of: "/", with: "-")
+        slugs.insert(slashReplaced)
+
+        let trimmedLeadingDash = slashReplaced.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        if !trimmedLeadingDash.isEmpty {
+            slugs.insert(trimmedLeadingDash)
+        }
+
+        let nonAlphanumericReplaced = String(norm.map { ($0.isLetter || $0.isNumber) ? $0 : "-" })
+        slugs.insert(nonAlphanumericReplaced)
+        let trimmedNonAlpha = nonAlphanumericReplaced.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        if !trimmedNonAlpha.isEmpty {
+            slugs.insert(trimmedNonAlpha)
+        }
+
+        if projectPath != norm {
+            let rawSlash = projectPath.replacingOccurrences(of: "/", with: "-")
+            slugs.insert(rawSlash)
+            let trimmedRaw = rawSlash.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+            if !trimmedRaw.isEmpty {
+                slugs.insert(trimmedRaw)
+            }
+        }
+
+        return Array(slugs)
+    }
+}

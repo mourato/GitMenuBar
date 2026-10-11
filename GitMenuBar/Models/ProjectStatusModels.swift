@@ -61,11 +61,78 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
     let stashCount: Int
     let lastActivityAt: Date?
     let pullRequests: [GitHubPullRequestSummary]
+    let activeAgents: [AgentProjectActivity]
 
     static let staleThreshold: TimeInterval = 14 * 24 * 60 * 60
 
     var id: String {
         project.path
+    }
+
+    init(
+        project: ProjectReference,
+        branchName: String,
+        isDetachedHead: Bool,
+        stagedCount: Int,
+        unstagedCount: Int,
+        untrackedCount: Int,
+        lineDiff: LineDiffStats,
+        aheadCount: Int,
+        behindCount: Int,
+        hasUpstream: Bool,
+        lastRefreshedAt: Date?,
+        lastErrorDescription: String?,
+        branchesWithoutUpstreamCount: Int,
+        unpushedBranchCount: Int,
+        unmergedBranchCount: Int,
+        stashCount: Int,
+        lastActivityAt: Date?,
+        pullRequests: [GitHubPullRequestSummary],
+        activeAgents: [AgentProjectActivity] = []
+    ) {
+        self.project = project
+        self.branchName = branchName
+        self.isDetachedHead = isDetachedHead
+        self.stagedCount = stagedCount
+        self.unstagedCount = unstagedCount
+        self.untrackedCount = untrackedCount
+        self.lineDiff = lineDiff
+        self.aheadCount = aheadCount
+        self.behindCount = behindCount
+        self.hasUpstream = hasUpstream
+        self.lastRefreshedAt = lastRefreshedAt
+        self.lastErrorDescription = lastErrorDescription
+        self.branchesWithoutUpstreamCount = branchesWithoutUpstreamCount
+        self.unpushedBranchCount = unpushedBranchCount
+        self.unmergedBranchCount = unmergedBranchCount
+        self.stashCount = stashCount
+        self.lastActivityAt = lastActivityAt
+        self.pullRequests = pullRequests
+        self.activeAgents = activeAgents
+    }
+
+    func withActiveAgents(_ agents: [AgentProjectActivity]) -> ProjectStatusSnapshot {
+        ProjectStatusSnapshot(
+            project: project,
+            branchName: branchName,
+            isDetachedHead: isDetachedHead,
+            stagedCount: stagedCount,
+            unstagedCount: unstagedCount,
+            untrackedCount: untrackedCount,
+            lineDiff: lineDiff,
+            aheadCount: aheadCount,
+            behindCount: behindCount,
+            hasUpstream: hasUpstream,
+            lastRefreshedAt: lastRefreshedAt,
+            lastErrorDescription: lastErrorDescription,
+            branchesWithoutUpstreamCount: branchesWithoutUpstreamCount,
+            unpushedBranchCount: unpushedBranchCount,
+            unmergedBranchCount: unmergedBranchCount,
+            stashCount: stashCount,
+            lastActivityAt: lastActivityAt,
+            pullRequests: pullRequests,
+            activeAgents: agents
+        )
     }
 
     func hasSameVisibleState(as other: Self) -> Bool {
@@ -86,6 +153,7 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
             && stashCount == other.stashCount
             && lastActivityAt == other.lastActivityAt
             && pullRequests == other.pullRequests
+            && activeAgents == other.activeAgents
     }
 
     var hasWorkingTreeChanges: Bool {

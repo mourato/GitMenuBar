@@ -182,6 +182,14 @@ struct ProjectsSidebarView: View {
 
             Spacer(minLength: 0)
 
+            if !snapshot.activeAgents.isEmpty {
+                HStack(spacing: WorkbenchMetrics.microSpacing) {
+                    ForEach(snapshot.activeAgents) { activity in
+                        AgentBadgeIconView(activity: activity)
+                    }
+                }
+            }
+
             if snapshot.hasWorkingTreeChanges {
                 Text(changeCountSummary(for: snapshot))
                     .font(.caption)
@@ -242,6 +250,10 @@ struct ProjectsSidebarView: View {
 
     private func accessibilityLabel(for snapshot: ProjectStatusSnapshot) -> String {
         var parts = [snapshot.project.name, statusSummary(for: snapshot)]
+        if !snapshot.activeAgents.isEmpty {
+            let agentDescriptions = snapshot.activeAgents.map(\.accessibilityDescription).joined(separator: ", ")
+            parts.append(agentDescriptions)
+        }
         if snapshot.hasWorkingTreeChanges {
             parts.append(
                 "\(snapshot.stagedCount) staged, \(snapshot.unstagedCount) unstaged, "
