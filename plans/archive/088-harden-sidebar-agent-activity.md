@@ -1,11 +1,23 @@
 # Plan 088: Harden sidebar agent-activity badges
 
 > **Executor instructions**: Read this brief, `AGENTS.md`,
-> [project workflow facts](../docs/agents/project-workflow.md),
-> [architecture guide](../docs/ARCHITECTURE.md), and [UI contract](../docs/ui.md)
+> [project workflow facts](../../docs/agents/project-workflow.md),
+> [architecture guide](../../docs/ARCHITECTURE.md), and [UI contract](../../docs/ui.md)
 > before editing. Work in a dedicated worktree. Follow the steps in order and
 > run each verification command. On a STOP condition, stop and report; do not
 > widen scope. Leave merge and push to the operator.
+
+## Outcome
+
+DONE 2026-10-11, merged to main at 0f4e81c. Agent activity lives in
+`ProjectMonitorStore.agentActivities`; `ProjectStatusSnapshot` matches 8429902.
+Detection uses process argv plus cwd for all five harnesses; recent signals
+come from Claude/Cursor transcripts and Codex/OpenCode SQLite, each read once
+per cycle. Polling runs only while the sidebar is visible and the
+"Show agent activity" setting is on. Slice 1 kept the `ProjectStatusReader`
+move as its own commit. `make agent-check` and `make test` pass; one full-suite
+run timed out in `testResetToCommitIncludesReflogCommitsForRestore` and passed
+on rerun (likely flaky, unproven). Operator Step 7 manual checks pending.
 
 ## Status
 

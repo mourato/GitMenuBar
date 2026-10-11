@@ -20,11 +20,10 @@ Active local execution briefs only. Completed and withdrawn plans live in
 | [074](074-de-duplicate-commit-push-refresh-work.md) | De-duplicate the Commit & Push critical path | P1 | IMPLEMENTED — measurement pending |
 | [075](075-switch-projects-during-path-bound-git-actions.md) | Switch projects while path-bound Git actions finish safely | P0 | IMPLEMENTED — manual/Instruments pending |
 | [087](087-preview-state-coverage.md) | Close preview gaps and cover key UI states | P3 | READY |
-| [088](088-harden-sidebar-agent-activity.md) | Harden sidebar agent-activity badges | P2 | READY |
 
 ## Archive notes
 
-- Plans `001`–`072`, `076`–`086`, and withdrawn Companion CLI briefs
+- Plans `001`–`072`, `076`–`086`, `088`, and withdrawn Companion CLI briefs
   (`036`–`038`, `068`, `072`) are under [`archive/`](archive/).
 - Stub `029` (never authored) was dropped from the index; it had no file.
 - Historical consolidate/optimize notes from 2026-07 lived only in the old
