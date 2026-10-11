@@ -19,6 +19,9 @@ final class ProjectMonitorStore {
     private let agentDetector: AgentActivityDetector
     @ObservationIgnored private nonisolated(unsafe) var refreshTimer: Timer?
     @ObservationIgnored private nonisolated(unsafe) var agentTimer: Timer?
+    @ObservationIgnored private var agentRefreshTask: Task<[String: [AgentProjectActivity]], Never>?
+    @ObservationIgnored private var agentGeneration = 0
+    @ObservationIgnored private var isAgentPollingEnabled = false
     @ObservationIgnored private var fileWatcher: MonitoredProjectFileWatcher?
     @ObservationIgnored private var fileEventRelay: MonitoredProjectFileEventRelay?
     @ObservationIgnored private var fileEventDebounceTask: Task<Void, Never>?
@@ -45,14 +48,12 @@ final class ProjectMonitorStore {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refreshAll() }
         }
-        agentTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
-            Task { @MainActor in await self?.refreshAgentActivity() }
-        }
     }
 
     deinit {
         refreshTimer?.invalidate()
         agentTimer?.invalidate()
+        agentRefreshTask?.cancel()
         fileEventDebounceTask?.cancel()
     }
 
@@ -113,6 +114,7 @@ final class ProjectMonitorStore {
     }
 
     func add(path: String, name: String? = nil) {
+        agentGeneration += 1
         fetchGeneration += 1
         projectStore.add(path, name: name)
         reconfigureFileWatcher()
@@ -124,6 +126,7 @@ final class ProjectMonitorStore {
     }
 
     func remove(path: String) {
+        agentGeneration += 1
         fetchGeneration += 1
         projectStore.remove(path: path)
         let normalizedPath = RecentProjectsStore.normalize(path)
@@ -236,11 +239,35 @@ final class ProjectMonitorStore {
         }
     }
 
+    func setAgentActivityVisible(_ visible: Bool) {
+        guard visible != isAgentPollingEnabled else { return }
+        isAgentPollingEnabled = visible
+        agentGeneration += 1
+        agentTimer?.invalidate()
+        agentTimer = nil
+        agentRefreshTask?.cancel()
+        guard visible else { return }
+        agentTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+            Task(priority: .utility) { @MainActor in await self?.refreshAgentActivity() }
+        }
+        Task(priority: .utility) { [weak self] in await self?.refreshAgentActivity() }
+    }
+
     func refreshAgentActivity() async {
-        let projects = monitoredProjects
-        guard !projects.isEmpty else { return }
-        let paths = projects.map(\.path)
-        let activities = await agentDetector.detectAgents(for: paths)
+        guard isAgentPollingEnabled, agentRefreshTask == nil else { return }
+        let paths = monitoredProjects.map(\.path)
+        guard !paths.isEmpty else { return }
+        let generation = agentGeneration
+        let detector = agentDetector
+        let task = Task(priority: .utility) { await detector.detectAgents(for: paths) }
+        agentRefreshTask = task
+        let activities = await task.value
+        agentRefreshTask = nil
+        guard isAgentPollingEnabled else { return }
+        guard generation == agentGeneration, paths == monitoredProjects.map(\.path), !task.isCancelled else {
+            Task(priority: .utility) { [weak self] in await self?.refreshAgentActivity() }
+            return
+        }
         updateAgentActivities(activities)
     }
 

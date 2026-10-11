@@ -191,6 +191,49 @@ final class AgentSessionQuerierTests: XCTestCase {
         XCTAssertTrue(activities.isEmpty)
     }
 
+    func testDatabaseCycleFindsProjectsBeyondFiftyRowsAndDiscoversHighestVersion() async throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let path = "/tmp/quiet-project"
+        let busyRows = (0 ..< 60).map { _ in (cwd: "/tmp/busy-project", updatedAt: Int64(now.timeIntervalSince1970)) }
+        try createCodexFixtureDatabase(
+            at: temporaryDirectoryURL.appendingPathComponent("state_12.sqlite"),
+            rows: busyRows + [(cwd: path, updatedAt: Int64(now.timeIntervalSince1970 - 1800))]
+        )
+        try createCodexFixtureDatabase(at: temporaryDirectoryURL.appendingPathComponent("state_9.sqlite"), rows: [])
+        let openCode = temporaryDirectoryURL.appendingPathComponent("opencode.db")
+        try createOpenCodeFixtureDatabase(
+            at: openCode,
+            rows: busyRows.map { (directory: $0.cwd, timeUpdated: $0.updatedAt * 1000) }
+                + [(directory: path, timeUpdated: Int64((now.timeIntervalSince1970 - 1800) * 1000))]
+        )
+        let querier = SystemAgentSessionQuerier(
+            claudeProjectsDirectory: temporaryDirectoryURL.appendingPathComponent("missing"),
+            cursorProjectsDirectory: temporaryDirectoryURL.appendingPathComponent("missing"),
+            codexDirectory: temporaryDirectoryURL, opencodeDatabaseURL: openCode
+        )
+        let results = await querier.recentActivities(for: [path, "/tmp/busy-project"], now: now)
+        for project in [path, "/tmp/busy-project"] {
+            XCTAssertEqual(Set((results[project] ?? []).map(\.harness)), [.codex, .opencode])
+        }
+    }
+
+    func testUnknownLatestCodexSchemaFailsClosedWithoutFallingBack() async throws {
+        let now = Date()
+        try createCodexFixtureDatabase(
+            at: temporaryDirectoryURL.appendingPathComponent("state_5.sqlite"),
+            rows: [(cwd: "/tmp/project", updatedAt: Int64(now.timeIntervalSince1970))]
+        )
+        try Data().write(to: temporaryDirectoryURL.appendingPathComponent("state_6.sqlite"))
+        let querier = SystemAgentSessionQuerier(
+            claudeProjectsDirectory: temporaryDirectoryURL.appendingPathComponent("missing"),
+            cursorProjectsDirectory: temporaryDirectoryURL.appendingPathComponent("missing"),
+            codexDirectory: temporaryDirectoryURL,
+            opencodeDatabaseURL: temporaryDirectoryURL.appendingPathComponent("missing")
+        )
+        let results = await querier.recentActivities(for: ["/tmp/project"], now: now)
+        XCTAssertEqual(results["/tmp/project"], [])
+    }
+
     func testProjectSlugsDoNotMatchLongerProjectNames() async throws {
         let now = Date()
         let claude = temporaryDirectoryURL.appendingPathComponent("claude")

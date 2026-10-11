@@ -2,27 +2,6 @@
 import SQLite3
 import XCTest
 
-private final class TimeBox: @unchecked Sendable {
-    private var date: Date
-    private let lock = NSLock()
-
-    init(_ date: Date) {
-        self.date = date
-    }
-
-    func get() -> Date {
-        lock.lock()
-        defer { lock.unlock() }
-        return date
-    }
-
-    func advance(by seconds: TimeInterval) {
-        lock.lock()
-        defer { lock.unlock() }
-        date = date.addingTimeInterval(seconds)
-    }
-}
-
 final class AgentActivityDetectorTests: XCTestCase {
     private var temporaryDirectoryURL: URL!
 
@@ -235,49 +214,24 @@ final class AgentActivityDetectorTests: XCTestCase {
         XCTAssertEqual(codexActivity?.status, .recent(thirtyMinutesAgo))
     }
 
-    // MARK: - Cache Behavior Tests
-
-    func testCacheBehavior() async {
-        let projectPath = "/Users/test/workspace/cachedRepo"
-        let timeBox = TimeBox(Date(timeIntervalSince1970: 1_800_000_000))
-
-        let mockProcessQuerier = MockAgentProcessQuerier(processes: [
-            RunningAgentProcess(pid: 301, name: "claude", binaryPath: "/bin/claude", cwd: projectPath)
+    func testCodexAppServersDoNotAttributeLaunchDirectoryAsRunning() async {
+        let path = "/tmp/server-launch"
+        let processes = MockAgentProcessQuerier(processes: [
+            RunningAgentProcess(pid: 1, name: "codex-app-server", binaryPath: "/bin/codex-app-server", cwd: path),
+            RunningAgentProcess(pid: 2, name: "codex", binaryPath: "/bin/codex", cwd: path, arguments: ["codex", "app-server"])
         ])
-        let mockSessionQuerier = MockAgentSessionQuerier()
+        let detector = AgentActivityDetector(processQuerier: processes, sessionQuerier: MockAgentSessionQuerier())
+        let results = await detector.detectAgents(for: [path])
+        XCTAssertEqual(results[path], [])
+    }
 
-        let detector = AgentActivityDetector(
-            processQuerier: mockProcessQuerier,
-            sessionQuerier: mockSessionQuerier,
-            cacheTTL: 5.0,
-            nowProvider: { timeBox.get() }
-        )
-
-        // First call populates cache
-        let first = await detector.detectAgents(for: [projectPath])
-        XCTAssertEqual(first[projectPath]?.count, 1)
-        let count1 = await mockProcessQuerier.queryCount
-        XCTAssertEqual(count1, 1)
-
-        // Second call within TTL returns cached without querying again
-        timeBox.advance(by: 2.0)
-        let second = await detector.detectAgents(for: [projectPath])
-        XCTAssertEqual(second[projectPath]?.count, 1)
-        let count2 = await mockProcessQuerier.queryCount
-        XCTAssertEqual(count2, 1)
-
-        // Force refresh re-queries even within TTL
-        let forced = await detector.detectAgents(for: [projectPath], forceRefresh: true)
-        XCTAssertEqual(forced[projectPath]?.count, 1)
-        let count3 = await mockProcessQuerier.queryCount
-        XCTAssertEqual(count3, 2)
-
-        // After TTL expires, next call re-queries
-        timeBox.advance(by: 10.0)
-        let third = await detector.detectAgents(for: [projectPath])
-        XCTAssertEqual(third[projectPath]?.count, 1)
-        let count4 = await mockProcessQuerier.queryCount
-        XCTAssertEqual(count4, 3)
+    func testEachCycleQueriesFreshActivity() async {
+        let processes = MockAgentProcessQuerier()
+        let detector = AgentActivityDetector(processQuerier: processes, sessionQuerier: MockAgentSessionQuerier())
+        _ = await detector.detectAgents(for: ["/tmp/project"])
+        _ = await detector.detectAgents(for: ["/tmp/project"])
+        let count = await processes.queryCount
+        XCTAssertEqual(count, 2)
     }
 }
 

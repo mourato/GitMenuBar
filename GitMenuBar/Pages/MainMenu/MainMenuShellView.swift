@@ -2,6 +2,8 @@ import Combine
 import SwiftUI
 
 struct MainMenuShellView<Detail: View, SidePanel: View>: View {
+    @Environment(ProjectMonitorStore.self) private var monitor
+
     let currentRepositoryPath: String
     let onSelectRepository: (String) -> Void
     let onReveal: (String) -> Void
@@ -23,6 +25,7 @@ struct MainMenuShellView<Detail: View, SidePanel: View>: View {
     let onShortcutAction: (MainMenuShortcutAction) -> Void
 
     var body: some View {
+        let sidebarVisible = sidebarVisibility.wrappedValue != .detailOnly
         NavigationSplitView(columnVisibility: sidebarVisibility) {
             ProjectsSidebarView(
                 currentPath: currentRepositoryPath,
@@ -37,6 +40,11 @@ struct MainMenuShellView<Detail: View, SidePanel: View>: View {
                 onFetchAll: onFetchAll,
                 onOpenSettings: onOpenSettings
             )
+            .background {
+                SidebarPresenceObserver { windowVisible in
+                    monitor.setAgentActivityVisible(windowVisible && sidebarVisible)
+                }
+            }
             .navigationSplitViewColumnWidth(
                 min: WorkbenchMetrics.projectsMinimumWidth,
                 ideal: WorkbenchMetrics.projectsMinimumWidth,

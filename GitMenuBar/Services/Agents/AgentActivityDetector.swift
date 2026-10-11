@@ -29,9 +29,12 @@ public final class DarwinAgentProcessScanner: AgentProcessQuerying, @unchecked S
     public init() {}
 
     public func runningProcesses() async -> [RunningAgentProcess] {
-        await Task.detached(priority: .userInitiated) {
-            Self.scanProcesses()
-        }.value
+        let task = Task.detached(priority: .utility) { Self.scanProcesses() }
+        return await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
     }
 
     private static func processArguments(pid: pid_t) -> [String] {
@@ -80,6 +83,7 @@ public final class DarwinAgentProcessScanner: AgentProcessQuerying, @unchecked S
         var pathBuffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
 
         for index in 0 ..< totalPids {
+            guard !Task.isCancelled else { return [] }
             let pid = pids[index]
             guard pid > 0 else { continue }
 
@@ -88,6 +92,8 @@ public final class DarwinAgentProcessScanner: AgentProcessQuerying, @unchecked S
             let pathLen = proc_pidpath(pid, &pathBuffer, UInt32(pathBuffer.count))
             let binaryPath = pathLen > 0 ? String(cString: pathBuffer) : ""
 
+            guard AgentActivityDetector.isCandidateAgentProcess(name: name, binaryPath: binaryPath)
+                || URL(fileURLWithPath: binaryPath).lastPathComponent == "node" else { continue }
             let arguments = processArguments(pid: pid)
             guard AgentActivityDetector.harness(forProcessName: name, binaryPath: binaryPath, arguments: arguments) != nil else {
                 continue
@@ -110,56 +116,25 @@ public final class DarwinAgentProcessScanner: AgentProcessQuerying, @unchecked S
 // MARK: - Agent Activity Detector Service
 
 public actor AgentActivityDetector {
-    public static let shared = AgentActivityDetector()
     public static let recentWindowSeconds: TimeInterval = 2 * 3600
-    public static let defaultCacheTTL: TimeInterval = 5.0
-
-    private struct CacheEntry {
-        let timestamp: Date
-        let activities: [AgentProjectActivity]
-    }
 
     private let processQuerier: any AgentProcessQuerying
     private let sessionQuerier: any AgentSessionQuerying
-    private let cacheTTL: TimeInterval
     private let nowProvider: @Sendable () -> Date
-    private var cache: [String: CacheEntry] = [:]
 
     public init(
         processQuerier: any AgentProcessQuerying = DarwinAgentProcessScanner(),
         sessionQuerier: any AgentSessionQuerying = SystemAgentSessionQuerier(),
-        cacheTTL: TimeInterval = defaultCacheTTL,
         nowProvider: @Sendable @escaping () -> Date = Date.init
     ) {
         self.processQuerier = processQuerier
         self.sessionQuerier = sessionQuerier
-        self.cacheTTL = cacheTTL
         self.nowProvider = nowProvider
     }
 
-    public func detectAgents(
-        for projectPaths: [String],
-        forceRefresh: Bool = false
-    ) async -> [String: [AgentProjectActivity]] {
+    public func detectAgents(for projectPaths: [String]) async -> [String: [AgentProjectActivity]] {
+        guard !Task.isCancelled, !projectPaths.isEmpty else { return [:] }
         let now = nowProvider()
-
-        if !forceRefresh {
-            var allCached = true
-            var cachedResults: [String: [AgentProjectActivity]] = [:]
-
-            for path in projectPaths {
-                let norm = Self.normalizePath(path)
-                if let entry = cache[norm], now.timeIntervalSince(entry.timestamp) < cacheTTL {
-                    cachedResults[path] = entry.activities
-                } else {
-                    allCached = false
-                    break
-                }
-            }
-            if allCached {
-                return cachedResults
-            }
-        }
 
         async let runningProcessesAsync = processQuerier.runningProcesses()
         async let recentSessionsAsync = sessionQuerier.recentActivities(for: projectPaths, now: now)
@@ -173,16 +148,10 @@ public actor AgentActivityDetector {
             let recentForProject = recentSessions[path] ?? []
             let merged = mergeActivities(running: runningForProject, recent: recentForProject)
 
-            let norm = Self.normalizePath(path)
-            cache[norm] = CacheEntry(timestamp: now, activities: merged)
             finalResults[path] = merged
         }
 
         return finalResults
-    }
-
-    public func clearCache() {
-        cache.removeAll()
     }
 
     private func findRunningActivities(
@@ -192,6 +161,10 @@ public actor AgentActivityDetector {
         var runningByHarness: [AgentHarnessID: AgentProjectActivity] = [:]
 
         for process in processes {
+            // Multi-project servers' launch cwd does not identify their active projects.
+            guard process.name != "codex-app-server",
+                  URL(fileURLWithPath: process.binaryPath).lastPathComponent != "codex-app-server",
+                  !process.arguments.dropFirst().contains("app-server") else { continue }
             guard Self.isMatchingPath(processCwd: process.cwd, projectPath: projectPath) else {
                 continue
             }
