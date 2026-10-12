@@ -27,6 +27,10 @@ struct UsageQuotaMenuView: View {
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
                                 .fill(UsageQuotaMenuInk.card)
                         )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .strokeBorder(UsageQuotaMenuInk.border, lineWidth: 0.5)
+                        )
                 }
             }
         }
@@ -62,6 +66,10 @@ struct UsageQuotaMenuView: View {
             RoundedRectangle(cornerRadius: 9, style: .continuous)
                 .fill(UsageQuotaMenuInk.card)
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .strokeBorder(UsageQuotaMenuInk.border, lineWidth: 0.5)
+        )
         .opacity(snapshot.isStale ? 0.72 : 1)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(snapshot.displayName)
@@ -71,14 +79,14 @@ struct UsageQuotaMenuView: View {
         var rows: [UsageQuotaDotsCard.RowData] = []
         if let sessionWindow = snapshot.sessionWindow {
             rows.append(UsageQuotaDotsCard.RowData(
-                title: UsageQuotaPresentationPreferences.Metric.session.title,
+                title: UsageQuotaPace.rowTitle(isSessionWindow: true, window: sessionWindow),
                 countdown: UsageQuotaDotsCard.bareCountdown(until: sessionWindow.resetAt),
                 remainingPercent: sessionWindow.remainingPercent
             ))
         }
         if let weeklyWindow = snapshot.weeklyWindow {
             rows.append(UsageQuotaDotsCard.RowData(
-                title: UsageQuotaPresentationPreferences.Metric.weekly.title,
+                title: UsageQuotaPace.rowTitle(isSessionWindow: false, window: weeklyWindow),
                 countdown: UsageQuotaDotsCard.bareCountdown(until: weeklyWindow.resetAt),
                 remainingPercent: weeklyWindow.remainingPercent
             ))
@@ -271,6 +279,7 @@ private enum UsageQuotaMenuTypography {
 private enum UsageQuotaMenuInk {
     static let secondary = Color(nsColor: .secondaryLabelColor)
     static let card = Color(nsColor: .quaternarySystemFill)
+    static let border = Color(nsColor: .separatorColor)
 }
 
 #Preview("Usage Quota Menu") {

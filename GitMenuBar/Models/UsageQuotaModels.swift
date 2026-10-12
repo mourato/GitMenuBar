@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 enum UsageProviderID: String, Codable, CaseIterable, Hashable, Identifiable, Sendable {
     case claudeCode
@@ -26,6 +27,22 @@ enum UsageProviderID: String, Codable, CaseIterable, Hashable, Identifiable, Sen
             "Gemini"
         case .antigravity:
             "Antigravity"
+        }
+    }
+
+    /// Brand tint for the provider logo in quota cards; the menu-bar strip stays monochrome.
+    var brandColor: Color {
+        switch self {
+        case .claudeCode:
+            Color(red: 0.85, green: 0.47, blue: 0.34)
+        case .codex:
+            Color(red: 0.45, green: 0.47, blue: 0.98)
+        case .gemini:
+            Color(red: 0.31, green: 0.53, blue: 0.97)
+        case .antigravity:
+            Color(red: 0.26, green: 0.52, blue: 0.96)
+        case .cursor, .openrouter:
+            Color(nsColor: .labelColor)
         }
     }
 }

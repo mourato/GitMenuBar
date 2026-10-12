@@ -53,7 +53,12 @@ extension StatusBarController {
         quotaItem.isEnabled = false
         submenu.addItem(quotaItem)
         submenu.addItem(.separator())
-        submenu.addItem(menuItem(title: "Atualizar cotas", action: #selector(refreshUsageFromMenu)))
+        submenu.addItem(menuItem(title: "Refresh Quotas", action: #selector(refreshUsageFromMenu)))
+        if let updatedAt = usageQuotaStore.visibleSnapshots.map(\.fetchedAt).max() {
+            let updatedItem = NSMenuItem(title: "Updated \(updatedAgoText(since: updatedAt))", action: nil, keyEquivalent: "")
+            updatedItem.isEnabled = false
+            submenu.addItem(updatedItem)
+        }
 
         let menuItem = NSMenuItem(title: "AI Usage Quotas", action: nil, keyEquivalent: "")
         menuItem.submenu = submenu
@@ -82,6 +87,13 @@ extension StatusBarController {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.target = self
         return item
+    }
+
+    private func updatedAgoText(since date: Date) -> String {
+        guard Date().timeIntervalSince(date) >= 60 else { return "just now" }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 
     @objc private func refreshUsageFromMenu() {

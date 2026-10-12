@@ -231,7 +231,7 @@ final class UsageQuotaPaceTests: XCTestCase {
             durationSeconds: 18000
         )
         let untimed = UsageWindow(remainingPercent: 42, resetAt: nil, label: "Credits")
-        XCTAssertEqual(UsageQuotaPace.rowTitle(isSessionWindow: true, window: timed), "Session")
+        XCTAssertEqual(UsageQuotaPace.rowTitle(isSessionWindow: true, window: timed), "5-hour")
         XCTAssertEqual(UsageQuotaPace.rowTitle(isSessionWindow: true, window: untimed), "Credits")
         XCTAssertEqual(UsageQuotaPace.rowTitle(isSessionWindow: false, window: timed), "Weekly")
         XCTAssertEqual(UsageQuotaPace.rowTitle(isSessionWindow: false, window: untimed), "Credits")

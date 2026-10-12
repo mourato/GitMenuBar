@@ -64,7 +64,7 @@ struct ProviderIconView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 18, height: 18)
-                .foregroundStyle(tint ?? Color(nsColor: .labelColor))
+                .foregroundStyle(tint ?? providerID.brandColor)
                 .accessibilityHidden(true)
         } else {
             Image(systemName: fallbackSymbol)

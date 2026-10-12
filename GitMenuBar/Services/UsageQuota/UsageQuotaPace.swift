@@ -189,7 +189,8 @@ enum UsageQuotaPace {
     /// usable duration keeps its provider label (for example "Credits").
     static func rowTitle(isSessionWindow: Bool, window: UsageWindow) -> String {
         if isSessionWindow {
-            return window.durationSeconds == nil ? window.label : "Session"
+            guard let seconds = window.durationSeconds else { return window.label }
+            return seconds < 86400 && seconds % 3600 == 0 ? "\(seconds / 3600)-hour" : "Session"
         }
         return window.durationSeconds == nil ? window.label : "Weekly"
     }

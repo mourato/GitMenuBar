@@ -34,7 +34,8 @@ struct UsageQuotaDotsCard: View {
                     .frame(width: 15, height: 15)
 
                 Text(displayName)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.secondary)
 
                 if let pillText {
                     Text(pillText)
@@ -107,27 +108,25 @@ private struct UsageQuotaDotsRow: View {
     let showUsed: Bool
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 0) {
             (Text(row.title)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 13))
                 + Text(countdownSuffix)
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary))
                 .lineLimit(1)
-                .frame(minWidth: 96, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer(minLength: 6)
-
-            HStack(spacing: 4) {
+            // Fixed-width meter and value columns keep the dots aligned across rows and cards.
+            HStack(spacing: 3) {
                 ForEach(0 ..< 5, id: \.self) { index in
-                    Capsule(style: .continuous)
+                    RoundedRectangle(cornerRadius: 1.5, style: .continuous)
                         .fill(index < filled ? tint : Color.primary.opacity(0.15))
-                        .frame(width: 12, height: 7)
+                        .frame(width: 7, height: 5)
                 }
             }
+            .padding(.horizontal, 10)
             .accessibilityHidden(true)
-
-            Spacer(minLength: 6)
 
             (Text(percentNumber)
                 .font(.system(size: 20, weight: .semibold))
@@ -137,7 +136,7 @@ private struct UsageQuotaDotsRow: View {
                 .foregroundStyle(.secondary))
                 .monospacedDigit()
                 .lineLimit(1)
-                .frame(minWidth: 70, alignment: .trailing)
+                .frame(width: 84, alignment: .trailing)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(row.title) \(displayPercent) percent \(percentSuffix)")
@@ -168,7 +167,7 @@ private struct UsageQuotaDotsRow: View {
     }
 
     private var percentColor: Color {
-        row.remainingPercent < 15 ? .red : .primary
+        row.remainingPercent < 15 ? tint : .primary
     }
 }
 
@@ -184,7 +183,8 @@ struct UsageQuotaCostDotsCard: View {
                         .frame(width: 15, height: 15)
 
                     Text(row.title)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.secondary)
 
                     Text(row.monthLabel)
                         .font(.system(size: 11))
