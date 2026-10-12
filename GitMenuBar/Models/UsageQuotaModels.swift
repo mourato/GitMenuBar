@@ -62,6 +62,8 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
     let creditValueText: String?
     /// Codex limit-reset credits still available (from `wham/rate-limit-reset-credits`).
     let resetCreditsAvailable: Int?
+    /// Provider-reported plan name when known (e.g. Codex `chatgpt_plan_type`, Cursor `membershipType`).
+    let planText: String?
     let isAvailable: Bool
     let isStale: Bool
     let statusNote: String?
@@ -84,6 +86,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         modelWindows: [UsageWindow] = [],
         creditValueText: String? = nil,
         resetCreditsAvailable: Int? = nil,
+        planText: String? = nil,
         isAvailable: Bool,
         isStale: Bool = false,
         statusNote: String? = nil,
@@ -96,6 +99,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         self.modelWindows = modelWindows
         self.creditValueText = creditValueText
         self.resetCreditsAvailable = resetCreditsAvailable.flatMap { $0 > 0 ? $0 : nil }
+        self.planText = planText.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap { $0.isEmpty ? nil : $0 }
         self.isAvailable = isAvailable
         self.isStale = isStale
         self.statusNote = statusNote
@@ -110,6 +114,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         case modelWindows
         case creditValueText
         case resetCreditsAvailable
+        case planText
         case isAvailable
         case isStale
         case statusNote
@@ -125,6 +130,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         modelWindows = try container.decodeIfPresent([UsageWindow].self, forKey: .modelWindows) ?? []
         creditValueText = try container.decodeIfPresent(String.self, forKey: .creditValueText)
         resetCreditsAvailable = try container.decodeIfPresent(Int.self, forKey: .resetCreditsAvailable)
+        planText = try container.decodeIfPresent(String.self, forKey: .planText)
         isAvailable = try container.decode(Bool.self, forKey: .isAvailable)
         isStale = try container.decode(Bool.self, forKey: .isStale)
         statusNote = try container.decodeIfPresent(String.self, forKey: .statusNote)
@@ -154,6 +160,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
             modelWindows: modelWindows,
             creditValueText: creditValueText,
             resetCreditsAvailable: resetCreditsAvailable,
+            planText: planText,
             isAvailable: isAvailable,
             isStale: true,
             statusNote: note ?? statusNote,
@@ -170,12 +177,62 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
             modelWindows: modelWindows,
             creditValueText: creditValueText,
             resetCreditsAvailable: count,
+            planText: planText,
             isAvailable: isAvailable,
             isStale: isStale,
             statusNote: statusNote,
             fetchedAt: fetchedAt
         )
     }
+
+    func withPlanText(_ plan: String?) -> UsageQuotaSnapshot {
+        UsageQuotaSnapshot(
+            providerID: providerID,
+            displayName: displayName,
+            sessionWindow: sessionWindow,
+            weeklyWindow: weeklyWindow,
+            modelWindows: modelWindows,
+            creditValueText: creditValueText,
+            resetCreditsAvailable: resetCreditsAvailable,
+            planText: plan,
+            isAvailable: isAvailable,
+            isStale: isStale,
+            statusNote: statusNote,
+            fetchedAt: fetchedAt
+        )
+    }
+}
+
+/// Plan display names derived from provider payloads (no new sources).
+enum UsageQuotaPlanNaming {
+    /// Capitalized raw value (`pro` → `Pro`); nil/blank stays nil.
+    static func display(_ raw: String?) -> String? {
+        guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return nil
+        }
+        return raw.prefix(1).uppercased() + raw.dropFirst()
+    }
+
+    /// Cursor `membershipType` mapping (mirrors CodexBar's plan labels).
+    static func cursor(_ membershipType: String?) -> String? {
+        guard let type = membershipType?.trimmingCharacters(in: .whitespacesAndNewlines), !type.isEmpty else {
+            return nil
+        }
+        return cursorPlans[type.lowercased()] ?? display(type)
+    }
+
+    private static let cursorPlans = [
+        "enterprise": "Enterprise",
+        "express": "Start",
+        "free": "Free",
+        "free_trial": "Pro Trial",
+        "hobby": "Hobby",
+        "pro": "Pro",
+        "pro_student": "Pro",
+        "pro_plus": "Pro+",
+        "team": "Team",
+        "ultra": "Ultra"
+    ]
 }
 
 enum UsageQuotaFormatting {

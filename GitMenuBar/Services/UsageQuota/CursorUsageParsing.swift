@@ -64,6 +64,7 @@ enum CursorUsageParsing {
             ),
             weeklyWindow: nil,
             creditValueText: creditValueText,
+            planText: UsageQuotaPlanNaming.cursor(root["membershipType"] as? String),
             isAvailable: true,
             statusNote: "cursor usage-summary api"
         )

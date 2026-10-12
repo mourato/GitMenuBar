@@ -68,10 +68,28 @@ enum ClaudeCodeUsageParsing {
             sessionWindow: session,
             weeklyWindow: weekly,
             modelWindows: modelWindows,
+            planText: planText(from: root),
             isAvailable: true,
             statusNote: statusNote,
             fetchedAt: now
         )
+    }
+
+    /// Best-effort plan label; the OAuth usage payload carries no documented plan field.
+    private static func planText(from root: [String: Any]) -> String? {
+        for key in ["plan", "plan_type", "planType", "subscription", "subscription_type", "tier", "rate_limit_tier", "account_type"] {
+            if let value = root[key] as? String, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return UsageQuotaPlanNaming.display(value)
+            }
+        }
+        if let subscription = root["subscription"] as? [String: Any] {
+            for key in ["plan", "type", "tier", "name"] {
+                if let value = subscription[key] as? String, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return UsageQuotaPlanNaming.display(value)
+                }
+            }
+        }
+        return nil
     }
 
     static func snapshot(fromJSONL text: String, now: Date = Date()) -> UsageQuotaSnapshot? {

@@ -10,7 +10,7 @@ struct UsageQuotaMenuView: View {
     var body: some View {
         let snapshots = orderedSnapshots
         VStack(alignment: .leading, spacing: 12) {
-            if snapshots.isEmpty {
+            if snapshots.isEmpty, usageQuotaStore.costEstimates == nil {
                 Text("No usage figures available")
                     .font(UsageQuotaMenuTypography.supporting)
                     .foregroundStyle(UsageQuotaMenuInk.secondary)
@@ -18,6 +18,15 @@ struct UsageQuotaMenuView: View {
             } else {
                 ForEach(snapshots) { snapshot in
                     providerSection(snapshot)
+                }
+                if let estimates = usageQuotaStore.costEstimates, !estimates.rows.isEmpty {
+                    UsageQuotaCostDotsCard(estimates: estimates)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .fill(UsageQuotaMenuInk.card)
+                        )
                 }
             }
         }
@@ -34,127 +43,69 @@ struct UsageQuotaMenuView: View {
 
     private func providerSection(_ snapshot: UsageQuotaSnapshot) -> some View {
         let showUsed = preferences.valueStyle == .used
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 5) {
-                ProviderIconView(providerID: snapshot.providerID)
-                    .frame(width: 15, height: 15)
-                Text(snapshot.displayName)
-                    .font(UsageQuotaMenuTypography.header)
-                    .foregroundStyle(UsageQuotaMenuInk.primary)
-                if snapshot.isStale {
-                    Text("Outdated")
-                        .font(UsageQuotaMenuTypography.plan)
-                        .foregroundStyle(UsageQuotaMenuInk.tertiary)
-                }
-                Spacer(minLength: 8)
-            }
-            .padding(.leading, 2)
-
-            VStack(spacing: 0) {
-                if let sessionWindow = snapshot.sessionWindow,
-                   UsageQuotaMenuPresentation.value(
-                       for: .session,
-                       snapshot: snapshot,
-                       valueStyle: preferences.valueStyle
-                   ) != nil
-                {
-                    meterRow(
-                        title: UsageQuotaPresentationPreferences.Metric.session.title,
-                        window: sessionWindow,
-                        snapshot: snapshot,
-                        showUsed: showUsed,
-                        thresholds: preferences.sessionWarningThresholds
-                    )
-                }
-                if let weeklyWindow = snapshot.weeklyWindow,
-                   UsageQuotaMenuPresentation.value(
-                       for: .weekly,
-                       snapshot: snapshot,
-                       valueStyle: preferences.valueStyle
-                   ) != nil
-                {
-                    meterRow(
-                        title: UsageQuotaPresentationPreferences.Metric.weekly.title,
-                        window: weeklyWindow,
-                        snapshot: snapshot,
-                        showUsed: showUsed,
-                        thresholds: preferences.weeklyWarningThresholds
-                    )
-                }
-                if let credits = UsageQuotaMenuPresentation.value(
-                    for: .credits,
-                    snapshot: snapshot,
-                    valueStyle: preferences.valueStyle
-                ) {
-                    creditRow(credits)
-                }
-                ForEach(Array(snapshot.modelWindows.enumerated()), id: \.offset) { _, window in
-                    meterRow(
-                        title: window.label,
-                        window: window,
-                        snapshot: snapshot,
-                        showUsed: showUsed,
-                        thresholds: preferences.weeklyWarningThresholds
-                    )
-                }
-            }
-            .padding(.vertical, 5)
-            .background(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(UsageQuotaMenuInk.card)
-            )
-        }
+        return UsageQuotaDotsCard(
+            providerID: snapshot.providerID,
+            displayName: snapshot.displayName,
+            pillText: UsageQuotaDotsCard.pillText(
+                plan: snapshot.planText,
+                intervalChip: snapshot.primaryDisplayWindow?.intervalChip,
+                resetCredits: creditsMetricSelected(for: snapshot) ? snapshot.resetCreditsAvailable : nil
+            ),
+            staleStyle: snapshot.isStale ? .text : .none,
+            rows: dotsRows(for: snapshot),
+            footnote: footnoteText(for: snapshot),
+            showUsed: showUsed
+        )
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(UsageQuotaMenuInk.card)
+        )
         .opacity(snapshot.isStale ? 0.72 : 1)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(snapshot.displayName)
     }
 
-    private func meterRow(
-        title: String,
-        window: UsageWindow,
-        snapshot: UsageQuotaSnapshot,
-        showUsed: Bool,
-        thresholds: [Int]
-    ) -> some View {
-        UsageQuotaMeterRow(
-            title: title,
-            reading: UsageQuotaPace.reading(
-                for: window,
-                showUsed: showUsed,
-                thresholds: thresholds,
-                workdaysPerWeek: preferences.workdaysPerWeek,
-                showPace: preferences.showsPace
-            ),
-            style: UsageQuotaMeterRowStyle(
-                titleFont: UsageQuotaMenuTypography.label,
-                supportingFont: UsageQuotaMenuTypography.supporting,
-                primary: UsageQuotaMenuInk.primary,
-                secondary: UsageQuotaMenuInk.secondary
-            ),
-            tint: usageQuotaMenuColor(for: window.remainingPercent),
-            trackColor: UsageQuotaMenuInk.track,
-            barHeight: 5,
-            accessibilityLabel: "\(snapshot.displayName) \(title)"
-        )
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
+    private func dotsRows(for snapshot: UsageQuotaSnapshot) -> [UsageQuotaDotsCard.RowData] {
+        var rows: [UsageQuotaDotsCard.RowData] = []
+        if let sessionWindow = snapshot.sessionWindow {
+            rows.append(UsageQuotaDotsCard.RowData(
+                title: UsageQuotaPresentationPreferences.Metric.session.title,
+                countdown: UsageQuotaDotsCard.bareCountdown(until: sessionWindow.resetAt),
+                remainingPercent: sessionWindow.remainingPercent
+            ))
+        }
+        if let weeklyWindow = snapshot.weeklyWindow {
+            rows.append(UsageQuotaDotsCard.RowData(
+                title: UsageQuotaPresentationPreferences.Metric.weekly.title,
+                countdown: UsageQuotaDotsCard.bareCountdown(until: weeklyWindow.resetAt),
+                remainingPercent: weeklyWindow.remainingPercent
+            ))
+        }
+        for window in snapshot.modelWindows {
+            rows.append(UsageQuotaDotsCard.RowData(
+                title: window.label,
+                countdown: UsageQuotaDotsCard.bareCountdown(until: window.resetAt),
+                remainingPercent: window.remainingPercent
+            ))
+        }
+        return rows
     }
 
-    private func creditRow(_ credits: UsageQuotaMenuReading) -> some View {
-        HStack(spacing: 10) {
-            Text(credits.label)
-                .font(UsageQuotaMenuTypography.label)
-                .foregroundStyle(UsageQuotaMenuInk.primary)
-            Spacer(minLength: 12)
-            Text(credits.value)
-                .font(UsageQuotaMenuTypography.supporting)
-                .foregroundStyle(UsageQuotaMenuInk.primary)
-                .monospacedDigit()
-        }
-        .lineLimit(1)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .accessibilityElement(children: .combine)
+    /// `creditValueText` stays a secondary line; reset credits fold into the plan pill.
+    private func footnoteText(for snapshot: UsageQuotaSnapshot) -> String? {
+        guard creditsMetricSelected(for: snapshot) else { return nil }
+        guard snapshot.resetCreditsAvailable == nil else { return nil }
+        return snapshot.creditValueText
+    }
+
+    private func creditsMetricSelected(for snapshot: UsageQuotaSnapshot) -> Bool {
+        UsageQuotaMenuPresentation.value(
+            for: .credits,
+            snapshot: snapshot,
+            valueStyle: preferences.valueStyle
+        ) != nil
     }
 }
 
@@ -314,29 +265,12 @@ struct UsageQuotaMenuBarStrip: View {
 }
 
 private enum UsageQuotaMenuTypography {
-    static let label = Font(NSFont.menuFont(ofSize: 0)).weight(.semibold)
     static let supporting = Font(NSFont.menuFont(ofSize: max(10, NSFont.menuFont(ofSize: 0).pointSize - 1)))
-    static let header = Font(NSFont.menuFont(ofSize: 0)).weight(.semibold)
-    static let plan = Font(NSFont.menuFont(ofSize: max(9, NSFont.menuFont(ofSize: 0).pointSize - 2)))
 }
 
 private enum UsageQuotaMenuInk {
-    static let primary = Color(nsColor: .labelColor)
     static let secondary = Color(nsColor: .secondaryLabelColor)
-    static let tertiary = Color(nsColor: .tertiaryLabelColor)
-    static let track = Color(nsColor: .tertiaryLabelColor)
     static let card = Color(nsColor: .quaternarySystemFill)
-}
-
-private func usageQuotaMenuColor(for remainingPercent: Int) -> Color {
-    switch UsageQuotaFormatting.trafficLightColor(for: remainingPercent) {
-    case .green:
-        Color(nsColor: .systemGreen)
-    case .amber:
-        Color(nsColor: .systemYellow)
-    case .red:
-        Color(nsColor: .systemRed)
-    }
 }
 
 #Preview("Usage Quota Menu") {

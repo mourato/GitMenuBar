@@ -142,7 +142,7 @@ giving this repository a star.
 Some GitMenuBar implementation details are adapted from open-source projects:
 
 - [Mimir](https://github.com/erayendes/mimir) — MIT, Copyright (c) 2026 Eray Endes; Codex usage parsing.
-- [CodexBar](https://github.com/steipete/CodexBar) — MIT, Copyright (c) 2026 Peter Steinberger; OpenRouter credits parsing and provider icons.
+- [CodexBar](https://github.com/steipete/CodexBar) — MIT, Copyright (c) 2026 Peter Steinberger; OpenRouter credits parsing, provider icons, Cursor plan labels, and API-equivalent token pricing.
 - [`@pierre/trees`](https://www.npmjs.com/package/@pierre/trees) — Apache-2.0, with the retained `headless-tree/core` MIT notice; curated file-type SVG paths.
 
 See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and

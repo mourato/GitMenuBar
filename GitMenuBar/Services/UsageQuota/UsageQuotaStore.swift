@@ -16,9 +16,12 @@ final class UsageQuotaStore {
     private enum Constants {
         static let refreshInterval: TimeInterval = 120
         static let providerTimeout: TimeInterval = 8
+        static let costScanInterval: TimeInterval = 120
     }
 
     private(set) var snapshots: [UsageQuotaSnapshot] = []
+    /// Current-month API-equivalent spend estimate; nil until the first refresh scans local sessions.
+    private(set) var costEstimates: UsageQuotaCostEstimate?
     var showAIUsageQuotas: Bool {
         didSet {
             guard showAIUsageQuotas != oldValue else { return }
@@ -84,6 +87,7 @@ final class UsageQuotaStore {
     @ObservationIgnored private var refreshGeneration = 0
     @ObservationIgnored private var isRefreshInFlight = false
     @ObservationIgnored private var lastPresentationRefreshAt: Date?
+    @ObservationIgnored private var lastCostScanAt: Date?
 
     init(
         defaults: UserDefaults = .standard,
@@ -245,6 +249,26 @@ final class UsageQuotaStore {
         guard generation == refreshGeneration else { return }
         snapshots = merged
         finishRefresh(reason: reason, generation: generation)
+        refreshCostEstimates(reason: reason, generation: generation)
+    }
+
+    /// Monthly spend estimate rides along without holding provider-refresh timing hostage.
+    private func refreshCostEstimates(reason: RefreshReason, generation: Int) {
+        if reason != .manual,
+           let lastCostScanAt,
+           now().timeIntervalSince(lastCostScanAt) < Constants.costScanInterval
+        {
+            return
+        }
+        lastCostScanAt = now()
+        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+        Task { [weak self] in
+            let estimates = await Task.detached(priority: .utility) {
+                UsageQuotaCostScanner.estimate(homeDirectory: homeDirectory)
+            }.value
+            guard let self, generation == refreshGeneration else { return }
+            costEstimates = estimates.rows.isEmpty ? nil : estimates
+        }
     }
 
     private func finishRefresh(reason: RefreshReason, generation: Int) {

@@ -156,6 +156,30 @@ enum CodexUsageParsing {
         return accountID
     }
 
+    /// Subscription plan (`pro`, `team`, …) from the auth file or its ID-token claims.
+    static func planType(fromAuth auth: [String: Any]) -> String? {
+        if let plan = auth["chatgpt_plan_type"] as? String, !plan.isEmpty {
+            return plan
+        }
+        let candidates = [
+            (auth["tokens"] as? [String: Any])?["id_token"] as? String,
+            auth["id_token"] as? String
+        ].compactMap(\.self)
+        for token in candidates {
+            guard let payload = decodeJWTPayload(token) else { continue }
+            if let plan = payload["chatgpt_plan_type"] as? String, !plan.isEmpty {
+                return plan
+            }
+            if let namespaced = payload["https://api.openai.com/auth"] as? [String: Any],
+               let plan = namespaced["chatgpt_plan_type"] as? String,
+               !plan.isEmpty
+            {
+                return plan
+            }
+        }
+        return nil
+    }
+
     static func codexAccessToken(in auth: [String: Any]) -> String? {
         if let token = auth["access_token"] as? String, !token.isEmpty {
             return token

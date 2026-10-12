@@ -55,11 +55,15 @@ struct CodexUsageProvider: UsageQuotaProviding {
     private func fetchFromLocalSessions() -> UsageQuotaSnapshot? {
         let sessionsDirectory = homeDirectory.appendingPathComponent(".codex/sessions")
         guard let file = CodexUsageParsing.latestJSONLFile(in: sessionsDirectory, fileManager: .default),
-              let text = try? String(contentsOf: file, encoding: .utf8)
+              let text = try? String(contentsOf: file, encoding: .utf8),
+              var snapshot = CodexUsageParsing.snapshot(fromSessionsJSONL: text)
         else {
             return nil
         }
-        return CodexUsageParsing.snapshot(fromSessionsJSONL: text)
+        if let authState = readCodexAuthState() {
+            snapshot = snapshot.withPlanText(UsageQuotaPlanNaming.display(CodexUsageParsing.planType(fromAuth: authState.auth)))
+        }
+        return snapshot
     }
 
     private func readCodexAuthState() -> CodexAuthState? {
@@ -161,7 +165,7 @@ struct CodexUsageProvider: UsageQuotaProviding {
             ) {
                 snapshot = snapshot.withResetCreditsAvailable(resetCredits)
             }
-            return snapshot
+            return snapshot.withPlanText(UsageQuotaPlanNaming.display(CodexUsageParsing.planType(fromAuth: auth)))
         } catch {
             return nil
         }
