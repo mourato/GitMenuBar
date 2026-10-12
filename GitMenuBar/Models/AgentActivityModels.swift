@@ -35,6 +35,17 @@ enum AgentHarnessID: String, CaseIterable, Sendable, Identifiable {
         case .antigravity: "sparkles"
         }
     }
+
+    /// Tint for the harness icon; nil keeps the neutral primary and secondary styles.
+    var brandColorHex: UInt32? {
+        switch self {
+        case .claudeCode: 0xD97757
+        case .codex: 0x71A597
+        case .opencode: 0xF49CBB
+        case .antigravity: 0x4A85EF
+        case .cursor: nil
+        }
+    }
 }
 
 /// Activity state for an agent within a project.

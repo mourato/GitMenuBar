@@ -31,15 +31,22 @@ struct AgentBadgeIconView: View {
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .foregroundStyle(activity.status.isRunning ? Color.primary : Color.secondary)
+                .foregroundStyle(iconTint)
                 .accessibilityHidden(true)
         } else {
             Image(systemName: activity.harness.fallbackSymbol)
                 .resizable()
                 .scaledToFit()
-                .foregroundStyle(activity.status.isRunning ? Color.primary : Color.secondary)
+                .foregroundStyle(iconTint)
                 .accessibilityHidden(true)
         }
+    }
+
+    private var iconTint: Color {
+        guard let hex = activity.harness.brandColorHex else {
+            return activity.status.isRunning ? .primary : .secondary
+        }
+        return Color(hex: hex)
     }
 
     private var tooltipText: String {
@@ -64,6 +71,16 @@ struct AgentBadgeIconView: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+private extension Color {
+    init(hex: UInt32) {
+        self.init(
+            red: Double((hex >> 16) & 0xFF) / 255,
+            green: Double((hex >> 8) & 0xFF) / 255,
+            blue: Double(hex & 0xFF) / 255
+        )
     }
 }
 

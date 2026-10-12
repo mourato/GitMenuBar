@@ -230,11 +230,19 @@ struct ProjectsSidebarView: View {
 
     private var groupedProjects: [(String, [ProjectStatusSnapshot])] {
         let values = monitor.monitoredProjects.compactMap { monitor.snapshots[$0.path] }
+        let working = showAgentActivity ? values.filter(hasRunningAgent) : []
+        let workingPaths = Set(working.map(\.project.path))
+        let others = values.filter { !workingPaths.contains($0.project.path) }
         return [
-            ("Needs Attention", values.filter { $0.classification == .needsAttention }.sorted(by: attentionSort)),
-            ("Clean", values.filter { $0.classification == .clean }.sorted(by: projectNameSort)),
-            ("Unavailable", values.filter { $0.classification == .unavailable }.sorted(by: projectNameSort))
+            ("Working", working.sorted(by: projectNameSort)),
+            ("Needs Attention", others.filter { $0.classification == .needsAttention }.sorted(by: attentionSort)),
+            ("Clean", others.filter { $0.classification == .clean }.sorted(by: projectNameSort)),
+            ("Unavailable", others.filter { $0.classification == .unavailable }.sorted(by: projectNameSort))
         ].filter { !$0.1.isEmpty }
+    }
+
+    private func hasRunningAgent(_ snapshot: ProjectStatusSnapshot) -> Bool {
+        (monitor.agentActivities[snapshot.project.path] ?? []).contains(where: \.status.isRunning)
     }
 
     private func attentionSort(_ lhs: ProjectStatusSnapshot, _ rhs: ProjectStatusSnapshot) -> Bool {
