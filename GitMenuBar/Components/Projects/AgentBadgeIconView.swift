@@ -43,9 +43,8 @@ struct AgentBadgeIconView: View {
     }
 
     private var iconTint: Color {
-        guard let hex = activity.harness.brandColorHex else {
-            return activity.status.isRunning ? .primary : .secondary
-        }
+        guard activity.status.isRunning else { return .secondary }
+        guard let hex = activity.harness.brandColorHex else { return .primary }
         return Color(hex: hex)
     }
 
