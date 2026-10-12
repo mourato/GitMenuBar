@@ -6,41 +6,15 @@ extension StatusBarController {
         let menu = contextMenu ?? NSMenu()
         menu.removeAllItems()
 
-        if appendCommandItems([.commit, .commitAndPush, .sync], to: menu) {
-            menu.addItem(NSMenuItem.separator())
-        }
-
-        if appendCommandItems(
-            [.openRepositoryOnGitHub, .revealRepositoryInFinder, .showRepositoryOptions],
-            to: menu
-        ) {
-            menu.addItem(NSMenuItem.separator())
-        }
-
-        appendRecentProjectsMenu(to: menu)
-        addCommandMenuItem(.chooseRepository, to: menu)
-
         if let usageQuotaMenuItem = makeUsageQuotaMenuItem() {
-            menu.addItem(.separator())
             menu.addItem(usageQuotaMenuItem)
+            menu.addItem(NSMenuItem.separator())
         }
-
-        menu.addItem(NSMenuItem.separator())
 
         addCommandMenuItem(.showSettings, to: menu)
         addCommandMenuItem(.quit, to: menu)
 
         contextMenu = menu
-    }
-
-    private func appendCommandItems(_ commandIDs: [AppCommandID], to menu: NSMenu) -> Bool {
-        let hasEnabledItem = commandIDs.contains { appCommandCenter.state(for: $0).isEnabled }
-
-        for commandID in commandIDs {
-            addCommandMenuItem(commandID, to: menu)
-        }
-
-        return hasEnabledItem
     }
 
     private func addCommandMenuItem(_ commandID: AppCommandID, to menu: NSMenu) {
@@ -52,30 +26,6 @@ extension StatusBarController {
             isEnabled: state.isEnabled
         )
         menu.addItem(item)
-    }
-
-    private func appendRecentProjectsMenu(to menu: NSMenu) {
-        guard !appCommandCenter.monitoredProjects.isEmpty else {
-            return
-        }
-
-        let recentMenuItem = NSMenuItem(title: "Open Monitored Project", action: nil, keyEquivalent: "")
-        let submenu = NSMenu(title: "Open Monitored Project")
-
-        for project in appCommandCenter.monitoredProjects {
-            let item = NSMenuItem(
-                title: project.title,
-                action: #selector(handleRecentProjectContextMenuItem(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.toolTip = project.subtitle
-            item.representedObject = project.path
-            submenu.addItem(item)
-        }
-
-        recentMenuItem.submenu = submenu
-        menu.addItem(recentMenuItem)
     }
 
     private func makeMenuItem(
@@ -97,12 +47,5 @@ extension StatusBarController {
         }
 
         appCommandCenter.perform(commandID)
-    }
-
-    @objc private func handleRecentProjectContextMenuItem(_ sender: NSMenuItem) {
-        guard let path = sender.representedObject as? String else {
-            return
-        }
-        appCommandCenter.performRecentProject(path: path)
     }
 }
