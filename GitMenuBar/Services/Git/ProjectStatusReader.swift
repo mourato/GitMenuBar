@@ -169,7 +169,7 @@ struct ProjectStatusReader {
             let exists = FileManager.default.fileExists(atPath: project.path)
             let errorDescription: String = if !exists {
                 "Folder unavailable"
-            } else if status.output.localizedCaseInsensitiveContains("not a git repository") {
+            } else if status.output.localizedStandardContains("not a git repository") {
                 "Not a Git repository"
             } else {
                 status.output
