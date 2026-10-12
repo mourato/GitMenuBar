@@ -76,9 +76,10 @@ toolbar keeps only route-specific controls such as the sidebar toggle and Back.
 The status item remains the single app-shell owner. Left click opens the main
 GitMenuBar window. Right click and Control-click show only `AI Usage Quotas`,
 `Settings`, and `Quit GitMenuBar`; when usage quotas are disabled, the menu
-contains only Settings and Quit. Git and project actions remain available in
-their existing app surfaces. The quota submenu retains the provider cards and
-refresh action. The user can choose whether the status item always renders up
+contains only Settings and Quit. [ADR 0019](adr/0019-focused-status-item-context-menu.md)
+records this menu scope. Git and project actions remain available in their
+existing app surfaces. The quota submenu retains the provider cards and refresh
+action. The user can choose whether the status item always renders up
 to two selected quota figures per provider or keeps them only inside that
 submenu; the submenu remains available in both modes. The status-item strip
 uses template/semantic AppKit label color so it follows the menu bar's

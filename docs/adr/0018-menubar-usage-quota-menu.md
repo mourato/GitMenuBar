@@ -1,6 +1,6 @@
 # ADR 0018: Native menu-bar quota menu
 
-Status: Accepted
+Status: Superseded by ADR 0019
 Date: 2026-09-13
 
 ## Context
