@@ -4,7 +4,7 @@ import SwiftUI
 /// Compact visual badge representing an active or recent AI coding agent on a project.
 struct AgentBadgeIconView: View {
     let activity: AgentProjectActivity
-    var size: CGFloat = 13
+    var size: CGFloat = 16
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
