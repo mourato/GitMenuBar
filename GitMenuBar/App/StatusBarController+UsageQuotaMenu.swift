@@ -27,9 +27,9 @@ extension StatusBarController {
             iconSize: Constants.statusIconPointSize
         )
         button.toolTip = if showsUsageInStatusItem, !groups.isEmpty {
-            "\(groups.map(\.spokenLabel).joined(separator: ", ")). Right-click for usage quotas and Git commands"
+            "\(groups.map(\.spokenLabel).joined(separator: ", ")). Right-click for usage quotas"
         } else if usageQuotaStore.showAIUsageQuotas {
-            "GitMenuBar — right-click for usage quotas and Git commands"
+            "GitMenuBar — right-click for usage quotas"
         } else {
             "GitMenuBar"
         }
