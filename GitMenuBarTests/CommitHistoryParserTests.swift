@@ -210,16 +210,21 @@ final class CommitHistoryParserTests: XCTestCase {
         let runner = GitCommandRunner()
         let fetchParser = CommitHistoryParser(runner: runner)
 
+        // Empty commits: the parser only counts history, and each git process costs time under load.
         for index in 1 ... 60 {
-            let fileURL = repoURL.appendingPathComponent("file-\(index).txt")
-            try "value-\(index)\n".write(to: fileURL, atomically: true, encoding: .utf8)
-            try runGit(["add", "."], in: repoURL)
-            try runGit(["commit", "-m", "feat: commit \(index)"], in: repoURL)
+            try runGit(["commit", "--allow-empty", "-m", "feat: commit \(index)"], in: repoURL)
         }
 
         let commits = fetchParser.fetchCommitHistory(in: repoURL.path)
 
         XCTAssertEqual(commits.count, 50)
+    }
+
+    @MainActor
+    func testNextCommitHistoryLimitAddsBatchAndClampsToOne() {
+        XCTAssertEqual(GitCommitHistoryService.nextCommitHistoryLimit(current: 25, batchSize: 25), 50)
+        XCTAssertEqual(GitCommitHistoryService.nextCommitHistoryLimit(current: 50, batchSize: 0), 51)
+        XCTAssertEqual(GitCommitHistoryService.nextCommitHistoryLimit(current: 50, batchSize: -5), 51)
     }
 
     private func makeRecord(_ record: CommitRecord) -> String {

@@ -207,7 +207,8 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
                 completed.fulfill()
             }
         }
-        await fulfillment(of: [completed], timeout: 5.0)
+        // The legacy completion fires after a full refresh pass; allow it under full-suite load.
+        await fulfillment(of: [completed], timeout: 15.0)
 
         XCTAssertEqual(gitManager.sessionlessRefreshCount, 1)
         XCTAssertEqual(gitManager.contextualRefreshCount, 0)

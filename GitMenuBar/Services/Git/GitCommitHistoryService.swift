@@ -121,8 +121,11 @@ final class GitCommitHistoryService {
     }
 
     func loadMoreCommitHistory(batchSize: Int = GitCommitHistoryService.defaultCommitHistoryLimit) {
-        let nextLimit = commitHistoryLimit + max(1, batchSize)
-        fetchCommitHistory(limit: nextLimit)
+        fetchCommitHistory(limit: Self.nextCommitHistoryLimit(current: commitHistoryLimit, batchSize: batchSize))
+    }
+
+    static func nextCommitHistoryLimit(current: Int, batchSize: Int) -> Int {
+        current + max(1, batchSize)
     }
 
     func isMergeCommit(_ hash: String, completion: @escaping (Result<Bool, Error>) -> Void) {
