@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// Current-month API-equivalent spend estimate for subscription token usage.
 /// `nil` amounts mean "seen but unpriced"; providers without any monthly
@@ -17,10 +18,20 @@ struct UsageQuotaCostEstimate: Equatable, Sendable {
 
 enum UsageQuotaCostScanner {
     private enum Constants {
-        /// ponytail: full re-scan per refresh, newest files first with hard caps; add an incremental cache if this ever shows up in profiles.
+        /// ponytail: per-file totals cached in memory (keyed by path, mtime, size, monthStart); cold start and first scan after relaunch still read every listed file. Persist the cache if cold start shows up in profiles.
         static let maxFilesPerRoot = 600
         static let maxFileBytes = 96 * 1024 * 1024
     }
+
+    /// Per-file scan results reused while the file's mtime, size and month are unchanged.
+    private struct CachedFileTotal: Sendable {
+        let modified: Date
+        let size: Int
+        let monthStart: Date
+        let total: CostTotal
+    }
+
+    private static let fileCache = Mutex<[String: CachedFileTotal]>([:])
 
     static func estimate(homeDirectory: URL, now: Date = Date()) -> UsageQuotaCostEstimate {
         let monthStart = Calendar.current.date(
@@ -34,8 +45,14 @@ enum UsageQuotaCostScanner {
         ]
         let claudeRoot = homeDirectory.appendingPathComponent(".claude/projects", isDirectory: true)
 
-        let codex = codexTotalUSD(roots: codexRoots, monthStart: monthStart)
-        let claude = claudeTotalUSD(root: claudeRoot, monthStart: monthStart)
+        let codexFiles = codexRoots.flatMap { jsonlFiles(under: $0, monthStart: monthStart) }
+        let claudeFiles = jsonlFiles(under: claudeRoot, monthStart: monthStart)
+
+        var cache: [String: CachedFileTotal] = [:]
+        let codex = summedTotal(of: codexFiles, monthStart: monthStart, cache: &cache, scan: scanCodexFile)
+        let claude = summedTotal(of: claudeFiles, monthStart: monthStart, cache: &cache, scan: scanClaudeFile)
+        // Replacing the whole cache drops entries for files no longer listed.
+        fileCache.withLock { $0 = cache }
 
         var rows: [UsageQuotaCostEstimate.Row] = []
         if codex.hasRecords {
@@ -43,7 +60,7 @@ enum UsageQuotaCostScanner {
                 providerID: .codex,
                 title: "OpenAI API",
                 monthLabel: monthLabel,
-                amountUSD: codex.totalUSD
+                amountUSD: codex.hasPricedRecords ? codex.totalUSD : nil
             ))
         }
         if claude.hasRecords {
@@ -51,7 +68,7 @@ enum UsageQuotaCostScanner {
                 providerID: .claudeCode,
                 title: "Anthropic API",
                 monthLabel: monthLabel,
-                amountUSD: claude.totalUSD
+                amountUSD: claude.hasPricedRecords ? claude.totalUSD : nil
             ))
         }
         return UsageQuotaCostEstimate(rows: rows)
@@ -71,22 +88,6 @@ enum UsageQuotaCostScanner {
 
     // MARK: - Codex
 
-    private struct CodexTotal: Sendable {
-        var totalUSD = 0.0
-        var hasRecords = false
-        var hasPricedRecords = false
-    }
-
-    private static func codexTotalUSD(roots: [URL], monthStart: Date) -> (totalUSD: Double?, hasRecords: Bool) {
-        var total = CodexTotal()
-        for root in roots {
-            for file in jsonlFiles(under: root) {
-                scanCodexFile(file, monthStart: monthStart, total: &total)
-            }
-        }
-        return (total.hasPricedRecords ? total.totalUSD : nil, total.hasRecords)
-    }
-
     private struct CodexTurnUsage: Sendable {
         var input = 0
         var cached = 0
@@ -94,14 +95,15 @@ enum UsageQuotaCostScanner {
         var output = 0
     }
 
-    private static func scanCodexFile(_ file: URL, monthStart: Date, total: inout CodexTotal) {
-        guard let text = try? String(contentsOf: file, encoding: .utf8) else { return }
+    private static func scanCodexFile(_ file: URL, monthStart: Date) -> CostTotal {
+        var total = CostTotal()
+        guard let text = try? String(contentsOf: file, encoding: .utf8) else { return total }
         let records = parseCodexRecords(text)
         let turnModels = codexTurnModels(records)
         let fileModel = codexFileModel(records)
         // `token_usage_record` and `token_count` describe the same turns; prefer the former.
         let priced = codexPricedUsages(records, monthStart: monthStart, turnModels: turnModels)
-        guard !priced.isEmpty else { return }
+        guard !priced.isEmpty else { return total }
         total.hasRecords = true
         for (turnModel, usage) in priced {
             guard let cost = UsageQuotaAPIPricing.codexCostUSD(
@@ -114,6 +116,7 @@ enum UsageQuotaCostScanner {
             total.totalUSD += cost
             total.hasPricedRecords = true
         }
+        return total
     }
 
     private static func parseCodexRecords(_ text: String) -> [[String: Any]] {
@@ -207,65 +210,105 @@ enum UsageQuotaCostScanner {
 
     // MARK: - Claude
 
-    private static func claudeTotalUSD(root: URL, monthStart: Date) -> (totalUSD: Double?, hasRecords: Bool) {
-        var total = 0.0
-        var hasRecords = false
-        var hasPricedRecords = false
-        for file in jsonlFiles(under: root) {
-            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
-            var seenRequestIDs = Set<String>()
-            for line in text.split(whereSeparator: \.isNewline) {
-                guard line.contains("\"usage\"") else { continue }
-                guard let data = String(line).data(using: .utf8),
-                      let record = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let message = record["message"] as? [String: Any],
-                      message["role"] as? String == "assistant",
-                      let usage = message["usage"] as? [String: Any],
-                      let timestamp = isoDate(record["timestamp"]), timestamp >= monthStart
-                else { continue }
-                let dedupKey = (record["requestId"] as? String) ?? (record["uuid"] as? String) ?? ""
-                guard !dedupKey.isEmpty, seenRequestIDs.insert(dedupKey).inserted else { continue }
-                hasRecords = true
-                let model = (message["model"] as? String)
-                    ?? (record["requestedModel"] as? String)
-                    ?? "unknown"
-                let cacheCreation = usage["cache_creation"] as? [String: Any]
-                guard let cost = UsageQuotaAPIPricing.claudeCostUSD(
-                    model: model,
-                    inputTokens: intValue(usage["input_tokens"]),
-                    cacheReadInputTokens: intValue(usage["cache_read_input_tokens"]),
-                    cacheCreationInputTokens: intValue(usage["cache_creation_input_tokens"]),
-                    cacheCreationInputTokens1h: intValue(cacheCreation?["ephemeral_1h_input_tokens"]),
-                    outputTokens: intValue(usage["output_tokens"])
-                ) else { continue }
-                total += cost
-                hasPricedRecords = true
-            }
+    private static func scanClaudeFile(_ file: URL, monthStart: Date) -> CostTotal {
+        var total = CostTotal()
+        guard let text = try? String(contentsOf: file, encoding: .utf8) else { return total }
+        var seenRequestIDs = Set<String>()
+        for line in text.split(whereSeparator: \.isNewline) {
+            guard line.contains("\"usage\"") else { continue }
+            guard let data = String(line).data(using: .utf8),
+                  let record = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let message = record["message"] as? [String: Any],
+                  message["role"] as? String == "assistant",
+                  let usage = message["usage"] as? [String: Any],
+                  let timestamp = isoDate(record["timestamp"]), timestamp >= monthStart
+            else { continue }
+            let dedupKey = (record["requestId"] as? String) ?? (record["uuid"] as? String) ?? ""
+            guard !dedupKey.isEmpty, seenRequestIDs.insert(dedupKey).inserted else { continue }
+            total.hasRecords = true
+            let model = (message["model"] as? String)
+                ?? (record["requestedModel"] as? String)
+                ?? "unknown"
+            let cacheCreation = usage["cache_creation"] as? [String: Any]
+            guard let cost = UsageQuotaAPIPricing.claudeCostUSD(
+                model: model,
+                inputTokens: intValue(usage["input_tokens"]),
+                cacheReadInputTokens: intValue(usage["cache_read_input_tokens"]),
+                cacheCreationInputTokens: intValue(usage["cache_creation_input_tokens"]),
+                cacheCreationInputTokens1h: intValue(cacheCreation?["ephemeral_1h_input_tokens"]),
+                outputTokens: intValue(usage["output_tokens"])
+            ) else { continue }
+            total.totalUSD += cost
+            total.hasPricedRecords = true
         }
-        return (hasPricedRecords ? total : nil, hasRecords)
+        return total
     }
 
     // MARK: - Helpers
 
-    private static func jsonlFiles(under root: URL) -> [URL] {
+    /// One file's contribution; files are summed into a provider total.
+    private struct CostTotal: Sendable {
+        var totalUSD = 0.0
+        var hasRecords = false
+        var hasPricedRecords = false
+    }
+
+    private struct ScannedFile {
+        let url: URL
+        let modified: Date
+        let size: Int
+    }
+
+    /// Sums per-file totals, reusing cached values for files whose mtime, size and month are unchanged.
+    /// Fills `cache` with every file visited so the caller can replace the stored cache.
+    private static func summedTotal(
+        of files: [ScannedFile],
+        monthStart: Date,
+        cache: inout [String: CachedFileTotal],
+        scan: (URL, Date) -> CostTotal
+    ) -> CostTotal {
+        let previous = fileCache.withLock { $0 }
+        var total = CostTotal()
+        for file in files {
+            let key = file.url.path
+            let fileTotal = previous[key].flatMap { hit in
+                hit.modified == file.modified && hit.size == file.size && hit.monthStart == monthStart
+                    ? hit.total
+                    : nil
+            } ?? scan(file.url, monthStart)
+            cache[key] = CachedFileTotal(
+                modified: file.modified,
+                size: file.size,
+                monthStart: monthStart,
+                total: fileTotal
+            )
+            total.totalUSD += fileTotal.totalUSD
+            total.hasRecords = total.hasRecords || fileTotal.hasRecords
+            total.hasPricedRecords = total.hasPricedRecords || fileTotal.hasPricedRecords
+        }
+        return total
+    }
+
+    /// Files modified before `monthStart` cannot hold this month's records, so they are skipped unread.
+    private static func jsonlFiles(under root: URL, monthStart: Date) -> [ScannedFile] {
         guard let enumerator = FileManager.default.enumerator(
             at: root,
             includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey],
             options: [.skipsHiddenFiles]
         ) else { return [] }
-        var files: [(URL, Date)] = []
+        var files: [ScannedFile] = []
         while let raw = enumerator.nextObject() {
             guard let url = raw as? URL, url.pathExtension == "jsonl",
                   let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey]),
                   let date = values.contentModificationDate,
+                  date >= monthStart,
                   (values.fileSize ?? 0) <= Constants.maxFileBytes
             else { continue }
-            files.append((url, date))
+            files.append(ScannedFile(url: url, modified: date, size: values.fileSize ?? 0))
         }
-        return files
-            .sorted { $0.1 > $1.1 }
-            .prefix(Constants.maxFilesPerRoot)
-            .map(\.0)
+        return Array(files
+            .sorted { $0.modified > $1.modified }
+            .prefix(Constants.maxFilesPerRoot))
     }
 
     private static func isoFormatter(withFractional: Bool) -> ISO8601DateFormatter {

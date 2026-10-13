@@ -108,6 +108,34 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
         XCTAssertEqual(anthropic.amountUSD ?? -1, expectedClaude, accuracy: 1e-12)
     }
 
+    func testEstimateSkipsStaleFilesAndIsStableOnRescan() throws {
+        let home = try makeTemporaryTestDirectory(testName: "CostEstimateStale")
+        let now = Date()
+        let monthStart = Calendar.current.date(
+            from: Calendar.current.dateComponents([.year, .month], from: now)
+        ) ?? now
+        let timestamp = ISO8601DateFormatter().string(from: monthStart.addingTimeInterval(3600))
+
+        let claudeDir = home.appendingPathComponent(".claude/projects/proj", isDirectory: true)
+        try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
+        let claudeRecord = #"{"requestId":"r1","uuid":"u1","timestamp":"\#(timestamp)","message":{"role":"assistant","model":"claude-haiku-5-5","usage":{"input_tokens":10,"cache_read_input_tokens":0,"cache_creation_input_tokens":0,"output_tokens":20}}}"#
+        let file = claudeDir.appendingPathComponent("session.jsonl")
+        try claudeRecord.write(to: file, atomically: true, encoding: .utf8)
+
+        // Modified before this month: must be skipped without being read.
+        try FileManager.default.setAttributes(
+            [.modificationDate: monthStart.addingTimeInterval(-86400)],
+            ofItemAtPath: file.path
+        )
+        XCTAssertTrue(UsageQuotaCostScanner.estimate(homeDirectory: home, now: now).rows.isEmpty)
+
+        try FileManager.default.setAttributes([.modificationDate: now], ofItemAtPath: file.path)
+        let first = UsageQuotaCostScanner.estimate(homeDirectory: home, now: now)
+        let second = UsageQuotaCostScanner.estimate(homeDirectory: home, now: now)
+        XCTAssertEqual(first.rows.count, 1)
+        XCTAssertEqual(first, second)
+    }
+
     func testEstimateEmptyHomeHasNoRows() throws {
         let home = try makeTemporaryTestDirectory(testName: "CostEstimateEmpty")
         XCTAssertTrue(UsageQuotaCostScanner.estimate(homeDirectory: home).rows.isEmpty)

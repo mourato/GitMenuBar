@@ -16,7 +16,7 @@ final class UsageQuotaStore {
     private enum Constants {
         static let refreshInterval: TimeInterval = 120
         static let providerTimeout: TimeInterval = 8
-        static let costScanInterval: TimeInterval = 120
+        static let costScanInterval: TimeInterval = 600
     }
 
     private(set) var snapshots: [UsageQuotaSnapshot] = []
