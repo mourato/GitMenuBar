@@ -1,5 +1,6 @@
 import Foundation
 @testable import GitMenuBar
+import Observation
 import XCTest
 
 final class MockURLProtocol: URLProtocol {
@@ -184,7 +185,46 @@ func withGitRepoPath<T>(_ path: String, execute: () async throws -> T) async ret
     return try await execute()
 }
 
+/// Re-evaluates `condition` under observation tracking, so a change made after the
+/// check always re-runs it. Checking outside tracking could miss a background change.
+@MainActor
+private final class ObservedConditionWatcher {
+    private let condition: @MainActor () -> Bool
+    private let satisfied: XCTestExpectation
+    private var isDone = false
+
+    init(condition: @escaping @MainActor () -> Bool, satisfied: XCTestExpectation) {
+        self.condition = condition
+        self.satisfied = satisfied
+    }
+
+    func observe() {
+        guard !isDone else { return }
+        let isSatisfied = withObservationTracking {
+            condition()
+        } onChange: {
+            Task { @MainActor in self.observe() }
+        }
+        if isSatisfied {
+            isDone = true
+            satisfied.fulfill()
+        }
+    }
+}
+
 extension XCTestCase {
+    /// Waits for `condition` by observing `@Observable` reads instead of polling.
+    /// Fails the test when the condition does not hold within `timeout`.
+    @MainActor
+    func waitForObservedCondition(
+        timeout: TimeInterval = 5,
+        _ condition: @escaping @MainActor () -> Bool
+    ) async {
+        let satisfied = expectation(description: "observed condition")
+        ObservedConditionWatcher(condition: condition, satisfied: satisfied).observe()
+        await fulfillment(of: [satisfied], timeout: timeout)
+    }
+
     func temporaryTestPath(testName: String) -> URL {
         let path = FileManager.default.temporaryDirectory
             .appendingPathComponent("GitMenuBarTests", isDirectory: true)

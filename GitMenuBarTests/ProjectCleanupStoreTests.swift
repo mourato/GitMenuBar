@@ -58,9 +58,7 @@ final class ProjectCleanupStoreTests: XCTestCase {
         }
 
         store.load()
-        for _ in 0 ..< 100 where store.loadState != .loaded {
-            try await Task.sleep(for: .milliseconds(5))
-        }
+        await waitForObservedCondition { store.loadState == .loaded }
         let paths = Set(monitor.monitoredProjects.map(\.path))
         XCTAssertEqual(paths.count, 2)
         let first = try XCTUnwrap(paths.first)
@@ -108,9 +106,7 @@ final class ProjectCleanupStoreTests: XCTestCase {
             .success(Self.analysis(for: project))
         }
         store.load()
-        for _ in 0 ..< 100 where store.loadState != .loaded {
-            try await Task.sleep(for: .milliseconds(5))
-        }
+        await waitForObservedCondition { store.loadState == .loaded }
         let row = try XCTUnwrap(store.rows.first)
         let snapshot = try XCTUnwrap(row.snapshot)
         let single = GitCleanupRepository(runner: GitCommandRunner()).cleanup(
@@ -121,9 +117,7 @@ final class ProjectCleanupStoreTests: XCTestCase {
 
         let review = try XCTUnwrap(store.reviewAll())
         store.runCleanup(review)
-        for _ in 0 ..< 200 where store.result == nil {
-            try await Task.sleep(for: .milliseconds(5))
-        }
+        await waitForObservedCondition { store.result != nil }
 
         let global = try XCTUnwrap(store.result?.projects.first?.items)
         XCTAssertEqual(global.map(\.status), single.items.map(\.status))

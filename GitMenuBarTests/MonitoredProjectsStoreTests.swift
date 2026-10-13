@@ -245,14 +245,8 @@ final class MonitoredProjectsStoreTests: XCTestCase {
         monitor.refreshOperation = { project, _ in
             Self.snapshot(path: project.path, branch: "newer")
         }
-        let poller = Task {
-            while monitor.snapshots["/tmp/project"]?.branchName != "newer" {
-                do {
-                    try await Task.sleep(for: .milliseconds(10))
-                } catch {
-                    return
-                }
-            }
+        let poller = Task { @MainActor in
+            await waitForObservedCondition { monitor.snapshots["/tmp/project"]?.branchName == "newer" }
             newerSnapshotPublished.fulfill()
         }
         defer { poller.cancel() }

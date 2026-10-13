@@ -22,10 +22,7 @@ final class ProjectMonitorStoreTests: XCTestCase {
 
         monitor.refreshOperation = { project, _ in Self.snapshot(path: project.path) }
         monitor.refresh(path: path)
-        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
-        while monitor.snapshots[path] == nil, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
+        await waitForObservedCondition { monitor.snapshots[path] != nil }
         XCTAssertEqual(monitor.snapshots[path]?.branchName, "main")
         XCTAssertEqual(monitor.agentActivities[path], [activity])
         let snapshots = monitor.snapshots

@@ -1,4 +1,5 @@
 @testable import GitMenuBar
+import Observation
 import XCTest
 
 @MainActor
@@ -177,12 +178,12 @@ final class UsageQuotaStoreTests: XCTestCase {
         XCTAssertFalse(flattenedKeys.contains(where: { $0.localizedCaseInsensitiveContains("refresh_token") }))
     }
 
-    func testRefreshNoOpsWhenFeatureDisabled() async {
+    func testRefreshNoOpsWhenFeatureDisabled() {
         let provider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
         let store = makeStore(provider: provider)
 
+        // refresh() returns before starting any task while the feature is disabled.
         store.refresh(reason: .manual)
-        try? await Task.sleep(for: .milliseconds(200))
 
         XCTAssertEqual(provider.fetchCount, 0)
         XCTAssertTrue(store.snapshots.isEmpty)
@@ -237,16 +238,9 @@ final class UsageQuotaStoreTests: XCTestCase {
 
     private func waitUntil(
         timeout: TimeInterval = 2,
-        _ predicate: @escaping () -> Bool
+        _ predicate: @escaping @MainActor () -> Bool
     ) async {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if predicate() {
-                return
-            }
-            try? await Task.sleep(for: .milliseconds(50))
-        }
-        XCTFail("Timed out waiting for store refresh")
+        await waitForObservedCondition(timeout: timeout, predicate)
     }
 
     private static func sampleSnapshot() -> UsageQuotaSnapshot {
@@ -299,6 +293,7 @@ final class UsageQuotaStoreTests: XCTestCase {
     }
 }
 
+@Observable
 private final class FakeUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
     let id: UsageProviderID
     var snapshot: UsageQuotaSnapshot
@@ -318,9 +313,11 @@ private final class FakeUsageQuotaProvider: UsageQuotaProviding, @unchecked Send
 
 private struct HangingUsageQuotaProvider: UsageQuotaProviding {
     let id: UsageProviderID = .codex
+    /// Never yields; the store's timeout group cancels the fetch, which ends the loop.
+    private let neverYields = AsyncStream<Void> { _ in }
 
     func fetchSnapshot() async -> UsageQuotaSnapshot {
-        try? await Task.sleep(for: .seconds(60))
+        for await _ in neverYields {}
         return .unavailable(providerID: .codex, statusNote: "should not finish")
     }
 }

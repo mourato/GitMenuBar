@@ -146,19 +146,10 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         let repoURL = try prepareRepoWithClonedRemote(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        var pushSucceeded = false
-        var pushError: String?
-        for _ in 0 ..< 5 {
-            let pushResult = await gitManager.pushBranchToRemoteAsync(branchName: "feature/to-push")
-            if case .success = pushResult {
-                pushSucceeded = true
-                break
-            } else if case let .failure(error) = pushResult {
-                pushError = error.localizedDescription
-                usleep(50000)
-            }
+        let pushResult = await gitManager.pushBranchToRemoteAsync(branchName: "feature/to-push")
+        if case let .failure(error) = pushResult {
+            XCTFail("Push to local remote should succeed: \(error.localizedDescription)")
         }
-        XCTAssertTrue(pushSucceeded, "Push to local remote should succeed (last error: \(pushError ?? "none"))")
 
         let remoteBranches = await gitManager.branchService.fetchRemoteBranchesAsync()
         XCTAssertTrue(
@@ -166,19 +157,10 @@ final class GitManagerBranchOperationsTests: XCTestCase {
             "Expected remote branch after push, got: \(remoteBranches)"
         )
 
-        var deleteSucceeded = false
-        var deleteError: String?
-        for _ in 0 ..< 5 {
-            let deleteResult = await gitManager.deleteRemoteBranchAsync(branchName: "feature/to-push")
-            if case .success = deleteResult {
-                deleteSucceeded = true
-                break
-            } else if case let .failure(error) = deleteResult {
-                deleteError = error.localizedDescription
-                usleep(50000)
-            }
+        let deleteResult = await gitManager.deleteRemoteBranchAsync(branchName: "feature/to-push")
+        if case let .failure(error) = deleteResult {
+            XCTFail("Remote delete should succeed: \(error.localizedDescription)")
         }
-        XCTAssertTrue(deleteSucceeded, "Remote delete should succeed (last error: \(deleteError ?? "none"))")
 
         try runGit(["fetch", "--prune", "origin"], in: repoURL)
 
@@ -205,7 +187,8 @@ final class GitManagerBranchOperationsTests: XCTestCase {
             }
             deleteExpectation.fulfill()
         }
-        await fulfillment(of: [deleteExpectation], timeout: 3)
+        // The completion waits for a full branch and refresh pass, which exceeds 3s under full-suite load.
+        await fulfillment(of: [deleteExpectation], timeout: 10)
 
         let localBranches = await gitManager.branchService.fetchLocalBranchesAsync()
         XCTAssertFalse(localBranches.contains("feature/to-push"))

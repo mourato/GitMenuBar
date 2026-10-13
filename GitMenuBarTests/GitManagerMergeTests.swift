@@ -143,25 +143,18 @@ final class GitManagerMergeTests: XCTestCase {
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-        var succeeded = false
-        var lastError: String?
-        for _ in 0 ..< 5 {
-            _ = await gitManager.branchService.mergeFeatureIntoDefaultAsync(featureBranch: "feature/remote")
-            let result = await gitManager.branchService.cleanupMergedBranchAsync(
-                featureBranch: "feature/remote",
-                cleanupOption: .deleteLocalAndRemote
-            )
-            if case let .success(mergeResult) = result {
-                succeeded = true
-                XCTAssertTrue(mergeResult.didDeleteLocal)
-                XCTAssertTrue(mergeResult.didDeleteRemote)
-                break
-            } else if case let .failure(error) = result {
-                lastError = error.localizedDescription
-                usleep(50000)
-            }
+        _ = await gitManager.branchService.mergeFeatureIntoDefaultAsync(featureBranch: "feature/remote")
+        let result = await gitManager.branchService.cleanupMergedBranchAsync(
+            featureBranch: "feature/remote",
+            cleanupOption: .deleteLocalAndRemote
+        )
+        switch result {
+        case let .success(mergeResult):
+            XCTAssertTrue(mergeResult.didDeleteLocal)
+            XCTAssertTrue(mergeResult.didDeleteRemote)
+        case let .failure(error):
+            XCTFail("Merge + remote delete should succeed: \(error.localizedDescription)")
         }
-        XCTAssertTrue(succeeded, "Merge + remote delete should succeed (last error: \(lastError ?? "none"))")
 
         try runGit(["fetch", "--prune", "origin"], in: repoURL)
         let remoteBranches = await gitManager.branchService.fetchRemoteBranchesAsync()
