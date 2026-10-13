@@ -1,4 +1,4 @@
-.PHONY: help build build-release runtime-smoke test test-focused lint lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command guidance-check install-app dmg setup-self-signed-cert clean setup
+.PHONY: help build build-release runtime-smoke test test-focused lint test-hygiene lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command guidance-check install-app dmg setup-self-signed-cert clean setup
 
 PROJECT_DIR := $(shell pwd)
 AGENT_CONFIG_HOME ?= $(HOME)/.agents
@@ -45,7 +45,12 @@ test-focused:
 	@test -n "$(strip $(TEST_FILTER))" || { echo "TEST_FILTER is required, e.g. TEST_FILTER=GitMenuBarTests/SomeTests" >&2; exit 2; }
 	@TEST_FILTER="$(TEST_FILTER)" $(MAKE) test
 
-lint:
+TEST_HYGIENE := $(or $(AGENT_CONFIG_HOME),$(HOME)/.agents)/skills/test-hygiene/scripts/check-swift-tests.py
+
+test-hygiene:
+	@python3 "$(TEST_HYGIENE)" --baseline .test-hygiene-baseline GitMenuBarTests
+
+lint: test-hygiene
 	@./scripts/lint.sh
 
 lint-changed:
