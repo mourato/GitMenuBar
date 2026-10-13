@@ -1,5 +1,5 @@
+import CryptoKit
 import Foundation
-import Synchronization
 
 // models.dev catalog types and the on-disk pricing cache used by the monthly
 // spend estimate. Ported from CodexBar's `ModelsDevPricing.swift` (MIT,
@@ -7,18 +7,30 @@ import Synchronization
 // pricing overlay, no historical pricing, no fallback merging. models.dev
 // publishes USD per 1M tokens; consumers divide by 1M.
 
-/// A long-context rate block; implies a 200K-token threshold.
+/// A rate block, optionally associated with an explicit context tier.
 struct ModelsDevContextCost: Codable, Equatable, Sendable {
+    struct Tier: Codable, Equatable, Sendable {
+        let type: String
+        let size: Int?
+    }
+
     let input: Double?
     let output: Double?
     let cacheRead: Double?
     let cacheWrite: Double?
+    let tier: Tier?
+
+    var isValid: Bool {
+        [input, output, cacheRead, cacheWrite].compactMap(\.self).allSatisfy { $0.isFinite && $0 >= 0 }
+            && (tier?.type != "context" || (tier?.size ?? 0) > 0)
+    }
 
     private enum CodingKeys: String, CodingKey {
         case input
         case output
         case cacheRead = "cache_read"
         case cacheWrite = "cache_write"
+        case tier
     }
 }
 
@@ -29,6 +41,22 @@ struct ModelsDevCost: Codable, Equatable, Sendable {
     let cacheRead: Double?
     let cacheWrite: Double?
     let contextOver200K: ModelsDevContextCost?
+    let tiers: [ModelsDevContextCost]?
+
+    var isValid: Bool {
+        guard input != nil, output != nil else { return false }
+        return [input, output, cacheRead, cacheWrite].compactMap(\.self).allSatisfy { $0.isFinite && $0 >= 0 }
+            && (contextOver200K?.isValid ?? true) && (tiers?.allSatisfy(\.isValid) ?? true)
+    }
+
+    var longContext: (tokens: Int, rates: ModelsDevContextCost)? {
+        if let context = tiers?.first(where: { $0.tier?.type == "context" }),
+           let size = context.tier?.size
+        {
+            return (size, context)
+        }
+        return contextOver200K.map { (200_000, $0) }
+    }
 
     private enum CodingKeys: String, CodingKey {
         case input
@@ -36,6 +64,7 @@ struct ModelsDevCost: Codable, Equatable, Sendable {
         case cacheRead = "cache_read"
         case cacheWrite = "cache_write"
         case contextOver200K = "context_over_200k"
+        case tiers
     }
 }
 
@@ -45,7 +74,7 @@ struct ModelsDevModel: Codable, Equatable, Sendable {
     let cost: ModelsDevCost?
 
     var isPriceable: Bool {
-        cost?.input != nil && cost?.output != nil
+        cost?.isValid == true
     }
 }
 
@@ -68,7 +97,7 @@ struct ModelsDevProvider: Codable, Equatable, Sendable {
 
     /// Models are keyed arbitrarily in the live catalog, so decode them
     /// tolerantly and skip entries that do not fit the shape.
-    init(from decoder: any Decoder) throws {
+    init(from decoder: any Decoder) throws { // justified: Swift protocol existential, not a type-check suppression.
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(String.self, forKey: .id)
         name = try container.decodeIfPresent(String.self, forKey: .name)
@@ -95,7 +124,7 @@ struct ModelsDevCatalog: Codable, Equatable, Sendable {
         self.providers = providers
     }
 
-    init(from decoder: any Decoder) throws {
+    init(from decoder: any Decoder) throws { // justified: Swift protocol existential, not a type-check suppression.
         let container = try decoder.container(keyedBy: ModelsDevAnyCodingKey.self)
         if let providersKey = ModelsDevAnyCodingKey(stringValue: "providers"),
            let decoded = try? container.decode([String: ModelsDevProvider].self, forKey: providersKey)
@@ -219,176 +248,157 @@ enum UsageQuotaModelsDev {
     }
 }
 
-/// Disk-backed models.dev cache: payload JSON plus a small metadata file,
-/// memoized by (mtime, size) so a scan decodes the catalog once.
-enum UsageQuotaModelsDevStore {
-    /// The resolved pricing source for one cost scan.
+/// Owns one cache location and shares in-flight refreshes between cost scans.
+actor UsageQuotaModelsDevStore {
     struct PricingSource: Equatable, Sendable {
         let catalog: ModelsDevCatalog?
-        /// Cache key for per-file cost totals; totals computed against a
-        /// different source token must be rescanned.
         let token: String
 
-        static let bundled = PricingSource(catalog: nil, token: "bundled")
+        static let bundled = PricingSource()
+
+        private init() {
+            catalog = nil
+            token = "bundled"
+        }
+
+        /// The catalog and its content identity travel together through each scan.
+        init(catalog: ModelsDevCatalog) throws {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .sortedKeys
+            let data = try encoder.encode(catalog)
+            self.catalog = catalog
+            token = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        }
     }
 
-    struct CacheArtifacts: Equatable, Sendable {
+    private struct CacheArtifacts: Codable {
+        let version: Int
         let catalog: ModelsDevCatalog
         let fetchedAt: Date
     }
 
-    static let endpoint = URL(string: "https://models.dev/api.json")!
-    static let ttl: TimeInterval = 24 * 60 * 60
-    private static let artifactVersion = 1
-    private static let requestTimeout: TimeInterval = 30
-
-    private struct ArtifactMeta: Codable {
+    private struct LegacyMeta: Decodable {
         let version: Int
         let fetchedAt: Date
     }
 
-    private enum MemoOutcome {
-        case decoded(CacheArtifacts)
-        case failure
-    }
-
-    private struct MemoEntry {
+    private struct FileStamp: Equatable {
         let modified: Date?
         let size: Int?
-        let outcome: MemoOutcome
+
+        init(url: URL) {
+            let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+            modified = values?.contentModificationDate
+            size = values?.fileSize
+        }
     }
 
-    /// The full load outcome is memoized, not just successful decodes: a corrupt
-    /// cache file is as expensive to discover as a valid one, and pricing calls
-    /// run once per usage row.
-    private static let memo = Mutex<MemoEntry?>(nil)
+    static let shared = UsageQuotaModelsDevStore()
+    static let endpoint = URL(string: "https://models.dev/api.json")!
+    static let ttl: TimeInterval = 24 * 60 * 60
+    private static let artifactVersion = 2
+    private static let requestTimeout: TimeInterval = 30
 
-    static func payloadFileURL(cacheRoot: URL? = nil) -> URL {
-        costPricingDirectory(cacheRoot: cacheRoot).appendingPathComponent("models-dev-v\(artifactVersion).json")
-    }
+    private let directory: URL
+    private var memo: (stamp: FileStamp, artifacts: CacheArtifacts)?
+    private var refreshTask: Task<PricingSource, Never>?
 
-    static func metaFileURL(cacheRoot: URL? = nil) -> URL {
-        costPricingDirectory(cacheRoot: cacheRoot).appendingPathComponent("models-dev-v\(artifactVersion).meta.json")
-    }
-
-    private static func costPricingDirectory(cacheRoot: URL?) -> URL {
+    init(cacheRoot: URL? = nil) {
         let base = cacheRoot
             ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
-        return base
+        directory = base
             .appendingPathComponent("com.mourato.GitMenuBar", isDirectory: true)
             .appendingPathComponent("model-pricing", isDirectory: true)
     }
 
-    private static func fileMetadata(at url: URL) -> (modified: Date?, size: Int?) {
-        let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
-        return (values?.contentModificationDate, values?.fileSize)
+    private var artifactURL: URL {
+        directory.appendingPathComponent("models-dev-v\(Self.artifactVersion).json")
     }
 
-    /// Decoded catalog from disk, if present and decodable; memoized by the
-    /// payload file's (mtime, size).
-    static func loadCached(cacheRoot: URL? = nil) -> CacheArtifacts? {
-        let payloadURL = payloadFileURL(cacheRoot: cacheRoot)
-        let metaURL = metaFileURL(cacheRoot: cacheRoot)
-        let meta = try? JSONDecoder().decode(ArtifactMeta.self, from: Data(contentsOf: metaURL))
-        let payloadMeta = fileMetadata(at: payloadURL)
-
-        let cached = memo.withLock { entry -> CacheArtifacts? in
-            guard let entry,
-                  entry.modified == payloadMeta.modified,
-                  entry.size == payloadMeta.size,
-                  case let .decoded(artifacts) = entry.outcome
-            else { return nil }
-            return artifacts
+    private func loadCached() -> CacheArtifacts? {
+        let stamp = FileStamp(url: artifactURL)
+        if let memo, memo.stamp == stamp {
+            return memo.artifacts
         }
-        if let cached, meta?.version == artifactVersion {
-            return cached
+        if let data = try? Data(contentsOf: artifactURL),
+           let decoded = try? JSONDecoder().decode(CacheArtifacts.self, from: data),
+           decoded.version == Self.artifactVersion, decoded.catalog.isPlausibleRefresh()
+        {
+            memo = (stamp, decoded)
+            return decoded
         }
+        // Legacy metadata can change independently of its payload. Read both
+        // until a successful refresh replaces them with the atomic artifact.
+        memo = nil
+        return loadLegacyCache()
+    }
 
-        guard meta?.version == artifactVersion,
+    /// Retain offline access to the previous two-file cache. New writes use
+    /// one atomic artifact, so payload and fetch date cannot be torn apart.
+    private func loadLegacyCache() -> CacheArtifacts? {
+        let payloadURL = directory.appendingPathComponent("models-dev-v1.json")
+        let metaURL = directory.appendingPathComponent("models-dev-v1.meta.json")
+        guard let metadata = try? Data(contentsOf: metaURL),
+              let meta = try? JSONDecoder().decode(LegacyMeta.self, from: metadata), meta.version == 1,
               let data = try? Data(contentsOf: payloadURL),
-              let catalog = try? JSONDecoder().decode(ModelsDevCatalog.self, from: data)
-        else {
-            memo.withLock { $0 = MemoEntry(
-                modified: payloadMeta.modified,
-                size: payloadMeta.size,
-                outcome: .failure
-            ) }
-            return nil
-        }
-        let artifacts = CacheArtifacts(catalog: catalog, fetchedAt: meta?.fetchedAt ?? .distantPast)
-        memo.withLock { $0 = MemoEntry(
-            modified: payloadMeta.modified,
-            size: payloadMeta.size,
-            outcome: .decoded(artifacts)
-        ) }
-        return artifacts
+              let catalog = try? JSONDecoder().decode(ModelsDevCatalog.self, from: data),
+              catalog.isPlausibleRefresh()
+        else { return nil }
+        return CacheArtifacts(version: Self.artifactVersion, catalog: catalog, fetchedAt: meta.fetchedAt)
     }
 
-    /// Cached catalog when fresh; fetches when missing or stale. Network
-    /// failures keep serving the stale cache, and an implausible catalog
-    /// (missing priceable OpenAI or Anthropic models) never replaces a good
-    /// one.
-    static func loadOrFetch(
+    func loadOrFetch(
         now: Date = Date(),
-        cacheRoot: URL? = nil,
         session: URLSession = .shared,
         fetch: (@Sendable () async throws -> Data)? = nil
     ) async -> PricingSource {
-        if let cached = loadCached(cacheRoot: cacheRoot) {
-            if now.timeIntervalSince(cached.fetchedAt) < ttl {
-                return pricingSource(for: cached)
-            }
+        if let refreshTask {
+            return await refreshTask.value
         }
+        if let cached = loadCached(), now.timeIntervalSince(cached.fetchedAt) < Self.ttl,
+           let source = try? PricingSource(catalog: cached.catalog)
+        {
+            return source
+        }
+        let task = Task { await self.refresh(now: now, session: session, fetch: fetch) }
+        refreshTask = task
+        let source = await task.value
+        refreshTask = nil
+        return source
+    }
 
+    private func refresh(
+        now: Date,
+        session: URLSession,
+        fetch: (@Sendable () async throws -> Data)?
+    ) async -> PricingSource {
         let data: Data? = await {
             if let fetch {
                 return try? await fetch()
             }
-            var request = URLRequest(url: endpoint)
-            request.timeoutInterval = requestTimeout
+            var request = URLRequest(url: Self.endpoint)
+            request.timeoutInterval = Self.requestTimeout
             guard let (data, response) = try? await session.data(for: request),
                   let http = response as? HTTPURLResponse, http.statusCode == 200
             else { return nil }
             return data
         }()
-
         if let data,
            let catalog = try? JSONDecoder().decode(ModelsDevCatalog.self, from: data),
-           catalog.isPlausibleRefresh()
+           catalog.isPlausibleRefresh(), let source = try? PricingSource(catalog: catalog)
         {
-            persist(payload: data, fetchedAt: now, cacheRoot: cacheRoot)
-            return pricingSource(for: CacheArtifacts(catalog: catalog, fetchedAt: now))
+            let artifacts = CacheArtifacts(version: Self.artifactVersion, catalog: catalog, fetchedAt: now)
+            if let encoded = try? JSONEncoder().encode(artifacts) {
+                try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                try? encoded.write(to: artifactURL, options: .atomic)
+            }
+            memo = nil
+            return source
         }
-
-        if let cached = loadCached(cacheRoot: cacheRoot) {
-            return pricingSource(for: cached)
+        if let cached = loadCached(), let source = try? PricingSource(catalog: cached.catalog) {
+            return source
         }
         return .bundled
-    }
-
-    private static func pricingSource(for artifacts: CacheArtifacts) -> PricingSource {
-        PricingSource(
-            catalog: artifacts.catalog,
-            token: "modelsdev:\(artifactVersion):\(Int(artifacts.fetchedAt.timeIntervalSince1970))"
-        )
-    }
-
-    private static func persist(payload: Data, fetchedAt: Date, cacheRoot: URL?) {
-        let directory = costPricingDirectory(cacheRoot: cacheRoot)
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? payload.write(to: payloadFileURL(cacheRoot: cacheRoot), options: .atomic)
-        let meta = ArtifactMeta(version: artifactVersion, fetchedAt: fetchedAt)
-        if let encoded = try? JSONEncoder().encode(meta) {
-            try? encoded.write(to: metaFileURL(cacheRoot: cacheRoot), options: .atomic)
-        }
-        // The payload file changed on disk; drop the memo so the next load
-        // re-reads it (Mutex is not reentrant, so invalidate outside any lock).
-        memo.withLock { $0 = nil }
-    }
-
-    /// Test seam: drops the decoded-catalog memo.
-    static func resetMemoForTesting() {
-        memo.withLock { $0 = nil }
     }
 }

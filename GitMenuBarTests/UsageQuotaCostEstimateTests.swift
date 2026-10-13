@@ -201,8 +201,7 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
         let first = try UsageQuotaCostScanner.estimate(
             homeDirectory: home,
             now: now,
-            catalog: catalog(input: 10, output: 20),
-            pricingToken: "modelsdev:test:A"
+            pricing: UsageQuotaModelsDevStore.PricingSource(catalog: catalog(input: 10, output: 20))
         )
         let firstOpenAI = try XCTUnwrap(first.rows.first { $0.title == "OpenAI API" })
         XCTAssertEqual(
@@ -216,8 +215,7 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
         let second = try UsageQuotaCostScanner.estimate(
             homeDirectory: home,
             now: now,
-            catalog: catalog(input: 20, output: 30),
-            pricingToken: "modelsdev:test:B"
+            pricing: UsageQuotaModelsDevStore.PricingSource(catalog: catalog(input: 20, output: 30))
         )
         let secondOpenAI = try XCTUnwrap(second.rows.first { $0.title == "OpenAI API" })
         XCTAssertEqual(

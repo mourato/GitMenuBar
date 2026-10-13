@@ -40,8 +40,7 @@ enum UsageQuotaCostScanner {
     static func estimate(
         homeDirectory: URL,
         now: Date = Date(),
-        catalog: ModelsDevCatalog? = nil,
-        pricingToken: String = PricingSource.bundled.token
+        pricing: PricingSource = .bundled
     ) -> UsageQuotaCostEstimate {
         let monthStart = Calendar.current.date(
             from: Calendar.current.dateComponents([.year, .month], from: now)
@@ -61,18 +60,18 @@ enum UsageQuotaCostScanner {
         let codex = summedTotal(
             of: codexFiles,
             monthStart: monthStart,
-            pricingToken: pricingToken,
+            pricingToken: pricing.token,
             cache: &cache
         ) { file, month in
-            scanCodexFile(file, monthStart: month, catalog: catalog)
+            scanCodexFile(file, monthStart: month, catalog: pricing.catalog)
         }
         let claude = summedTotal(
             of: claudeFiles,
             monthStart: monthStart,
-            pricingToken: pricingToken,
+            pricingToken: pricing.token,
             cache: &cache
         ) { file, month in
-            scanClaudeFile(file, monthStart: month, catalog: catalog)
+            scanClaudeFile(file, monthStart: month, catalog: pricing.catalog)
         }
         // Replacing the whole cache drops entries for files no longer listed.
         fileCache.withLock { $0 = cache }

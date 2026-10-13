@@ -106,7 +106,7 @@ final class UsageQuotaStore {
             AntigravityUsageProvider()
         ],
         now: @escaping () -> Date = Date.init,
-        pricingLoader: @escaping PricingLoader = { await UsageQuotaModelsDevStore.loadOrFetch() }
+        pricingLoader: @escaping PricingLoader = { await UsageQuotaModelsDevStore.shared.loadOrFetch() }
     ) {
         self.defaults = defaults
         self.snapshotStore = snapshotStore
@@ -278,8 +278,7 @@ final class UsageQuotaStore {
                 let pricing = await pricingLoader()
                 return UsageQuotaCostScanner.estimate(
                     homeDirectory: homeDirectory,
-                    catalog: pricing.catalog,
-                    pricingToken: pricing.token
+                    pricing: pricing
                 )
             }.value
             guard let self, generation == refreshGeneration else { return }

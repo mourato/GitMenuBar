@@ -102,8 +102,6 @@ enum UsageQuotaAPIPricing {
 
     /// models.dev publishes USD per 1M tokens; token math uses USD per token.
     private static let catalogUnit = 1_000_000.0
-    /// A models.dev `context_over_200k` block implies a 200K-token switch.
-    private static let catalogContextThresholdTokens = 200_000
 
     /// Catalog-first resolution; the bundled table is the offline fallback.
     static func codexPricing(
@@ -112,22 +110,22 @@ enum UsageQuotaAPIPricing {
     ) -> CodexAPIPrice? {
         let entry = catalog?.model(providerID: "openai", rawModelID: model)
             ?? catalog?.model(providerID: "openai", rawModelID: normalizeCodexModel(model))
-        if let cost = entry?.cost,
+        if let cost = entry?.cost, cost.isValid,
            let input = cost.input,
            let output = cost.output
         {
-            let context = cost.contextOver200K
+            let context = cost.longContext
             return CodexAPIPrice(
                 inputCostPerToken: input / catalogUnit,
                 outputCostPerToken: output / catalogUnit,
                 cacheReadInputCostPerToken: cost.cacheRead.map { $0 / catalogUnit },
                 displayLabel: nil,
                 cacheWriteInputCostPerToken: cost.cacheWrite.map { $0 / catalogUnit },
-                thresholdTokens: context.map { _ in catalogContextThresholdTokens },
-                inputCostPerTokenAboveThreshold: context?.input.map { $0 / catalogUnit },
-                outputCostPerTokenAboveThreshold: context?.output.map { $0 / catalogUnit },
-                cacheReadInputCostPerTokenAboveThreshold: context?.cacheRead.map { $0 / catalogUnit },
-                cacheWriteAboveThreshold: context?.cacheWrite.map { $0 / catalogUnit }
+                thresholdTokens: context?.tokens,
+                inputCostPerTokenAboveThreshold: context?.rates.input.map { $0 / catalogUnit },
+                outputCostPerTokenAboveThreshold: context?.rates.output.map { $0 / catalogUnit },
+                cacheReadInputCostPerTokenAboveThreshold: context?.rates.cacheRead.map { $0 / catalogUnit },
+                cacheWriteAboveThreshold: context?.rates.cacheWrite.map { $0 / catalogUnit }
             )
         }
         return codex[normalizeCodexModel(model)]
@@ -140,21 +138,21 @@ enum UsageQuotaAPIPricing {
         for model: String,
         catalog: ModelsDevCatalog?
     ) -> ClaudeAPIPrice? {
-        if let cost = catalog?.model(providerID: "anthropic", rawModelID: model)?.cost,
+        if let cost = catalog?.model(providerID: "anthropic", rawModelID: model)?.cost, cost.isValid,
            let input = cost.input,
            let output = cost.output
         {
-            let context = cost.contextOver200K
+            let context = cost.longContext
             return ClaudeAPIPrice(
                 inputCostPerToken: input / catalogUnit,
                 outputCostPerToken: output / catalogUnit,
                 cacheCreationInputCostPerToken: (cost.cacheWrite ?? input) / catalogUnit,
                 cacheReadInputCostPerToken: (cost.cacheRead ?? input) / catalogUnit,
-                thresholdTokens: context.map { _ in catalogContextThresholdTokens },
-                inputCostPerTokenAboveThreshold: context?.input.map { $0 / catalogUnit },
-                outputCostPerTokenAboveThreshold: context?.output.map { $0 / catalogUnit },
-                cacheCreationAboveThreshold: context?.cacheWrite.map { $0 / catalogUnit },
-                cacheReadInputCostPerTokenAboveThreshold: context?.cacheRead.map { $0 / catalogUnit }
+                thresholdTokens: context?.tokens,
+                inputCostPerTokenAboveThreshold: context?.rates.input.map { $0 / catalogUnit },
+                outputCostPerTokenAboveThreshold: context?.rates.output.map { $0 / catalogUnit },
+                cacheCreationAboveThreshold: context?.rates.cacheWrite.map { $0 / catalogUnit },
+                cacheReadInputCostPerTokenAboveThreshold: context?.rates.cacheRead.map { $0 / catalogUnit }
             )
         }
         return claude[normalizeClaudeModel(model)]
