@@ -204,10 +204,15 @@ final class UsageQuotaStoreTests: XCTestCase {
         store.showAIUsageQuotas = true
         await waitUntil { provider.fetchCount > 0 && !store.snapshots.isEmpty }
 
+        provider.snapshot = Self.sampleSnapshot(remainingPercent: 55)
         store.refresh(reason: .windowPresented)
-        await waitUntil { provider.fetchCount > 1 }
+        await waitUntil { store.visibleSnapshots.first?.sessionWindow?.remainingPercent == 55 }
         let countAfterFirstPresentation = provider.fetchCount
+        let unexpectedFetch = expectation(description: "fresh presentation must not fetch again")
+        unexpectedFetch.isInverted = true
+        provider.onFetch = { unexpectedFetch.fulfill() }
         store.refresh(reason: .windowPresented)
+        await fulfillment(of: [unexpectedFetch], timeout: 0.1)
 
         XCTAssertEqual(provider.fetchCount, countAfterFirstPresentation)
     }
@@ -248,11 +253,11 @@ final class UsageQuotaStoreTests: XCTestCase {
         await waitForObservedCondition(timeout: timeout, predicate)
     }
 
-    private static func sampleSnapshot() -> UsageQuotaSnapshot {
+    private static func sampleSnapshot(remainingPercent: Int = 70) -> UsageQuotaSnapshot {
         UsageQuotaSnapshot(
             providerID: .codex,
             displayName: "Codex",
-            sessionWindow: UsageWindow(remainingPercent: 70, resetAt: Date().addingTimeInterval(3600), label: "Session"),
+            sessionWindow: UsageWindow(remainingPercent: remainingPercent, resetAt: Date().addingTimeInterval(3600), label: "Session"),
             weeklyWindow: UsageWindow(remainingPercent: 90, resetAt: Date().addingTimeInterval(86400), label: "Weekly"),
             isAvailable: true,
             statusNote: "chatgpt usage api"
@@ -298,11 +303,13 @@ final class UsageQuotaStoreTests: XCTestCase {
     }
 }
 
+@MainActor
 @Observable
-private final class FakeUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
+private final class FakeUsageQuotaProvider: UsageQuotaProviding {
     let id: UsageProviderID
     var snapshot: UsageQuotaSnapshot
     private(set) var fetchCount = 0
+    var onFetch: (() -> Void)?
 
     init(id: UsageProviderID = .codex, snapshot: UsageQuotaSnapshot) {
         self.id = id
@@ -312,6 +319,7 @@ private final class FakeUsageQuotaProvider: UsageQuotaProviding, @unchecked Send
     // swiftlint:disable:next async_without_await
     func fetchSnapshot() async -> UsageQuotaSnapshot {
         fetchCount += 1
+        onFetch?()
         return snapshot
     }
 }
