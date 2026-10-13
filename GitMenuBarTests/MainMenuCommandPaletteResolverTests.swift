@@ -183,10 +183,10 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         XCTAssertEqual(atomic.section, .actions)
         XCTAssertTrue(atomic.isEnabled)
 
-        let branchItems = [
-            try XCTUnwrap(items.first(where: { $0.kind == .branchManagement })),
-            try XCTUnwrap(items.first(where: { $0.kind == .createBranch })),
-            try XCTUnwrap(items.first(where: { $0.kind == .switchToBranchList }))
+        let branchItems = try [
+            XCTUnwrap(items.first(where: { $0.kind == .branchManagement })),
+            XCTUnwrap(items.first(where: { $0.kind == .createBranch })),
+            XCTUnwrap(items.first(where: { $0.kind == .switchToBranchList }))
         ]
         XCTAssertEqual(branchItems.map(\.section), [.branches, .branches, .branches])
         XCTAssertEqual(branchItems.map(\.isEnabled), [true, true, true])
