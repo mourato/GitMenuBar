@@ -17,23 +17,32 @@ struct UsageQuotaCostEstimate: Equatable, Sendable {
 }
 
 enum UsageQuotaCostScanner {
+    typealias PricingSource = UsageQuotaModelsDevStore.PricingSource
+
     private enum Constants {
         /// ponytail: per-file totals cached in memory (keyed by path, mtime, size, monthStart); cold start and first scan after relaunch still read every listed file. Persist the cache if cold start shows up in profiles.
         static let maxFilesPerRoot = 600
         static let maxFileBytes = 96 * 1024 * 1024
     }
 
-    /// Per-file scan results reused while the file's mtime, size and month are unchanged.
+    /// Per-file scan results reused while the file's mtime, size, month and
+    /// pricing source are unchanged.
     private struct CachedFileTotal: Sendable {
         let modified: Date
         let size: Int
         let monthStart: Date
+        let pricingToken: String
         let total: CostTotal
     }
 
     private static let fileCache = Mutex<[String: CachedFileTotal]>([:])
 
-    static func estimate(homeDirectory: URL, now: Date = Date()) -> UsageQuotaCostEstimate {
+    static func estimate(
+        homeDirectory: URL,
+        now: Date = Date(),
+        catalog: ModelsDevCatalog? = nil,
+        pricingToken: String = PricingSource.bundled.token
+    ) -> UsageQuotaCostEstimate {
         let monthStart = Calendar.current.date(
             from: Calendar.current.dateComponents([.year, .month], from: now)
         ) ?? now
@@ -49,8 +58,22 @@ enum UsageQuotaCostScanner {
         let claudeFiles = jsonlFiles(under: claudeRoot, monthStart: monthStart)
 
         var cache: [String: CachedFileTotal] = [:]
-        let codex = summedTotal(of: codexFiles, monthStart: monthStart, cache: &cache, scan: scanCodexFile)
-        let claude = summedTotal(of: claudeFiles, monthStart: monthStart, cache: &cache, scan: scanClaudeFile)
+        let codex = summedTotal(
+            of: codexFiles,
+            monthStart: monthStart,
+            pricingToken: pricingToken,
+            cache: &cache
+        ) { file, month in
+            scanCodexFile(file, monthStart: month, catalog: catalog)
+        }
+        let claude = summedTotal(
+            of: claudeFiles,
+            monthStart: monthStart,
+            pricingToken: pricingToken,
+            cache: &cache
+        ) { file, month in
+            scanClaudeFile(file, monthStart: month, catalog: catalog)
+        }
         // Replacing the whole cache drops entries for files no longer listed.
         fileCache.withLock { $0 = cache }
 
@@ -95,7 +118,11 @@ enum UsageQuotaCostScanner {
         var output = 0
     }
 
-    private static func scanCodexFile(_ file: URL, monthStart: Date) -> CostTotal {
+    private static func scanCodexFile(
+        _ file: URL,
+        monthStart: Date,
+        catalog: ModelsDevCatalog?
+    ) -> CostTotal {
         var total = CostTotal()
         guard let text = try? String(contentsOf: file, encoding: .utf8) else { return total }
         let records = parseCodexRecords(text)
@@ -111,7 +138,8 @@ enum UsageQuotaCostScanner {
                 inputTokens: usage.input,
                 cachedInputTokens: usage.cached,
                 cacheWriteInputTokens: usage.cacheWrite,
-                outputTokens: usage.output
+                outputTokens: usage.output,
+                catalog: catalog
             ) else { continue }
             total.totalUSD += cost
             total.hasPricedRecords = true
@@ -210,7 +238,11 @@ enum UsageQuotaCostScanner {
 
     // MARK: - Claude
 
-    private static func scanClaudeFile(_ file: URL, monthStart: Date) -> CostTotal {
+    private static func scanClaudeFile(
+        _ file: URL,
+        monthStart: Date,
+        catalog: ModelsDevCatalog?
+    ) -> CostTotal {
         var total = CostTotal()
         guard let text = try? String(contentsOf: file, encoding: .utf8) else { return total }
         var seenRequestIDs = Set<String>()
@@ -236,7 +268,8 @@ enum UsageQuotaCostScanner {
                 cacheReadInputTokens: intValue(usage["cache_read_input_tokens"]),
                 cacheCreationInputTokens: intValue(usage["cache_creation_input_tokens"]),
                 cacheCreationInputTokens1h: intValue(cacheCreation?["ephemeral_1h_input_tokens"]),
-                outputTokens: intValue(usage["output_tokens"])
+                outputTokens: intValue(usage["output_tokens"]),
+                catalog: catalog
             ) else { continue }
             total.totalUSD += cost
             total.hasPricedRecords = true
@@ -259,11 +292,13 @@ enum UsageQuotaCostScanner {
         let size: Int
     }
 
-    /// Sums per-file totals, reusing cached values for files whose mtime, size and month are unchanged.
-    /// Fills `cache` with every file visited so the caller can replace the stored cache.
+    /// Sums per-file totals, reusing cached values for files whose mtime, size,
+    /// month and pricing source are unchanged. Fills `cache` with every file
+    /// visited so the caller can replace the stored cache.
     private static func summedTotal(
         of files: [ScannedFile],
         monthStart: Date,
+        pricingToken: String,
         cache: inout [String: CachedFileTotal],
         scan: (URL, Date) -> CostTotal
     ) -> CostTotal {
@@ -272,7 +307,8 @@ enum UsageQuotaCostScanner {
         for file in files {
             let key = file.url.path
             let fileTotal = previous[key].flatMap { hit in
-                hit.modified == file.modified && hit.size == file.size && hit.monthStart == monthStart
+                hit.modified == file.modified && hit.size == file.size
+                    && hit.monthStart == monthStart && hit.pricingToken == pricingToken
                     ? hit.total
                     : nil
             } ?? scan(file.url, monthStart)
@@ -280,6 +316,7 @@ enum UsageQuotaCostScanner {
                 modified: file.modified,
                 size: file.size,
                 monthStart: monthStart,
+                pricingToken: pricingToken,
                 total: fileTotal
             )
             total.totalUSD += fileTotal.totalUSD

@@ -151,4 +151,79 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
         let home = try makeTemporaryTestDirectory(testName: "CostEstimateEmpty")
         XCTAssertTrue(UsageQuotaCostScanner.estimate(homeDirectory: home).rows.isEmpty)
     }
+
+    /// Writes a Codex rollout with a single `gpt-6.1-sol` turn: 1000 input, 100 output.
+    private func writeGpt61SolSession(home: URL, now: Date) throws {
+        let monthStart = Calendar.current.date(
+            from: Calendar.current.dateComponents([.year, .month], from: now)
+        ) ?? now
+        let timestamp = ISO8601DateFormatter().string(from: monthStart.addingTimeInterval(3600))
+        let codexDir = home.appendingPathComponent(".codex/sessions", isDirectory: true)
+        try FileManager.default.createDirectory(at: codexDir, withIntermediateDirectories: true)
+        let lines = [
+            #"{"timestamp":"\#(timestamp)","ordinal":1,"type":"turn_context","payload":{"turn_id":"t1","model":"gpt-6.1-sol"}}"#,
+            #"{"timestamp":"\#(timestamp)","ordinal":2,"type":"token_usage_record","payload":{"turn_id":"t1","usage":{"input_tokens":1000,"cached_input_tokens":0,"cache_write_input_tokens":0,"output_tokens":100}}}"#
+        ]
+        try lines.joined(separator: "\n").write(
+            to: codexDir.appendingPathComponent("rollout-61.jsonl"),
+            atomically: true,
+            encoding: .utf8
+        )
+    }
+
+    func testEstimatePricesCatalogOnlyModelFromBundledFallback() throws {
+        // gpt-6.1-sol is not a pre-catalog model; offline (no catalog) it must
+        // still price through the bundled fallback row instead of showing "—".
+        let home = try makeTemporaryTestDirectory(testName: "CostEstimateGpt61")
+        let now = Date()
+        try writeGpt61SolSession(home: home, now: now)
+
+        let estimate = UsageQuotaCostScanner.estimate(homeDirectory: home, now: now)
+        let openAI = try XCTUnwrap(estimate.rows.first { $0.title == "OpenAI API" })
+        // Bundled row: input 2e-6, output 1e-5.
+        let expected = Double(1000) * 2e-6 + Double(100) * 1e-5
+        XCTAssertEqual(openAI.amountUSD ?? -1, expected, accuracy: 1e-9)
+    }
+
+    func testEstimatePrefersCatalogAndRescansWhenPricingTokenChanges() throws {
+        let home = try makeTemporaryTestDirectory(testName: "CostEstimateCatalogSwap")
+        let now = Date()
+        try writeGpt61SolSession(home: home, now: now)
+
+        func catalog(input: Double, output: Double) throws -> ModelsDevCatalog {
+            let json = """
+            {"openai":{"id":"openai","models":{
+              "gpt-6.1-sol":{"id":"gpt-6.1-sol","cost":{"input":\(input),"output":\(output)}}}}}
+            """
+            return try JSONDecoder().decode(ModelsDevCatalog.self, from: Data(json.utf8))
+        }
+
+        let first = try UsageQuotaCostScanner.estimate(
+            homeDirectory: home,
+            now: now,
+            catalog: catalog(input: 10, output: 20),
+            pricingToken: "modelsdev:test:A"
+        )
+        let firstOpenAI = try XCTUnwrap(first.rows.first { $0.title == "OpenAI API" })
+        XCTAssertEqual(
+            firstOpenAI.amountUSD ?? -1,
+            Double(1000) * 10e-6 + Double(100) * 20e-6,
+            accuracy: 1e-9
+        )
+
+        // Same file, same mtime and size: the pricing-token change alone must
+        // invalidate the cached per-file total and rescan with catalog B.
+        let second = try UsageQuotaCostScanner.estimate(
+            homeDirectory: home,
+            now: now,
+            catalog: catalog(input: 20, output: 30),
+            pricingToken: "modelsdev:test:B"
+        )
+        let secondOpenAI = try XCTUnwrap(second.rows.first { $0.title == "OpenAI API" })
+        XCTAssertEqual(
+            secondOpenAI.amountUSD ?? -1,
+            Double(1000) * 20e-6 + Double(100) * 30e-6,
+            accuracy: 1e-9
+        )
+    }
 }

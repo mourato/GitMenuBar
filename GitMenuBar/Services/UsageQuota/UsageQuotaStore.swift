@@ -264,7 +264,14 @@ final class UsageQuotaStore {
         let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
         Task { [weak self] in
             let estimates = await Task.detached(priority: .utility) {
-                UsageQuotaCostScanner.estimate(homeDirectory: homeDirectory)
+                // Resolves the models.dev catalog (fresh, stale-on-failure, or
+                // none) so the scan prices against live rates when available.
+                let pricing = await UsageQuotaModelsDevStore.loadOrFetch()
+                return UsageQuotaCostScanner.estimate(
+                    homeDirectory: homeDirectory,
+                    catalog: pricing.catalog,
+                    pricingToken: pricing.token
+                )
             }.value
             guard let self, generation == refreshGeneration else { return }
             costEstimates = estimates.rows.isEmpty ? nil : estimates

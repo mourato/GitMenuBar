@@ -184,6 +184,20 @@ extension UsageQuotaAPIPricing {
             outputCostPerTokenAboveThreshold: 1.8e-6,
             cacheReadInputCostPerTokenAboveThreshold: 4e-8,
             cacheWriteAboveThreshold: 5e-7
+        ),
+        // GPT-6.1 Sol (models.dev catalog snapshot 2026-10-13). Long context:
+        // >272K input tokens bill 2x input / 1.5x output for the full request.
+        "gpt-6.1-sol": CodexAPIPrice(
+            inputCostPerToken: 2e-6,
+            outputCostPerToken: 1e-5,
+            cacheReadInputCostPerToken: 1e-7,
+            displayLabel: nil,
+            cacheWriteInputCostPerToken: 2.5e-6,
+            thresholdTokens: 272_000,
+            inputCostPerTokenAboveThreshold: 4e-6,
+            outputCostPerTokenAboveThreshold: 1.5e-5,
+            cacheReadInputCostPerTokenAboveThreshold: 2e-7,
+            cacheWriteAboveThreshold: 5e-6
         )
     ]
 

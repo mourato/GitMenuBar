@@ -18,7 +18,8 @@ MIT License. The full license text is available at
 ## CodexBar
 
 OpenRouter credits parsing, the Claude Code, Codex, Cursor, and OpenRouter provider icons,
-Cursor plan labels, and the API-equivalent token pricing tables
+Cursor plan labels, the API-equivalent token pricing tables, and the models.dev
+pricing catalog (fetch, cache, and model-ID resolution)
 are adapted from [CodexBar](https://github.com/steipete/CodexBar).
 
 Copyright (c) 2026 Peter Steinberger

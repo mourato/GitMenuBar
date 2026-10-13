@@ -9,6 +9,10 @@ import Foundation
 /// `input_tokens` already includes cached reads as a subset, so cached and
 /// written tokens are split out before billing; Claude bills 1h cache
 /// creation at 2x the input rate.
+///
+/// Resolution is catalog-first (live models.dev data, ported from CodexBar's
+/// `ModelsDevPricing.swift`); the bundled tables below are the offline
+/// fallback, so new model IDs price correctly once the catalog is cached.
 enum UsageQuotaAPIPricing {
     struct CodexAPIPrice {
         let inputCostPerToken: Double
@@ -94,14 +98,77 @@ enum UsageQuotaAPIPricing {
         return trimmed
     }
 
+    // MARK: - Catalog resolution
+
+    /// models.dev publishes USD per 1M tokens; token math uses USD per token.
+    private static let catalogUnit = 1_000_000.0
+    /// A models.dev `context_over_200k` block implies a 200K-token switch.
+    private static let catalogContextThresholdTokens = 200_000
+
+    /// Catalog-first resolution; the bundled table is the offline fallback.
+    static func codexPricing(
+        for model: String,
+        catalog: ModelsDevCatalog?
+    ) -> CodexAPIPrice? {
+        let entry = catalog?.model(providerID: "openai", rawModelID: model)
+            ?? catalog?.model(providerID: "openai", rawModelID: normalizeCodexModel(model))
+        if let cost = entry?.cost,
+           let input = cost.input,
+           let output = cost.output
+        {
+            let context = cost.contextOver200K
+            return CodexAPIPrice(
+                inputCostPerToken: input / catalogUnit,
+                outputCostPerToken: output / catalogUnit,
+                cacheReadInputCostPerToken: cost.cacheRead.map { $0 / catalogUnit },
+                displayLabel: nil,
+                cacheWriteInputCostPerToken: cost.cacheWrite.map { $0 / catalogUnit },
+                thresholdTokens: context.map { _ in catalogContextThresholdTokens },
+                inputCostPerTokenAboveThreshold: context?.input.map { $0 / catalogUnit },
+                outputCostPerTokenAboveThreshold: context?.output.map { $0 / catalogUnit },
+                cacheReadInputCostPerTokenAboveThreshold: context?.cacheRead.map { $0 / catalogUnit },
+                cacheWriteAboveThreshold: context?.cacheWrite.map { $0 / catalogUnit }
+            )
+        }
+        return codex[normalizeCodexModel(model)]
+    }
+
+    /// Catalog-first resolution; the bundled table is the offline fallback.
+    /// Missing cache rates fall back to the input rate, matching Claude's
+    /// documented cache pricing and CodexBar's models.dev conversion.
+    static func claudePricing(
+        for model: String,
+        catalog: ModelsDevCatalog?
+    ) -> ClaudeAPIPrice? {
+        if let cost = catalog?.model(providerID: "anthropic", rawModelID: model)?.cost,
+           let input = cost.input,
+           let output = cost.output
+        {
+            let context = cost.contextOver200K
+            return ClaudeAPIPrice(
+                inputCostPerToken: input / catalogUnit,
+                outputCostPerToken: output / catalogUnit,
+                cacheCreationInputCostPerToken: (cost.cacheWrite ?? input) / catalogUnit,
+                cacheReadInputCostPerToken: (cost.cacheRead ?? input) / catalogUnit,
+                thresholdTokens: context.map { _ in catalogContextThresholdTokens },
+                inputCostPerTokenAboveThreshold: context?.input.map { $0 / catalogUnit },
+                outputCostPerTokenAboveThreshold: context?.output.map { $0 / catalogUnit },
+                cacheCreationAboveThreshold: context?.cacheWrite.map { $0 / catalogUnit },
+                cacheReadInputCostPerTokenAboveThreshold: context?.cacheRead.map { $0 / catalogUnit }
+            )
+        }
+        return claude[normalizeClaudeModel(model)]
+    }
+
     static func codexCostUSD(
         model: String,
         inputTokens: Int,
         cachedInputTokens: Int,
         cacheWriteInputTokens: Int = 0,
-        outputTokens: Int
+        outputTokens: Int,
+        catalog: ModelsDevCatalog? = nil
     ) -> Double? {
-        guard let pricing = codex[normalizeCodexModel(model)] else { return nil }
+        guard let pricing = codexPricing(for: model, catalog: catalog) else { return nil }
         let totalInput = max(0, inputTokens)
         let cached = min(max(0, cachedInputTokens), totalInput)
         let remainingAfterCache = totalInput - cached
@@ -135,9 +202,10 @@ enum UsageQuotaAPIPricing {
         cacheReadInputTokens: Int,
         cacheCreationInputTokens: Int,
         cacheCreationInputTokens1h: Int = 0,
-        outputTokens: Int
+        outputTokens: Int,
+        catalog: ModelsDevCatalog? = nil
     ) -> Double? {
-        guard let pricing = claude[normalizeClaudeModel(model)] else { return nil }
+        guard let pricing = claudePricing(for: model, catalog: catalog) else { return nil }
         let input = max(0, inputTokens)
         let cacheRead = max(0, cacheReadInputTokens)
         let cacheCreationTotal = max(0, cacheCreationInputTokens)
