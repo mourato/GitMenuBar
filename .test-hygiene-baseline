@@ -1,18 +1,12 @@
-GitMenuBarTests/AICommitGrouperServiceTests.swift: tautology: assertion cannot fail
 GitMenuBarTests/GitManagerBranchOperationsTests.swift: sleep: inject a clock or await a confirmation instead of sleeping
 GitMenuBarTests/GitManagerBranchOperationsTests.swift: sleep: inject a clock or await a confirmation instead of sleeping
 GitMenuBarTests/GitManagerCommitHistoryPaginationTests.swift: sleep: inject a clock or await a confirmation instead of sleeping
 GitMenuBarTests/GitManagerMergeTests.swift: sleep: inject a clock or await a confirmation instead of sleeping
-GitMenuBarTests/GitMenuBarTests.swift: tautology: assertion cannot fail
-GitMenuBarTests/MainMenuCommandPaletteResolverTests.swift: existence-only: testResolveItemsIncludesAtomicCommitsWhenAvailable only checks non-nil; assert the value
-GitMenuBarTests/MainMenuRouteTransitionTests.swift: no-assertion: testTransitionCoversEveryRouteWithAndWithoutReducedMotion has no assertion; name the regression it catches
-GitMenuBarTests/MainWindowPreferencesTests.swift: no-assertion: testShellRespondsToLiveResizeNotifications has no assertion; name the regression it catches
 GitMenuBarTests/MonitoredProjectsStoreTests.swift: sleep: inject a clock or await a confirmation instead of sleeping
 GitMenuBarTests/ProjectCleanupStoreTests.swift: sleep: inject a clock or await a confirmation instead of sleeping
 GitMenuBarTests/ProjectCleanupStoreTests.swift: sleep: inject a clock or await a confirmation instead of sleeping
 GitMenuBarTests/ProjectCleanupStoreTests.swift: sleep: inject a clock or await a confirmation instead of sleeping
 GitMenuBarTests/ProjectMonitorStoreTests.swift: sleep: inject a clock or await a confirmation instead of sleeping
-GitMenuBarTests/UsageQuotaCostEstimateTests.swift: existence-only: testCodexModelNormalization only checks non-nil; assert the value
 GitMenuBarTests/UsageQuotaStoreTests.swift: sleep: inject a clock or await a confirmation instead of sleeping
 GitMenuBarTests/UsageQuotaStoreTests.swift: sleep: inject a clock or await a confirmation instead of sleeping
 GitMenuBarTests/UsageQuotaStoreTests.swift: sleep: inject a clock or await a confirmation instead of sleeping

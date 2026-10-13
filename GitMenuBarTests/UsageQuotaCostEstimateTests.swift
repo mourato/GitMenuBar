@@ -23,19 +23,30 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
         ))
     }
 
-    func testCodexModelNormalization() {
-        XCTAssertNotNil(UsageQuotaAPIPricing.codexCostUSD(
+    func testCodexModelNormalization() throws {
+        // gpt-reserve aliases gpt-5.6-luna: input 2e-7, output 1.2e-6.
+        let reserve = UsageQuotaAPIPricing.codexCostUSD(
             model: "gpt-reserve",
             inputTokens: 100,
             cachedInputTokens: 0,
             outputTokens: 10
-        ))
-        XCTAssertNotNil(UsageQuotaAPIPricing.codexCostUSD(
-            model: "gpt-5.2-2025-01-01",
+        )
+        XCTAssertEqual(reserve ?? -1, Double(100) * 2e-7 + Double(10) * 1.2e-6, accuracy: 1e-9)
+
+        // A dated snapshot must price like its base model.
+        let base = try XCTUnwrap(UsageQuotaAPIPricing.codexCostUSD(
+            model: "gpt-5.2",
             inputTokens: 100,
             cachedInputTokens: 0,
             outputTokens: 10
         ))
+        let dated = UsageQuotaAPIPricing.codexCostUSD(
+            model: "gpt-5.2-2025-01-01",
+            inputTokens: 100,
+            cachedInputTokens: 0,
+            outputTokens: 10
+        )
+        XCTAssertEqual(dated ?? -1, base, accuracy: 1e-9)
     }
 
     func testClaudeCostSplitsHourlyCacheCreation() {

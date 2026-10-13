@@ -111,7 +111,7 @@ final class WorkbenchWindowChromeTests: XCTestCase {
         XCTAssertFalse(controller.view.layer?.masksToBounds ?? false)
     }
 
-    func testShellRespondsToLiveResizeNotifications() {
+    func testShellRespondsToLiveResizeNotifications() throws {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
             styleMask: [.titled, .resizable],
@@ -120,15 +120,18 @@ final class WorkbenchWindowChromeTests: XCTestCase {
         )
         let shell = WorkbenchWindowShellView()
         window.contentView?.addSubview(shell)
+        let visualEffectView = try XCTUnwrap(shell.subviews.compactMap { $0 as? NSVisualEffectView }.first)
 
         NotificationCenter.default.post(
             name: NSWindow.willStartLiveResizeNotification,
             object: window
         )
+        XCTAssertEqual(visualEffectView.state, .inactive)
 
         NotificationCenter.default.post(
             name: NSWindow.didEndLiveResizeNotification,
             object: window
         )
+        XCTAssertEqual(visualEffectView.state, .followsWindowActiveState)
     }
 }

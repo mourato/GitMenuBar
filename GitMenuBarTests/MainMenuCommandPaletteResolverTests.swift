@@ -156,7 +156,7 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
         )
     }
 
-    func testResolveItemsIncludesAtomicCommitsWhenAvailable() {
+    func testResolveItemsIncludesAtomicCommitsWhenAvailable() throws {
         let actionState = StatusBarContextMenuActionState.resolve(
             hasCommitWork: false, hasSyncWork: false, canAutoCommit: false, canSync: false
         )
@@ -179,10 +179,17 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
             )
         )
 
-        XCTAssertNotNil(items.first(where: { $0.kind == .atomicCommits }))
-        XCTAssertNotNil(items.first(where: { $0.kind == .branchManagement }))
-        XCTAssertNotNil(items.first(where: { $0.kind == .createBranch }))
-        XCTAssertNotNil(items.first(where: { $0.kind == .switchToBranchList }))
+        let atomic = try XCTUnwrap(items.first(where: { $0.kind == .atomicCommits }))
+        XCTAssertEqual(atomic.section, .actions)
+        XCTAssertTrue(atomic.isEnabled)
+
+        let branchItems = [
+            try XCTUnwrap(items.first(where: { $0.kind == .branchManagement })),
+            try XCTUnwrap(items.first(where: { $0.kind == .createBranch })),
+            try XCTUnwrap(items.first(where: { $0.kind == .switchToBranchList }))
+        ]
+        XCTAssertEqual(branchItems.map(\.section), [.branches, .branches, .branches])
+        XCTAssertEqual(branchItems.map(\.isEnabled), [true, true, true])
     }
 
     func testResolveItemsShowsMergeToDefaultOnlyWhenOffDefaultBranch() {

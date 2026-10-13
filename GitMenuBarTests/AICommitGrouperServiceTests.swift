@@ -200,7 +200,6 @@ final class AICommitGrouperServiceTests: XCTestCase {
     func testAtomicCommitGroupModel() {
         var group = AtomicCommitGroup(files: ["a", "b"], message: "feat: x")
         XCTAssertEqual(group.fileCount, 2)
-        XCTAssertEqual(group.id, group.id)
         group.files = ["a"]
         XCTAssertEqual(group.fileCount, 1)
     }

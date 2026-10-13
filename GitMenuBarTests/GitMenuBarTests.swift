@@ -2,10 +2,6 @@
 import XCTest
 
 final class GitMenuBarTests: XCTestCase {
-    func testSmoke() {
-        XCTAssertTrue(true)
-    }
-
     func testPrimaryActionShowsEnabledCommitWhenChangesAndMessageExist() {
         let state = MainMenuPrimaryActionState.resolve(
             hasWorkingTreeChanges: true,
