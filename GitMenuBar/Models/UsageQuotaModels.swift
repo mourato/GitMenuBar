@@ -70,6 +70,12 @@ struct UsageWindow: Codable, Equatable, Sendable {
     }
 }
 
+/// One redeemable Codex limit reset, with the date it stops being redeemable.
+struct UsageQuotaResetCredit: Codable, Equatable, Identifiable, Sendable {
+    let id: String
+    let expiresAt: Date
+}
+
 struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
     let providerID: UsageProviderID
     let displayName: String
@@ -79,6 +85,8 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
     let creditValueText: String?
     /// Codex limit-reset credits still available (from `wham/rate-limit-reset-credits`).
     let resetCreditsAvailable: Int?
+    /// Redeemable reset credits with expiry, soonest first. Empty when the provider does not report them.
+    let resetCredits: [UsageQuotaResetCredit]
     /// Provider-reported plan name when known (e.g. Codex `chatgpt_plan_type`, Cursor `membershipType`).
     let planText: String?
     let isAvailable: Bool
@@ -103,6 +111,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         modelWindows: [UsageWindow] = [],
         creditValueText: String? = nil,
         resetCreditsAvailable: Int? = nil,
+        resetCredits: [UsageQuotaResetCredit] = [],
         planText: String? = nil,
         isAvailable: Bool,
         isStale: Bool = false,
@@ -116,6 +125,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         self.modelWindows = modelWindows
         self.creditValueText = creditValueText
         self.resetCreditsAvailable = resetCreditsAvailable.flatMap { $0 > 0 ? $0 : nil }
+        self.resetCredits = resetCredits
         self.planText = planText.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap { $0.isEmpty ? nil : $0 }
         self.isAvailable = isAvailable
         self.isStale = isStale
@@ -131,6 +141,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         case modelWindows
         case creditValueText
         case resetCreditsAvailable
+        case resetCredits
         case planText
         case isAvailable
         case isStale
@@ -147,6 +158,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         modelWindows = try container.decodeIfPresent([UsageWindow].self, forKey: .modelWindows) ?? []
         creditValueText = try container.decodeIfPresent(String.self, forKey: .creditValueText)
         resetCreditsAvailable = try container.decodeIfPresent(Int.self, forKey: .resetCreditsAvailable)
+        resetCredits = try container.decodeIfPresent([UsageQuotaResetCredit].self, forKey: .resetCredits) ?? []
         planText = try container.decodeIfPresent(String.self, forKey: .planText)
         isAvailable = try container.decode(Bool.self, forKey: .isAvailable)
         isStale = try container.decode(Bool.self, forKey: .isStale)
@@ -177,6 +189,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
             modelWindows: modelWindows,
             creditValueText: creditValueText,
             resetCreditsAvailable: resetCreditsAvailable,
+            resetCredits: resetCredits,
             planText: planText,
             isAvailable: isAvailable,
             isStale: true,
@@ -185,7 +198,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         )
     }
 
-    func withResetCreditsAvailable(_ count: Int?) -> UsageQuotaSnapshot {
+    func withResetCredits(_ inventory: CodexResetCreditInventory) -> UsageQuotaSnapshot {
         UsageQuotaSnapshot(
             providerID: providerID,
             displayName: displayName,
@@ -193,7 +206,8 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
             weeklyWindow: weeklyWindow,
             modelWindows: modelWindows,
             creditValueText: creditValueText,
-            resetCreditsAvailable: count,
+            resetCreditsAvailable: inventory.availableCount,
+            resetCredits: inventory.credits,
             planText: planText,
             isAvailable: isAvailable,
             isStale: isStale,
@@ -211,6 +225,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
             modelWindows: modelWindows,
             creditValueText: creditValueText,
             resetCreditsAvailable: resetCreditsAvailable,
+            resetCredits: resetCredits,
             planText: plan,
             isAvailable: isAvailable,
             isStale: isStale,

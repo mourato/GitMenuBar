@@ -159,11 +159,11 @@ struct CodexUsageProvider: UsageQuotaProviding {
                 return nil
             }
 
-            if let resetCredits = await fetchResetCreditsAvailable(
+            if let resetCredits = await fetchResetCreditInventory(
                 accessToken: accessToken,
                 accountID: CodexUsageParsing.codexAccountID(from: auth)
             ) {
-                snapshot = snapshot.withResetCreditsAvailable(resetCredits)
+                snapshot = snapshot.withResetCredits(resetCredits)
             }
             return snapshot.withPlanText(UsageQuotaPlanNaming.display(CodexUsageParsing.planType(fromAuth: auth)))
         } catch {
@@ -171,7 +171,36 @@ struct CodexUsageProvider: UsageQuotaProviding {
         }
     }
 
-    private func fetchResetCreditsAvailable(accessToken: String, accountID: String?) async -> Int? {
+    /// Redeems one reset credit. Each call is one user action: it sends a fresh idempotency key
+    /// and retries only after a 401 (the server did not process that attempt).
+    func redeemResetCredit(id creditID: String) async -> CodexResetRedeemOutcome {
+        guard let authState = readCodexAuthState(),
+              let accessToken = await resolveAccessToken(authState: authState)
+        else {
+            return .unauthorized
+        }
+
+        let redeemRequestID = UUID().uuidString
+        let outcome = await postResetRedeem(
+            accessToken: accessToken,
+            auth: authState.auth,
+            creditID: creditID,
+            redeemRequestID: redeemRequestID
+        )
+        guard outcome == .unauthorized,
+              let refreshedToken = await refreshAccessTokenInMemory(authState: authState)
+        else {
+            return outcome
+        }
+        return await postResetRedeem(
+            accessToken: refreshedToken,
+            auth: authState.auth,
+            creditID: creditID,
+            redeemRequestID: redeemRequestID
+        )
+    }
+
+    private func fetchResetCreditInventory(accessToken: String, accountID: String?) async -> CodexResetCreditInventory? {
         // Unofficial ChatGPT endpoint used by CodexBar; may break without notice.
         // GET https://chatgpt.com/backend-api/wham/rate-limit-reset-credits
         var request = URLRequest(
@@ -190,9 +219,45 @@ struct CodexUsageProvider: UsageQuotaProviding {
             guard (response as? HTTPURLResponse).map({ 200 ... 299 ~= $0.statusCode }) == true else {
                 return nil
             }
-            return CodexUsageParsing.resetCreditsAvailable(from: data)
+            return CodexUsageParsing.resetCreditInventory(from: data)
         } catch {
             return nil
+        }
+    }
+
+    private func postResetRedeem(
+        accessToken: String,
+        auth: [String: Any],
+        creditID: String,
+        redeemRequestID: String
+    ) async -> CodexResetRedeemOutcome {
+        // Unofficial ChatGPT endpoint; redeems one banked reset. May break without notice.
+        // POST https://chatgpt.com/backend-api/wham/rate-limit-reset-credits/consume
+        var request = URLRequest(
+            url: URL(string: "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits/consume")!,
+            timeoutInterval: 15
+        )
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("GitMenuBar", forHTTPHeaderField: "User-Agent")
+        if let accountID = CodexUsageParsing.codexAccountID(from: auth), !accountID.isEmpty {
+            request.setValue(accountID, forHTTPHeaderField: "ChatGPT-Account-Id")
+        }
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "redeem_request_id": redeemRequestID,
+            "credit_id": creditID
+        ])
+
+        do {
+            let (data, response) = try await urlSession.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                return .failed
+            }
+            return CodexUsageParsing.resetRedeemOutcome(statusCode: http.statusCode, data: data)
+        } catch {
+            return .failed
         }
     }
 }

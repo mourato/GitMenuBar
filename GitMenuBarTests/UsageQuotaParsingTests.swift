@@ -81,12 +81,50 @@ final class UsageQuotaParsingTests: XCTestCase {
         let json = """
         {"available_count":2,"credits":[{"id":"a"},{"id":"b","expires_at":"2099-01-01T00:00:00Z"}]}
         """
-        XCTAssertEqual(CodexUsageParsing.resetCreditsAvailable(from: Data(json.utf8)), 2)
+        XCTAssertEqual(CodexUsageParsing.resetCreditInventory(from: Data(json.utf8))?.availableCount, 2)
 
         let expiredOnly = """
         {"credits":[{"id":"old","expires_at":"2000-01-01T00:00:00Z"}]}
         """
-        XCTAssertEqual(CodexUsageParsing.resetCreditsAvailable(from: Data(expiredOnly.utf8)), 0)
+        XCTAssertEqual(CodexUsageParsing.resetCreditInventory(from: Data(expiredOnly.utf8))?.availableCount, 0)
+    }
+
+    func testResetCreditInventoryListsRedeemableCreditsSoonestFirst() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let json = """
+        {
+          "available_count": 2,
+          "credits": [
+            {"id":"later","status":"available","expires_at":"2099-03-01T00:00:00Z"},
+            {"id":"used","status":"redeemed","expires_at":"2099-02-01T00:00:00Z"},
+            {"id":"expired","status":"available","expires_at":"2000-01-01T00:00:00Z"},
+            {"id":"sooner","status":"available","expires_at":"2099-01-01T00:00:00Z"},
+            {"id":"","status":"available","expires_at":"2099-01-01T00:00:00Z"}
+          ]
+        }
+        """
+
+        let inventory = CodexUsageParsing.resetCreditInventory(from: Data(json.utf8), now: now)
+
+        XCTAssertEqual(inventory?.availableCount, 2)
+        XCTAssertEqual(inventory?.credits.map(\.id), ["sooner", "later"])
+        XCTAssertEqual(inventory?.credits.first?.expiresAt, ISO8601DateFormatter().date(from: "2099-01-01T00:00:00Z"))
+    }
+
+    func testResetRedeemOutcomeMapsResultCodes() {
+        func outcome(_ status: Int, _ body: String = "{}") -> CodexResetRedeemOutcome {
+            CodexUsageParsing.resetRedeemOutcome(statusCode: status, data: Data(body.utf8))
+        }
+
+        XCTAssertEqual(outcome(200, #"{"code":"reset","windows_reset":2}"#), .applied(windowsReset: 2))
+        XCTAssertEqual(outcome(200, #"{"code":"already_redeemed"}"#), .applied(windowsReset: 0))
+        XCTAssertEqual(outcome(200, #"{"code":"nothing_to_reset"}"#), .nothingToReset)
+        XCTAssertEqual(outcome(200, #"{"code":"no_credit"}"#), .noCredit)
+        XCTAssertEqual(outcome(200, #"{"code":"something_new"}"#), .failed)
+        XCTAssertEqual(outcome(200, "<html>proxy</html>"), .failed)
+        XCTAssertEqual(outcome(401), .unauthorized)
+        XCTAssertEqual(outcome(403), .forbidden)
+        XCTAssertEqual(outcome(500), .failed)
     }
 
     func testIntervalChipAndDayScaleCountdown() {

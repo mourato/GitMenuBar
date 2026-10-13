@@ -59,6 +59,7 @@ extension StatusBarController {
             updatedItem.isEnabled = false
             submenu.addItem(updatedItem)
         }
+        addCodexResetItems(to: submenu)
 
         let menuItem = NSMenuItem(title: "AI Usage Quotas", action: nil, keyEquivalent: "")
         menuItem.submenu = submenu
@@ -98,6 +99,92 @@ extension StatusBarController {
 
     @objc private func refreshUsageFromMenu() {
         usageQuotaStore.refresh(reason: .manual)
+    }
+
+    private func addCodexResetItems(to submenu: NSMenu) {
+        guard let codex = usageQuotaStore.visibleSnapshots.first(where: { $0.providerID == .codex }),
+              !codex.resetCredits.isEmpty
+        else {
+            return
+        }
+
+        submenu.addItem(.separator())
+        let count = codex.resetCreditsAvailable ?? codex.resetCredits.count
+        let header = NSMenuItem(
+            title: count == 1 ? "1 Codex reset available" : "\(count) Codex resets available",
+            action: nil,
+            keyEquivalent: ""
+        )
+        header.isEnabled = false
+        submenu.addItem(header)
+
+        for credit in codex.resetCredits {
+            let isRedeeming = usageQuotaStore.redeemingResetCreditIDs.contains(credit.id)
+            let expiry = credit.expiresAt.formatted(date: .abbreviated, time: .omitted)
+            let item = menuItem(
+                title: isRedeeming ? "Using reset" : "Use reset, expires \(expiry)",
+                action: #selector(redeemResetFromMenu(_:))
+            )
+            item.representedObject = credit
+            item.isEnabled = !isRedeeming
+            submenu.addItem(item)
+        }
+    }
+
+    @objc private func redeemResetFromMenu(_ sender: NSMenuItem) {
+        guard let credit = sender.representedObject as? UsageQuotaResetCredit else { return }
+        Task {
+            guard confirmResetRedemption() else { return }
+            guard let outcome = await usageQuotaStore.redeemCodexResetCredit(credit) else { return }
+            presentResetOutcome(outcome)
+        }
+    }
+
+    /// Redeeming spends a reset that cannot be recovered, so the user confirms first.
+    private func confirmResetRedemption() -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Use a Codex reset?"
+        alert.informativeText = "This spends one reset from your ChatGPT account. It can't be undone."
+        alert.addButton(withTitle: "Use Reset")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    private func presentResetOutcome(_ outcome: CodexResetRedeemOutcome) {
+        let alert = NSAlert()
+        switch outcome {
+        case let .applied(windowsReset):
+            alert.alertStyle = .informational
+            alert.messageText = "Codex reset used"
+            alert.informativeText = windowsReset > 0
+                ? "\(windowsReset) Codex limit \(windowsReset == 1 ? "window was" : "windows were") reset."
+                : "Your Codex limits were reset."
+        case .nothingToReset:
+            alert.alertStyle = .informational
+            alert.messageText = "No Codex limit needed a reset"
+            alert.informativeText = "No limit was eligible for a reset. Refresh quotas to check your remaining resets."
+        case .noCredit:
+            alert.alertStyle = .warning
+            alert.messageText = "No reset available"
+            alert.informativeText = "This reset was already used or has expired. Usage has been refreshed."
+        case .unauthorized:
+            alert.alertStyle = .warning
+            alert.messageText = "Sign in to Codex again"
+            alert.informativeText = "Your ChatGPT session expired. Open Codex, sign in, then try again."
+        case .forbidden:
+            alert.alertStyle = .warning
+            alert.messageText = "Resets aren't available"
+            alert.informativeText = "ChatGPT doesn't allow resets for this account."
+        case .failed:
+            alert.alertStyle = .critical
+            alert.messageText = "Couldn't confirm the reset"
+            alert.informativeText = "The request didn't finish. Refresh quotas to see whether the reset was used before you try again."
+        }
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 }
 

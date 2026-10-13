@@ -22,6 +22,8 @@ final class UsageQuotaStore {
     private(set) var snapshots: [UsageQuotaSnapshot] = []
     /// Current-month API-equivalent spend estimate; nil until the first refresh scans local sessions.
     private(set) var costEstimates: UsageQuotaCostEstimate?
+    /// Reset credits with a redemption in flight; their menu items stay disabled until the attempt settles.
+    private(set) var redeemingResetCreditIDs: Set<String> = []
     var showAIUsageQuotas: Bool {
         didSet {
             guard showAIUsageQuotas != oldValue else { return }
@@ -85,6 +87,7 @@ final class UsageQuotaStore {
     private let defaults: UserDefaults
     private let snapshotStore: UsageQuotaSnapshotStore
     private let providers: [any UsageQuotaProviding]
+    private let codexProvider: CodexUsageProvider
     private let now: () -> Date
     private let pricingLoader: PricingLoader
     @ObservationIgnored private var refreshTimer: Timer?
@@ -105,12 +108,14 @@ final class UsageQuotaStore {
             GeminiUsageProvider(),
             AntigravityUsageProvider()
         ],
+        codexProvider: CodexUsageProvider = CodexUsageProvider(),
         now: @escaping () -> Date = Date.init,
         pricingLoader: @escaping PricingLoader = { await UsageQuotaModelsDevStore.shared.loadOrFetch() }
     ) {
         self.defaults = defaults
         self.snapshotStore = snapshotStore
         self.providers = providers
+        self.codexProvider = codexProvider
         self.now = now
         self.pricingLoader = pricingLoader
         showAIUsageQuotas = defaults.object(forKey: AppPreferences.Keys.showAIUsageQuotas) as? Bool ?? false
@@ -148,6 +153,18 @@ final class UsageQuotaStore {
         refreshTask = Task { [weak self] in
             await self?.performRefresh(reason: reason, generation: generation)
         }
+    }
+
+    /// Spends one Codex reset credit and refreshes usage so counts match the server.
+    /// Returns nil without a request when that credit is already being redeemed.
+    func redeemCodexResetCredit(_ credit: UsageQuotaResetCredit) async -> CodexResetRedeemOutcome? {
+        guard !redeemingResetCreditIDs.contains(credit.id) else { return nil }
+        redeemingResetCreditIDs.insert(credit.id)
+        defer { redeemingResetCreditIDs.remove(credit.id) }
+
+        let outcome = await codexProvider.redeemResetCredit(id: credit.id)
+        refresh(reason: .manual)
+        return outcome
     }
 
     private func handlePreferenceChange(loadCachedOnly: Bool = false) {

@@ -57,33 +57,79 @@ enum CodexUsageParsing {
     }
 
     /// Decode CodexBar-compatible reset-credit inventory payloads.
-    static func resetCreditsAvailable(from data: Data, now: Date = Date()) -> Int? {
+    /// `available_count` is authoritative; the credit list only supplies per-reset expiry.
+    static func resetCreditInventory(from data: Data, now: Date = Date()) -> CodexResetCreditInventory? {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return nil
         }
-        if let count = intValue(root["available_count"]) ?? intValue(root["availableCount"]) {
-            return max(0, count)
-        }
-        guard let credits = root["credits"] as? [[String: Any]] else {
+        let creditObjects = root["credits"] as? [[String: Any]]
+        let explicitCount = intValue(root["available_count"]) ?? intValue(root["availableCount"])
+        guard explicitCount != nil || creditObjects != nil else {
             return nil
         }
-        let available = credits.filter { credit in
-            if let expiresRaw = credit["expires_at"] ?? credit["expiresAt"] {
-                if let text = expiresRaw as? String,
-                   let expiresAt = parseISO8601Date(text),
-                   expiresAt <= now
-                {
-                    return false
-                }
-                if let epoch = doubleValue(expiresRaw),
-                   Date(timeIntervalSince1970: epoch) <= now
-                {
-                    return false
-                }
-            }
-            return true
+        let usable = (creditObjects ?? []).filter { isRedeemableResetCredit($0, now: now) }
+        let credits = usable
+            .compactMap(resetCredit(from:))
+            .sorted { $0.expiresAt < $1.expiresAt }
+        return CodexResetCreditInventory(
+            availableCount: max(0, explicitCount ?? usable.count),
+            credits: credits
+        )
+    }
+
+    /// Maps the reset-consume response (or its failure status) to what the user should see.
+    static func resetRedeemOutcome(statusCode: Int, data: Data) -> CodexResetRedeemOutcome {
+        switch statusCode {
+        case 200 ... 299:
+            break
+        case 401:
+            return .unauthorized
+        case 403:
+            return .forbidden
+        default:
+            return .failed
         }
-        return available.count
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let code = root["code"] as? String
+        else {
+            return .failed
+        }
+        switch code {
+        case "reset", "already_redeemed":
+            return .applied(windowsReset: max(0, intValue(root["windows_reset"]) ?? 0))
+        case "nothing_to_reset":
+            return .nothingToReset
+        case "no_credit":
+            return .noCredit
+        default:
+            return .failed
+        }
+    }
+
+    private static func isRedeemableResetCredit(_ credit: [String: Any], now: Date) -> Bool {
+        if let status = credit["status"] as? String, status != "available" {
+            return false
+        }
+        if let expiresAt = expiryDate(credit["expires_at"] ?? credit["expiresAt"]), expiresAt <= now {
+            return false
+        }
+        return true
+    }
+
+    private static func resetCredit(from credit: [String: Any]) -> UsageQuotaResetCredit? {
+        guard let id = credit["id"] as? String, !id.isEmpty,
+              let expiresAt = expiryDate(credit["expires_at"] ?? credit["expiresAt"])
+        else {
+            return nil
+        }
+        return UsageQuotaResetCredit(id: id, expiresAt: expiresAt)
+    }
+
+    private static func expiryDate(_ raw: Any?) -> Date? {
+        if let text = raw as? String {
+            return parseISO8601Date(text)
+        }
+        return doubleValue(raw).map { Date(timeIntervalSince1970: $0) }
     }
 
     private static func parseISO8601Date(_ text: String) -> Date? {
@@ -381,6 +427,21 @@ enum CodexUsageParsing {
         allowed.remove(charactersIn: "&=+#")
         return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
     }
+}
+
+struct CodexResetCreditInventory: Equatable, Sendable {
+    let availableCount: Int
+    let credits: [UsageQuotaResetCredit]
+}
+
+enum CodexResetRedeemOutcome: Equatable, Sendable {
+    case applied(windowsReset: Int)
+    case nothingToReset
+    case noCredit
+    case unauthorized
+    case forbidden
+    /// Network, proxy, or unexpected response. ChatGPT may still have applied the reset.
+    case failed
 }
 
 struct CodexWindowSummary {
