@@ -132,7 +132,8 @@ final class UsageQuotaStoreTests: XCTestCase {
         let store = UsageQuotaStore(
             defaults: defaults,
             snapshotStore: snapshotStore,
-            providers: [provider]
+            providers: [provider],
+            pricingLoader: { .bundled }
         )
         store.showAIUsageQuotas = true
 
@@ -151,7 +152,8 @@ final class UsageQuotaStoreTests: XCTestCase {
         let store = UsageQuotaStore(
             defaults: defaults,
             snapshotStore: snapshotStore,
-            providers: [codexProvider, cursorProvider]
+            providers: [codexProvider, cursorProvider],
+            pricingLoader: { .bundled }
         )
         store.showCursorUsageQuota = false
         store.showAIUsageQuotas = true
@@ -196,7 +198,8 @@ final class UsageQuotaStoreTests: XCTestCase {
             defaults: defaults,
             snapshotStore: snapshotStore,
             providers: [provider],
-            now: { currentDate }
+            now: { currentDate },
+            pricingLoader: { .bundled }
         )
         store.showAIUsageQuotas = true
         await waitUntil { provider.fetchCount > 0 && !store.snapshots.isEmpty }
@@ -214,7 +217,8 @@ final class UsageQuotaStoreTests: XCTestCase {
         let store = UsageQuotaStore(
             defaults: defaults,
             snapshotStore: snapshotStore,
-            providers: [provider]
+            providers: [provider],
+            pricingLoader: { .bundled }
         )
         store.showAIUsageQuotas = true
 
@@ -232,7 +236,8 @@ final class UsageQuotaStoreTests: XCTestCase {
         UsageQuotaStore(
             defaults: defaults,
             snapshotStore: snapshotStore,
-            providers: [provider]
+            providers: [provider],
+            pricingLoader: { .bundled }
         )
     }
 

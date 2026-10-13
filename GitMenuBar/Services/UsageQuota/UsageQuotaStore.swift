@@ -78,10 +78,15 @@ final class UsageQuotaStore {
         }
     }
 
+    /// Resolves the pricing source for a cost scan. Injectable so tests never
+    /// touch the network; production fetches and caches the models.dev catalog.
+    typealias PricingLoader = @Sendable () async -> UsageQuotaModelsDevStore.PricingSource
+
     private let defaults: UserDefaults
     private let snapshotStore: UsageQuotaSnapshotStore
     private let providers: [any UsageQuotaProviding]
     private let now: () -> Date
+    private let pricingLoader: PricingLoader
     @ObservationIgnored private var refreshTimer: Timer?
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     @ObservationIgnored private var refreshGeneration = 0
@@ -100,12 +105,14 @@ final class UsageQuotaStore {
             GeminiUsageProvider(),
             AntigravityUsageProvider()
         ],
-        now: @escaping () -> Date = Date.init
+        now: @escaping () -> Date = Date.init,
+        pricingLoader: @escaping PricingLoader = { await UsageQuotaModelsDevStore.loadOrFetch() }
     ) {
         self.defaults = defaults
         self.snapshotStore = snapshotStore
         self.providers = providers
         self.now = now
+        self.pricingLoader = pricingLoader
         showAIUsageQuotas = defaults.object(forKey: AppPreferences.Keys.showAIUsageQuotas) as? Bool ?? false
         showClaudeCodeUsageQuota = defaults.object(forKey: AppPreferences.Keys.showClaudeCodeUsageQuota) as? Bool ?? true
         showCodexUsageQuota = defaults.object(forKey: AppPreferences.Keys.showCodexUsageQuota) as? Bool ?? true
@@ -262,11 +269,13 @@ final class UsageQuotaStore {
         }
         lastCostScanAt = now()
         let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+        // Captured before the detached task so the @MainActor store is not
+        // referenced from the scan; resolves fresh, stale-on-failure, or no
+        // catalog so the scan prices against live rates when available.
+        let pricingLoader = pricingLoader
         Task { [weak self] in
             let estimates = await Task.detached(priority: .utility) {
-                // Resolves the models.dev catalog (fresh, stale-on-failure, or
-                // none) so the scan prices against live rates when available.
-                let pricing = await UsageQuotaModelsDevStore.loadOrFetch()
+                let pricing = await pricingLoader()
                 return UsageQuotaCostScanner.estimate(
                     homeDirectory: homeDirectory,
                     catalog: pricing.catalog,
