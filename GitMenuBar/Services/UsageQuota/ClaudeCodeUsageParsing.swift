@@ -231,9 +231,23 @@ enum ClaudeCodeUsageParsing {
         if let seconds = doubleValue(value) {
             return Date(timeIntervalSince1970: seconds)
         }
-        if let string = value as? String {
-            return ISO8601DateFormatter().date(from: string)
+        guard let string = value as? String else { return nil }
+        return parseISO8601Date(string)
+    }
+
+    /// The Claude usage endpoints report `resets_at` with microsecond precision
+    /// (`2026-10-16T18:10:00.274725+00:00`), which `[.withInternetDateTime]`
+    /// alone rejects, while the fractional formatter rejects a plain
+    /// `2030-01-20T12:00:00Z`. Both options are mutually exclusive, so try the
+    /// fractional form first and fall back to the standard one.
+    private static func parseISO8601Date(_ string: String) -> Date? {
+        let withFractional = ISO8601DateFormatter()
+        withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = withFractional.date(from: string) {
+            return date
         }
-        return nil
+        let standard = ISO8601DateFormatter()
+        standard.formatOptions = [.withInternetDateTime]
+        return standard.date(from: string)
     }
 }

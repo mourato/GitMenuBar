@@ -17,12 +17,30 @@ final class ClaudeCodeUsageTests: XCTestCase {
 
         XCTAssertEqual(snapshot.sessionWindow?.remainingPercent, 77)
         XCTAssertEqual(snapshot.sessionWindow?.intervalChip, "5h")
+        XCTAssertEqual(snapshot.sessionWindow?.resetAt, Date(timeIntervalSince1970: 1_800_003_600))
         XCTAssertEqual(snapshot.weeklyWindow?.remainingPercent, 99)
         XCTAssertEqual(snapshot.weeklyWindow?.intervalChip, "7d")
+        XCTAssertEqual(snapshot.weeklyWindow?.resetAt, Date(timeIntervalSince1970: 1_895_140_800))
         XCTAssertEqual(snapshot.modelWindows.map(\.label), ["Sonnet", "Opus"])
         XCTAssertEqual(snapshot.modelWindows.map(\.remainingPercent), [88, 32])
         XCTAssertEqual(snapshot.statusNote, "Claude Code OAuth usage API")
         XCTAssertEqual(snapshot.fetchedAt, now)
+    }
+
+    /// The usage endpoints report `resets_at` with microsecond precision, which
+    /// the plain `.withInternetDateTime` formatter rejects.
+    func testParsesResetTimestampsWithFractionalSeconds() throws {
+        let data = Data(
+            #"{"five_hour":{"utilization":100.0,"resets_at":"2026-10-16T18:10:00.274725+00:00"},"seven_day":{"utilization":30.0,"resets_at":"2026-10-21T06:00:00.274750+00:00"},"seven_day_sonnet":{"utilization":12,"resets_at":"2026-10-21T06:00:00Z"}}"#.utf8
+        )
+
+        let snapshot = try XCTUnwrap(ClaudeCodeUsageParsing.snapshot(fromUsageAPI: data))
+
+        let sessionReset = try XCTUnwrap(snapshot.sessionWindow?.resetAt)
+        XCTAssertEqual(sessionReset.timeIntervalSince1970, 1_792_174_200.274, accuracy: 0.001)
+        let weeklyReset = try XCTUnwrap(snapshot.weeklyWindow?.resetAt)
+        XCTAssertEqual(weeklyReset.timeIntervalSince1970, 1_792_562_400.274, accuracy: 0.001)
+        XCTAssertEqual(snapshot.modelWindows.first?.resetAt, Date(timeIntervalSince1970: 1_792_562_400))
     }
 
     func testParsesDynamicModelScopedUsageLimits() throws {
