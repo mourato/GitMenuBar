@@ -247,6 +247,8 @@ final class UsageQuotaStore {
             finishRefresh(reason: reason, generation: generation)
             return
         }
+        let trace = GitPerformanceTrace.begin("usage.quota.refresh")
+        defer { GitPerformanceTrace.end("usage.quota.refresh", id: trace) }
 
         let activeProviders = enabledProviders()
         guard !activeProviders.isEmpty else {
@@ -290,7 +292,9 @@ final class UsageQuotaStore {
         // referenced from the scan; resolves fresh, stale-on-failure, or no
         // catalog so the scan prices against live rates when available.
         let pricingLoader = pricingLoader
+        let trace = GitPerformanceTrace.begin("usage.cost.scan")
         Task { [weak self] in
+            defer { GitPerformanceTrace.end("usage.cost.scan", id: trace) }
             let estimates = await Task.detached(priority: .utility) {
                 let pricing = await pricingLoader()
                 return UsageQuotaCostScanner.estimate(

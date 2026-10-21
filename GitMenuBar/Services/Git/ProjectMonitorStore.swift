@@ -257,6 +257,8 @@ final class ProjectMonitorStore {
         guard isAgentPollingEnabled, agentRefreshTask == nil else { return }
         let paths = monitoredProjects.map(\.path)
         guard !paths.isEmpty else { return }
+        let trace = GitPerformanceTrace.begin("agent.activity.refresh")
+        defer { GitPerformanceTrace.end("agent.activity.refresh", id: trace) }
         let generation = agentGeneration
         let detector = agentDetector
         let task = Task(priority: .utility) { await detector.detectAgents(for: paths) }
@@ -290,6 +292,12 @@ final class ProjectMonitorStore {
         let pullRequestsByPath = Dictionary(uniqueKeysWithValues: projects.map { project in
             (project.path, snapshots[project.path]?.pullRequests ?? [])
         })
+        let trace = GitPerformanceTrace.begin("project.monitor.refresh")
+        if remotePaths.isEmpty {
+            GitPerformanceTrace.event("project.monitor.local", id: trace)
+        } else {
+            GitPerformanceTrace.event("project.monitor.remote", id: trace)
+        }
         DispatchQueue.global(qos: .utility).async { [weak self] in
             let queue = OperationQueue()
             queue.maxConcurrentOperationCount = 2
@@ -320,6 +328,7 @@ final class ProjectMonitorStore {
             }
             queue.waitUntilAllOperationsAreFinished()
             Task { @MainActor [weak self] in
+                defer { GitPerformanceTrace.end("project.monitor.refresh", id: trace) }
                 guard let self else { return }
                 guard generation == refreshGeneration else { return }
                 publishSnapshots(results)
