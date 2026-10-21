@@ -150,7 +150,8 @@ final class UsageQuotaStore {
             }
         case .timer, .settingsEnabled, .contentAppeared:
             // Automatic requests coalesce with an in-flight cycle instead of
-            // cancelling and restarting it; every cycle reads the same quota data.
+            // cancelling and restarting it; the cycle reconciles provider changes
+            // before publishing its final snapshot.
             guard !isRefreshInFlight else { return }
         }
 
@@ -266,25 +267,42 @@ final class UsageQuotaStore {
             return
         }
 
-        var merged: [UsageQuotaSnapshot] = []
+        var merged = await fetchSnapshots(for: activeProviders)
 
-        await withTaskGroup(of: UsageQuotaSnapshot.self) { group in
-            for provider in activeProviders {
-                group.addTask {
-                    await Self.fetchWithTimeout(provider: provider, timeout: Constants.providerTimeout)
-                }
-            }
-
-            for await snapshot in group {
-                merged.append(self.mergeSnapshot(snapshot))
-            }
+        // A settings change can arrive while the initial provider fetches are
+        // suspended. Fetch only providers added during that cycle; do not
+        // restart work that already completed.
+        let currentProviders = enabledProviders()
+        let initialProviderIDs = activeProviders.map(\.id)
+        let newlyEnabledProviders = currentProviders.filter { !initialProviderIDs.contains($0.id) }
+        if !newlyEnabledProviders.isEmpty {
+            let newlyEnabledSnapshots = await fetchSnapshots(for: newlyEnabledProviders)
+            merged.append(contentsOf: newlyEnabledSnapshots)
         }
+        let currentProviderIDs = Set(currentProviders.map(\.id))
+        merged.removeAll { !currentProviderIDs.contains($0.providerID) }
 
         merged.sort { $0.providerID.rawValue < $1.providerID.rawValue }
         guard generation == refreshGeneration else { return }
         snapshots = merged
         finishRefresh(reason: reason, generation: generation)
         refreshCostEstimates(generation: generation)
+    }
+
+    private func fetchSnapshots(for providers: [any UsageQuotaProviding]) async -> [UsageQuotaSnapshot] {
+        await withTaskGroup(of: UsageQuotaSnapshot.self, returning: [UsageQuotaSnapshot].self) { group in
+            for provider in providers {
+                group.addTask {
+                    await Self.fetchWithTimeout(provider: provider, timeout: Constants.providerTimeout)
+                }
+            }
+
+            var merged: [UsageQuotaSnapshot] = []
+            for await snapshot in group {
+                merged.append(mergeSnapshot(snapshot))
+            }
+            return merged
+        }
     }
 
     /// Monthly spend estimate rides along without holding provider-refresh timing hostage.
