@@ -239,15 +239,20 @@ final class UsageQuotaStoreTests: XCTestCase {
 
     func testAutomaticRefreshWhileInFlightDoesNotStartSecondFetch() async {
         let provider = GatedUsageQuotaProvider(snapshot: Self.sampleSnapshot())
-        let cursorProvider = FakeUsageQuotaProvider(
+        let cursorProvider = GatedUsageQuotaProvider(
             id: .cursor,
             snapshot: Self.cursorSampleSnapshot()
         )
+        let geminiProvider = FakeUsageQuotaProvider(
+            id: .gemini,
+            snapshot: Self.sampleSnapshot()
+        )
         defaults.set(false, forKey: AppPreferences.Keys.showCursorUsageQuota)
+        defaults.set(false, forKey: AppPreferences.Keys.showGeminiUsageQuota)
         let store = UsageQuotaStore(
             defaults: defaults,
             snapshotStore: snapshotStore,
-            providers: [provider, cursorProvider],
+            providers: [provider, cursorProvider, geminiProvider],
             pricingLoader: { .bundled }
         )
         // Enabling the feature starts the settingsEnabled refresh, which blocks inside the fetch.
@@ -264,12 +269,22 @@ final class UsageQuotaStoreTests: XCTestCase {
 
         // A provider enabled during the cycle is fetched once before that
         // same cycle publishes; the in-flight cycle is not restarted.
+        let cursorFetch = expectation(description: "incremental provider fetch started")
+        cursorProvider.onFetch = { cursorFetch.fulfill() }
         store.showCursorUsageQuota = true
         provider.openGate()
-        await waitUntil { cursorProvider.fetchCount == 1 && store.snapshots.count == 2 }
+        await fulfillment(of: [cursorFetch], timeout: 2)
+
+        // A second preference change during that incremental fetch is also
+        // reconciled before publication.
+        store.showGeminiUsageQuota = true
+        cursorProvider.openGate()
+        await waitUntil {
+            geminiProvider.fetchCount == 1 && store.snapshots.count == 3
+        }
         XCTAssertEqual(provider.fetchCount, 1)
         XCTAssertEqual(cursorProvider.fetchCount, 1)
-        XCTAssertEqual(store.snapshots.first?.sessionWindow?.remainingPercent, 70)
+        XCTAssertEqual(geminiProvider.fetchCount, 1)
     }
 
     func testManualRefreshWhileInFlightStillStartsNewCycle() async {

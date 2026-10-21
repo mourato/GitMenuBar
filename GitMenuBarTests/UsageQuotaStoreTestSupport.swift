@@ -6,14 +6,15 @@ import Foundation
 /// state is guarded by one lock; `@unchecked` covers the lock-protected
 /// cross-task state of this test-only fake.
 final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
-    let id: UsageProviderID = .codex
+    let id: UsageProviderID
     private let lock = NSLock()
     private let storedSnapshot: UsageQuotaSnapshot
     private var storedFetchCount = 0
     private var storedOnFetch: (@Sendable () -> Void)?
     private var pending: CheckedContinuation<Void, Never>?
 
-    init(snapshot: UsageQuotaSnapshot) {
+    init(id: UsageProviderID = .codex, snapshot: UsageQuotaSnapshot) {
+        self.id = id
         storedSnapshot = snapshot
     }
 
@@ -27,22 +28,24 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
     }
 
     func fetchSnapshot() async -> UsageQuotaSnapshot {
-        let hook = lock.withLock {
-            storedFetchCount += 1
-            return storedOnFetch
-        }
-        hook?()
         await withTaskCancellationHandler {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                // Re-check under the lock: open gate or cancelled task resumes now.
-                let immediate = lock.withLock { () -> CheckedContinuation<Void, Never>? in
+                // Register the continuation before notifying the test so opening
+                // the gate cannot race with pending-state installation.
+                let state = lock.withLock { () -> (
+                    hook: (@Sendable () -> Void)?,
+                    immediate: CheckedContinuation<Void, Never>?
+                ) in
+                    storedFetchCount += 1
+                    let hook = storedOnFetch
                     if Task.isCancelled {
-                        return continuation
+                        return (hook: hook, immediate: continuation)
                     }
                     pending = continuation
-                    return nil
+                    return (hook: hook, immediate: nil)
                 }
-                immediate?.resume()
+                state.hook?()
+                state.immediate?.resume()
             }
         } onCancel: {
             // Cancelled fetches wake without the gate, so later cycles still block.

@@ -268,18 +268,21 @@ final class UsageQuotaStore {
         }
 
         var merged = await fetchSnapshots(for: activeProviders)
+        var fetchedProviderIDs = Set(activeProviders.map(\.id))
+        var currentProviderIDs = fetchedProviderIDs
 
-        // A settings change can arrive while the initial provider fetches are
-        // suspended. Fetch only providers added during that cycle; do not
-        // restart work that already completed.
-        let currentProviders = enabledProviders()
-        let initialProviderIDs = activeProviders.map(\.id)
-        let newlyEnabledProviders = currentProviders.filter { !initialProviderIDs.contains($0.id) }
-        if !newlyEnabledProviders.isEmpty {
+        // A settings change can arrive while a provider fetch is suspended.
+        // Reconcile until no provider was added during the previous fetch.
+        while true {
+            let currentProviders = enabledProviders()
+            currentProviderIDs = Set(currentProviders.map(\.id))
+            let newlyEnabledProviders = currentProviders.filter { !fetchedProviderIDs.contains($0.id) }
+            guard !newlyEnabledProviders.isEmpty else { break }
+
+            fetchedProviderIDs.formUnion(newlyEnabledProviders.map(\.id))
             let newlyEnabledSnapshots = await fetchSnapshots(for: newlyEnabledProviders)
             merged.append(contentsOf: newlyEnabledSnapshots)
         }
-        let currentProviderIDs = Set(currentProviders.map(\.id))
         merged.removeAll { !currentProviderIDs.contains($0.providerID) }
 
         merged.sort { $0.providerID.rawValue < $1.providerID.rawValue }
