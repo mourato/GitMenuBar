@@ -237,12 +237,94 @@ final class UsageQuotaStoreTests: XCTestCase {
         XCTAssertTrue(store.visibleSnapshots.isEmpty)
     }
 
-    private func makeStore(provider: FakeUsageQuotaProvider) -> UsageQuotaStore {
+    func testAutomaticRefreshWhileInFlightDoesNotStartSecondFetch() async {
+        let provider = GatedUsageQuotaProvider(snapshot: Self.sampleSnapshot())
+        let store = makeStore(provider: provider)
+        // Enabling the feature starts the settingsEnabled refresh, which blocks inside the fetch.
+        let firstFetch = expectation(description: "in-flight fetch started")
+        provider.onFetch = { firstFetch.fulfill() }
+        store.showAIUsageQuotas = true
+        await fulfillment(of: [firstFetch], timeout: 2)
+
+        // Automatic requests coalesce: no second query before or after publish.
+        store.refresh(reason: .timer)
+        store.refresh(reason: .contentAppeared)
+        store.refresh(reason: .windowPresented)
+        XCTAssertEqual(provider.fetchCount, 1)
+
+        provider.openGate()
+        await waitUntil { !store.snapshots.isEmpty }
+        XCTAssertEqual(provider.fetchCount, 1)
+        XCTAssertEqual(store.snapshots.first?.sessionWindow?.remainingPercent, 70)
+    }
+
+    func testManualRefreshWhileInFlightStillStartsNewCycle() async {
+        let provider = GatedUsageQuotaProvider(snapshot: Self.sampleSnapshot())
+        let store = makeStore(provider: provider)
+        let firstFetch = expectation(description: "in-flight fetch started")
+        provider.onFetch = { firstFetch.fulfill() }
+        store.showAIUsageQuotas = true
+        await fulfillment(of: [firstFetch], timeout: 2)
+
+        // Manual remains forced: it supersedes the in-flight cycle with a new fetch.
+        let manualFetch = expectation(description: "manual refresh starts a new fetch")
+        provider.onFetch = { manualFetch.fulfill() }
+        store.refresh(reason: .manual)
+        await fulfillment(of: [manualFetch], timeout: 2)
+        provider.openGate()
+        await waitUntil { !store.snapshots.isEmpty }
+        XCTAssertEqual(provider.fetchCount, 2)
+        XCTAssertEqual(store.snapshots.first?.sessionWindow?.remainingPercent, 70)
+    }
+
+    func testManualRefreshCostScanRespectsIntervalBoundary() async {
+        var currentDate = Date()
+        let provider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
+        let pricingLoader = CountingPricingLoader()
+        let firstScan = expectation(description: "first cost scan loads pricing")
+        pricingLoader.onLoad = { firstScan.fulfill() }
+        let store = makeStore(
+            provider: provider,
+            pricingLoader: { pricingLoader.load() },
+            now: { currentDate }
+        )
+        store.showAIUsageQuotas = true
+        await fulfillment(of: [firstScan], timeout: 2)
+        await waitUntil { store.visibleSnapshots.first?.sessionWindow?.remainingPercent == 70 }
+
+        // Inside the 600 s interval: manual force-refreshes quota counts only.
+        provider.snapshot = Self.sampleSnapshot(remainingPercent: 55)
+        store.refresh(reason: .manual)
+        await waitUntil {
+            provider.fetchCount == 2
+                && store.visibleSnapshots.first?.sessionWindow?.remainingPercent == 55
+        }
+        let noRescan = expectation(description: "manual refresh must not load pricing inside the interval")
+        noRescan.isInverted = true
+        pricingLoader.onLoad = { noRescan.fulfill() }
+        await fulfillment(of: [noRescan], timeout: 0.1)
+        XCTAssertEqual(pricingLoader.loadCount, 1)
+        // After the interval passes, manual prices again while still fetching quotas.
+        let rescan = expectation(description: "post-interval manual refresh loads pricing again")
+        pricingLoader.onLoad = { rescan.fulfill() }
+        currentDate = currentDate.addingTimeInterval(601)
+        store.refresh(reason: .manual)
+        await fulfillment(of: [rescan], timeout: 2)
+        XCTAssertEqual(provider.fetchCount, 3)
+        XCTAssertEqual(pricingLoader.loadCount, 2)
+    }
+
+    private func makeStore(
+        provider: some UsageQuotaProviding,
+        pricingLoader: @escaping UsageQuotaStore.PricingLoader = { .bundled },
+        now: @escaping () -> Date = Date.init
+    ) -> UsageQuotaStore {
         UsageQuotaStore(
             defaults: defaults,
             snapshotStore: snapshotStore,
             providers: [provider],
-            pricingLoader: { .bundled }
+            now: now,
+            pricingLoader: pricingLoader
         )
     }
 
@@ -332,5 +414,96 @@ private struct HangingUsageQuotaProvider: UsageQuotaProviding {
     func fetchSnapshot() async -> UsageQuotaSnapshot {
         for await _ in neverYields {}
         return .unavailable(providerID: .codex, statusNote: "should not finish")
+    }
+}
+
+/// Fetch-counting provider whose fetch blocks until `openGate` is called, so
+/// tests can hold a refresh cycle in flight deterministically. All mutable
+/// state is guarded by one lock; `@unchecked` covers the lock-protected
+/// cross-task state of this test-only fake.
+private final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
+    let id: UsageProviderID = .codex
+    private let lock = NSLock()
+    private let storedSnapshot: UsageQuotaSnapshot
+    private var storedFetchCount = 0
+    private var storedOnFetch: (@Sendable () -> Void)?
+    private var pending: CheckedContinuation<Void, Never>?
+
+    init(snapshot: UsageQuotaSnapshot) {
+        storedSnapshot = snapshot
+    }
+
+    var fetchCount: Int {
+        lock.withLock { storedFetchCount }
+    }
+
+    var onFetch: (@Sendable () -> Void)? {
+        get { lock.withLock { storedOnFetch } }
+        set { lock.withLock { storedOnFetch = newValue } }
+    }
+
+    func fetchSnapshot() async -> UsageQuotaSnapshot {
+        let hook = lock.withLock {
+            storedFetchCount += 1
+            return storedOnFetch
+        }
+        hook?()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                // Re-check under the lock: open gate or cancelled task resumes now.
+                let immediate = lock.withLock { () -> CheckedContinuation<Void, Never>? in
+                    if Task.isCancelled {
+                        return continuation
+                    }
+                    pending = continuation
+                    return nil
+                }
+                immediate?.resume()
+            }
+        } onCancel: {
+            // Cancelled fetches wake without the gate, so later cycles still block.
+            self.resumePending()
+        }
+        return lock.withLock { storedSnapshot }
+    }
+
+    /// Releases the pending fetch; a later fetch re-checks cancellation itself.
+    func openGate() {
+        resumePending()
+    }
+
+    private func resumePending() {
+        let woke = lock.withLock {
+            let woke = pending
+            pending = nil
+            return woke
+        }
+        woke?.resume()
+    }
+}
+
+/// Counts pricing loads so tests can observe whether the cost scan ran.
+/// `@unchecked` covers the lock-protected counters of this test-only fake.
+private final class CountingPricingLoader: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedLoadCount = 0
+    private var storedOnLoad: (@Sendable () -> Void)?
+
+    var loadCount: Int {
+        lock.withLock { storedLoadCount }
+    }
+
+    var onLoad: (@Sendable () -> Void)? {
+        get { lock.withLock { storedOnLoad } }
+        set { lock.withLock { storedOnLoad = newValue } }
+    }
+
+    func load() -> UsageQuotaModelsDevStore.PricingSource {
+        let hook = lock.withLock {
+            storedLoadCount += 1
+            return storedOnLoad
+        }
+        hook?()
+        return .bundled
     }
 }

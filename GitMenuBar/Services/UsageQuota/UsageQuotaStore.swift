@@ -137,15 +137,24 @@ final class UsageQuotaStore {
 
     func refresh(reason: RefreshReason = .manual) {
         guard showAIUsageQuotas else { return }
-        if reason == .windowPresented {
+        switch reason {
+        case .manual:
+            // Manual stays a forced refresh: it may cancel and replace in-flight work.
+            break
+        case .windowPresented:
             guard !isRefreshInFlight else { return }
             if let lastPresentationRefreshAt,
                now().timeIntervalSince(lastPresentationRefreshAt) < Constants.refreshInterval
             {
                 return
             }
+        case .timer, .settingsEnabled, .contentAppeared:
+            // Automatic requests coalesce with an in-flight cycle instead of
+            // cancelling and restarting it; every cycle reads the same quota data.
+            guard !isRefreshInFlight else { return }
         }
 
+        // Only manual refreshes reach here with non-nil work in flight.
         refreshTask?.cancel()
         refreshGeneration += 1
         let generation = refreshGeneration
@@ -275,13 +284,15 @@ final class UsageQuotaStore {
         guard generation == refreshGeneration else { return }
         snapshots = merged
         finishRefresh(reason: reason, generation: generation)
-        refreshCostEstimates(reason: reason, generation: generation)
+        refreshCostEstimates(generation: generation)
     }
 
     /// Monthly spend estimate rides along without holding provider-refresh timing hostage.
-    private func refreshCostEstimates(reason: RefreshReason, generation: Int) {
-        if reason != .manual,
-           let lastCostScanAt,
+    /// The scan gate is time-based for every reason: while the last scan is still
+    /// fresh, a manual quota refresh only re-queries providers instead of also
+    /// enumerating the JSONL sessions again.
+    private func refreshCostEstimates(generation: Int) {
+        if let lastCostScanAt,
            now().timeIntervalSince(lastCostScanAt) < Constants.costScanInterval
         {
             return
