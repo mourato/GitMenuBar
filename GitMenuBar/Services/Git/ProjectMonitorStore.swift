@@ -289,8 +289,18 @@ final class ProjectMonitorStore {
         let generation = refreshGeneration
         isRefreshing = true
         let runner = runner
-        let pullRequestsByPath = Dictionary(uniqueKeysWithValues: projects.map { project in
-            (project.path, snapshots[project.path]?.pullRequests ?? [])
+        // Local reads carry the previous snapshot's pull requests and branch
+        // health through the mode so file-driven refreshes skip those reads.
+        let lastKnownDataByPath: [String: (pullRequests: [GitHubPullRequestSummary], branchHealth: ProjectStatusReader.BranchHealth)] = Dictionary(uniqueKeysWithValues: projects.map { project in
+            let previous = snapshots[project.path]
+            let branchHealth = ProjectStatusReader.BranchHealth(
+                branchesWithoutUpstreamCount: previous?.branchesWithoutUpstreamCount ?? 0,
+                unpushedBranchCount: previous?.unpushedBranchCount ?? 0,
+                unmergedBranchCount: previous?.unmergedBranchCount ?? 0,
+                stashCount: previous?.stashCount ?? 0,
+                lastActivityAt: previous?.lastActivityAt
+            )
+            return (project.path, (pullRequests: previous?.pullRequests ?? [], branchHealth: branchHealth))
         })
         let trace = GitPerformanceTrace.begin("project.monitor.refresh")
         if remotePaths.isEmpty {
@@ -304,23 +314,28 @@ final class ProjectMonitorStore {
             let lock = NSLock()
             var results: [ProjectStatusSnapshot] = []
             for project in projects {
+                let lastKnownData = lastKnownDataByPath[project.path]
                 queue.addOperation {
+                    let readMode: ProjectStatusReadMode = if remotePaths.contains(project.path) {
+                        .remote
+                    } else {
+                        .local(
+                            pullRequests: lastKnownData?.pullRequests ?? [],
+                            branchHealth: lastKnownData?.branchHealth ?? .init()
+                        )
+                    }
                     #if DEBUG
                         let snapshot = self?.refreshOperation?(project, runner)
                             ?? ProjectStatusReader(runner: runner).read(
                                 project: project,
                                 includeLineDiff: false,
-                                mode: remotePaths.contains(project.path)
-                                    ? .remote
-                                    : .local(pullRequests: pullRequestsByPath[project.path] ?? [])
+                                mode: readMode
                             )
                     #else
                         let snapshot = ProjectStatusReader(runner: runner).read(
                             project: project,
                             includeLineDiff: false,
-                            mode: remotePaths.contains(project.path)
-                                ? .remote
-                                : .local(pullRequests: pullRequestsByPath[project.path] ?? [])
+                            mode: readMode
                         )
                     #endif
                     lock.lock(); results.append(snapshot); lock.unlock()

@@ -224,9 +224,111 @@ final class ProjectStatusReaderTests: XCTestCase {
         let snapshot = ProjectStatusReader(runner: GitCommandRunner()).read(
             project: ProjectReference(path: root.path),
             includeLineDiff: false,
-            mode: .local(pullRequests: [pullRequest])
+            mode: .local(pullRequests: [pullRequest], branchHealth: .init())
         )
 
+        XCTAssertEqual(snapshot.pullRequests, [pullRequest])
+    }
+
+    func testLocalModePreservesLastKnownHealthAndSkipsFreshReads() throws {
+        let root = try createTemporaryGitRepository(testName: #function)
+        defer { try? FileManager.default.removeItem(at: root) }
+        // Stash real work so a fresh branch-health read disagrees with the
+        // values passed through the local mode.
+        try "stashed\n".write(to: root.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+        try runGit(["stash", "push", "-qm", "seeded work"], in: root)
+        // A live working-tree change the local read must still report.
+        try "changed\n".write(to: root.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+
+        let pullRequest = GitHubPullRequestSummary(
+            number: 7,
+            title: "Keep this snapshot",
+            headBranch: "feature/local",
+            isDraft: false,
+            reviewState: .approved,
+            checksState: .passed,
+            url: "https://github.com/example/project/pull/7"
+        )
+        let lastActivityAt = Date(timeIntervalSince1970: 100_000)
+        let lastKnown = ProjectStatusReader.BranchHealth(
+            branchesWithoutUpstreamCount: 9,
+            unpushedBranchCount: 8,
+            unmergedBranchCount: 7,
+            stashCount: 6,
+            lastActivityAt: lastActivityAt
+        )
+        let reader = ProjectStatusReader(runner: GitCommandRunner())
+
+        let local = reader.read(
+            project: ProjectReference(path: root.path),
+            includeLineDiff: true,
+            mode: .local(pullRequests: [pullRequest], branchHealth: lastKnown)
+        )
+
+        // Last known branch health is carried through instead of re-read
+        // (the repository itself has 1 stash and 1 branch without upstream).
+        XCTAssertEqual(local.branchesWithoutUpstreamCount, 9)
+        XCTAssertEqual(local.unpushedBranchCount, 8)
+        XCTAssertEqual(local.unmergedBranchCount, 7)
+        XCTAssertEqual(local.stashCount, 6)
+        XCTAssertEqual(local.lastActivityAt, lastActivityAt)
+        XCTAssertEqual(local.pullRequests, [pullRequest])
+        XCTAssertNil(local.lastErrorDescription)
+        // Status-derived working-tree values and the line diff stay live.
+        XCTAssertEqual(local.unstagedCount, 1)
+        XCTAssertEqual(local.lineDiff, LineDiffStats(added: 1, removed: 1))
+
+        // The same repository read remotely still performs a fresh health read.
+        let remote = reader.read(
+            project: ProjectReference(path: root.path),
+            includeLineDiff: false,
+            mode: .remote
+        )
+        XCTAssertEqual(remote.stashCount, 1)
+        XCTAssertEqual(remote.branchesWithoutUpstreamCount, 1)
+        XCTAssertNotNil(remote.lastActivityAt)
+        XCTAssertNotEqual(remote.lastActivityAt, lastActivityAt)
+    }
+
+    func testLocalModePreservesLastKnownDataWhenStatusFails() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("GitMenuBarStatusFailureLocal-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try runGit(["init", "-q"], in: root)
+        try Data("broken".utf8).write(to: root.appendingPathComponent(".git/index"))
+
+        let pullRequest = GitHubPullRequestSummary(
+            number: 7,
+            title: "Keep this snapshot",
+            headBranch: "feature/local",
+            isDraft: false,
+            reviewState: .approved,
+            checksState: .passed,
+            url: "https://github.com/example/project/pull/7"
+        )
+        let lastActivityAt = Date(timeIntervalSince1970: 100_000)
+        let lastKnown = ProjectStatusReader.BranchHealth(
+            branchesWithoutUpstreamCount: 9,
+            unpushedBranchCount: 8,
+            unmergedBranchCount: 7,
+            stashCount: 6,
+            lastActivityAt: lastActivityAt
+        )
+
+        let snapshot = ProjectStatusReader(runner: GitCommandRunner()).read(
+            project: ProjectReference(path: root.path),
+            includeLineDiff: false,
+            mode: .local(pullRequests: [pullRequest], branchHealth: lastKnown)
+        )
+
+        XCTAssertNotNil(snapshot.lastErrorDescription)
+        XCTAssertNotEqual(snapshot.lastErrorDescription, "Not a Git repository")
+        XCTAssertEqual(snapshot.branchesWithoutUpstreamCount, 9)
+        XCTAssertEqual(snapshot.unpushedBranchCount, 8)
+        XCTAssertEqual(snapshot.unmergedBranchCount, 7)
+        XCTAssertEqual(snapshot.stashCount, 6)
+        XCTAssertEqual(snapshot.lastActivityAt, lastActivityAt)
         XCTAssertEqual(snapshot.pullRequests, [pullRequest])
     }
 
