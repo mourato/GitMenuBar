@@ -90,12 +90,14 @@ final class UsageQuotaStore {
     private let codexProvider: CodexUsageProvider
     private let now: () -> Date
     private let pricingLoader: PricingLoader
+    private let homeDirectory: URL
     @ObservationIgnored private var refreshTimer: Timer?
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     @ObservationIgnored private var refreshGeneration = 0
     @ObservationIgnored private var isRefreshInFlight = false
     @ObservationIgnored private var lastPresentationRefreshAt: Date?
     @ObservationIgnored private var lastCostScanAt: Date?
+    @ObservationIgnored private var costScanGeneration = 0
 
     init(
         defaults: UserDefaults = .standard,
@@ -110,7 +112,8 @@ final class UsageQuotaStore {
         ],
         codexProvider: CodexUsageProvider = CodexUsageProvider(),
         now: @escaping () -> Date = Date.init,
-        pricingLoader: @escaping PricingLoader = { await UsageQuotaModelsDevStore.shared.loadOrFetch() }
+        pricingLoader: @escaping PricingLoader = { await UsageQuotaModelsDevStore.shared.loadOrFetch() },
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
     ) {
         self.defaults = defaults
         self.snapshotStore = snapshotStore
@@ -118,6 +121,7 @@ final class UsageQuotaStore {
         self.codexProvider = codexProvider
         self.now = now
         self.pricingLoader = pricingLoader
+        self.homeDirectory = homeDirectory
         showAIUsageQuotas = defaults.object(forKey: AppPreferences.Keys.showAIUsageQuotas) as? Bool ?? false
         showClaudeCodeUsageQuota = defaults.object(forKey: AppPreferences.Keys.showClaudeCodeUsageQuota) as? Bool ?? true
         showCodexUsageQuota = defaults.object(forKey: AppPreferences.Keys.showCodexUsageQuota) as? Bool ?? true
@@ -289,7 +293,7 @@ final class UsageQuotaStore {
         guard generation == refreshGeneration else { return }
         snapshots = merged
         finishRefresh(reason: reason, generation: generation)
-        refreshCostEstimates(generation: generation)
+        refreshCostEstimates()
     }
 
     private func fetchSnapshots(for providers: [any UsageQuotaProviding]) async -> [UsageQuotaSnapshot] {
@@ -312,29 +316,31 @@ final class UsageQuotaStore {
     /// The scan gate is time-based for every reason: while the last scan is still
     /// fresh, a manual quota refresh only re-queries providers instead of also
     /// enumerating the JSONL sessions again.
-    private func refreshCostEstimates(generation: Int) {
+    private func refreshCostEstimates() {
         if let lastCostScanAt,
            now().timeIntervalSince(lastCostScanAt) < Constants.costScanInterval
         {
             return
         }
         lastCostScanAt = now()
-        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+        costScanGeneration += 1
+        let scanGeneration = costScanGeneration
         // Captured before the detached task so the @MainActor store is not
         // referenced from the scan; resolves fresh, stale-on-failure, or no
         // catalog so the scan prices against live rates when available.
         let pricingLoader = pricingLoader
+        let scanHomeDirectory = homeDirectory
         let trace = GitPerformanceTrace.begin("usage.cost.scan")
         Task { [weak self] in
             defer { GitPerformanceTrace.end("usage.cost.scan", id: trace) }
             let estimates = await Task.detached(priority: .utility) {
                 let pricing = await pricingLoader()
                 return UsageQuotaCostScanner.estimate(
-                    homeDirectory: homeDirectory,
+                    homeDirectory: scanHomeDirectory,
                     pricing: pricing
                 )
             }.value
-            guard let self, generation == refreshGeneration else { return }
+            guard let self, scanGeneration == costScanGeneration else { return }
             costEstimates = estimates.rows.isEmpty ? nil : estimates
         }
     }

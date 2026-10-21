@@ -245,7 +245,7 @@ final class UsageQuotaStoreTests: XCTestCase {
         )
         let geminiProvider = FakeUsageQuotaProvider(
             id: .gemini,
-            snapshot: Self.sampleSnapshot()
+            snapshot: Self.sampleSnapshot(providerID: .gemini)
         )
         defaults.set(false, forKey: AppPreferences.Keys.showCursorUsageQuota)
         defaults.set(false, forKey: AppPreferences.Keys.showGeminiUsageQuota)
@@ -285,6 +285,10 @@ final class UsageQuotaStoreTests: XCTestCase {
         XCTAssertEqual(provider.fetchCount, 1)
         XCTAssertEqual(cursorProvider.fetchCount, 1)
         XCTAssertEqual(geminiProvider.fetchCount, 1)
+        XCTAssertEqual(
+            Set(store.snapshots.map(\.providerID)),
+            Set([UsageProviderID.codex, .cursor, .gemini])
+        )
     }
 
     func testManualRefreshWhileInFlightStillStartsNewCycle() async {
@@ -343,6 +347,40 @@ final class UsageQuotaStoreTests: XCTestCase {
         XCTAssertEqual(pricingLoader.loadCount, 2)
     }
 
+    func testCostScanPublishesAfterManualRefreshDuringPricingLoad() async throws {
+        let currentDate = Date()
+        let homeDirectory = try makeTemporaryTestDirectory(testName: #function)
+        try writeCodexSessionFixture(to: homeDirectory, now: currentDate)
+        let provider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
+        let pricingLoader = GatedPricingLoader()
+        let scanStarted = expectation(description: "cost scan started")
+        pricingLoader.onLoad = { scanStarted.fulfill() }
+        let store = UsageQuotaStore(
+            defaults: defaults,
+            snapshotStore: snapshotStore,
+            providers: [provider],
+            now: { currentDate },
+            pricingLoader: { await pricingLoader.load() },
+            homeDirectory: homeDirectory
+        )
+
+        store.showAIUsageQuotas = true
+        await fulfillment(of: [scanStarted], timeout: 2)
+        XCTAssertEqual(pricingLoader.loadCount, 1)
+
+        store.refresh(reason: .manual)
+        await waitUntil {
+            provider.fetchCount == 2
+                && store.visibleSnapshots.first?.sessionWindow?.remainingPercent == 70
+        }
+
+        pricingLoader.openGate()
+        await waitUntil { store.costEstimates?.rows.count == 1 }
+
+        XCTAssertEqual(pricingLoader.loadCount, 1)
+        XCTAssertEqual(store.costEstimates?.rows.first?.providerID, .codex)
+    }
+
     private func makeStore(
         provider: some UsageQuotaProviding,
         pricingLoader: @escaping UsageQuotaStore.PricingLoader = { .bundled },
@@ -364,10 +402,13 @@ final class UsageQuotaStoreTests: XCTestCase {
         await waitForObservedCondition(timeout: timeout, predicate)
     }
 
-    private static func sampleSnapshot(remainingPercent: Int = 70) -> UsageQuotaSnapshot {
+    private static func sampleSnapshot(
+        providerID: UsageProviderID = .codex,
+        remainingPercent: Int = 70
+    ) -> UsageQuotaSnapshot {
         UsageQuotaSnapshot(
-            providerID: .codex,
-            displayName: "Codex",
+            providerID: providerID,
+            displayName: providerID == .gemini ? "Gemini" : "Codex",
             sessionWindow: UsageWindow(remainingPercent: remainingPercent, resetAt: Date().addingTimeInterval(3600), label: "Session"),
             weeklyWindow: UsageWindow(remainingPercent: 90, resetAt: Date().addingTimeInterval(86400), label: "Weekly"),
             isAvailable: true,
