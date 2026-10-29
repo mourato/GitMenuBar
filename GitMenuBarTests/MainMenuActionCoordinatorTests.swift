@@ -865,6 +865,10 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             onCommitCompleted: onCommitCompleted
         )
     }
+
+    func waitForWorkingTreeUpdate(_ gitManager: GitManager) async {
+        await gitManager.updateUncommittedFilesAsync()
+    }
 }
 
 private final class SpyAIAPIKeyStore: AIAPIKeyStore, @unchecked Sendable {
