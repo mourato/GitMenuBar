@@ -60,9 +60,15 @@ struct BranchManagementRowView: View {
         static let minimumHeight: CGFloat = 40
     }
 
+    // An empty `.help("")` still registers an AppKit tooltip, so attach it only
+    // when there is a reason. Hover state lives in this view, not the branch.
+    @ViewBuilder
     var body: some View {
-        rowContent
-            .help(blockedReason ?? "")
+        if let blockedReason, !blockedReason.isEmpty {
+            rowContent.help(blockedReason)
+        } else {
+            rowContent
+        }
     }
 
     private var rowContent: some View {
