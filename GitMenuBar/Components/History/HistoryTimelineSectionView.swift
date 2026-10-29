@@ -291,11 +291,6 @@ private struct HistoryTimelineRowView: View {
                 .font(WorkbenchTypography.caption.monospaced())
                 .foregroundStyle(metadataStyle)
 
-            Text(commit.authorName)
-                .font(WorkbenchTypography.caption)
-                .foregroundStyle(metadataStyle)
-                .lineLimit(1)
-
             Text(relativeTimestamp)
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(metadataStyle)
