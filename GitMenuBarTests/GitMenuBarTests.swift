@@ -199,3 +199,62 @@ final class GitMenuBarTests: XCTestCase {
         XCTAssertFalse(state.isPrimaryButtonDisabled)
     }
 }
+
+final class ToolbarStateMappingTests: XCTestCase {
+    func testRepositoryToolbarShowsCommitCountAndSyncWhenAheadOrBehind() {
+        let state = MainWindowToolbarRepositoryState(
+            repositoryName: "NetNewsWire",
+            branchName: "feature/toolbar",
+            aheadCount: 1,
+            behindCount: 2,
+            changeCount: 1,
+            isBusy: false,
+            busyItem: nil,
+            progressAccessibilityLabel: nil
+        )
+
+        XCTAssertEqual(
+            state.repositoryItems,
+            [.branchPicker, .aheadBehind, .fetch, .sync, .commit]
+        )
+        XCTAssertEqual(state.commitAccessibilityLabel, "Commit 1 change in NetNewsWire")
+        XCTAssertEqual(state.aheadBehindTitle, "↑1 ↓2")
+    }
+
+    func testRepositoryToolbarHidesSyncWhenUpToDate() {
+        let state = MainWindowToolbarRepositoryState(
+            repositoryName: "NetNewsWire",
+            branchName: "main",
+            aheadCount: 0,
+            behindCount: 0,
+            changeCount: 0,
+            isBusy: false,
+            busyItem: nil,
+            progressAccessibilityLabel: nil
+        )
+
+        XCTAssertEqual(state.repositoryItems, [.branchPicker, .aheadBehind, .fetch])
+        XCTAssertFalse(state.showsSyncItem)
+        XCTAssertFalse(state.showsCommitItem)
+        XCTAssertEqual(state.aheadBehindAccessibilityLabel, "NetNewsWire is up to date")
+    }
+
+    func testBusyStateDisablesRepositoryActionsAndKeepsProgressItemVisible() {
+        let state = MainWindowToolbarRepositoryState(
+            repositoryName: "NetNewsWire",
+            branchName: "main",
+            aheadCount: 1,
+            behindCount: 0,
+            changeCount: 1,
+            isBusy: true,
+            busyItem: .fetch,
+            progressAccessibilityLabel: "Fetching remote"
+        )
+
+        XCTAssertFalse(state.isFetchEnabled)
+        XCTAssertFalse(state.isSyncEnabled)
+        XCTAssertFalse(state.isCommitEnabled)
+        XCTAssertTrue(state.repositoryItems.contains(.fetch))
+        XCTAssertEqual(state.progressAccessibilityLabel, "Fetching remote")
+    }
+}

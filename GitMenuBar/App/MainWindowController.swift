@@ -47,9 +47,17 @@ final class MainWindowController: NSWindowController {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func updateToolbar(title: String, showsSidebarItem: Bool, showsBackItem: Bool) {
+    func updateToolbar(
+        title: String,
+        showsSidebarItem: Bool,
+        showsBackItem: Bool,
+        repositoryState: MainWindowToolbarRepositoryState?
+    ) {
         mainWindowToolbarController?.update(
-            title: title, showsSidebarItem: showsSidebarItem, showsBackItem: showsBackItem
+            title: title,
+            showsSidebarItem: showsSidebarItem,
+            showsBackItem: showsBackItem,
+            repositoryState: repositoryState
         )
     }
 

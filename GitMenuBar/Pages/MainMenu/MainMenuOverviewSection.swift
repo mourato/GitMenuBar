@@ -7,11 +7,6 @@ struct MainMenuOverviewSection: View {
     let currentRepoPath: String
     let onCreateRepo: (String) -> Void
     let overview: RepositoryOverviewSnapshot
-    let commitActionTitle: String
-    let canCommit: Bool
-    let onCommit: () -> Void
-    let canSync: Bool
-    let onSync: () -> Void
     let onSelectSection: (MainMenuSidePanelSelection) -> Void
     let history: SidePanelHistoryModel?
 
@@ -35,12 +30,7 @@ struct MainMenuOverviewSection: View {
             if !currentRepoPath.isEmpty {
                 RepositoryOverviewView(
                     overview: overview,
-                    onSelectSection: onSelectSection,
-                    commitActionTitle: commitActionTitle,
-                    canCommit: canCommit,
-                    onCommit: onCommit,
-                    canSync: canSync,
-                    onSync: onSync
+                    onSelectSection: onSelectSection
                 )
 
                 if let history {
@@ -93,11 +83,6 @@ struct MainMenuOverviewSection: View {
             currentRepoPath: "/tmp/demo",
             onCreateRepo: { _ in },
             overview: .empty,
-            commitActionTitle: "Commit",
-            canCommit: false,
-            onCommit: {},
-            canSync: false,
-            onSync: {},
             onSelectSection: { _ in },
             history: nil
         )

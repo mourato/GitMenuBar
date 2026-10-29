@@ -280,6 +280,7 @@ final class MainMenuActionCoordinator {
         return await executePrimaryAction(allowsRepositorySwitch: true) {
             clearAlert()
             showSyncOptions = false
+            publishOperationStatus(.pushing)
 
             if gitManager.isRemoteAhead {
                 showSyncOptions = true
@@ -297,6 +298,18 @@ final class MainMenuActionCoordinator {
             await refreshRepository()
             await refreshRemoteStatus()
             return .synced
+        }
+    }
+
+    func performFetch() async {
+        guard !isBusy, !gitManager.repositoryPath.isEmpty else { return }
+
+        await executePrimaryAction(allowsRepositorySwitch: true) {
+            clearAlert()
+            publishOperationStatus(.fetching)
+            _ = await refreshRemoteStatus()
+            await gitManager.fetchSelectedBranchesAsync()
+            await refreshRepository()
         }
     }
 

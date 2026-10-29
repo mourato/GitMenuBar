@@ -18,20 +18,6 @@ extension MainMenuView {
         )
     }
 
-    private var footerSection: some View {
-        MainMenuFooterSection(
-            currentBranch: gitManager.currentBranch,
-            commitCount: gitManager.commitCount,
-            isRemoteAhead: gitManager.isRemoteAhead,
-            behindCount: gitManager.behindCount,
-            isDetachedHead: gitManager.isDetachedHead,
-            onBranchTap: toggleBranchSelectorPresentation,
-            isBranchSelectorPresented: $branchDialogs.showBranchSelector
-        ) {
-            branchSelectorContent
-        }
-    }
-
     private var branchSelectorContent: some View {
         MainMenuBranchSelectorHost(
             isDetachedHead: gitManager.isDetachedHead,
@@ -124,11 +110,6 @@ extension MainMenuView {
                     currentRepoPath: currentRepoPath,
                     onCreateRepo: { presentationModel.showCreateRepo(path: $0) },
                     overview: snapshotModel.renderSnapshot.overview,
-                    commitActionTitle: resolvedCommitButtonAction.buttonTitle,
-                    canCommit: actionCoordinator.canAutoCommit,
-                    onCommit: performQuickCommit,
-                    canSync: actionCoordinator.canSync,
-                    onSync: syncRepository,
                     onSelectSection: { workspace.selectedSidePanelSelection = $0 },
                     history: sidePanelHistory
                 )
@@ -139,8 +120,6 @@ extension MainMenuView {
             .refreshable {
                 await gitManager.refreshSelectedRepositoryAsync(includeReflogHistory: false)
             }
-
-            footerSection
         }
         .disabled(presentationModel.isFastLoading)
         .accessibilityElement(children: .contain)
@@ -311,6 +290,9 @@ extension MainMenuView {
             shortcutActions: shortcutActionBridge.actions,
             onShortcutAction: handleShortcutAction
         )
+        .popover(isPresented: $branchDialogs.showBranchSelector, arrowEdge: .top) {
+            branchSelectorContent
+        }
         .modifier(MainMenuSheetsModifier(
             branchDialogs: branchDialogs,
             errorCenter: errorCenter,
@@ -357,6 +339,15 @@ extension MainMenuView {
             Task {
                 await actionCoordinator.performSync()
             }
+        case .fetch:
+            Task {
+                await actionCoordinator.performFetch()
+            }
+        case .branchSelector:
+            presentBranchSelector()
+        case .toolbarCommit:
+            guard hasWorkingTreeChanges else { return }
+            workspace.selectedSidePanelSelection = .workingTree
         case .atomicCommits:
             startAtomicCommitFlow()
         }

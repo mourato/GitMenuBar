@@ -9,30 +9,7 @@ private struct RepositoryOverviewCardVisual {
 struct RepositoryOverviewView: View {
     let overview: RepositoryOverviewSnapshot
     let onSelectSection: (MainMenuSidePanelSelection) -> Void
-    let commitActionTitle: String
-    let canCommit: Bool
-    let onCommit: () -> Void
-    let canSync: Bool
-    let onSync: () -> Void
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-
-    init(
-        overview: RepositoryOverviewSnapshot,
-        onSelectSection: @escaping (MainMenuSidePanelSelection) -> Void,
-        commitActionTitle: String = "Commit",
-        canCommit: Bool = false,
-        onCommit: @escaping () -> Void = {},
-        canSync: Bool = false,
-        onSync: @escaping () -> Void = {}
-    ) {
-        self.overview = overview
-        self.onSelectSection = onSelectSection
-        self.commitActionTitle = commitActionTitle
-        self.canCommit = canCommit
-        self.onCommit = onCommit
-        self.canSync = canSync
-        self.onSync = onSync
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -170,28 +147,6 @@ struct RepositoryOverviewView: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .layoutPriority(1)
-
-            HStack(spacing: WorkbenchMetrics.compactSpacing) {
-                Button {
-                    onCommit()
-                } label: {
-                    Label(commitActionTitle, systemImage: "checkmark")
-                }
-                .workbenchSecondary()
-                .disabled(!canCommit)
-                .help(commitActionTitle)
-                .accessibilityHint("Creates an automatic commit")
-
-                Button {
-                    onSync()
-                } label: {
-                    Label("Sync", systemImage: "arrow.2.circlepath")
-                }
-                .workbenchSecondary()
-                .disabled(!canSync)
-                .help("Sync Changes")
-                .accessibilityHint("Synchronizes local and remote changes")
-            }
         }
         .padding(WorkbenchMetrics.panelPadding)
     }
