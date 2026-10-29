@@ -69,17 +69,13 @@ struct CleanupManagementContentView: View {
 
     private var units: [GitCleanupUnit] {
         guard let snapshot else { return [] }
-        return snapshot.managementUnits.filter { unit in
-            query.isEmpty
-                || unit.branch.reference.name.localizedStandardContains(query)
-                || (unit.worktree?.worktree.path.localizedStandardContains(query) ?? false)
-        }.sorted {
+        return snapshot.managementUnits(matching: query).sorted {
             $0.branch.reference.name.localizedStandardCompare($1.branch.reference.name) == .orderedAscending
         }
     }
 
     private var actionableCount: Int {
-        units.filter(\.canPrimaryClean).count
+        snapshot?.cleanupCounts(matching: query).ready ?? 0
     }
 
     private var defaultBranchName: String {

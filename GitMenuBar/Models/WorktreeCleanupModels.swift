@@ -323,6 +323,25 @@ struct GitWorktreeSnapshot: Hashable {
     }
 }
 
+// MARK: - Management Unit Filtering & Counts
+
+extension GitWorktreeSnapshot {
+    func managementUnits(matching query: String = "") -> [GitCleanupUnit] {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty else { return managementUnits }
+        return managementUnits.filter { unit in
+            unit.branch.reference.name.localizedStandardContains(trimmedQuery)
+                || (unit.worktree?.worktree.path.localizedStandardContains(trimmedQuery) ?? false)
+        }
+    }
+
+    func cleanupCounts(matching query: String = "") -> (ready: Int, blocked: Int) {
+        let matching = managementUnits(matching: query)
+        let ready = matching.filter(\.canPrimaryClean).count
+        return (ready: ready, blocked: matching.count - ready)
+    }
+}
+
 enum GitCleanupTarget: Hashable, Identifiable {
     case localBranch(GitBranchCleanupInfo)
     case worktree(GitWorktreeCleanupInfo)
