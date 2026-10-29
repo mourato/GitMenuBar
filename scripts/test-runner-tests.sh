@@ -7,6 +7,8 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 HARNESS_TMP="$(mktemp -d "${TMPDIR:-/tmp}/test-runner-harness.XXXXXX")"
 cleanup() {
+    wait "${PID1:-}" 2>/dev/null || true
+    wait "${PID2:-}" 2>/dev/null || true
     rm -rf "${HARNESS_TMP}"
 }
 trap cleanup EXIT
@@ -22,6 +24,36 @@ set -eu
 
 STATE_DIR="${STUB_STATE_DIR}"
 INVOCATIONS_FILE="${STATE_DIR}/invocations.txt"
+
+# Preserve individual argument boundaries and validate native options at the process boundary.
+python3 - "$@" <<'PYARGS'
+import json
+import os
+import sys
+from pathlib import Path
+
+args = sys.argv[1:]
+Path(os.environ["STUB_STATE_DIR"], f"args.{os.getpid()}.json").write_text(json.dumps(args))
+for argument in args:
+    for option in ("-parallel-testing-enabled", "-maximum-parallel-testing-workers", "-resultBundlePath", "-derivedDataPath"):
+        assert not argument.startswith(option + " "), ("merged arguments", argument)
+if "test-without-building" in args:
+    for option, variable in (("-parallel-testing-enabled", "TEST_PARALLEL"), ("-maximum-parallel-testing-workers", "TEST_WORKERS")):
+        expected = os.environ.get(variable, "")
+        if expected:
+            assert args.count(option) == 1, args
+            assert args[args.index(option) + 1] == expected, args
+        else:
+            assert option not in args, args
+    expected_filter = os.environ.get("TEST_FILTER", "").removeprefix("-only-testing:")
+    actual_filters = [arg for arg in args if arg.startswith("-only-testing:")]
+    assert actual_filters == (["-only-testing:" + expected_filter] if expected_filter else []), args
+    bundle = Path(args[args.index("-resultBundlePath") + 1])
+    assert bundle.is_absolute() and bundle.parent.is_dir(), args
+expected_data = os.environ.get("VALIDATE_DERIVED_DATA_PATH")
+if expected_data:
+    assert args[args.index("-derivedDataPath") + 1] == expected_data, args
+PYARGS
 
 # Record raw arguments
 echo "INVOCATION: $*" >> "${INVOCATIONS_FILE}"
@@ -90,10 +122,15 @@ exit 0
 EOF
 chmod +x "${STUB_XCODEBUILD}"
 
-RUNNER="${SCRIPT_DIR}/run-tests-xcode.sh"
+# Run unchanged scripts in a test-owned project, including whitespace in every artifact path.
+FIXTURE_ROOT="${HARNESS_TMP}/fixture project"
+mkdir -p "${FIXTURE_ROOT}/scripts/config" "${FIXTURE_ROOT}/GitMenuBar.xcodeproj"
+cp "${SCRIPT_DIR}/run-tests-xcode.sh" "${SCRIPT_DIR}/xcodebuild-safe.sh" "${FIXTURE_ROOT}/scripts/"
+cp "${SCRIPT_DIR}/config/app_identity.sh" "${FIXTURE_ROOT}/scripts/config/"
+RUNNER="${FIXTURE_ROOT}/scripts/run-tests-xcode.sh"
 
 reset_stub() {
-    rm -rf "${STUB_STATE_DIR}"
+    rm -f "${STUB_STATE_DIR}/invocations.txt" "${STUB_STATE_DIR}"/args.*.json
     mkdir -p "${STUB_STATE_DIR}"
     : > "${STUB_STATE_DIR}/invocations.txt"
 }
@@ -209,8 +246,8 @@ pass "exact TEST_FILTER"
 # Proof 5: paths unique concurrent runs (distinct deriveddata overrides)
 # -----------------------------------------------------------------------------
 reset_stub
-DD_OVERRIDE_1="${HARNESS_TMP}/dd1"
-DD_OVERRIDE_2="${HARNESS_TMP}/dd2"
+DD_OVERRIDE_1="${HARNESS_TMP}/derived data 1"
+DD_OVERRIDE_2="${HARNESS_TMP}/derived data 2"
 mkdir -p "${DD_OVERRIDE_1}" "${DD_OVERRIDE_2}"
 
 RUN1_OUT="${HARNESS_TMP}/run1.out"
@@ -224,8 +261,8 @@ PID2=$!
 wait "${PID1}" || fail "paths unique concurrent runs" "run 1 failed: $(cat "${RUN1_OUT}")"
 wait "${PID2}" || fail "paths unique concurrent runs" "run 2 failed: $(cat "${RUN2_OUT}")"
 
-RUN1_DIR=$(grep "Test run directory:" "${RUN1_OUT}" | head -1 | awk '{print $NF}')
-RUN2_DIR=$(grep "Test run directory:" "${RUN2_OUT}" | head -1 | awk '{print $NF}')
+RUN1_DIR=$(grep "Test run directory:" "${RUN1_OUT}" | head -1 | sed 's/^[^:]*: *//')
+RUN2_DIR=$(grep "Test run directory:" "${RUN2_OUT}" | head -1 | sed 's/^[^:]*: *//')
 
 [[ -n "${RUN1_DIR}" ]] || fail "paths unique concurrent runs" "missing RUN1_DIR"
 [[ -n "${RUN2_DIR}" ]] || fail "paths unique concurrent runs" "missing RUN2_DIR"
@@ -234,8 +271,8 @@ if [[ "${RUN1_DIR}" == "${RUN2_DIR}" ]]; then
     fail "paths unique concurrent runs" "run directories collided: ${RUN1_DIR}"
 fi
 
-RUN1_BUNDLE=$(grep "Result bundle:" "${RUN1_OUT}" | head -1 | awk '{print $NF}')
-RUN2_BUNDLE=$(grep "Result bundle:" "${RUN2_OUT}" | head -1 | awk '{print $NF}')
+RUN1_BUNDLE=$(grep "Result bundle:" "${RUN1_OUT}" | head -1 | sed 's/^[^:]*: *//')
+RUN2_BUNDLE=$(grep "Result bundle:" "${RUN2_OUT}" | head -1 | sed 's/^[^:]*: *//')
 
 if [[ "${RUN1_BUNDLE}" == "${RUN2_BUNDLE}" ]]; then
     fail "paths unique concurrent runs" "result bundles collided: ${RUN1_BUNDLE}"
@@ -257,7 +294,7 @@ reset_stub
 OUT_LOGS="${HARNESS_TMP}/logs_proof.out"
 TEST_PARALLEL="" TEST_WORKERS="" TEST_FILTER="" "${RUNNER}" > "${OUT_LOGS}" 2>&1 || fail "build log retained" "runner failed"
 
-PROOF_RUN_DIR=$(grep "Test run directory:" "${OUT_LOGS}" | head -1 | awk '{print $NF}')
+PROOF_RUN_DIR=$(grep "Test run directory:" "${OUT_LOGS}" | head -1 | sed 's/^[^:]*: *//')
 BUILD_LOG_FILE="${PROOF_RUN_DIR}/build-for-testing.log"
 TEST_LOG_FILE="${PROOF_RUN_DIR}/test-without-building.log"
 
@@ -318,7 +355,7 @@ if ! grep -q "Tests failed (exit 65)" "${ERR_OUT}"; then
 fi
 
 # Ensure build log is still preserved even when test fails
-TEST_FAIL_RUN_DIR=$(grep "Test run directory:" "${ERR_OUT}" | head -1 | awk '{print $NF}')
+TEST_FAIL_RUN_DIR=$(grep "Test run directory:" "${ERR_OUT}" | head -1 | sed 's/^[^:]*: *//')
 [[ -f "${TEST_FAIL_RUN_DIR}/build-for-testing.log" ]] || fail "test failure65" "build log missing on test failure"
 grep -q "BUILD FOR TESTING SUCCEEDED" "${TEST_FAIL_RUN_DIR}/build-for-testing.log" || fail "test failure65" "build log incomplete on test failure"
 pass "test failure65"
