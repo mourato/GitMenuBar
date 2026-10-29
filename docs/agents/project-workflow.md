@@ -55,15 +55,40 @@ VoiceOver cues.
 ## Delivery commands
 
 `make build` runs `scripts/run-build.sh`; `make build-release` runs it with
-`--configuration Release`. `make test` runs `scripts/run-tests-xcode.sh`;
-pass `TEST_FILTER='GitMenuBarTests/Name'` for one XCTest target, or use
-`make test-focused TEST_FILTER='GitMenuBarTests/Name'`. `make lint` runs
-`scripts/lint.sh`; `make lint-changed` and `make lint-fix` use their matching
-scripts. Debug and release build logs are `/tmp/gitmenubar-build-debug.log`
-and `/tmp/gitmenubar-build-release.log`; test logs are
-`/tmp/gitmenubar-test.log`. Before merge/push, run `git diff --check`,
-`make guidance-check`, `make lint`, and `make test`. Never delete `main`,
-unmerged branches, or worktrees containing other work.
+`--configuration Release`. Debug and release build logs are `/tmp/gitmenubar-build-debug.log`
+and `/tmp/gitmenubar-build-release.log`.
+
+`make test` runs `scripts/run-tests-xcode.sh`. It supports:
+- `TEST_FILTER='GitMenuBarTests/Name'`: passes `-only-testing:...` (required when using `make test-focused`).
+- `TEST_PARALLEL`: empty by default (scheme configuration), or `YES` / `NO`.
+- `TEST_WORKERS`: optional positive integer mapping to `-maximum-parallel-testing-workers`.
+Invalid options exit with status 2 before invoking Xcode.
+
+`make test-runner` runs `scripts/test-runner-tests.sh`, a fast stub-based regression
+harness that verifies runner options, phase exit codes, log retention, and artifact isolation
+without launching Xcode.
+
+Each test execution allocates an authoritative unique per-run directory under
+`.xcode-build-tests/test-run.XXXXXX` (or `$TMPDIR` if unavailable), preserving:
+- `build-for-testing.log`: compilation and build diagnostics.
+- `test-without-building.log`: test execution assertions and failures.
+- `TestResults.xcresult`: uniquely allocated test result bundle populated natively by Xcode.
+Absolute paths to the run directory, logs, and xcresult bundle are announced in stdout and
+on failure.
+
+Exit status fidelity: `scripts/run-tests-xcode.sh` preserves native xcodebuild exit codes
+(exit 70 when build-for-testing fails without running tests, exit 65 when tests fail, exit 2
+for invalid parameters). When invoked via `make test`, GNU `make` itself maps recipe failures
+to exit code 2 while emitting the command's exit code in its error banner.
+
+DerivedData and Concurrency: `DERIVED_DATA` defaults to
+`${VALIDATE_DERIVED_DATA_PATH:-${PROJECT_ROOT}/.xcode-build-tests}`. Unique per-run log and
+artifact directories prevent log collisions across concurrent runs or worktrees, but do not
+eliminate Xcode build database lock contention. Simultaneous test runs MUST provide distinct
+`VALIDATE_DERIVED_DATA_PATH` directory overrides to avoid shared build database conflicts.
+
+Before merge/push, run `git diff --check`, `make guidance-check`, `make lint`, and `make test`.
+Never delete `main`, unmerged branches, or worktrees containing other work.
 
 ## SwiftUI Preview Policy
 

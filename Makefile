@@ -1,4 +1,4 @@
-.PHONY: help build build-release runtime-smoke test test-focused lint test-hygiene lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command guidance-check install-app dmg setup-self-signed-cert clean setup
+.PHONY: help build build-release runtime-smoke test test-focused test-runner lint test-hygiene lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command guidance-check install-app dmg setup-self-signed-cert clean setup
 
 PROJECT_DIR := $(shell pwd)
 AGENT_CONFIG_HOME ?= $(HOME)/.agents
@@ -6,6 +6,8 @@ VALIDATE_LANE ?= $(AGENT_CONFIG_HOME)/scripts/validate-lane
 VALIDATE_BASE ?= $(shell git merge-base origin/main HEAD 2>/dev/null || git rev-parse HEAD^)
 VALIDATE_TARGET ?= validate
 TEST_FILTER ?=
+TEST_PARALLEL ?=
+TEST_WORKERS ?=
 
 help:
 	@echo "GitMenuBar Development Commands"
@@ -15,6 +17,7 @@ help:
 	@echo "make runtime-smoke Launch with persisted window defaults and verify stability"
 	@echo "make test          Run XCTest suite (TEST_FILTER=... for one target)"
 	@echo "make test-focused  Run one XCTest target (TEST_FILTER=... required)"
+	@echo "make test-runner   Run test runner regression harness"
 	@echo "make lint          Run SwiftFormat/SwiftLint checks"
 	@echo "make lint-changed  Lint only files changed since HEAD"
 	@echo "make lint-fix      Auto-fix format/lint issues"
@@ -39,11 +42,14 @@ runtime-smoke:
 	@./scripts/runtime-smoke.sh
 
 test:
-	@TEST_FILTER="$(TEST_FILTER)" ./scripts/run-tests-xcode.sh
+	@TEST_PARALLEL="$(TEST_PARALLEL)" TEST_WORKERS="$(TEST_WORKERS)" TEST_FILTER="$(TEST_FILTER)" ./scripts/run-tests-xcode.sh
 
 test-focused:
 	@test -n "$(strip $(TEST_FILTER))" || { echo "TEST_FILTER is required, e.g. TEST_FILTER=GitMenuBarTests/SomeTests" >&2; exit 2; }
-	@TEST_FILTER="$(TEST_FILTER)" $(MAKE) test
+	@TEST_PARALLEL="$(TEST_PARALLEL)" TEST_WORKERS="$(TEST_WORKERS)" TEST_FILTER="$(TEST_FILTER)" $(MAKE) test
+
+test-runner:
+	@./scripts/test-runner-tests.sh
 
 TEST_HYGIENE := $(or $(AGENT_CONFIG_HOME),$(HOME)/.agents)/skills/test-hygiene/scripts/check-swift-tests.py
 
@@ -80,7 +86,7 @@ validate-lane:
 			if [ "$$parent_existed" -eq 0 ]; then rmdir "$$artifact_parent" 2>/dev/null || true; fi; \
 		}; \
 		trap cleanup EXIT; \
-		$(VALIDATE_LANE) --repo "$(PROJECT_DIR)" --base "$(VALIDATE_BASE)" --artifacts "$$derived_data/Build" -- $(MAKE) validate-lane-command VALIDATE_DERIVED_DATA_PATH="$$derived_data" VALIDATE_TARGET="$(VALIDATE_TARGET)" TEST_FILTER="$(TEST_FILTER)"
+		$(VALIDATE_LANE) --repo "$(PROJECT_DIR)" --base "$(VALIDATE_BASE)" --artifacts "$$derived_data/Build" -- $(MAKE) validate-lane-command VALIDATE_DERIVED_DATA_PATH="$$derived_data" VALIDATE_TARGET="$(VALIDATE_TARGET)" TEST_FILTER="$(TEST_FILTER)" TEST_PARALLEL="$(TEST_PARALLEL)" TEST_WORKERS="$(TEST_WORKERS)"
 
 validate-lane-command:
 	@set -eu; \
@@ -88,7 +94,7 @@ validate-lane-command:
 		[ -n "$$derived_data" ] || { echo "VALIDATE_DERIVED_DATA_PATH is required" >&2; exit 2; }; \
 		cleanup() { rm -rf "$$derived_data"; }; \
 		trap cleanup EXIT; \
-		VALIDATE_DERIVED_DATA_PATH="$$derived_data" $(MAKE) "$(VALIDATE_TARGET)" TEST_FILTER="$(TEST_FILTER)"
+		VALIDATE_DERIVED_DATA_PATH="$$derived_data" TEST_PARALLEL="$(TEST_PARALLEL)" TEST_WORKERS="$(TEST_WORKERS)" $(MAKE) "$(VALIDATE_TARGET)" TEST_FILTER="$(TEST_FILTER)"
 
 guidance-check:
 	@./scripts/validate-agent-guidance.sh
