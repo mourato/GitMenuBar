@@ -5,8 +5,6 @@ struct CleanupConfirmationView: View {
     let blocked: [GitCleanupUnit]
     let onCancel: () -> Void
     let onConfirm: ([GitCleanupUnit]) -> Void
-    /// Legacy adapter only: confirm is allowed only while every ready unit stays checked.
-    private let requiresFullSelection: Bool
     @State private var selectedIDs: Set<String>
     @State private var didReviewRisk = false
     @State private var showsAllReady = false
@@ -20,25 +18,8 @@ struct CleanupConfirmationView: View {
         onCancel: @escaping () -> Void,
         onConfirm: @escaping ([GitCleanupUnit]) -> Void
     ) {
-        self.init(units: units, blocked: blocked, requiresFullSelection: false, onCancel: onCancel, onConfirm: onConfirm)
-    }
-
-    /// Keeps the single-action call site compiling. Partial selections cannot confirm,
-    /// so unchecked units are never cleaned by accident.
-    init(units: [GitCleanupUnit], onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void) {
-        self.init(units: units, blocked: [], requiresFullSelection: true, onCancel: onCancel, onConfirm: { _ in onConfirm() })
-    }
-
-    private init(
-        units: [GitCleanupUnit],
-        blocked: [GitCleanupUnit],
-        requiresFullSelection: Bool,
-        onCancel: @escaping () -> Void,
-        onConfirm: @escaping ([GitCleanupUnit]) -> Void
-    ) {
         self.units = units
         self.blocked = blocked
-        self.requiresFullSelection = requiresFullSelection
         self.onCancel = onCancel
         self.onConfirm = onConfirm
         _selectedIDs = State(initialValue: Set(units.map(\.id)))
@@ -49,7 +30,7 @@ struct CleanupConfirmationView: View {
     }
 
     private var canConfirm: Bool {
-        !selectedUnits.isEmpty && (!requiresFullSelection || selectedUnits.count == units.count)
+        !selectedUnits.isEmpty
     }
 
     private var pairedSelected: [GitCleanupUnit] {
