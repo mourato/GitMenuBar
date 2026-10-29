@@ -20,8 +20,8 @@ dense, calm, and semantic—not a SaaS dashboard or marketing surface.
 - Settings: `GitMenuBar/Pages/Settings/`
 - Layout persistence: the stable `NSWindow.FrameAutosaveName` in
   `MainWindowController`. `AppPreferences.Keys.inspectorColumnWidth` is a
-  legacy unused key retained for compatibility after the side-panel overlay.
-- Related decisions: [`docs/adr/0001-workbench-depth-and-token-naming.md`](adr/0001-workbench-depth-and-token-naming.md), [`docs/adr/0002-window-shell-material-and-titlebar-chrome.md`](adr/0002-window-shell-material-and-titlebar-chrome.md), [`docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md`](adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md), and [`docs/adr/0017-narrow-contextual-side-panel.md`](adr/0017-narrow-contextual-side-panel.md) (supersedes ADRs 0010–0015)
+  legacy unused key retained for compatibility after the side-panel change.
+- Related decisions: [`docs/adr/0001-workbench-depth-and-token-naming.md`](adr/0001-workbench-depth-and-token-naming.md), [`docs/adr/0002-window-shell-material-and-titlebar-chrome.md`](adr/0002-window-shell-material-and-titlebar-chrome.md), [`docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md`](adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md), [`docs/adr/0017-narrow-contextual-side-panel.md`](adr/0017-narrow-contextual-side-panel.md) (supersedes ADRs 0010–0015), and [`docs/adr/0021-side-panel-split-column.md`](adr/0021-side-panel-split-column.md) (split column; supersedes the overlay parts of 0017)
 
 The former `.interface-design/system.md` is a legacy pointer. Do not create a
 second canonical design-system document. Reconcile code and this file when
@@ -30,7 +30,8 @@ they drift, and use an ADR for a durable decision rather than a task log.
 ## Depth, density, and tokens
 
 - Use one depth strategy: window-level material/vibrancy for the shell, quiet
-  borders/tints for structure, and shadows only for floating overlays.
+  borders/tints for structure, and shadows only for floating overlays. The
+  side panel is inline structure: border and tint, no shadow.
 - The header uses the native macOS titlebar and unified toolbar pattern used by
   GUGU Settings: the titlebar is opaque and the titlebar hairline is hidden.
   The system title is hidden; a plain, unbordered toolbar title item shows the
@@ -58,8 +59,8 @@ The main route remains native toolbar → scroll content (repository
 overview, then history), with optional quota cards secondary to Git work.
 [ADR 0020](adr/0020-toolbar-actions-and-history-list.md) moves the branch
 picker and repository actions into the toolbar and removes the branch footer.
-Contextual details open in a trailing **side panel** overlay hosted on the
-detail column (VoiceInk-inspired; independent reimplementation). The panel is
+Contextual details open in a trailing **side panel** column beside the
+detail content (ADR 0021). It does not cover the detail column. The panel is
 absent until a central selection exists; there is no permanent empty third
 column and no compact sheet fallback. The commit workspace lives in the side
 panel under the Working Tree selection as commit composer → working tree,
@@ -71,8 +72,8 @@ user-resizable between `WorkbenchMetrics.projectsMinimumWidth` and
 `WorkbenchMetrics.projectsMaximumWidth`; its footer contains the visibility
 control beside Settings. When the sidebar is collapsed, the native toolbar item
 `.toggleSidebar` remains available as the re-entry control. The center pane keeps a
-minimum of `WorkbenchMetrics.centralMinimumWidth` and grows with the window
-(no max-width cap feeding a third column). The sidebar footer concentrates the
+minimum of `WorkbenchMetrics.centralMinimumWidth` and grows with the window;
+it shrinks to make room for the side panel when one is open. The sidebar footer concentrates the
 quota summary, sidebar visibility, and Settings access in one bottom surface;
 the toolbar title item identifies the current repository or route. The
 toolbar holds the sidebar toggle, Back, and the repository actions from ADR
@@ -97,10 +98,11 @@ appearance. Unavailable provider data does not create an empty meter; cached
 stale readings stay visible and marked Outdated in the quota submenu.
 
 The side panel uses fixed `WorkbenchMetrics.sidePanelWidth`. Dismiss with the
-explicit close control, Escape (clears selection first), and outside tap —
-except Working Tree, which disables outside tap. Draft commit text on
-`MainMenuView` survives dismiss. The window minimum is the two-column floor
-(`mainWindowMinimumWidth`). SwiftUI layout must not write measured geometry
+explicit close control and Escape (clears selection first). Outside tap does
+not dismiss: the detail column stays interactive. Draft commit text on
+`MainMenuView` survives dismiss. The window minimum is the three-column floor
+(`mainWindowMinimumWidth`: Projects + center + side panel), so the open
+panel never truncates history row metadata. SwiftUI layout must not write measured geometry
 back to state or defaults. The window frame uses its existing stable autosave
 name for session/version continuity.
 Stage/Unstage section actions stay visible; per-file actions remain hover-revealed
@@ -119,11 +121,11 @@ system owns its divider and width.
 
 ## Contextual side panel workbench
 
-The main workbench has two inline surfaces plus one contextual overlay:
+The main workbench has two inline surfaces plus one contextual column:
 
 - Projects remains the compact navigation and attention surface on the left.
 - The selected repository overview remains in the center.
-- A trailing side panel overlays the detail column only while a
+- A trailing side panel column sits beside the detail content only while a
   `MainMenuSidePanelSelection` exists.
 
 One optional selection drives the panel. Nil selection means no panel. Escape
@@ -131,7 +133,7 @@ clears contextual selection before other transient presentations or the
 window. Changing repositories or leaving the main route clears selection. The
 shell does not add an automatic fetch, duplicate repository query, custom
 AppKit panel, or status-item lifecycle change. Durable rationale is recorded
-in [`ADR 0015`](adr/0015-contextual-side-panel.md).
+in [`ADR 0015`](adr/0015-contextual-side-panel.md) and [`ADR 0021`](adr/0021-side-panel-split-column.md).
 
 ## Branch Health cleanup
 
@@ -166,9 +168,15 @@ eligibility contract.
   the default branch. Do not show a count twice for the same object.
 - Do not show a disabled control when there is nothing to do; hide it or state
   the result ("Up to date").
-- History rows show subject, short hash in the monospaced caption, author, and
-  relative time. Conventional-commit prefixes render as a small tinted chip.
+- History rows show subject, short hash in the monospaced caption, and time.
+  Author lives in commit details. The open commit's row keeps its title;
+  never share a `matchedGeometryEffect` id between two visible views. Conventional-commit prefixes render as a small tinted chip.
   Merge commits are dimmed. No trailing chevron; the row is the target.
+- Commit details: subject is the headline; short hash is a monospaced chip
+  that copies the full hash; never show the 40-character hash as text. One
+  secondary action row plus an overflow menu; destructive actions live in the
+  overflow menu behind the shared confirmation. Changed files are a vertical
+  list with per-file line counts.
 - Quota meters follow `UsageQuotaPresentationPreferences` (value style, meter
   style, warning thresholds). Color appears only past a configured threshold.
   No hard-coded percentages in views.

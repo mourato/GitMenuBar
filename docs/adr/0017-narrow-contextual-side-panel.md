@@ -1,6 +1,6 @@
 # ADR 0017: Narrow contextual side panel
 
-Status: Accepted
+Status: Accepted; overlay and outside-tap parts superseded by ADR 0021
 Date: 2026-09-08
 
 ## Context
