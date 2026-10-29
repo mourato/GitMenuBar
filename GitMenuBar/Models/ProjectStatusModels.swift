@@ -42,6 +42,12 @@ enum ProjectAttentionReason: Equatable {
     case error
 }
 
+enum ProjectAttentionSeverity: Equatable, Hashable, Sendable {
+    case divergedOrBehind
+    case uncommittedChanges
+    case unmergedOnly
+}
+
 struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
     let project: ProjectReference
     let branchName: String
@@ -86,6 +92,23 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
             && stashCount == other.stashCount
             && lastActivityAt == other.lastActivityAt
             && pullRequests == other.pullRequests
+    }
+
+    var isDefaultBranch: Bool {
+        !isDetachedHead && (branchName == "main" || branchName == "master")
+    }
+
+    var severity: ProjectAttentionSeverity? {
+        if behindCount > 0 {
+            return .divergedOrBehind
+        }
+        if stagedCount > 0 || unstagedCount > 0 {
+            return .uncommittedChanges
+        }
+        if unmergedBranchCount > 0 {
+            return .unmergedOnly
+        }
+        return nil
     }
 
     var hasWorkingTreeChanges: Bool {
