@@ -296,8 +296,19 @@ final class GitManagerBranchOperationsTests: XCTestCase {
             trackingStatus: .noRemote,
             lastCommitDate: nil
         )
-        XCTAssertEqual(remote.id, "remote/feature/x")
+        XCTAssertEqual(remote.id, "remote/origin/feature/x")
         XCTAssertEqual(remote.displayName, "origin/feature/x")
+
+        let upstreamRemote = BranchInfo(
+            name: "x",
+            isLocal: false,
+            isRemote: true,
+            isCurrent: false,
+            trackingStatus: .noRemote,
+            lastCommitDate: nil,
+            remoteName: "feature"
+        )
+        XCTAssertEqual(upstreamRemote.id, "remote/feature/x")
     }
 
     func testBranchTrackingStatusDescriptions() {
@@ -370,13 +381,32 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         let expectedIDs: Set = [
             "local/main",
             "local/feature/x",
-            "remote/only-origin",
+            "remote/origin/only-origin",
             "remote/upstream/main",
             "remote/upstream/feature/x"
         ]
         let ids = infos.map(\.id)
         XCTAssertEqual(ids.count, Set(ids).count, "BranchInfo ids must be unique for SwiftUI identity")
         XCTAssertEqual(Set(ids), expectedIDs)
+    }
+
+    func testParseBranchInfoOutputKeepsOriginSlashBranchDistinctFromRemoteNamedFeature() {
+        // origin `feature/x` and remote `feature` branch `x` both render as `feature/x`;
+        // their ids must still differ.
+        let records = [
+            ["refs/remotes/origin/feature/x", "", "100", ""],
+            ["refs/remotes/feature/x", "", "101", ""]
+        ]
+        let output = records
+            .map { $0.joined(separator: "\0") + "\0" }
+            .joined(separator: "\n")
+
+        let manager = GitManager(repositoryPathOverride: "")
+        let infos = manager.branchService.parseBranchInfoOutput(output, currentBranch: "main")
+
+        XCTAssertEqual(infos.count, 2)
+        XCTAssertEqual(Set(infos.map(\.id)), ["remote/origin/feature/x", "remote/feature/x"])
+        XCTAssertEqual(Set(infos.map(\.displayName)), ["origin/feature/x", "feature/x"])
     }
 
     func testServiceStateIsImmediatelyVisibleAndResetDoesNotRestoreOldBranch() async {
