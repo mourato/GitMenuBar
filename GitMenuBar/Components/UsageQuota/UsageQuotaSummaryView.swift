@@ -82,7 +82,7 @@ private struct UsageQuotaSummaryItem: View {
     }
 }
 
-/// Compact fill bar for the summary's `.bars` meter style; sized from Workbench spacing tokens.
+/// Compact fill bar for the summary's `.bars` meter style; sized by the quota meter metrics.
 private struct UsageQuotaSummaryBar: View {
     let fraction: Double
     let tint: Color
@@ -91,11 +91,11 @@ private struct UsageQuotaSummaryBar: View {
     var body: some View {
         Capsule(style: .continuous)
             .fill(track)
-            .frame(width: WorkbenchMetrics.groupSpacing, height: WorkbenchMetrics.chipSpacing)
+            .frame(width: WorkbenchMetrics.quotaMeterWidth, height: WorkbenchMetrics.quotaMeterHeight)
             .overlay(alignment: .leading) {
                 Capsule(style: .continuous)
                     .fill(tint)
-                    .frame(width: WorkbenchMetrics.groupSpacing * CGFloat(fraction))
+                    .frame(width: WorkbenchMetrics.quotaMeterWidth * CGFloat(fraction))
             }
     }
 }
