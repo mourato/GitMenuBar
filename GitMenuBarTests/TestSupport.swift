@@ -136,12 +136,7 @@ func makeIsolatedGitEnvironment(inheriting environment: [String: String] = Proce
     isolated.removeValue(forKey: "GIT_CONFIG")
     isolated.removeValue(forKey: "GIT_CONFIG_PARAMETERS")
 
-    if let countString = isolated.removeValue(forKey: "GIT_CONFIG_COUNT"), let count = Int(countString) {
-        for index in 0 ..< count {
-            isolated.removeValue(forKey: "GIT_CONFIG_KEY_\(index)")
-            isolated.removeValue(forKey: "GIT_CONFIG_VALUE_\(index)")
-        }
-    }
+    isolated.removeValue(forKey: "GIT_CONFIG_COUNT")
     for key in Array(isolated.keys) where key.hasPrefix("GIT_CONFIG_KEY_") || key.hasPrefix("GIT_CONFIG_VALUE_") {
         isolated.removeValue(forKey: key)
     }

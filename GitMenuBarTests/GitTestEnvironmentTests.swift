@@ -8,8 +8,8 @@ final class GitTestEnvironmentTests: XCTestCase {
         let hostileConfig = """
         [commit]
             gpgsign = true
-        [user]
-            signingkey = 0000000000000000
+        [gpg]
+            program = /usr/bin/false
         """
         try hostileConfig.write(to: hostileConfigURL, atomically: true, encoding: .utf8)
 
@@ -19,16 +19,17 @@ final class GitTestEnvironmentTests: XCTestCase {
         try runGit(["add", "work.txt"], in: repoURL)
 
         // Negative control: unisolated execution forced to point to the hostile global config fails
-        var unisolatedEnv = ProcessInfo.processInfo.environment
+        var unisolatedEnv = makeIsolatedGitEnvironment()
         unisolatedEnv["GIT_CONFIG_GLOBAL"] = hostileConfigURL.path
         XCTAssertThrowsError(
             try runGit(["commit", "-m", "unisolated fail"], in: repoURL, environment: unisolatedEnv),
-            "Git commit should fail when forced to load hostile global signing configuration without gpg keys"
+            "Git commit should fail when forced to load hostile global signing configuration with a deliberately failing signing command"
         )
 
-        // Positive control: default fixture execution succeeds because global/system config is isolated to /dev/null
+        // Positive control sanitizes the same hostile input before running Git.
+        let isolatedEnv = makeIsolatedGitEnvironment(inheriting: unisolatedEnv)
         XCTAssertNoThrow(
-            try runGit(["commit", "-m", "isolated success"], in: repoURL)
+            try runGit(["commit", "-m", "isolated success"], in: repoURL, environment: isolatedEnv)
         )
 
         // Verify local repository configuration remains functional and takes effect
@@ -69,7 +70,7 @@ final class GitTestEnvironmentTests: XCTestCase {
         syntheticHostileEnv["GIT_TEMPLATE_DIR"] = hostileTemplateDir.path
         syntheticHostileEnv["GIT_CONFIG"] = "/nonexistent/fake/gitconfig"
         syntheticHostileEnv["GIT_CONFIG_PARAMETERS"] = "'commit.gpgsign=true'"
-        syntheticHostileEnv["GIT_CONFIG_COUNT"] = "2"
+        syntheticHostileEnv["GIT_CONFIG_COUNT"] = "-1"
         syntheticHostileEnv["GIT_CONFIG_KEY_0"] = "commit.gpgsign"
         syntheticHostileEnv["GIT_CONFIG_VALUE_0"] = "true"
         syntheticHostileEnv["GIT_CONFIG_KEY_1"] = "core.hooksPath"
