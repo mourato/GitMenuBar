@@ -139,10 +139,10 @@ private struct HistoryTimelineRowView: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
+        HStack(alignment: .center, spacing: WorkbenchMetrics.compactSpacing) {
             stateDot
 
-            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+            HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.sectionSpacing) {
                 subjectLine
                 metadataLine
             }
@@ -239,10 +239,10 @@ private struct HistoryTimelineRowView: View {
             if let type = knownType {
                 Text(parsedSubject.isBreaking ? "\(type)!" : type)
                     .font(WorkbenchTypography.captionStrong)
-                    .foregroundStyle(commit.isMergeCommit ? Color.secondary : Color.accentColor)
+                    .foregroundStyle(.secondary)
                     .padding(.horizontal, WorkbenchMetrics.chipSpacing)
-                    .padding(.vertical, WorkbenchMetrics.microSpacing)
-                    .background(WorkbenchPalette.accentFill(contrast: colorSchemeContrast))
+                    .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
+                    .background(WorkbenchPalette.hoverFill())
                     .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
 
                 if let scope = parsedSubject.scope {
@@ -298,9 +298,8 @@ private struct HistoryTimelineRowView: View {
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(metadataStyle)
                 .lineLimit(1)
-
-            Spacer()
         }
+        .fixedSize()
     }
 
     private var stateDot: some View {
@@ -314,7 +313,6 @@ private struct HistoryTimelineRowView: View {
                 width: commit.isMergeCommit ? WorkbenchMetrics.chipSpacing : WorkbenchMetrics.compactSpacing,
                 height: commit.isMergeCommit ? WorkbenchMetrics.chipSpacing : WorkbenchMetrics.compactSpacing
             )
-            .padding(.top, WorkbenchMetrics.chipSpacing)
             .accessibilityHidden(true)
     }
 
