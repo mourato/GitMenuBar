@@ -51,7 +51,7 @@ struct SidePanelModifier<PanelContent: View>: ViewModifier {
                     lineWidth: 1
                 )
             }
-            .padding(.bottom, WorkbenchMetrics.windowPadding)
+            .padding([.trailing, .bottom], WorkbenchMetrics.windowPadding)
     }
 
     func body(content: Content) -> some View {

@@ -126,8 +126,7 @@ extension MainMenuView {
                 )
             }
         }
-        .padding(.horizontal, WorkbenchMetrics.panelPadding)
-        .padding(.bottom, WorkbenchMetrics.panelPadding)
+        .padding(WorkbenchMetrics.panelPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
