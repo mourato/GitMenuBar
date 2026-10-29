@@ -20,6 +20,12 @@ Active local execution briefs only. Completed and withdrawn plans live in
 | [074](074-de-duplicate-commit-push-refresh-work.md) | De-duplicate the Commit & Push critical path | P1 | IMPLEMENTED — measurement pending |
 | [075](075-switch-projects-during-path-bound-git-actions.md) | Switch projects while path-bound Git actions finish safely | P0 | IMPLEMENTED — manual/Instruments pending |
 | [087](087-preview-state-coverage.md) | Close preview gaps and cover key UI states | P3 | READY |
+| [089](089-toolbar-repository-actions.md) | Move repository actions and branch picker into the toolbar | P1 | READY |
+| [090](090-overview-status-strip.md) | Turn the overview card into a status strip | P2 | READY |
+| [091](091-history-plain-list.md) | Rebuild history rows as a plain list | P1 | READY |
+| [092](092-sidebar-signal-cleanup.md) | Reduce noise and add severity to the Projects sidebar | P2 | READY |
+| [093](093-quota-meter-respects-preferences.md) | Make the sidebar quota summary respect quota preferences | P2 | READY |
+| [094](094-typography-and-finish.md) | Typography and spacing finish for the main window | P3 | READY |
 
 ## Archive notes
 

@@ -53,7 +53,9 @@ they drift, and use an ADR for a durable decision rather than a task log.
 ## Composition and interaction
 
 The main route remains native toolbar → scroll content (repository
-overview) → branch footer, with optional quota cards secondary to Git work.
+overview, then history), with optional quota cards secondary to Git work.
+[ADR 0020](adr/0020-toolbar-actions-and-history-list.md) moves the branch
+picker and repository actions into the toolbar and removes the branch footer.
 Contextual details open in a trailing **side panel** overlay hosted on the
 detail column (VoiceInk-inspired; independent reimplementation). The panel is
 absent until a central selection exists; there is no permanent empty third
@@ -70,8 +72,10 @@ control beside Settings. When the sidebar is collapsed, the native toolbar item
 minimum of `WorkbenchMetrics.centralMinimumWidth` and grows with the window
 (no max-width cap feeding a third column). The sidebar footer concentrates the
 quota summary, sidebar visibility, and Settings access in one bottom surface;
-the native window title identifies the current repository or route, and the
-toolbar keeps only route-specific controls such as the sidebar toggle and Back.
+the native window title identifies the current repository or route. The
+toolbar holds the sidebar toggle, Back, and the repository actions from ADR
+0020: branch picker, ahead/behind, Fetch, Sync (only when ahead or behind),
+and Commit (opens the Working Tree side panel).
 
 The status item remains the single app-shell owner. Left click opens the main
 GitMenuBar window. Right click and Control-click show only `AI Usage Quotas`,
@@ -144,6 +148,24 @@ kept. Remote branch management lists all remote-tracking refs, including
 
 Project Cleanup remains the multi-repo shortcut and keeps its existing safe
 eligibility contract.
+
+## Visual hierarchy rules
+
+- One selection highlight per window. The sidebar selection uses the neutral
+  selected fill; only the focused content selection uses the accent.
+- Color carries meaning, never decoration. Sidebar status dots use severity:
+  red for diverged or behind, orange for uncommitted changes, secondary for
+  unmerged branches only. Untracked files alone are not a warning.
+- Do not repeat information. Hide the branch name in sidebar rows when it is
+  the default branch. Do not show a count twice for the same object.
+- Do not show a disabled control when there is nothing to do; hide it or state
+  the result ("Up to date").
+- History rows show subject, short hash in the monospaced caption, author, and
+  relative time. Conventional-commit prefixes render as a small tinted chip.
+  Merge commits are dimmed. No trailing chevron; the row is the target.
+- Quota meters follow `UsageQuotaPresentationPreferences` (value style, meter
+  style, warning thresholds). Color appears only past a configured threshold.
+  No hard-coded percentages in views.
 
 ## States, accessibility, and motion
 
