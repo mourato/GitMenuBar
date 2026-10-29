@@ -167,6 +167,8 @@ struct ProjectsSidebarView: View {
             Text("\(count)")
                 .monospacedDigit()
         }
+        // Align the count with the row badge column instead of the section's trailing edge.
+        .padding(.trailing, WorkbenchMetrics.compactSpacing)
     }
 
     private func projectRow(_ snapshot: ProjectStatusSnapshot) -> some View {

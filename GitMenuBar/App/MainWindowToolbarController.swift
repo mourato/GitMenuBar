@@ -73,7 +73,13 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
             desiredItems.append(Self.backIdentifier)
         }
         if let repositoryState {
-            desiredItems.append(contentsOf: repositoryState.repositoryItems.map(Self.identifier(for:)))
+            // Branch context sits beside the title; the flexible space pushes actions to the trailing edge.
+            for item in repositoryState.repositoryItems {
+                desiredItems.append(Self.identifier(for: item))
+                if item == .aheadBehind {
+                    desiredItems.append(.flexibleSpace)
+                }
+            }
         }
         synchronizeItems(desiredItems)
         applyRepositoryState()
@@ -83,6 +89,7 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         [
             .sidebarTrackingSeparator,
             .toggleSidebar,
+            .flexibleSpace,
             Self.backIdentifier,
             Self.branchPickerIdentifier,
             Self.aheadBehindIdentifier,
@@ -105,7 +112,7 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
     }
 
     private func makeItem(identifier: NSToolbarItem.Identifier) -> NSToolbarItem? {
-        if identifier == .sidebarTrackingSeparator || identifier == .toggleSidebar {
+        if identifier == .sidebarTrackingSeparator || identifier == .toggleSidebar || identifier == .flexibleSpace {
             return NSToolbarItem(itemIdentifier: identifier)
         }
 
@@ -168,12 +175,12 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
 
         switch repositoryItem {
         case .branchPicker:
-            configureStandardItem(
-                item,
-                action: #selector(StatusBarController.presentBranchSelectorFromToolbar(_:)),
-                target: target,
-                isEnabled: true
+            item.view = makeBranchChip(
+                title: state.branchTitle,
+                accessibilityLabel: accessibilityLabel,
+                target: target
             )
+            item.isEnabled = true
         case .aheadBehind:
             item.view = makeStatusView(
                 title: state.aheadBehindTitle,
@@ -202,6 +209,10 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
                 isEnabled: state.isCommitEnabled
             )
             setCommitBadge(on: item, count: state.commitBadgeCount)
+            if #available(macOS 26.0, *) {
+                // Primary action: tinted with the system accent color.
+                item.style = .prominent
+            }
         }
     }
 
@@ -217,8 +228,29 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         item.isEnabled = isEnabled
     }
 
+    private func makeBranchChip(
+        title: String,
+        accessibilityLabel: String,
+        target: StatusBarController
+    ) -> NSButton {
+        let chip = NSButton(
+            title: title,
+            target: target,
+            action: #selector(StatusBarController.presentBranchSelectorFromToolbar(_:))
+        )
+        chip.bezelStyle = .accessoryBarAction
+        chip.controlSize = .small
+        chip.image = NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: nil)
+        chip.imagePosition = .imageLeading
+        chip.toolTip = accessibilityLabel
+        chip.setAccessibilityLabel(accessibilityLabel)
+        return chip
+    }
+
     private func makeStatusView(title: String, accessibilityLabel: String) -> NSTextField {
         let view = NSTextField(labelWithString: title)
+        view.font = .preferredFont(forTextStyle: .subheadline)
+        view.textColor = .secondaryLabelColor
         view.toolTip = accessibilityLabel
         view.setAccessibilityLabel(accessibilityLabel)
         return view

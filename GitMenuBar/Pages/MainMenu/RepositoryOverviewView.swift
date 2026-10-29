@@ -94,16 +94,16 @@ struct RepositoryOverviewView: View {
         if overview.isCleanWorkingTree {
             return "Clean"
         }
-        if overview.untrackedCount > 0 {
-            return "\(overview.untrackedCount) untracked"
+        // The value column already shows the total; repeat a count only when kinds are mixed.
+        let parts = [
+            (overview.stagedCount, "staged"),
+            (overview.unstagedCount, "modified"),
+            (overview.untrackedCount, "untracked")
+        ].filter { $0.0 > 0 }
+        if parts.count == 1 {
+            return parts[0].1
         }
-        if overview.stagedCount > 0, overview.unstagedCount > 0 {
-            return "\(overview.stagedCount) staged, \(overview.unstagedCount) modified"
-        }
-        if overview.stagedCount > 0 {
-            return "\(overview.stagedCount) staged"
-        }
-        return "\(overview.unstagedCount) modified"
+        return parts.map { "\($0.0) \($0.1)" }.joined(separator: ", ")
     }
 
     private var changesAccessibilityValue: String {
@@ -175,12 +175,9 @@ struct RepositoryOverviewView: View {
             return "All clear"
         }
         if unmerged > 0, unpushed > 0 {
-            return "\(unmerged) unmerged"
+            return "\(unmerged) unmerged, \(unpushed) unpushed"
         }
-        if unmerged > 0 {
-            return "\(unmerged) unmerged"
-        }
-        return "\(unpushed) unpushed"
+        return unmerged > 0 ? "unmerged" : "unpushed"
     }
 
     private var branchesAccessibilityValue: String {
@@ -244,7 +241,7 @@ struct RepositoryOverviewView: View {
         }
         switch overview.stashCount {
         case let .known(count):
-            return "\(count)"
+            return count == 0 ? "None" : "\(count)"
         case .loading, .unavailable:
             return "—"
         }
@@ -259,7 +256,7 @@ struct RepositoryOverviewView: View {
         }
         switch overview.stashCount {
         case let .known(count):
-            return count == 0 ? "None" : "retained"
+            return count == 0 ? "" : "retained"
         case .loading:
             return "Checking…"
         case .unavailable:
