@@ -325,7 +325,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         try "base\nmanual-change\n".write(to: fileURL, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        await waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
         let apiKeyStore = SpyAIAPIKeyStore()
@@ -360,7 +360,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         try "base\nbeta\n".write(to: betaFile, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        await waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         var refreshedPaths: [String] = []
         var observedCommitCount: String?
@@ -392,7 +392,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         try "base\nauto-change\n".write(to: fileURL, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        await waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
         let provider = AIProviderConfig(
@@ -439,7 +439,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         try "base\nwhitespace-only\n".write(to: fileURL, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        await waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         let actionCoordinator = makeActionCoordinator(
             gitManager: gitManager,
@@ -466,7 +466,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         try "base\nmanual-whitespace\n".write(to: fileURL, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        await waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         let actionCoordinator = makeActionCoordinator(
             gitManager: gitManager,
@@ -492,7 +492,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         try "base\ngenerated-after-whitespace\n".write(to: fileURL, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        await waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
         let provider = AIProviderConfig(
@@ -540,7 +540,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
     func testPerformSyncOpensOptionsWhenRemoteIsAhead() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        await waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
         gitManager.isRemoteAhead = true
         gitManager.isAheadOfRemote = true
 
@@ -582,7 +582,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         try "base\nlocal commit needed\n".write(to: localFileURL, atomically: true, encoding: .utf8)
 
         let gitManager = GitManager(repositoryPathOverride: localRepoURL.path)
-        await waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         let providerStore = AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore())
         let provider = AIProviderConfig(
@@ -670,7 +670,7 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
         }
 
         let gitManager = GitManager(repositoryPathOverride: localRepoURL.path)
-        await waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
 
         let actionCoordinator = makeActionCoordinator(
             gitManager: gitManager,
@@ -864,15 +864,6 @@ final class MainMenuActionCoordinatorTests: XCTestCase {
             aiCommitCoordinator: aiCoordinator,
             onCommitCompleted: onCommitCompleted
         )
-    }
-
-    func waitForWorkingTreeUpdate(_ gitManager: GitManager, timeout: TimeInterval = 3) async {
-        let expectation = expectation(description: "working tree refresh")
-        Task {
-            await gitManager.updateUncommittedFilesAsync()
-            expectation.fulfill()
-        }
-        await fulfillment(of: [expectation], timeout: timeout)
     }
 }
 

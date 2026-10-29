@@ -255,6 +255,11 @@ final class UsageQuotaStoreTests: XCTestCase {
             providers: [provider, cursorProvider, geminiProvider],
             pricingLoader: { .bundled }
         )
+        defer {
+            provider.onFetch = nil
+            cursorProvider.onFetch = nil
+            store.showAIUsageQuotas = false
+        }
         // Enabling the feature starts the settingsEnabled refresh, which blocks inside the fetch.
         let firstFetch = expectation(description: "in-flight fetch started")
         provider.onFetch = { firstFetch.fulfill() }
@@ -294,6 +299,10 @@ final class UsageQuotaStoreTests: XCTestCase {
     func testManualRefreshWhileInFlightStillStartsNewCycle() async {
         let provider = GatedUsageQuotaProvider(snapshot: Self.sampleSnapshot())
         let store = makeStore(provider: provider)
+        defer {
+            provider.onFetch = nil
+            store.showAIUsageQuotas = false
+        }
         let firstFetch = expectation(description: "in-flight fetch started")
         provider.onFetch = { firstFetch.fulfill() }
         store.showAIUsageQuotas = true

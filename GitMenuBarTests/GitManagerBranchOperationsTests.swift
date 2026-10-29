@@ -180,15 +180,14 @@ final class GitManagerBranchOperationsTests: XCTestCase {
             XCTFail("Push to local remote should succeed: \(error.localizedDescription)")
         }
 
-        let deleteExpectation = expectation(description: "delete local branch")
-        gitManager.deleteBranch(branchName: "feature/to-push") { result in
-            if case let .failure(error) = result {
-                XCTFail("Local branch delete should succeed: \(error.localizedDescription)")
+        let deleteResult: Result<Void, Error> = await withCheckedContinuation { continuation in
+            gitManager.deleteBranch(branchName: "feature/to-push") { result in
+                continuation.resume(returning: result)
             }
-            deleteExpectation.fulfill()
         }
-        // The completion waits for a full branch and refresh pass, which exceeds 3s under full-suite load.
-        await fulfillment(of: [deleteExpectation], timeout: 10)
+        if case let .failure(error) = deleteResult {
+            XCTFail("Local branch delete should succeed: \(error.localizedDescription)")
+        }
 
         let localBranches = await gitManager.branchService.fetchLocalBranchesAsync()
         XCTAssertFalse(localBranches.contains("feature/to-push"))

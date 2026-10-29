@@ -17,7 +17,7 @@ final class AICommitRecoveryTests: XCTestCase {
         )
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        await waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
         let providerStore = configuredProviderStore(models: ["primary"])
         let provider = try XCTUnwrap(providerStore.defaultProvider)
         let apiKeyStore = InMemoryAIAPIKeyStore()
@@ -62,7 +62,7 @@ final class AICommitRecoveryTests: XCTestCase {
         )
 
         let gitManager = GitManager(repositoryPathOverride: repoURL.path)
-        await waitForWorkingTreeUpdate(gitManager)
+        await gitManager.updateUncommittedFilesAsync()
         let primaryProvider = AIProviderConfig(
             name: "OpenAI",
             type: .openAI,
@@ -155,14 +155,5 @@ final class AICommitRecoveryTests: XCTestCase {
             )
         )
         return store
-    }
-
-    private func waitForWorkingTreeUpdate(_ gitManager: GitManager, timeout: TimeInterval = 3) async {
-        let expectation = expectation(description: "working tree refresh")
-        Task {
-            await gitManager.updateUncommittedFilesAsync()
-            expectation.fulfill()
-        }
-        await fulfillment(of: [expectation], timeout: timeout)
     }
 }
