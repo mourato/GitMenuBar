@@ -57,8 +57,9 @@ struct HistoryTimelineSectionView: View {
             ForEach(sections) { section in
                 VStack(alignment: .leading, spacing: WorkbenchMetrics.chipSpacing) {
                     Text(section.title)
-                        .font(WorkbenchTypography.sectionLabel)
+                        .font(WorkbenchTypography.captionStrong)
                         .foregroundStyle(.secondary)
+                        .padding(.top, WorkbenchMetrics.sectionSpacing)
 
                     VStack(spacing: WorkbenchMetrics.microSpacing) {
                         ForEach(section.rows) { timelineRow in

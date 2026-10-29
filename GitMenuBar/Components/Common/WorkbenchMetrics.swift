@@ -74,10 +74,6 @@ enum WorkbenchTypography {
         .subheadline
     }
 
-    static var overviewIcon: Font {
-        .title3.weight(.semibold)
-    }
-
     static var caption: Font {
         .caption
     }
