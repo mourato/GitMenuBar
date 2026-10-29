@@ -122,7 +122,7 @@ struct WorkingTreeDiffTreeNodeView: View {
                     showsChevronSpacer: hasDirectoryNodes || depth > 0,
                     leadingIcon: .directory(isExpanded: isExpanded),
                     title: name,
-                    stat: stat,
+                    stat: nil,
                     showsChevron: true,
                     isExpanded: isExpanded
                 )
@@ -220,6 +220,7 @@ struct WorkingTreeDiffTreeFileRowView: View {
     var onOpen: (() -> Void)?
     var onDiscard: (() -> Void)?
     var onReveal: (() -> Void)?
+    var isFlatMode: Bool = false
 
     @State private var isHovered = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -228,10 +229,7 @@ struct WorkingTreeDiffTreeFileRowView: View {
         HStack(spacing: WorkbenchMetrics.chipSpacing) {
             rowContent
 
-            Text(file.status.symbol)
-                .font(WorkbenchTypography.body.weight(.semibold))
-                .foregroundStyle(Color(nsColor: file.status.foregroundColor))
-                .frame(width: WorkingTreeLayoutMetrics.statusColumnWidth, alignment: .trailing)
+            statusBadge
         }
         .padding(.vertical, WorkingTreeLayoutMetrics.rowVerticalPadding)
         .padding(.horizontal, WorkbenchMetrics.microSpacing)
@@ -301,12 +299,31 @@ struct WorkingTreeDiffTreeFileRowView: View {
 
             FileTypeIconView(path: path)
 
-            Text(name)
-                .font(WorkbenchTypography.body)
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .strikethrough(file.status.isDeleted, color: .secondary)
+            if isFlatMode {
+                HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.microSpacing) {
+                    Text(name)
+                        .font(WorkbenchTypography.body)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .strikethrough(file.status.isDeleted, color: .secondary)
+
+                    if !file.directoryPath.isEmpty {
+                        Text(file.directoryPath)
+                            .font(WorkbenchTypography.detail)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.head)
+                    }
+                }
+            } else {
+                Text(name)
+                    .font(WorkbenchTypography.body)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .strikethrough(file.status.isDeleted, color: .secondary)
+            }
 
             Spacer(minLength: WorkbenchMetrics.compactSpacing)
 
@@ -370,6 +387,17 @@ struct WorkingTreeDiffTreeFileRowView: View {
 
     private var showsActions: Bool {
         isHovered || isSelected
+    }
+
+    private var statusBadge: some View {
+        Text(file.status.symbol)
+            .font(.system(size: 10, weight: .bold, design: .monospaced))
+            .foregroundStyle(Color(nsColor: file.status.foregroundColor))
+            .frame(width: 16, height: 16)
+            .background(
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(Color(nsColor: file.status.foregroundColor).opacity(0.12))
+            )
     }
 
     private var backgroundColor: Color {

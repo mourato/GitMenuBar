@@ -18,57 +18,42 @@ struct WorkingTreeSectionHeaderView: View {
     var body: some View {
         WorkbenchSectionHeaderChrome(
             title: title,
+            badge: summary.fileCountText,
             isCollapsed: $isCollapsed,
             accessibilityLabel: "\(title) section",
             accessibilityHintExpanded: "Expands the section.",
             accessibilityHintCollapsed: "Collapses the section."
         ) { _ in
             HStack(spacing: WorkbenchMetrics.compactSpacing) {
-                HStack(spacing: WorkbenchMetrics.microSpacing) {
-                    WorkingTreeLineDiffView(
-                        addedCount: summary.addedLineCount,
-                        removedCount: summary.removedLineCount
-                    )
+                WorkingTreeLineDiffView(
+                    addedCount: summary.addedLineCount,
+                    removedCount: summary.removedLineCount
+                )
 
-                    if showsDirectoryControls, let onToggleAllDirectories {
-                        Button(action: onToggleAllDirectories) {
-                            Image(
-                                systemName: allDirectoriesExpanded
-                                    ? "arrow.down.right.and.arrow.up.left"
-                                    : "arrow.up.left.and.arrow.down.right"
-                            )
-                            .font(WorkbenchTypography.captionStrong)
-                            .foregroundStyle(.primary)
-                            .frame(
-                                width: WorkingTreeLayoutMetrics.actionHitTarget,
-                                height: WorkingTreeLayoutMetrics.actionHitTarget
-                            )
-                            .contentShape(Rectangle())
-                        }
-                        .workbenchIcon()
-                        .help(allDirectoriesExpanded ? "Collapse all folders" : "Expand all folders")
-                        .accessibilityLabel(allDirectoriesExpanded ? "Collapse all folders" : "Expand all folders")
+                if showsDirectoryControls, let onToggleAllDirectories {
+                    Button(action: onToggleAllDirectories) {
+                        Image(
+                            systemName: allDirectoriesExpanded
+                                ? "arrow.down.right.and.arrow.up.left"
+                                : "arrow.up.left.and.arrow.down.right"
+                        )
+                        .font(WorkbenchTypography.captionStrong)
+                        .foregroundStyle(.primary)
+                        .frame(
+                            width: WorkingTreeLayoutMetrics.actionHitTarget,
+                            height: WorkingTreeLayoutMetrics.actionHitTarget
+                        )
+                        .contentShape(Rectangle())
                     }
+                    .workbenchIcon()
+                    .help(allDirectoriesExpanded ? "Collapse all folders" : "Expand all folders")
+                    .accessibilityLabel(allDirectoriesExpanded ? "Collapse all folders" : "Expand all folders")
+                }
 
-                    if showsAction {
-                        if let onDiscardAll {
-                            Button(action: onDiscardAll) {
-                                Image(systemName: "arrow.uturn.backward")
-                                    .font(WorkbenchTypography.captionStrong)
-                                    .foregroundStyle(.primary)
-                                    .frame(
-                                        width: WorkingTreeLayoutMetrics.actionHitTarget,
-                                        height: WorkingTreeLayoutMetrics.actionHitTarget
-                                    )
-                                    .contentShape(Rectangle())
-                            }
-                            .workbenchIcon()
-                            .help("Discard All")
-                            .accessibilityLabel("Discard all files in \(title)")
-                        }
-
-                        Button(action: onAction) {
-                            Image(systemName: actionIcon)
+                if showsAction {
+                    if let onDiscardAll {
+                        Button(action: onDiscardAll) {
+                            Image(systemName: "arrow.uturn.backward")
                                 .font(WorkbenchTypography.captionStrong)
                                 .foregroundStyle(.primary)
                                 .frame(
@@ -78,19 +63,24 @@ struct WorkingTreeSectionHeaderView: View {
                                 .contentShape(Rectangle())
                         }
                         .workbenchIcon()
-                        .help(actionHelp)
-                        .accessibilityLabel("\(actionHelp) in \(title)")
+                        .help("Discard All")
+                        .accessibilityLabel("Discard all files in \(title)")
                     }
-                }
 
-                Text(summary.fileCountText)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .contentTransition(reduceMotion ? .identity : .numericText())
-                    .animation(
-                        WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
-                        value: summary.fileCount
-                    )
+                    Button(action: onAction) {
+                        Image(systemName: actionIcon)
+                            .font(WorkbenchTypography.captionStrong)
+                            .foregroundStyle(.primary)
+                            .frame(
+                                width: WorkingTreeLayoutMetrics.actionHitTarget,
+                                height: WorkingTreeLayoutMetrics.actionHitTarget
+                            )
+                            .contentShape(Rectangle())
+                    }
+                    .workbenchIcon()
+                    .help(actionHelp)
+                    .accessibilityLabel("\(actionHelp) in \(title)")
+                }
             }
         }
     }

@@ -27,11 +27,7 @@ struct ChangedFilesTreeRowChrome: View {
 
             DiffTreeLeadingIconView(icon: leadingIcon)
 
-            Text(title)
-                .font(WorkbenchTypography.body)
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+            titleView
 
             Spacer(minLength: WorkbenchMetrics.compactSpacing)
 
@@ -50,6 +46,25 @@ struct ChangedFilesTreeRowChrome: View {
         .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
+    }
+
+    @ViewBuilder
+    private var titleView: some View {
+        if let lastSlashIndex = title.lastIndex(of: "/") {
+            let prefix = String(title[...lastSlashIndex])
+            let leaf = String(title[title.index(after: lastSlashIndex)...])
+            (Text(prefix).foregroundStyle(.secondary) +
+                Text(leaf).foregroundStyle(.primary).bold())
+                .font(WorkbenchTypography.body)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        } else {
+            Text(title)
+                .font(WorkbenchTypography.body)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
     }
 }
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WorkbenchSectionHeaderChrome<Trailing: View>: View {
     let title: String
+    let badge: String?
     @Binding var isCollapsed: Bool
     let accessibilityLabel: String
     let accessibilityHintExpanded: String
@@ -15,6 +16,7 @@ struct WorkbenchSectionHeaderChrome<Trailing: View>: View {
 
     init(
         title: String,
+        badge: String? = nil,
         isCollapsed: Binding<Bool>,
         accessibilityLabel: String,
         accessibilityHintExpanded: String,
@@ -23,6 +25,7 @@ struct WorkbenchSectionHeaderChrome<Trailing: View>: View {
         @ViewBuilder trailing: @escaping (_ isHovered: Bool) -> Trailing
     ) {
         self.title = title
+        self.badge = badge
         _isCollapsed = isCollapsed
         self.accessibilityLabel = accessibilityLabel
         self.accessibilityHintExpanded = accessibilityHintExpanded
@@ -98,6 +101,18 @@ struct WorkbenchSectionHeaderChrome<Trailing: View>: View {
             Text(title)
                 .font(WorkbenchTypography.body)
                 .tracking(WorkbenchTypography.tracking(for: .subheadline))
+
+            if let badge, !badge.isEmpty {
+                Text(badge)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 1)
+                    .background(
+                        Capsule()
+                            .fill(Color.primary.opacity(0.06))
+                    )
+            }
         }
     }
 

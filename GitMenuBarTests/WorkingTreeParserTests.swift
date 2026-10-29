@@ -64,4 +64,12 @@ final class WorkingTreeParserTests: XCTestCase {
         XCTAssertEqual(diffs["empty"], LineDiffStats(added: 0, removed: 0))
         XCTAssertEqual(diffs["../outside"], LineDiffStats(added: 0, removed: 0))
     }
+
+    func testWorkingTreeDisplayModePropertiesAndRawValues() {
+        XCTAssertEqual(AppPreferences.WorkingTreeDisplayMode.tree.rawValue, "tree")
+        XCTAssertEqual(AppPreferences.WorkingTreeDisplayMode.flat.rawValue, "flat")
+        XCTAssertEqual(AppPreferences.WorkingTreeDisplayMode.tree.title, "Tree")
+        XCTAssertEqual(AppPreferences.WorkingTreeDisplayMode.flat.title, "Flat")
+        XCTAssertEqual(AppPreferences.WorkingTreeDisplayMode.allCases.count, 2)
+    }
 }

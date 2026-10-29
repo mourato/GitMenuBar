@@ -5,6 +5,7 @@ struct WorkingTreeSectionView: View {
     let summary: WorkingTreeSectionSummary
     let files: [WorkingTreeRowAdapter]
     @Binding var isCollapsed: Bool
+    var displayMode: AppPreferences.WorkingTreeDisplayMode = .tree
     let selectedItemID: MainMenuSelectableItem?
     let onSelect: (MainMenuSelectableItem) -> Void
     let onStageToggle: (String) -> Void
@@ -37,25 +38,61 @@ struct WorkingTreeSectionView: View {
             )
 
             if !isCollapsed {
-                WorkingTreeDiffTreeView(
-                    files: files,
+                if displayMode == .flat {
+                    flatFilesView
+                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+                } else {
+                    WorkingTreeDiffTreeView(
+                        files: files,
+                        actionIcon: actionIcon,
+                        selectedItemID: selectedItemID,
+                        onSelect: onSelect,
+                        onStageToggle: onStageToggle,
+                        onOpen: onOpen,
+                        onDiscard: onDiscard,
+                        onReveal: onReveal,
+                        allDirectoriesExpanded: $allDirectoriesExpanded,
+                        directoryExpansionOverrides: $directoryExpansionOverrides
+                    )
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+                }
+            }
+        }
+    }
+
+    private var flatFilesView: some View {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+            ForEach(files) { adapter in
+                WorkingTreeDiffTreeFileRowView(
+                    name: adapter.file.fileName,
+                    path: adapter.file.path,
+                    depth: 0,
+                    showsChevronSpacer: false,
+                    stat: DiffTreeStat(
+                        additions: adapter.file.lineDiff.added,
+                        deletions: adapter.file.lineDiff.removed
+                    ),
+                    file: adapter.file,
                     actionIcon: actionIcon,
-                    selectedItemID: selectedItemID,
-                    onSelect: onSelect,
-                    onStageToggle: onStageToggle,
-                    onOpen: onOpen,
-                    onDiscard: onDiscard,
-                    onReveal: onReveal,
-                    allDirectoriesExpanded: $allDirectoriesExpanded,
-                    directoryExpansionOverrides: $directoryExpansionOverrides
+                    actionHelp: adapter.actions.primaryLabel,
+                    isSelected: selectedItemID == adapter.id,
+                    onSelect: { onSelect(adapter.id) },
+                    onAction: { onStageToggle(adapter.file.path) },
+                    onOpen: { onOpen(adapter.file.path) },
+                    onDiscard: adapter.actions.canDiscard
+                        ? {
+                            onSelect(adapter.id)
+                            onDiscard(adapter.file.path, adapter.file.status)
+                        } : nil,
+                    onReveal: { onReveal(adapter.file.path) },
+                    isFlatMode: true
                 )
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
             }
         }
     }
 
     private var showsDirectoryControls: Bool {
-        !isCollapsed && files.contains { !$0.file.directoryPath.isEmpty }
+        displayMode == .tree && !isCollapsed && files.contains { !$0.file.directoryPath.isEmpty }
     }
 
     private func toggleAllDirectories() {

@@ -31,6 +31,8 @@ struct SidePanelCommitWorkspaceView: View {
     @Environment(GitManager.self) private var gitManager
     @Environment(MainMenuActionCoordinator.self) private var actionCoordinator
     @Environment(CommitHistoryEditCoordinator.self) private var commitHistoryEditCoordinator
+    @AppStorage(AppPreferences.Keys.workingTreeDisplayMode)
+    private var displayMode = AppPreferences.WorkingTreeDisplayMode.tree
     @State private var isStagedCollapsed = false
     @State private var isUnstagedCollapsed = false
 
@@ -72,7 +74,7 @@ struct SidePanelCommitWorkspaceView: View {
     }
 
     private var workingTreeContent: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
             if gitManager.stagedFiles.isEmpty, gitManager.changedFiles.isEmpty {
                 ContentUnavailableView(
                     "Working tree is clean",
@@ -80,10 +82,22 @@ struct SidePanelCommitWorkspaceView: View {
                     description: Text("Stage files to start a commit.")
                 )
             } else {
-                HStack {
+                HStack(alignment: .center) {
+                    Picker("View style", selection: $displayMode) {
+                        ForEach(AppPreferences.WorkingTreeDisplayMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 140)
+
                     Spacer(minLength: 0)
-                    Button("Stash changes") {
+
+                    Button {
                         Task { _ = await actionCoordinator.sidePanel.saveSidePanelStash() }
+                    } label: {
+                        Label("Stash changes", systemImage: "tray.and.arrow.down")
                     }
                     .workbenchGhost()
                     .disabled(isCommitActionBusy || actionCoordinator.isBusy)
@@ -95,6 +109,7 @@ struct SidePanelCommitWorkspaceView: View {
                         summary: gitManager.stagedFiles.sectionSummary,
                         files: gitManager.stagedFiles.map(WorkingTreeRowAdapter.staged(file:)),
                         isCollapsed: $isStagedCollapsed,
+                        displayMode: displayMode,
                         selectedItemID: workspaceSelectedFileID,
                         onSelect: onSelectWorkspaceFile,
                         onStageToggle: { path in
@@ -117,6 +132,7 @@ struct SidePanelCommitWorkspaceView: View {
                         summary: gitManager.changedFiles.sectionSummary,
                         files: gitManager.changedFiles.map(WorkingTreeRowAdapter.unstaged(file:)),
                         isCollapsed: $isUnstagedCollapsed,
+                        displayMode: displayMode,
                         selectedItemID: workspaceSelectedFileID,
                         onSelect: onSelectWorkspaceFile,
                         onStageToggle: { path in

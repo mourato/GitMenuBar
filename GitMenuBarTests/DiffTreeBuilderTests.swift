@@ -83,6 +83,113 @@ final class DiffTreeBuilderTests: XCTestCase {
         )
     }
 
+    func testCompactsLinearSubtreesWithinBranchedDirectories() {
+        let inputs = [
+            DiffTreeFileInput(
+                path: "mineStack/skills/ship/references/protocol.md",
+                stat: DiffTreeStat(additions: 7, deletions: 1)
+            ),
+            DiffTreeFileInput(
+                path: "mineStack/core/standards/CODING_STANDARDS.md",
+                stat: DiffTreeStat(additions: 2, deletions: 3)
+            ),
+            DiffTreeFileInput(
+                path: "mineStack/skills/ship/references/dispatch.md",
+                stat: DiffTreeStat(additions: 3, deletions: 2)
+            ),
+            DiffTreeFileInput(
+                path: "mineStack/skills/bind-unit/SKILL.md",
+                stat: DiffTreeStat(additions: 5, deletions: 0)
+            ),
+            DiffTreeFileInput(
+                path: "mineStack/core/policies/experience-first.md",
+                stat: DiffTreeStat(additions: 4, deletions: 1)
+            )
+        ]
+
+        let tree = DiffTreeBuilder.buildDiffTree(inputs)
+
+        XCTAssertEqual(
+            tree,
+            [
+                .directory(
+                    name: "mineStack",
+                    path: "mineStack",
+                    stat: DiffTreeStat(additions: 21, deletions: 7),
+                    children: [
+                        .directory(
+                            name: "core",
+                            path: "mineStack/core",
+                            stat: DiffTreeStat(additions: 6, deletions: 4),
+                            children: [
+                                .directory(
+                                    name: "policies",
+                                    path: "mineStack/core/policies",
+                                    stat: DiffTreeStat(additions: 4, deletions: 1),
+                                    children: [
+                                        .file(
+                                            name: "experience-first.md",
+                                            path: "mineStack/core/policies/experience-first.md",
+                                            stat: DiffTreeStat(additions: 4, deletions: 1)
+                                        )
+                                    ]
+                                ),
+                                .directory(
+                                    name: "standards",
+                                    path: "mineStack/core/standards",
+                                    stat: DiffTreeStat(additions: 2, deletions: 3),
+                                    children: [
+                                        .file(
+                                            name: "CODING_STANDARDS.md",
+                                            path: "mineStack/core/standards/CODING_STANDARDS.md",
+                                            stat: DiffTreeStat(additions: 2, deletions: 3)
+                                        )
+                                    ]
+                                )
+                            ]
+                        ),
+                        .directory(
+                            name: "skills",
+                            path: "mineStack/skills",
+                            stat: DiffTreeStat(additions: 15, deletions: 3),
+                            children: [
+                                .directory(
+                                    name: "bind-unit",
+                                    path: "mineStack/skills/bind-unit",
+                                    stat: DiffTreeStat(additions: 5, deletions: 0),
+                                    children: [
+                                        .file(
+                                            name: "SKILL.md",
+                                            path: "mineStack/skills/bind-unit/SKILL.md",
+                                            stat: DiffTreeStat(additions: 5, deletions: 0)
+                                        )
+                                    ]
+                                ),
+                                .directory(
+                                    name: "ship/references",
+                                    path: "mineStack/skills/ship/references",
+                                    stat: DiffTreeStat(additions: 10, deletions: 3),
+                                    children: [
+                                        .file(
+                                            name: "dispatch.md",
+                                            path: "mineStack/skills/ship/references/dispatch.md",
+                                            stat: DiffTreeStat(additions: 3, deletions: 2)
+                                        ),
+                                        .file(
+                                            name: "protocol.md",
+                                            path: "mineStack/skills/ship/references/protocol.md",
+                                            stat: DiffTreeStat(additions: 7, deletions: 1)
+                                        )
+                                    ]
+                                )
+                            ]
+                        )
+                    ]
+                )
+            ]
+        )
+    }
+
     func testIgnoresMixedSeparatorsAndEmptySegments() {
         let inputs = [
             DiffTreeFileInput(path: "Sources\\App.swift", stat: DiffTreeStat(additions: 1, deletions: 0)),

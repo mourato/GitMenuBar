@@ -39,6 +39,25 @@ enum AppPreferences {
         static let usageQuotaWorkdaysPerWeek = "usageQuotaWorkdaysPerWeek"
         static let usageQuotaWorkdayTickAppearance = "usageQuotaWorkdayTickAppearance"
         static let usageQuotaShowsPace = "usageQuotaShowsPace"
+        static let workingTreeDisplayMode = "workingTreeDisplayMode"
+    }
+
+    enum WorkingTreeDisplayMode: String, CaseIterable, Identifiable, Codable {
+        case tree
+        case flat
+
+        var id: String {
+            rawValue
+        }
+
+        var title: String {
+            switch self {
+            case .tree:
+                "Tree"
+            case .flat:
+                "Flat"
+            }
+        }
     }
 
     enum AppearanceMode: String, CaseIterable, Identifiable {
