@@ -149,8 +149,8 @@ enum UsageQuotaCostScanner {
     private static func parseCodexRecords(_ text: String) -> [[String: Any]] {
         var records: [[String: Any]] = []
         for line in text.split(whereSeparator: \.isNewline) {
-            guard line.contains("turn_id") || line.contains("token") || line.contains("model") else { continue }
-            guard let data = String(line).data(using: .utf8),
+            guard line.contains("turn_id") || line.contains("token") || line.contains("model"),
+                  let data = String(line).data(using: .utf8),
                   let record = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else { continue }
             records.append(record)
@@ -246,8 +246,8 @@ enum UsageQuotaCostScanner {
         guard let text = try? String(contentsOf: file, encoding: .utf8) else { return total }
         var seenRequestIDs = Set<String>()
         for line in text.split(whereSeparator: \.isNewline) {
-            guard line.contains("\"usage\"") else { continue }
-            guard let data = String(line).data(using: .utf8),
+            guard line.contains("\"usage\""),
+                  let data = String(line).data(using: .utf8),
                   let record = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let message = record["message"] as? [String: Any],
                   message["role"] as? String == "assistant",

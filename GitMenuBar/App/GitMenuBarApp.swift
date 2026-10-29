@@ -69,7 +69,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Handle file/folder URLs opened via "open -a GitMenuBar /path/to/folder"
 
-    // swiftlint:disable:next cyclomatic_complexity
     func application(_: NSApplication, open urls: [URL]) {
         // Handle folder paths passed via "open -a GitMenuBar /path/to/folder"
         guard let folderUrl = urls.first else {
@@ -95,14 +94,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if isGitRepo, githubAuthManager?.isAuthenticated == true {
             // Check if remote repo actually exists on GitHub
             statusBarController?.gitManager.remoteRepositoryExists(at: path) { [weak self] exists in
-                guard let self else { return }
-
-                guard canSwitchRepository(to: path) else { return }
-
-                guard let selection = statusBarController?.repositorySelectionCoordinator.select(path: path) else {
-                    return
-                }
-                guard case let .selected(selectedPath) = selection else { return }
+                guard let self, canSwitchRepository(to: path), let selection = statusBarController?.repositorySelectionCoordinator.select(path: path), case let .selected(selectedPath) = selection else { return }
                 statusBarController?.actionCoordinator.resetForRepositorySwitch()
 
                 if exists {

@@ -1267,10 +1267,7 @@ class GitManager {
 
     func publishBranchAsync(branchName: String, context: RepositoryOperationContext) async -> Result<Void, Error> {
         let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !context.repositoryPath.isEmpty else {
-            return .failure(makeMissingRepositoryError())
-        }
-        guard !trimmed.isEmpty else {
+        guard !context.repositoryPath.isEmpty, !trimmed.isEmpty else {
             return .failure(makeMissingRepositoryError())
         }
         return await runOnBackground {
@@ -1312,8 +1309,7 @@ class GitManager {
     }
 
     func checkRemoteStatusAsync(context: RepositoryOperationContext) async -> Bool {
-        guard !context.repositoryPath.isEmpty else { return false }
-        guard await branchMatches(context) else { return false }
+        guard !context.repositoryPath.isEmpty, await branchMatches(context) else { return false }
         return await branchService.checkRemoteStatusAsync(session: operationRefreshSession(for: context))
     }
 

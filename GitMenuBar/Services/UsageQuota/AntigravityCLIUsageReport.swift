@@ -69,8 +69,7 @@ enum AntigravityCLIUsageReport {
         }
 
         let data = await output.value
-        guard process.terminationStatus == 0 else { return nil }
-        guard !data.isEmpty else { return nil }
+        guard process.terminationStatus == 0, !data.isEmpty else { return nil }
         return Data(data.prefix(1_048_576))
     }
 }

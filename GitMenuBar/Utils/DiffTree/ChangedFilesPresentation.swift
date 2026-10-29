@@ -11,10 +11,7 @@ enum ChangedFilesPresentation {
         totalChangedLines: Int,
         isPrimaryContext: Bool
     ) -> Bool {
-        guard isPrimaryContext else {
-            return false
-        }
-        guard fileCount <= autoExpandFileLimit else {
+        guard isPrimaryContext, fileCount <= autoExpandFileLimit else {
             return false
         }
         return totalChangedLines <= autoExpandLineLimit

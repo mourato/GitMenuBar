@@ -8,8 +8,7 @@ enum ClaudeCodeCLIUsage {
         homeDirectory: URL,
         now: @escaping @Sendable () -> Date = Date.init
     ) async -> UsageQuotaSnapshot? {
-        guard let binary = await resolveBinary() else { return nil }
-        guard let output = await capture(binary: binary, homeDirectory: homeDirectory) else { return nil }
+        guard let binary = await resolveBinary(), let output = await capture(binary: binary, homeDirectory: homeDirectory) else { return nil }
         return snapshot(from: output, now: now())
     }
 
@@ -75,10 +74,7 @@ enum ClaudeCodeCLIUsage {
 
             let modelName = String(line[modelRange]).trimmingCharacters(in: .whitespacesAndNewlines)
             let modelKey = modelName.lowercased()
-            guard !modelName.isEmpty, modelKey != "all models", seenModels.insert(modelKey).inserted else {
-                continue
-            }
-            guard let usedPercent = percent(afterLine: index, in: lines) else { continue }
+            guard !modelName.isEmpty, modelKey != "all models", seenModels.insert(modelKey).inserted, let usedPercent = percent(afterLine: index, in: lines) else { continue }
             let label = modelKey.contains("only") ? modelName : "\(modelName) only"
             windows.append(
                 UsageWindow(

@@ -30,8 +30,8 @@ final class MainMenuSyncSheetState {
     }
 }
 
+@MainActor
 extension MainMenuSyncExecutionResult {
-    @MainActor
     func playHapticFeedback() {
         if self == .synced {
             HapticFeedback.actionSucceeded()

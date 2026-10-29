@@ -14,16 +14,12 @@ struct UsageQuotaSnapshotStore {
     }
 
     func save(_ snapshot: UsageQuotaSnapshot) {
-        guard snapshot.isAvailable else { return }
-        guard snapshot.sessionWindow != nil
-            || snapshot.weeklyWindow != nil
-            || !snapshot.modelWindows.isEmpty
-            || snapshot.creditValueText != nil
-        else {
-            return
-        }
-
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        guard snapshot.isAvailable,
+              snapshot.sessionWindow != nil
+              || snapshot.weeklyWindow != nil
+              || !snapshot.modelWindows.isEmpty
+              || snapshot.creditValueText != nil,
+              let data = try? JSONEncoder().encode(snapshot) else { return }
         defaults.set(data, forKey: storageKey(for: snapshot.providerID))
     }
 

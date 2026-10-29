@@ -105,10 +105,8 @@ struct SystemAgentSessionQuerier: AgentSessionQuerying {
             let projectURL = baseDirectory.appendingPathComponent(slug)
             let candidateURL = transcriptsSubdirectory.map { projectURL.appendingPathComponent($0) } ?? projectURL
             guard fileManager.fileExists(atPath: candidateURL.path) else { continue }
-            if let mtime = latestTranscriptDate(at: candidateURL, fileManager: fileManager) {
-                if latestDate == nil || mtime > (latestDate ?? .distantPast) {
-                    latestDate = mtime
-                }
+            if let mtime = latestTranscriptDate(at: candidateURL, fileManager: fileManager), latestDate == nil || mtime > (latestDate ?? .distantPast) {
+                latestDate = mtime
             }
         }
         guard let latest = latestDate else { return nil }

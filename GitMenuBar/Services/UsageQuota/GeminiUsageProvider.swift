@@ -207,11 +207,7 @@ final class GeminiUsageProvider: UsageQuotaProviding, Sendable {
     }
 
     private func refreshAccessToken(refreshToken: String?) async -> GeminiTokenRefreshResponse? {
-        guard let refreshToken, !refreshToken.isEmpty else { return nil }
-
-        guard let client = resolveOAuthClient() else { return nil }
-
-        guard let url = URL(string: Self.tokenRefreshEndpoint) else { return nil }
+        guard let refreshToken, !refreshToken.isEmpty, let client = resolveOAuthClient(), let url = URL(string: Self.tokenRefreshEndpoint) else { return nil }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"

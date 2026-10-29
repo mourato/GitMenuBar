@@ -52,8 +52,8 @@ enum ProjectStatusPorcelainParser {
             result.hasUpstream = !record.dropFirst("# branch.upstream ".count).isEmpty
         case let record where record.hasPrefix("# branch.ab "):
             let values = record.split(separator: " ")
-            guard values.count == 4 else { return true }
-            guard values[2].first == "+", values[3].first == "-",
+            guard values.count == 4,
+                  values[2].first == "+", values[3].first == "-",
                   let ahead = Int(values[2].dropFirst()),
                   let behind = Int(values[3].dropFirst()) else { return true }
             result.aheadCount = ahead

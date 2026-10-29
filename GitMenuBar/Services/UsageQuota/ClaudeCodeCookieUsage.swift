@@ -13,22 +13,17 @@ enum ClaudeCodeCookieUsage {
         session: URLSession,
         now: @escaping @Sendable () -> Date = Date.init
     ) async -> UsageQuotaSnapshot? {
-        guard sessionKey.hasPrefix("sk-ant-") else { return nil }
-        guard let organizationsData = await request(
-            url: organizationsURL,
-            sessionKey: sessionKey,
-            session: session
-        ),
-            let organizations = try? JSONDecoder().decode([ClaudeCodeOrganization].self, from: organizationsData),
-            let organization = organizations.first(where: { !$0.uuid.isEmpty })
+        guard sessionKey.hasPrefix("sk-ant-"),
+              let organizationsData = await request(
+                  url: organizationsURL,
+                  sessionKey: sessionKey,
+                  session: session
+              ),
+              let organizations = try? JSONDecoder().decode([ClaudeCodeOrganization].self, from: organizationsData),
+              let organization = organizations.first(where: { !$0.uuid.isEmpty }),
+              let usageURL = URL(string: "https://claude.ai/api/organizations/\(organization.uuid)/usage"),
+              let data = await request(url: usageURL, sessionKey: sessionKey, session: session)
         else {
-            return nil
-        }
-
-        guard let usageURL = URL(string: "https://claude.ai/api/organizations/\(organization.uuid)/usage") else {
-            return nil
-        }
-        guard let data = await request(url: usageURL, sessionKey: sessionKey, session: session) else {
             return nil
         }
         return ClaudeCodeUsageParsing.snapshot(

@@ -46,11 +46,7 @@ final class UpdateChecker {
 
         lastCheckDate = Date()
 
-        guard let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
-            return nil
-        }
-
-        guard let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases/latest") else {
+        guard let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String, let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases/latest") else {
             return nil
         }
         var request = URLRequest(url: url)

@@ -82,9 +82,9 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
                 return snapshot
             case .unauthorized where !attemptedRefresh:
                 if let refreshed = await refreshCredentials(
-                    StoredCredentials(credentials: credentials, source: storedCredentials.source)
-                ),
-                    case let .success(snapshot) = await fetchUsage(accessToken: refreshed.accessToken)
+                       StoredCredentials(credentials: credentials, source: storedCredentials.source)
+                   ),
+                   case let .success(snapshot) = await fetchUsage(accessToken: refreshed.accessToken)
                 {
                     return snapshot
                 }
@@ -151,8 +151,7 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
             return StoredCredentials(credentials: credentials, source: .file)
         }
 
-        guard let data = keychainData() else { return nil }
-        guard let credentials = ClaudeCodeUsageParsing.credentials(fromCredentials: data) else { return nil }
+        guard let data = keychainData(), let credentials = ClaudeCodeUsageParsing.credentials(fromCredentials: data) else { return nil }
         return StoredCredentials(credentials: credentials, source: .keychain)
     }
 
@@ -193,10 +192,10 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
             expiresAt: expiresAt
         )
         guard let persistedData = updatedCredentialsData(
-            from: stored.credentials.rawData,
-            credentials: refreshed
-        ),
-            persistCredentials(persistedData, source: stored.source)
+                  from: stored.credentials.rawData,
+                  credentials: refreshed
+              ),
+              persistCredentials(persistedData, source: stored.source)
         else {
             return nil
         }
@@ -277,8 +276,8 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
         guard (try? process.run()) != nil else { return nil }
         let data = output.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        guard process.terminationStatus == 0 else { return nil }
-        guard let trimmed = String(bytes: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+        guard process.terminationStatus == 0,
+              let trimmed = String(bytes: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
               !trimmed.isEmpty
         else { return nil }
         return Data(trimmed.utf8)

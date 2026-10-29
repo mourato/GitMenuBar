@@ -3,8 +3,7 @@ import Foundation
 enum GitDiffHunkParser {
     static func parse(path: String, diff: String) -> [AtomicCommitHunk] {
         let lines = diff.components(separatedBy: "\n")
-        guard lines.contains(where: { $0.hasPrefix("@@ ") }) else { return [] }
-        guard let firstHunk = lines.firstIndex(where: { $0.hasPrefix("@@ ") }) else { return [] }
+        guard lines.contains(where: { $0.hasPrefix("@@ ") }), let firstHunk = lines.firstIndex(where: { $0.hasPrefix("@@ ") }) else { return [] }
         let prefix = Array(lines[..<firstHunk]).joined(separator: "\n") + "\n"
         guard prefix.contains("diff --git "), prefix.contains("--- "), prefix.contains("+++ ") else { return [] }
 

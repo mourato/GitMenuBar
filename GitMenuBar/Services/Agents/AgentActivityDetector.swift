@@ -58,8 +58,7 @@ struct DarwinAgentProcessScanner: AgentProcessQuerying {
             while offset < size, bytes[offset] != 0 {
                 offset += 1
             }
-            guard offset < size else { return [] }
-            guard let argument = String(bytes: bytes[start ..< offset], encoding: .utf8) else { return [] }
+            guard offset < size, let argument = String(bytes: bytes[start ..< offset], encoding: .utf8) else { return [] }
             arguments.append(argument)
             offset += 1
         }
@@ -161,15 +160,10 @@ actor AgentActivityDetector {
         for process in processes {
             // Multi-project servers' launch cwd does not identify their active projects.
             guard process.name != "codex-app-server",
-                  URL(fileURLWithPath: process.binaryPath).lastPathComponent != "codex-app-server" else { continue }
-            guard Self.isMatchingPath(processCwd: process.cwd, projectPath: projectPath) else {
-                continue
-            }
-            guard let harness = Self.harness(forProcessName: process.name, binaryPath: process.binaryPath, arguments: process.arguments) else {
-                continue
-            }
-
-            guard harness != .codex || !process.arguments.dropFirst().contains("app-server") else { continue }
+                  URL(fileURLWithPath: process.binaryPath).lastPathComponent != "codex-app-server",
+                  Self.isMatchingPath(processCwd: process.cwd, projectPath: projectPath),
+                  let harness = Self.harness(forProcessName: process.name, binaryPath: process.binaryPath, arguments: process.arguments),
+                  harness != .codex || !process.arguments.dropFirst().contains("app-server") else { continue }
             if runningByHarness[harness] == nil {
                 runningByHarness[harness] = AgentProjectActivity(harness: harness, status: .running)
             }

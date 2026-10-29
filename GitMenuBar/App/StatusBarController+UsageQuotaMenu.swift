@@ -134,8 +134,7 @@ extension StatusBarController {
     @objc private func redeemResetFromMenu(_ sender: NSMenuItem) {
         guard let credit = sender.representedObject as? UsageQuotaResetCredit else { return }
         Task {
-            guard confirmResetRedemption() else { return }
-            guard let outcome = await usageQuotaStore.redeemCodexResetCredit(credit) else { return }
+            guard confirmResetRedemption(), let outcome = await usageQuotaStore.redeemCodexResetCredit(credit) else { return }
             presentResetOutcome(outcome)
         }
     }

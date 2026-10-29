@@ -40,11 +40,7 @@ enum CursorAuthTokenReader {
         guard copyDatabaseBundle(
             from: configuration.databaseURL,
             to: copiedURL
-        ) else {
-            return nil
-        }
-
-        guard let token = queryAccessToken(at: copiedURL), !token.isEmpty else {
+        ), let token = queryAccessToken(at: copiedURL), !token.isEmpty else {
             return nil
         }
         return token
@@ -73,11 +69,8 @@ enum CursorAuthTokenReader {
         let bindResult = accessTokenKey.withCString { keyPointer in
             sqlite3_bind_text(statement, 1, keyPointer, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
         }
-        guard bindResult == SQLITE_OK else {
-            return nil
-        }
-
-        guard sqlite3_step(statement) == SQLITE_ROW,
+        guard bindResult == SQLITE_OK,
+              sqlite3_step(statement) == SQLITE_ROW,
               let cString = sqlite3_column_text(statement, 0)
         else {
             return nil

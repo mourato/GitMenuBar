@@ -182,8 +182,7 @@ final class SidePanelActionCoordinator {
     }
 
     func performSidePanelCleanup(units: [GitCleanupUnit], snapshot: GitWorktreeSnapshot) async -> MainMenuSidePanelActionResult {
-        guard let host else { return .skipped }
-        guard !units.isEmpty else {
+        guard let host, !units.isEmpty else {
             return .skipped
         }
         return await host.executeContextualMutation(allowsRepositorySwitch: false) { context in

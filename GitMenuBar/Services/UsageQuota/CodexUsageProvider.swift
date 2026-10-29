@@ -70,7 +70,7 @@ struct CodexUsageProvider: UsageQuotaProviding {
         var paths: [URL] = []
         if let codexHome = ProcessInfo.processInfo.environment["CODEX_HOME"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
-            !codexHome.isEmpty
+           !codexHome.isEmpty
         {
             paths.append(URL(fileURLWithPath: codexHome).appendingPathComponent("auth.json"))
         }

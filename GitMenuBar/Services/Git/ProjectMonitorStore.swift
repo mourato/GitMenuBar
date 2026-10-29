@@ -344,8 +344,7 @@ final class ProjectMonitorStore {
             queue.waitUntilAllOperationsAreFinished()
             Task { @MainActor [weak self] in
                 defer { GitPerformanceTrace.end("project.monitor.refresh", id: trace) }
-                guard let self else { return }
-                guard generation == refreshGeneration else { return }
+                guard let self, generation == refreshGeneration else { return }
                 publishSnapshots(results)
                 isRefreshing = false
                 Task { [weak self] in
@@ -377,8 +376,7 @@ final class ProjectMonitorStore {
 
         for snapshot in updates {
             let path = snapshot.project.path
-            guard monitoredPaths.contains(path) else { continue }
-            guard nextSnapshots[path].map({ !$0.hasSameVisibleState(as: snapshot) }) ?? true else { continue }
+            guard monitoredPaths.contains(path), nextSnapshots[path].map({ !$0.hasSameVisibleState(as: snapshot) }) ?? true else { continue }
             nextSnapshots[path] = snapshot
             didChange = true
         }

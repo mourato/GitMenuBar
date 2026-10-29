@@ -373,13 +373,12 @@ final class AntigravityUsageProvider: UsageQuotaProviding, Sendable {
         for root in roots {
             for relativePath in relativePaths {
                 let path = "\(root)/\(relativePath)"
-                guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { continue }
-                guard let text = String(data: data, encoding: .utf8) else { continue }
-                guard let id = firstMatch(
-                    pattern: #"[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com"#,
-                    in: text
-                ),
-                    let secret = firstMatch(pattern: #"GOCSPX-[A-Za-z0-9_-]+"#, in: text)
+                guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)), let text = String(data: data, encoding: .utf8),
+                      let id = firstMatch(
+                          pattern: #"[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com"#,
+                          in: text
+                      ),
+                      let secret = firstMatch(pattern: #"GOCSPX-[A-Za-z0-9_-]+"#, in: text)
                 else { continue }
                 return (id, secret)
             }

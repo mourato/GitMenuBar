@@ -195,8 +195,7 @@ final class AICommitGrouperService: Sendable {
             let completeFiles = Set(plan.groups.flatMap(\.files))
             let selectedHunks = Set(plan.groups.flatMap(\.hunks))
             let selectedHunkPaths = Set(selectedHunks.compactMap { snapshot.hunksByID[$0]?.path })
-            guard completeFiles.isDisjoint(with: selectedHunkPaths) else { throw AIError.invalidResponse }
-            guard Set(snapshot.files.map(\.path)) == completeFiles.union(selectedHunkPaths) else { throw AIError.invalidResponse }
+            guard completeFiles.isDisjoint(with: selectedHunkPaths), Set(snapshot.files.map(\.path)) == completeFiles.union(selectedHunkPaths) else { throw AIError.invalidResponse }
             return plan.groups
         } catch let error as AIError {
             throw error
