@@ -347,10 +347,30 @@ enum UsageQuotaFormatting {
         }
         return .red
     }
+
+    /// Alert level against configured used-percent thresholds: normal until the first
+    /// threshold is reached, warning past the first, error past the second or later.
+    static func alertLevel(remainingPercent: Int, thresholds: [Int]) -> UsageQuotaAlertLevel {
+        let usedPercent = 100 - remainingPercent
+        let crossed = thresholds.filter { usedPercent >= $0 }.count
+        if crossed >= 2 {
+            return .error
+        }
+        if crossed == 1 {
+            return .warning
+        }
+        return .normal
+    }
 }
 
 enum UsageQuotaTrafficLight: Sendable {
     case green
     case amber
     case red
+}
+
+enum UsageQuotaAlertLevel: Sendable {
+    case normal
+    case warning
+    case error
 }
