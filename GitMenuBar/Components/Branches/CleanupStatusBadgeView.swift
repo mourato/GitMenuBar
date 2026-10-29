@@ -88,6 +88,8 @@ struct CleanupStatusBadgeView: View {
         Label(title, systemImage: systemImage)
             .font(WorkbenchTypography.captionStrong)
             .foregroundStyle(foregroundColor)
+            .lineLimit(1)
+            .fixedSize()
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
             .background(backgroundColor, in: Capsule())

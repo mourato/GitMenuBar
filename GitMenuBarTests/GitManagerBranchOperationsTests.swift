@@ -347,6 +347,38 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertEqual(infos.first { $0.name == "main" }?.lastCommitDate, Date(timeIntervalSince1970: 100))
     }
 
+    func testParseBranchInfoOutputYieldsUniqueIDsForSharedNamesAcrossRemotes() {
+        // Same shape as `for-each-ref` output: local heads first, then remote refs.
+        let records = [
+            ["refs/heads/main", "origin/main", "100", ""],
+            ["refs/heads/feature/x", "origin/feature/x", "101", ""],
+            ["refs/remotes/origin/main", "", "102", ""],
+            ["refs/remotes/origin/feature/x", "", "103", ""],
+            ["refs/remotes/origin/only-origin", "", "104", ""],
+            ["refs/remotes/upstream/main", "", "105", ""],
+            ["refs/remotes/upstream/feature/x", "", "106", ""]
+        ]
+        let output = records
+            .map { $0.joined(separator: "\0") + "\0" }
+            .joined(separator: "\n")
+
+        let manager = GitManager(repositoryPathOverride: "")
+        let infos = manager.branchService.parseBranchInfoOutput(output, currentBranch: "main")
+
+        // origin/* refs shadowed by a local branch of the same name are dropped;
+        // every other ref keeps its own id, so ids never collide.
+        let expectedIDs: Set = [
+            "local/main",
+            "local/feature/x",
+            "remote/only-origin",
+            "remote/upstream/main",
+            "remote/upstream/feature/x"
+        ]
+        let ids = infos.map(\.id)
+        XCTAssertEqual(ids.count, Set(ids).count, "BranchInfo ids must be unique for SwiftUI identity")
+        XCTAssertEqual(Set(ids), expectedIDs)
+    }
+
     func testServiceStateIsImmediatelyVisibleAndResetDoesNotRestoreOldBranch() async {
         let manager = GitManager(repositoryPathOverride: "")
         manager.branchService.currentBranch = "old-project"
