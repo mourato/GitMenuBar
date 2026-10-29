@@ -135,6 +135,8 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
             let item = NSToolbarItem(itemIdentifier: identifier)
             // Leading inset aligns the title with the content column below the toolbar.
             item.view = Self.inset(titleLabel, leading: WorkbenchMetrics.chipSpacing, trailing: WorkbenchMetrics.compactSpacing)
+            // A plain label, not a control: keep it out of the toolbar's glass item background.
+            item.isBordered = false
             return item
         }
 
