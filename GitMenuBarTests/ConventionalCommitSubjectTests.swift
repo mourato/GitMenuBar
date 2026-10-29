@@ -5,7 +5,7 @@ final class ConventionalCommitSubjectTests: XCTestCase {
     func testParsePlainSubject() {
         let result = ConventionalCommitSubjectParser.parse("Update the README")
 
-        XCTAssertEqual(result, ConventionalCommitSubject(type: nil, scope: nil, subject: "Update the README"))
+        XCTAssertEqual(result, ConventionalCommitSubject(type: nil, scope: nil, isBreaking: false, subject: "Update the README"))
     }
 
     func testParseFixPrefix() {
@@ -13,6 +13,7 @@ final class ConventionalCommitSubjectTests: XCTestCase {
 
         XCTAssertEqual(result.type, "fix")
         XCTAssertNil(result.scope)
+        XCTAssertFalse(result.isBreaking)
         XCTAssertEqual(result.subject, "keep the history list stable")
     }
 
@@ -21,6 +22,7 @@ final class ConventionalCommitSubjectTests: XCTestCase {
 
         XCTAssertEqual(result.type, "feat")
         XCTAssertEqual(result.scope, "history")
+        XCTAssertFalse(result.isBreaking)
         XCTAssertEqual(result.subject, "show commit metadata")
     }
 
@@ -29,13 +31,21 @@ final class ConventionalCommitSubjectTests: XCTestCase {
 
         XCTAssertEqual(result.type, "feat")
         XCTAssertNil(result.scope)
+        XCTAssertTrue(result.isBreaking)
         XCTAssertEqual(result.subject, "change the history row")
+
+        let scopedResult = ConventionalCommitSubjectParser.parse("feat(history)!: change the history row")
+
+        XCTAssertEqual(scopedResult.type, "feat")
+        XCTAssertEqual(scopedResult.scope, "history")
+        XCTAssertTrue(scopedResult.isBreaking)
+        XCTAssertEqual(scopedResult.subject, "change the history row")
     }
 
     func testTreatMergeSubjectAsPlainText() {
         let result = ConventionalCommitSubjectParser.parse("Merge branch 'feature/history'")
 
-        XCTAssertEqual(result, ConventionalCommitSubject(type: nil, scope: nil, subject: "Merge branch 'feature/history'"))
+        XCTAssertEqual(result, ConventionalCommitSubject(type: nil, scope: nil, isBreaking: false, subject: "Merge branch 'feature/history'"))
     }
 
     func testKeepColonsInsideTheSubject() {
@@ -43,6 +53,7 @@ final class ConventionalCommitSubjectTests: XCTestCase {
 
         XCTAssertEqual(result.type, "fix")
         XCTAssertNil(result.scope)
+        XCTAssertFalse(result.isBreaking)
         XCTAssertEqual(result.subject, "preserve URLs: https://example.com")
     }
 
@@ -52,5 +63,14 @@ final class ConventionalCommitSubjectTests: XCTestCase {
         XCTAssertEqual(result.type, "release")
         XCTAssertFalse(ConventionalCommitSubjectParser.isKnownType(result.type ?? ""))
         XCTAssertEqual(result.subject, "prepare the next version")
+    }
+
+    func testEmptySubjectRemainsParsedButCanFallBackToTheRawMessage() {
+        let result = ConventionalCommitSubjectParser.parse("fix:")
+
+        XCTAssertEqual(result.type, "fix")
+        XCTAssertNil(result.scope)
+        XCTAssertFalse(result.isBreaking)
+        XCTAssertEqual(result.subject, "")
     }
 }

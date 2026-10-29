@@ -107,6 +107,36 @@ private struct HistoryTimelineRowView: View {
     @State private var isHovered = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    private let parsedSubject: ConventionalCommitSubject
+    private let relativeTimestamp: String
+
+    init(
+        commit: Commit,
+        commitURL: URL?,
+        isCurrentCommit: Bool,
+        isFutureCommit: Bool,
+        isSelected: Bool,
+        animationNamespace: Namespace.ID,
+        onSelect: @escaping () -> Void,
+        onActivate: @escaping () -> Void,
+        onRestoreCommit: @escaping () -> Void,
+        onEditCommitMessage: @escaping () -> Void,
+        onGenerateCommitMessage: @escaping () -> Void
+    ) {
+        self.commit = commit
+        self.commitURL = commitURL
+        self.isCurrentCommit = isCurrentCommit
+        self.isFutureCommit = isFutureCommit
+        self.isSelected = isSelected
+        self.animationNamespace = animationNamespace
+        self.onSelect = onSelect
+        self.onActivate = onActivate
+        self.onRestoreCommit = onRestoreCommit
+        self.onEditCommitMessage = onEditCommitMessage
+        self.onGenerateCommitMessage = onGenerateCommitMessage
+        parsedSubject = ConventionalCommitSubjectParser.parse(commit.subject)
+        relativeTimestamp = HistoryTimelineDateFormatter.relativeTimestamp(for: commit.committedAt)
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
@@ -240,6 +270,16 @@ private struct HistoryTimelineRowView: View {
                     .background(WorkbenchPalette.accentFill(contrast: colorSchemeContrast))
                     .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
             }
+
+            if isCurrentCommit {
+                Text("Current")
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(metadataStyle)
+                    .padding(.horizontal, WorkbenchMetrics.chipSpacing)
+                    .padding(.vertical, WorkbenchMetrics.microSpacing)
+                    .background(WorkbenchPalette.hoverFill())
+                    .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
+            }
         }
     }
 
@@ -271,19 +311,16 @@ private struct HistoryTimelineRowView: View {
                     .strokeBorder(dotStrokeStyle, lineWidth: WorkbenchMetrics.microSpacing / 2)
             }
             .frame(
-                width: commit.isMergeCommit ? WorkbenchMetrics.microSpacing : WorkbenchMetrics.chipSpacing,
-                height: commit.isMergeCommit ? WorkbenchMetrics.microSpacing : WorkbenchMetrics.chipSpacing
+                width: commit.isMergeCommit ? WorkbenchMetrics.chipSpacing : WorkbenchMetrics.compactSpacing,
+                height: commit.isMergeCommit ? WorkbenchMetrics.chipSpacing : WorkbenchMetrics.compactSpacing
             )
             .padding(.top, WorkbenchMetrics.chipSpacing)
             .accessibilityHidden(true)
     }
 
-    private var parsedSubject: ConventionalCommitSubject {
-        ConventionalCommitSubjectParser.parse(commit.subject)
-    }
-
     private var knownType: String? {
         guard let type = parsedSubject.type,
+              !parsedSubject.subject.isEmpty,
               ConventionalCommitSubjectParser.isKnownType(type)
         else {
             return nil
@@ -300,13 +337,15 @@ private struct HistoryTimelineRowView: View {
         commit.isMergeCommit ? WorkbenchTypography.detail : WorkbenchTypography.body
     }
 
-    private var relativeTimestamp: String {
-        HistoryTimelineDateFormatter.relativeTimestamp(for: commit.committedAt)
-    }
-
     private var accessibilityLabel: String {
-        let mergeSuffix = commit.isMergeCommit ? ", merge commit" : ""
-        return "\(commit.subject), \(commit.authorName), \(relativeTimestamp)\(mergeSuffix)"
+        var values = [commit.subject, commit.authorName, relativeTimestamp]
+        if isCurrentCommit {
+            values.append("current commit")
+        }
+        if commit.isMergeCommit {
+            values.append("merge commit")
+        }
+        return values.joined(separator: ", ")
     }
 
     private var titleColor: Color {

@@ -1,10 +1,17 @@
 struct ConventionalCommitSubject: Equatable {
     let type: String?
     let scope: String?
+    let isBreaking: Bool
     let subject: String
 }
 
 enum ConventionalCommitSubjectParser {
+    private struct ParsedPrefix {
+        let type: String
+        let scope: String?
+        let isBreaking: Bool
+    }
+
     static let knownTypes: Set<String> = [
         "build",
         "chore",
@@ -21,12 +28,12 @@ enum ConventionalCommitSubjectParser {
 
     static func parse(_ value: String) -> ConventionalCommitSubject {
         guard let delimiter = value.firstIndex(of: ":") else {
-            return ConventionalCommitSubject(type: nil, scope: nil, subject: value)
+            return ConventionalCommitSubject(type: nil, scope: nil, isBreaking: false, subject: value)
         }
 
         let prefix = value[..<delimiter]
         guard let parsedPrefix = parsePrefix(prefix) else {
-            return ConventionalCommitSubject(type: nil, scope: nil, subject: value)
+            return ConventionalCommitSubject(type: nil, scope: nil, isBreaking: false, subject: value)
         }
 
         let subjectStart = value.index(after: delimiter)
@@ -35,6 +42,7 @@ enum ConventionalCommitSubjectParser {
         return ConventionalCommitSubject(
             type: parsedPrefix.type,
             scope: parsedPrefix.scope,
+            isBreaking: parsedPrefix.isBreaking,
             subject: String(subject)
         )
     }
@@ -43,8 +51,9 @@ enum ConventionalCommitSubjectParser {
         knownTypes.contains(type)
     }
 
-    private static func parsePrefix(_ prefix: Substring) -> (type: String, scope: String?)? {
+    private static func parsePrefix(_ prefix: Substring) -> ParsedPrefix? {
         var prefix = prefix
+        let isBreaking = prefix.last == "!"
         if prefix.last == "!" {
             prefix = prefix.dropLast()
         }
@@ -78,7 +87,7 @@ enum ConventionalCommitSubjectParser {
             return nil
         }
 
-        return (String(type), scope)
+        return ParsedPrefix(type: String(type), scope: scope, isBreaking: isBreaking)
     }
 
     private static func isValidType(_ type: Substring) -> Bool {
