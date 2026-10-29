@@ -17,10 +17,20 @@ struct ProjectCleanupProjectRowView: View {
             .labelsHidden()
             .accessibilityLabel("Select \(row.project.name)")
             .disabled(!row.isCanonical || row.units.isEmpty || isRunning)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(row.project.name).font(.headline)
-                Text(row.project.path).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                Text(statusText).font(.caption).foregroundStyle(row.isUnavailable ? .red : .secondary)
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                Text(row.project.name)
+                    .font(WorkbenchTypography.field)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(row.project.path)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(statusText)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(row.isUnavailable ? .red : .secondary)
+                    .lineLimit(2)
             }
             Spacer(minLength: 0)
             Button(action: onInspect) {
@@ -32,6 +42,8 @@ struct ProjectCleanupProjectRowView: View {
             .disabled(isRunning)
             if row.isCanonical, !row.units.isEmpty {
                 Button("Clean \(row.project.name)", action: onClean)
+                    .lineLimit(1)
+                    .layoutPriority(1)
                     .disabled(isRunning)
                     .accessibilityHint("Reviews safe cleanup for this project.")
             }

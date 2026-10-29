@@ -2,102 +2,321 @@ import SwiftUI
 
 struct CleanupConfirmationView: View {
     let units: [GitCleanupUnit]
+    let blocked: [GitCleanupUnit]
     let onCancel: () -> Void
-    let onConfirm: () -> Void
+    let onConfirm: ([GitCleanupUnit]) -> Void
+    /// Legacy adapter only: confirm is allowed only while every ready unit stays checked.
+    private let requiresFullSelection: Bool
+    @State private var selectedIDs: Set<String>
     @State private var didReviewRisk = false
+    @State private var showsAllReady = false
 
-    private var branchOnly: [GitCleanupUnit] {
-        units.filter { !$0.isPaired && !$0.isWorktreeOnlyAction }
+    private static let collapsedReadyThreshold = 6
+    private static let collapsedReadyCount = 4
+
+    init(
+        units: [GitCleanupUnit],
+        blocked: [GitCleanupUnit] = [],
+        onCancel: @escaping () -> Void,
+        onConfirm: @escaping ([GitCleanupUnit]) -> Void
+    ) {
+        self.init(units: units, blocked: blocked, requiresFullSelection: false, onCancel: onCancel, onConfirm: onConfirm)
     }
 
-    private var paired: [GitCleanupUnit] {
-        units.filter { $0.isPaired && !$0.isForceWorktreeRemoval }
+    /// Keeps the single-action call site compiling. Partial selections cannot confirm,
+    /// so unchecked units are never cleaned by accident.
+    init(units: [GitCleanupUnit], onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void) {
+        self.init(units: units, blocked: [], requiresFullSelection: true, onCancel: onCancel, onConfirm: { _ in onConfirm() })
     }
 
-    private var forced: [GitCleanupUnit] {
-        units.filter(\.isForceWorktreeRemoval)
+    private init(
+        units: [GitCleanupUnit],
+        blocked: [GitCleanupUnit],
+        requiresFullSelection: Bool,
+        onCancel: @escaping () -> Void,
+        onConfirm: @escaping ([GitCleanupUnit]) -> Void
+    ) {
+        self.units = units
+        self.blocked = blocked
+        self.requiresFullSelection = requiresFullSelection
+        self.onCancel = onCancel
+        self.onConfirm = onConfirm
+        _selectedIDs = State(initialValue: Set(units.map(\.id)))
     }
 
-    private var worktreeOnly: [GitCleanupUnit] {
-        units.filter { $0.isWorktreeOnlyAction && !$0.isForceWorktreeRemoval }
+    private var selectedUnits: [GitCleanupUnit] {
+        units.filter { selectedIDs.contains($0.id) }
     }
 
-    private var unmergedBranches: [GitCleanupUnit] {
-        units.filter(\.isDangerousBranchDeletion)
+    private var canConfirm: Bool {
+        !selectedUnits.isEmpty && (!requiresFullSelection || selectedUnits.count == units.count)
+    }
+
+    private var pairedSelected: [GitCleanupUnit] {
+        selectedUnits.filter { $0.isPaired && !$0.isForceWorktreeRemoval }
+    }
+
+    private var forcedSelected: [GitCleanupUnit] {
+        selectedUnits.filter(\.isForceWorktreeRemoval)
+    }
+
+    private var worktreeOnlySelected: [GitCleanupUnit] {
+        selectedUnits.filter { $0.isWorktreeOnlyAction && !$0.isForceWorktreeRemoval }
+    }
+
+    private var unmergedSelected: [GitCleanupUnit] {
+        selectedUnits.filter(\.isDangerousBranchDeletion)
     }
 
     private var requiresRiskReview: Bool {
-        !paired.isEmpty || !forced.isEmpty || !worktreeOnly.isEmpty || !unmergedBranches.isEmpty
+        !pairedSelected.isEmpty || !forcedSelected.isEmpty || !worktreeOnlySelected.isEmpty || !unmergedSelected.isEmpty
+    }
+
+    private var visibleReadyUnits: [GitCleanupUnit] {
+        guard !showsAllReady, units.count > Self.collapsedReadyThreshold else { return units }
+        return Array(units.prefix(Self.collapsedReadyCount))
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(didReviewRisk || !requiresRiskReview ? "Confirm Cleanup" : "Review Cleanup")
-                .font(.headline.weight(.semibold))
-            Text("\(branchOnly.count) branch-only, \(paired.count) paired, \(worktreeOnly.count) worktree-only, \(forced.count) forced unit\(forced.count == 1 ? "" : "s") selected.")
-                .font(WorkbenchTypography.detail)
-                .foregroundStyle(.secondary)
-            if !unmergedBranches.isEmpty, !didReviewRisk {
-                Label("Deleting an unmerged branch permanently removes its branch reference and may make its commits harder to recover.", systemImage: "exclamationmark.triangle.fill")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.red)
-            }
-            if !forced.isEmpty, !didReviewRisk {
-                Label("Force removal permanently deletes this worktree directory and all uncommitted changes. The branch will be kept.", systemImage: "exclamationmark.triangle.fill")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.red)
-            }
-            if !paired.isEmpty, !didReviewRisk {
-                Label("Paired worktree directories will be removed before their branches.", systemImage: "exclamationmark.triangle.fill")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.orange)
-            }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    section("Branch-only cleanup", branchOnly)
-                    section("Paired worktree and branch cleanup", paired)
-                    section("Worktree-only removal", worktreeOnly)
-                    section("Forced worktree removal", forced)
-                }
-            }
-            .frame(maxHeight: 260)
-            HStack {
-                Button("Cancel", action: onCancel).keyboardShortcut(.cancelAction)
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Clean up")
+                    .font(.title2.weight(.semibold))
                 Spacer()
-                Button(didReviewRisk || !requiresRiskReview ? "Confirm Cleanup" : "Review Cleanup Risk") {
-                    if !requiresRiskReview || didReviewRisk {
-                        onConfirm()
-                    } else {
-                        didReviewRisk = true
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
+                Text("\(selectedUnits.count) selected")
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
+            Text("Removes the branch and its linked worktree. Reachability is local Git, not PR status.")
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.secondary)
+            riskWarnings
+            ScrollView {
+                VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
+                    readySection
+                    blockedSection
+                }
+            }
+            .frame(maxHeight: 320)
+            footer
         }
-        .padding(20)
+        .padding(WorkbenchMetrics.panelPadding)
         .frame(width: 460)
         .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.largeCornerRadius, material: .regular)
         .accessibilityElement(children: .contain)
+        .onChange(of: selectedIDs) { _, _ in
+            didReviewRisk = false
+        }
     }
 
-    private func section(_ title: String, _ units: [GitCleanupUnit]) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text("\(title) (\(units.count))")
-                .font(WorkbenchTypography.sectionLabel)
-                .foregroundStyle(.secondary)
+    @ViewBuilder
+    private var riskWarnings: some View {
+        if !unmergedSelected.isEmpty, !didReviewRisk {
+            Label("Deleting an unmerged branch permanently removes its branch reference and may make its commits harder to recover.", systemImage: "exclamationmark.triangle.fill")
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.red)
+        }
+        if !forcedSelected.isEmpty, !didReviewRisk {
+            Label("Force removal permanently deletes this worktree directory and all uncommitted changes. The branch will be kept.", systemImage: "exclamationmark.triangle.fill")
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.red)
+        }
+        if !pairedSelected.isEmpty, !didReviewRisk {
+            Label("Paired worktree directories will be removed before their branches.", systemImage: "exclamationmark.triangle.fill")
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.orange)
+        }
+    }
+
+    private var readySection: some View {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+            CleanupSectionHeader(title: "Ready", count: units.count)
             if units.isEmpty {
-                Text("None selected")
+                Text("Nothing ready to clean.")
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(units) { unit in
-                    Label(unit.title, systemImage: unit.isPaired ? "folder" : "arrow.triangle.branch")
-                        .font(WorkbenchTypography.caption)
-                        .lineLimit(2)
+                ForEach(visibleReadyUnits) { unit in
+                    readyRow(unit)
+                }
+                if units.count > Self.collapsedReadyThreshold {
+                    disclosureButton
                 }
             }
         }
+    }
+
+    private var disclosureButton: some View {
+        let hiddenCount = units.count - Self.collapsedReadyCount
+        return Button {
+            showsAllReady.toggle()
+        } label: {
+            Label(
+                showsAllReady ? "Show fewer" : "\(hiddenCount) more",
+                systemImage: showsAllReady ? "chevron.up" : "chevron.down"
+            )
+            .font(WorkbenchTypography.caption)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .accessibilityLabel(showsAllReady ? "Show fewer ready branches" : "Show \(hiddenCount) more ready branches")
+    }
+
+    @ViewBuilder
+    private var blockedSection: some View {
+        if !blocked.isEmpty {
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+                CleanupSectionHeader(title: "Blocked", count: blocked.count)
+                ForEach(blocked) { unit in
+                    blockedRow(unit)
+                }
+            }
+        }
+    }
+
+    private func readyRow(_ unit: GitCleanupUnit) -> some View {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+            Toggle(unit.branch.reference.name, isOn: isSelectedBinding(for: unit))
+                .toggleStyle(.checkbox)
+                .labelsHidden()
+            unitNameAndWorktree(unit)
+            Spacer(minLength: 0)
+            statusBadge(for: unit)
+        }
+        .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+        .padding(.vertical, WorkbenchMetrics.microSpacing)
+        .background(.quaternary.opacity(0.22), in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
+    }
+
+    private func blockedRow(_ unit: GitCleanupUnit) -> some View {
+        let reason = blockedReason(for: unit)
+        return HStack(spacing: WorkbenchMetrics.compactSpacing) {
+            Toggle(unit.branch.reference.name, isOn: .constant(false))
+                .toggleStyle(.checkbox)
+                .labelsHidden()
+                .disabled(true)
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                Text(unit.branch.reference.name)
+                    .font(WorkbenchTypography.detail)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(reason)
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            Spacer(minLength: 0)
+            statusBadge(for: unit)
+        }
+        .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+        .padding(.vertical, WorkbenchMetrics.microSpacing)
+        .background(.quaternary.opacity(0.22), in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
+        .opacity(0.5)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(unit.branch.reference.name), blocked. \(reason)")
+    }
+
+    private func unitNameAndWorktree(_ unit: GitCleanupUnit) -> some View {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+            Text(unit.branch.reference.name)
+                .font(WorkbenchTypography.detail)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            if unit.worktree != nil {
+                Text("+ worktree")
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func statusBadge(for unit: GitCleanupUnit) -> some View {
+        if let worktree = unit.worktree {
+            CleanupStatusBadgeView(status: worktree.status)
+                .fixedSize()
+                .layoutPriority(1)
+        } else {
+            CleanupStatusBadgeView(status: unit.branch.status)
+                .fixedSize()
+                .layoutPriority(1)
+        }
+    }
+
+    private var footer: some View {
+        HStack {
+            Button("Cancel", action: onCancel)
+                .keyboardShortcut(.cancelAction)
+            Spacer()
+            Button(confirmTitle, action: confirm)
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(!canConfirm)
+        }
+    }
+
+    private var confirmTitle: String {
+        requiresRiskReview && !didReviewRisk ? "Review Risk" : "Clean \(selectedUnits.count)"
+    }
+
+    private func confirm() {
+        guard canConfirm else { return }
+        if requiresRiskReview, !didReviewRisk {
+            didReviewRisk = true
+        } else {
+            onConfirm(selectedUnits)
+        }
+    }
+
+    private func isSelectedBinding(for unit: GitCleanupUnit) -> Binding<Bool> {
+        Binding(
+            get: { selectedIDs.contains(unit.id) },
+            set: { isOn in
+                if isOn {
+                    selectedIDs.insert(unit.id)
+                } else {
+                    selectedIDs.remove(unit.id)
+                }
+            }
+        )
+    }
+
+    private func blockedReason(for unit: GitCleanupUnit) -> String {
+        if unit.isWorktreeOnlyAction, let worktree = unit.worktree {
+            return CleanupDetailText.worktreeStatus(worktree.status)
+        }
+        switch unit.branch.status {
+        case .protected, .current, .unknown:
+            return CleanupDetailText.branchStatus(unit.branch.status) ?? "Cleanup unavailable."
+        default:
+            break
+        }
+        if let worktree = unit.worktree {
+            return CleanupDetailText.worktreeStatus(worktree.status)
+        }
+        return CleanupDetailText.branchStatus(unit.branch.status) ?? "Cleanup unavailable."
+    }
+}
+
+/// Uppercase, tracked section label with a trailing count; shared with the Projects cleanup sheet.
+struct CleanupSectionHeader: View {
+    let title: String
+    let count: Int
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .textCase(.uppercase)
+                .tracking(WorkbenchTypography.tracking(for: WorkbenchTypography.caption))
+            Spacer()
+            Text("\(count)")
+                .monospacedDigit()
+        }
+        .font(WorkbenchTypography.captionStrong)
+        .foregroundStyle(.secondary)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(count)")
     }
 }
 
@@ -130,16 +349,59 @@ struct CleanupProgressView: View {
     }
 }
 
-#Preview("Cleanup Confirmation") {
-    let branch = GitBranchCleanupInfo(
-        reference: GitBranchReference(name: "feature/merged", headHash: "1234", isRemote: false),
-        status: .mergedIntoDefault,
-        worktreePath: nil
+private func cleanupPreviewUnit(
+    _ name: String,
+    status: GitBranchCleanupStatus,
+    worktree: GitWorktreeCleanupInfo? = nil
+) -> GitCleanupUnit {
+    GitCleanupUnit(
+        repositoryIdentity: "/repo",
+        branch: GitBranchCleanupInfo(
+            reference: GitBranchReference(name: name, headHash: "1234", isRemote: false),
+            status: status,
+            worktreePath: worktree?.worktree.path
+        ),
+        worktree: worktree
     )
+}
+
+private func cleanupPreviewWorktree(_ path: String, branch: String, status: GitWorktreeCleanupStatus) -> GitWorktreeCleanupInfo {
+    GitWorktreeCleanupInfo(
+        worktree: GitWorktreeInfo(path: path, headHash: "1234", branchName: branch, isMainWorktree: false, workingTreeState: .clean),
+        status: status
+    )
+}
+
+#Preview("Cleanup Confirmation") {
     CleanupConfirmationView(
-        units: [GitCleanupUnit(repositoryIdentity: "/repo", branch: branch, worktree: nil)],
+        units: [
+            cleanupPreviewUnit("feature/merged", status: .mergedIntoDefault),
+            cleanupPreviewUnit(
+                "feature/paired",
+                status: .checkedOutElsewhere(path: "/tmp/paired"),
+                worktree: cleanupPreviewWorktree("/tmp/paired", branch: "feature/paired", status: .eligible)
+            ),
+            cleanupPreviewUnit("release/unmerged", status: .notMerged)
+        ],
+        blocked: [
+            cleanupPreviewUnit("main", status: .protected),
+            cleanupPreviewUnit(
+                "feature/dirty",
+                status: .notMerged,
+                worktree: cleanupPreviewWorktree("/tmp/dirty", branch: "feature/dirty", status: .dirty)
+            )
+        ],
         onCancel: {},
-        onConfirm: {}
+        onConfirm: { _ in }
+    )
+}
+
+#Preview("Cleanup Confirmation - Collapsed Ready") {
+    CleanupConfirmationView(
+        units: (1 ... 8).map { cleanupPreviewUnit("feature/task-\($0)", status: .mergedIntoDefault) },
+        blocked: [cleanupPreviewUnit("hotfix/locked", status: .current)],
+        onCancel: {},
+        onConfirm: { _ in }
     )
 }
 
