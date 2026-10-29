@@ -338,16 +338,6 @@ enum UsageQuotaFormatting {
         return formatter.string(from: date)
     }
 
-    static func trafficLightColor(for remainingPercent: Int) -> UsageQuotaTrafficLight {
-        if remainingPercent >= 40 {
-            return .green
-        }
-        if remainingPercent >= 15 {
-            return .amber
-        }
-        return .red
-    }
-
     /// Alert level against configured used-percent thresholds: normal until the first
     /// threshold is reached, warning past the first, error past the second or later.
     static func alertLevel(remainingPercent: Int, thresholds: [Int]) -> UsageQuotaAlertLevel {
@@ -361,12 +351,6 @@ enum UsageQuotaFormatting {
         }
         return .normal
     }
-}
-
-enum UsageQuotaTrafficLight: Sendable {
-    case green
-    case amber
-    case red
 }
 
 enum UsageQuotaAlertLevel: Sendable {

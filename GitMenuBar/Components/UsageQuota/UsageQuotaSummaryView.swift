@@ -29,10 +29,10 @@ private struct UsageQuotaSummaryItem: View {
     var body: some View {
         if let window = snapshot.primaryDisplayWindow ?? tightestModelWindow {
             let displayPercent = preferences.valueStyle == .left ? window.remainingPercent : 100 - window.remainingPercent
-            let tint = levelColor(UsageQuotaFormatting.alertLevel(
+            let tint = UsageQuotaFormatting.alertLevel(
                 remainingPercent: window.remainingPercent,
                 thresholds: warningThresholds
-            ))
+            ).color
             HStack(spacing: WorkbenchMetrics.microSpacing) {
                 ProviderIconView(providerID: snapshot.providerID)
 
@@ -62,17 +62,6 @@ private struct UsageQuotaSummaryItem: View {
     /// The session thresholds apply when the session window drives the summary; otherwise weekly.
     private var warningThresholds: [Int] {
         snapshot.sessionWindow == nil ? preferences.weeklyWarningThresholds : preferences.sessionWarningThresholds
-    }
-
-    private func levelColor(_ level: UsageQuotaAlertLevel) -> Color {
-        switch level {
-        case .normal:
-            .secondary
-        case .warning:
-            .orange
-        case .error:
-            .red
-        }
     }
 
     private func accessibilityLabel(displayPercent: Int) -> String {
@@ -159,14 +148,15 @@ private enum ProviderIconRenderer {
     }
 }
 
-enum UsageQuotaTrafficLightColor {
-    static func swiftUI(for remainingPercent: Int) -> Color {
-        switch UsageQuotaFormatting.trafficLightColor(for: remainingPercent) {
-        case .green:
-            .green
-        case .amber:
+/// Shared quota severity tint for the summary and the cards; `normal` stays neutral.
+extension UsageQuotaAlertLevel {
+    var color: Color {
+        switch self {
+        case .normal:
+            .secondary
+        case .warning:
             .orange
-        case .red:
+        case .error:
             .red
         }
     }
