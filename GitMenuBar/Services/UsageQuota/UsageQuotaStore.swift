@@ -109,6 +109,11 @@ final class UsageQuotaStore {
         return task
     }
 
+    /// Captures task lifetimes independently of this store so owners can join them after release.
+    var pendingWork: [Task<Void, Never>] {
+        Array(pendingTasks.values)
+    }
+
     func awaitPendingWork() async {
         while !pendingTasks.isEmpty {
             let tasks = Array(pendingTasks.values)

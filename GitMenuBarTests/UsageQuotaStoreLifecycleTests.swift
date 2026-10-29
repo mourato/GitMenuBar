@@ -244,6 +244,14 @@ final class UsageQuotaStoreLifecycleTests: XCTestCase {
         XCTAssertFalse(provider.isCancelled)
         XCTAssertNotNil(weakStore)
 
+        let pendingWork = store?.pendingWork ?? []
+        XCTAssertFalse(pendingWork.isEmpty)
+        awaitCompletions.append {
+            for task in pendingWork {
+                await task.value
+            }
+        }
+
         // Release owner reference while fetch is suspended at the gate.
         store = nil
 
@@ -256,6 +264,9 @@ final class UsageQuotaStoreLifecycleTests: XCTestCase {
         // Unblock gate and await provider fetch completion before fixture cleanup.
         provider.openGate()
         await provider.awaitAllFetches()
+        for task in pendingWork {
+            await task.value
+        }
     }
 
     func testReleaseOwnerAfterReconciliationFetchStartedCancelsAndDeallocates() async {
@@ -316,6 +327,14 @@ final class UsageQuotaStoreLifecycleTests: XCTestCase {
         XCTAssertFalse(claudeProvider.isCancelled)
         XCTAssertNotNil(weakStore)
 
+        let pendingWork = store?.pendingWork ?? []
+        XCTAssertFalse(pendingWork.isEmpty)
+        awaitCompletions.append {
+            for task in pendingWork {
+                await task.value
+            }
+        }
+
         // Release owner after reconciliation fetch has started.
         store = nil
 
@@ -329,6 +348,9 @@ final class UsageQuotaStoreLifecycleTests: XCTestCase {
         claudeProvider.openGate()
         await claudeProvider.awaitAllFetches()
         await codexProvider.awaitAllFetches()
+        for task in pendingWork {
+            await task.value
+        }
     }
 
     func testCostLoaderCancellationReachesBackgroundWork() async {
