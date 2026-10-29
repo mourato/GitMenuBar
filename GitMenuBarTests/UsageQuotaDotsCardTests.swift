@@ -13,6 +13,22 @@ final class UsageQuotaDotsCardTests: XCTestCase {
         XCTAssertEqual(UsageQuotaDotsCard.filledSegments(displayPercent: 100), 5)
     }
 
+    func testRowAlertLevelFollowsConfiguredThresholds() {
+        let thresholds = [50, 80]
+        func level(remaining: Int) -> UsageQuotaAlertLevel {
+            UsageQuotaDotsCard.RowData(
+                title: "Session",
+                countdown: nil,
+                remainingPercent: remaining,
+                thresholds: thresholds
+            ).alertLevel
+        }
+        // Remaining 55% is 45% used, 40% is 60% used, 15% is 85% used.
+        XCTAssertEqual(level(remaining: 55), .normal)
+        XCTAssertEqual(level(remaining: 40), .warning)
+        XCTAssertEqual(level(remaining: 15), .error)
+    }
+
     func testPillText() {
         XCTAssertEqual(
             UsageQuotaDotsCard.pillText(plan: "Pro", intervalChip: "5h", resetCredits: 3),

@@ -81,21 +81,24 @@ struct UsageQuotaMenuView: View {
             rows.append(UsageQuotaDotsCard.RowData(
                 title: UsageQuotaPace.rowTitle(isSessionWindow: true, window: sessionWindow),
                 countdown: UsageQuotaDotsCard.bareCountdown(until: sessionWindow.resetAt),
-                remainingPercent: sessionWindow.remainingPercent
+                remainingPercent: sessionWindow.remainingPercent,
+                thresholds: preferences.sessionWarningThresholds
             ))
         }
         if let weeklyWindow = snapshot.weeklyWindow {
             rows.append(UsageQuotaDotsCard.RowData(
                 title: UsageQuotaPace.rowTitle(isSessionWindow: false, window: weeklyWindow),
                 countdown: UsageQuotaDotsCard.bareCountdown(until: weeklyWindow.resetAt),
-                remainingPercent: weeklyWindow.remainingPercent
+                remainingPercent: weeklyWindow.remainingPercent,
+                thresholds: preferences.weeklyWarningThresholds
             ))
         }
         for window in snapshot.modelWindows {
             rows.append(UsageQuotaDotsCard.RowData(
                 title: window.label,
                 countdown: UsageQuotaDotsCard.bareCountdown(until: window.resetAt),
-                remainingPercent: window.remainingPercent
+                remainingPercent: window.remainingPercent,
+                thresholds: preferences.weeklyWarningThresholds
             ))
         }
         return rows
@@ -103,8 +106,7 @@ struct UsageQuotaMenuView: View {
 
     /// `creditValueText` stays a secondary line; reset credits fold into the plan pill.
     private func footnoteText(for snapshot: UsageQuotaSnapshot) -> String? {
-        guard creditsMetricSelected(for: snapshot) else { return nil }
-        guard snapshot.resetCreditsAvailable == nil else { return nil }
+        guard creditsMetricSelected(for: snapshot), snapshot.resetCreditsAvailable == nil else { return nil }
         return snapshot.creditValueText
     }
 

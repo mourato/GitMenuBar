@@ -8,6 +8,12 @@ struct UsageQuotaDotsCard: View {
         /// Compact reset countdown (e.g. `3h 30m`), nil when the reset is unknown.
         let countdown: String?
         let remainingPercent: Int
+        /// Consumed-percent warning thresholds for this row's window (session or weekly).
+        let thresholds: [Int]
+
+        var alertLevel: UsageQuotaAlertLevel {
+            UsageQuotaFormatting.alertLevel(remainingPercent: remainingPercent, thresholds: thresholds)
+        }
     }
 
     enum StaleStyle {
@@ -163,11 +169,11 @@ private struct UsageQuotaDotsRow: View {
     }
 
     private var tint: Color {
-        UsageQuotaTrafficLightColor.swiftUI(for: row.remainingPercent)
+        row.alertLevel.color
     }
 
     private var percentColor: Color {
-        row.remainingPercent < 15 ? tint : .primary
+        row.alertLevel == .normal ? .primary : tint
     }
 }
 
@@ -228,8 +234,8 @@ struct UsageQuotaCostDotsCard: View {
             pillText: UsageQuotaDotsCard.pillText(plan: "Pro", intervalChip: "5h", resetCredits: 3),
             staleStyle: .none,
             rows: [
-                .init(title: "Session", countdown: "3h 30m", remainingPercent: 94),
-                .init(title: "Weekly", countdown: "4d 22h", remainingPercent: 76)
+                .init(title: "Session", countdown: "3h 30m", remainingPercent: 94, thresholds: UsageQuotaPace.defaultWarningThresholds),
+                .init(title: "Weekly", countdown: "4d 22h", remainingPercent: 76, thresholds: UsageQuotaPace.defaultWarningThresholds)
             ],
             footnote: nil,
             showUsed: false
@@ -240,7 +246,7 @@ struct UsageQuotaCostDotsCard: View {
             pillText: UsageQuotaDotsCard.pillText(plan: nil, intervalChip: "7d", resetCredits: nil),
             staleStyle: .text,
             rows: [
-                .init(title: "Weekly", countdown: "12h", remainingPercent: 8)
+                .init(title: "Weekly", countdown: "12h", remainingPercent: 8, thresholds: UsageQuotaPace.defaultWarningThresholds)
             ],
             footnote: nil,
             showUsed: false

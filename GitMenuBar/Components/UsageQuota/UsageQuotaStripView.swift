@@ -97,24 +97,28 @@ private struct UsageQuotaDetailsPopover: View {
     private func dotsRows(for snapshot: UsageQuotaSnapshot) -> [UsageQuotaDotsCard.RowData] {
         var rows: [UsageQuotaDotsCard.RowData] = []
         if let window = snapshot.primaryDisplayWindow {
+            let isSessionWindow = snapshot.sessionWindow == window
             rows.append(UsageQuotaDotsCard.RowData(
-                title: UsageQuotaPace.rowTitle(isSessionWindow: snapshot.sessionWindow == window, window: window),
+                title: UsageQuotaPace.rowTitle(isSessionWindow: isSessionWindow, window: window),
                 countdown: UsageQuotaDotsCard.bareCountdown(until: window.resetAt),
-                remainingPercent: window.remainingPercent
+                remainingPercent: window.remainingPercent,
+                thresholds: isSessionWindow ? preferences.sessionWarningThresholds : preferences.weeklyWarningThresholds
             ))
         }
         if let weekly = secondaryWeeklyWindow(for: snapshot) {
             rows.append(UsageQuotaDotsCard.RowData(
                 title: "Weekly",
                 countdown: UsageQuotaDotsCard.bareCountdown(until: weekly.resetAt),
-                remainingPercent: weekly.remainingPercent
+                remainingPercent: weekly.remainingPercent,
+                thresholds: preferences.weeklyWarningThresholds
             ))
         }
         for window in snapshot.modelWindows {
             rows.append(UsageQuotaDotsCard.RowData(
                 title: window.label,
                 countdown: UsageQuotaDotsCard.bareCountdown(until: window.resetAt),
-                remainingPercent: window.remainingPercent
+                remainingPercent: window.remainingPercent,
+                thresholds: preferences.weeklyWarningThresholds
             ))
         }
         return rows
