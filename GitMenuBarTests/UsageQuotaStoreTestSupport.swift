@@ -26,9 +26,11 @@ func writeCodexSessionFixture(to homeDirectory: URL, now: Date) throws {
 final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
     let id: UsageProviderID
     private let lock = NSLock()
-    private let storedSnapshot: UsageQuotaSnapshot
+    private var storedSnapshot: UsageQuotaSnapshot
     private var storedFetchCount = 0
     private var storedOnFetch: (@Sendable () -> Void)?
+    private var storedIsCancelled = false
+    private var storedOnCancel: (@Sendable () -> Void)?
     private var pending: CheckedContinuation<Void, Never>?
 
     init(id: UsageProviderID = .codex, snapshot: UsageQuotaSnapshot) {
@@ -36,13 +38,27 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
         storedSnapshot = snapshot
     }
 
+    var snapshot: UsageQuotaSnapshot {
+        get { lock.withLock { storedSnapshot } }
+        set { lock.withLock { storedSnapshot = newValue } }
+    }
+
     var fetchCount: Int {
         lock.withLock { storedFetchCount }
+    }
+
+    var isCancelled: Bool {
+        lock.withLock { storedIsCancelled }
     }
 
     var onFetch: (@Sendable () -> Void)? {
         get { lock.withLock { storedOnFetch } }
         set { lock.withLock { storedOnFetch = newValue } }
+    }
+
+    var onCancel: (@Sendable () -> Void)? {
+        get { lock.withLock { storedOnCancel } }
+        set { lock.withLock { storedOnCancel = newValue } }
     }
 
     func fetchSnapshot() async -> UsageQuotaSnapshot {
@@ -66,6 +82,11 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
                 state.immediate?.resume()
             }
         } onCancel: {
+            let hook = self.lock.withLock {
+                self.storedIsCancelled = true
+                return self.storedOnCancel
+            }
+            hook?()
             // Cancelled fetches wake without the gate, so later cycles still block.
             self.resumePending()
         }
@@ -118,15 +139,26 @@ final class GatedPricingLoader: @unchecked Sendable {
     private let lock = NSLock()
     private var storedLoadCount = 0
     private var storedOnLoad: (@Sendable () -> Void)?
+    private var storedIsCancelled = false
+    private var storedOnCancel: (@Sendable () -> Void)?
     private var pending: CheckedContinuation<UsageQuotaModelsDevStore.PricingSource, Never>?
 
     var loadCount: Int {
         lock.withLock { storedLoadCount }
     }
 
+    var isCancelled: Bool {
+        lock.withLock { storedIsCancelled }
+    }
+
     var onLoad: (@Sendable () -> Void)? {
         get { lock.withLock { storedOnLoad } }
         set { lock.withLock { storedOnLoad = newValue } }
+    }
+
+    var onCancel: (@Sendable () -> Void)? {
+        get { lock.withLock { storedOnCancel } }
+        set { lock.withLock { storedOnCancel = newValue } }
     }
 
     func load() async -> UsageQuotaModelsDevStore.PricingSource {
@@ -148,7 +180,12 @@ final class GatedPricingLoader: @unchecked Sendable {
                 state.immediate?.resume(returning: .bundled)
             }
         } onCancel: {
-            resumePending()
+            let hook = self.lock.withLock {
+                self.storedIsCancelled = true
+                return self.storedOnCancel
+            }
+            hook?()
+            self.resumePending()
         }
     }
 

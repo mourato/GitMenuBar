@@ -42,6 +42,7 @@ enum UsageQuotaCostScanner {
         now: Date = Date(),
         pricing: PricingSource = .bundled
     ) -> UsageQuotaCostEstimate {
+        guard !Task.isCancelled else { return UsageQuotaCostEstimate(rows: []) }
         let monthStart = Calendar.current.date(
             from: Calendar.current.dateComponents([.year, .month], from: now)
         ) ?? now
@@ -54,7 +55,9 @@ enum UsageQuotaCostScanner {
         let claudeRoot = homeDirectory.appendingPathComponent(".claude/projects", isDirectory: true)
 
         let codexFiles = codexRoots.flatMap { jsonlFiles(under: $0, monthStart: monthStart) }
+        guard !Task.isCancelled else { return UsageQuotaCostEstimate(rows: []) }
         let claudeFiles = jsonlFiles(under: claudeRoot, monthStart: monthStart)
+        guard !Task.isCancelled else { return UsageQuotaCostEstimate(rows: []) }
 
         var cache: [String: CachedFileTotal] = [:]
         let codex = summedTotal(
@@ -304,6 +307,7 @@ enum UsageQuotaCostScanner {
         let previous = fileCache.withLock { $0 }
         var total = CostTotal()
         for file in files {
+            guard !Task.isCancelled else { break }
             let key = file.url.path
             let fileTotal = previous[key].flatMap { hit in
                 hit.modified == file.modified && hit.size == file.size
@@ -334,6 +338,7 @@ enum UsageQuotaCostScanner {
         ) else { return [] }
         var files: [ScannedFile] = []
         while let raw = enumerator.nextObject() {
+            guard !Task.isCancelled else { break }
             guard let url = raw as? URL, url.pathExtension == "jsonl",
                   let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey]),
                   let date = values.contentModificationDate,

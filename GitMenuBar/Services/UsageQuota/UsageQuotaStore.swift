@@ -91,13 +91,22 @@ final class UsageQuotaStore {
     private let now: () -> Date
     private let pricingLoader: PricingLoader
     private let homeDirectory: URL
-    @ObservationIgnored private var refreshTimer: Timer?
+    @ObservationIgnored private nonisolated(unsafe) var refreshTimer: Timer?
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     @ObservationIgnored private var refreshGeneration = 0
     @ObservationIgnored private var isRefreshInFlight = false
     @ObservationIgnored private var lastPresentationRefreshAt: Date?
     @ObservationIgnored private var lastCostScanAt: Date?
     @ObservationIgnored private var costScanGeneration = 0
+    @ObservationIgnored private var costScanTask: Task<Void, Never>?
+    @ObservationIgnored private var costScanWorkerTask: Task<UsageQuotaCostEstimate, Never>?
+
+    deinit {
+        refreshTimer?.invalidate()
+        refreshTask?.cancel()
+        costScanTask?.cancel()
+        costScanWorkerTask?.cancel()
+    }
 
     init(
         defaults: UserDefaults = .standard,
@@ -190,8 +199,26 @@ final class UsageQuotaStore {
             }
         } else {
             invalidateRefreshTimer()
+            cancelRefresh()
+            cancelCostScan()
             snapshots = []
+            costEstimates = nil
         }
+    }
+
+    private func cancelRefresh() {
+        refreshGeneration += 1
+        refreshTask?.cancel()
+        refreshTask = nil
+        isRefreshInFlight = false
+    }
+
+    private func cancelCostScan() {
+        costScanGeneration += 1
+        costScanWorkerTask?.cancel()
+        costScanWorkerTask = nil
+        costScanTask?.cancel()
+        costScanTask = nil
     }
 
     private func loadCachedSnapshots() {
@@ -257,7 +284,7 @@ final class UsageQuotaStore {
     }
 
     private func performRefresh(reason: RefreshReason, generation: Int) async {
-        guard showAIUsageQuotas else {
+        guard showAIUsageQuotas, generation == refreshGeneration else {
             finishRefresh(reason: reason, generation: generation)
             return
         }
@@ -266,18 +293,23 @@ final class UsageQuotaStore {
 
         let activeProviders = enabledProviders()
         guard !activeProviders.isEmpty else {
-            snapshots = []
+            if showAIUsageQuotas, generation == refreshGeneration {
+                snapshots = []
+            }
             finishRefresh(reason: reason, generation: generation)
             return
         }
 
         var merged = await fetchSnapshots(for: activeProviders)
+        guard showAIUsageQuotas, generation == refreshGeneration else { return }
+
         var fetchedProviderIDs = Set(activeProviders.map(\.id))
         var currentProviderIDs = fetchedProviderIDs
 
         // A settings change can arrive while a provider fetch is suspended.
         // Reconcile until no provider was added during the previous fetch.
         while true {
+            guard showAIUsageQuotas, generation == refreshGeneration else { return }
             let currentProviders = enabledProviders()
             currentProviderIDs = Set(currentProviders.map(\.id))
             let newlyEnabledProviders = currentProviders.filter { !fetchedProviderIDs.contains($0.id) }
@@ -285,12 +317,14 @@ final class UsageQuotaStore {
 
             fetchedProviderIDs.formUnion(newlyEnabledProviders.map(\.id))
             let newlyEnabledSnapshots = await fetchSnapshots(for: newlyEnabledProviders)
+            guard showAIUsageQuotas, generation == refreshGeneration else { return }
             merged.append(contentsOf: newlyEnabledSnapshots)
         }
+        guard showAIUsageQuotas, generation == refreshGeneration else { return }
         merged.removeAll { !currentProviderIDs.contains($0.providerID) }
 
         merged.sort { $0.providerID.rawValue < $1.providerID.rawValue }
-        guard generation == refreshGeneration else { return }
+        guard showAIUsageQuotas, generation == refreshGeneration else { return }
         snapshots = merged
         finishRefresh(reason: reason, generation: generation)
         refreshCostEstimates()
@@ -317,13 +351,14 @@ final class UsageQuotaStore {
     /// fresh, a manual quota refresh only re-queries providers instead of also
     /// enumerating the JSONL sessions again.
     private func refreshCostEstimates() {
+        guard showAIUsageQuotas else { return }
         if let lastCostScanAt,
            now().timeIntervalSince(lastCostScanAt) < Constants.costScanInterval
         {
             return
         }
         lastCostScanAt = now()
-        costScanGeneration += 1
+        cancelCostScan()
         let scanGeneration = costScanGeneration
         // Captured before the detached task so the @MainActor store is not
         // referenced from the scan; resolves fresh, stale-on-failure, or no
@@ -331,17 +366,35 @@ final class UsageQuotaStore {
         let pricingLoader = pricingLoader
         let scanHomeDirectory = homeDirectory
         let trace = GitPerformanceTrace.begin("usage.cost.scan")
-        Task { [weak self] in
+
+        let workerTask = Task.detached(priority: .utility) { () -> UsageQuotaCostEstimate in
+            guard !Task.isCancelled else { return UsageQuotaCostEstimate(rows: []) }
+            let pricing = await pricingLoader()
+            guard !Task.isCancelled else { return UsageQuotaCostEstimate(rows: []) }
+            return UsageQuotaCostScanner.estimate(
+                homeDirectory: scanHomeDirectory,
+                pricing: pricing
+            )
+        }
+        costScanWorkerTask = workerTask
+
+        costScanTask = Task { [weak self, workerTask] in
             defer { GitPerformanceTrace.end("usage.cost.scan", id: trace) }
-            let estimates = await Task.detached(priority: .utility) {
-                let pricing = await pricingLoader()
-                return UsageQuotaCostScanner.estimate(
-                    homeDirectory: scanHomeDirectory,
-                    pricing: pricing
-                )
-            }.value
-            guard let self, scanGeneration == costScanGeneration else { return }
+            let estimates = await withTaskCancellationHandler {
+                await workerTask.value
+            } onCancel: {
+                workerTask.cancel()
+            }
+            guard let self,
+                  !Task.isCancelled,
+                  scanGeneration == costScanGeneration,
+                  showAIUsageQuotas
+            else { return }
             costEstimates = estimates.rows.isEmpty ? nil : estimates
+            if scanGeneration == costScanGeneration {
+                costScanTask = nil
+                costScanWorkerTask = nil
+            }
         }
     }
 
