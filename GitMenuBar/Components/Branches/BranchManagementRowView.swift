@@ -151,10 +151,10 @@ struct BranchManagementRowView: View {
                 Button("Merge \(branch.name) into Current") { onMerge() }
             }
             if let onCleanUnit {
-                Button("Clean \(branch.name)…") { onCleanUnit() }
+                Button("Clean \(branch.name)") { onCleanUnit() }
             }
             if let onRemoveWorktree {
-                Button("Remove Worktree for \(branch.name)…") { onRemoveWorktree() }
+                Button("Remove Worktree for \(branch.name)") { onRemoveWorktree() }
             }
             Divider()
             Button(role: .destructive) { onDelete() } label: {

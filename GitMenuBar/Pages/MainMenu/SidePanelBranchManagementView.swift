@@ -210,7 +210,7 @@ struct SidePanelBranchManagementView: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(model.readyCount) ready to clean, \(model.blockedCount) blocked")
             Spacer(minLength: WorkbenchMetrics.compactSpacing)
-            Button("Review…") {
+            Button("Review") {
                 guard let snapshot = gitManager.worktreeSnapshot else { return }
                 let matching = snapshot.managementUnits(matching: branchQuery)
                 presentCleanupConfirmation(
