@@ -84,19 +84,18 @@ final class BranchListModelTests: XCTestCase {
 
     // MARK: - Tests
 
-    func testResolveCurrentBranch() {
+    func testCurrentBranchLeadsLocalRows() {
         let current = makeLocalBranch(name: "main", isCurrent: true)
         let other = makeLocalBranch(name: "feature", isCurrent: false)
         let model = BranchListResolver.resolve(branches: [other, current], now: fixedNow)
-        XCTAssertEqual(model.current?.name, "main")
-        XCTAssertEqual(model.current?.isCurrent, true)
+        XCTAssertEqual(model.local.map(\.branch.name), ["main", "feature"])
     }
 
-    func testResolveCurrentBranchNilWhenDetached() {
-        let branch1 = makeLocalBranch(name: "feature-1", isCurrent: false)
-        let branch2 = makeLocalBranch(name: "feature-2", isCurrent: false)
-        let model = BranchListResolver.resolve(branches: [branch1, branch2], now: fixedNow)
-        XCTAssertNil(model.current)
+    func testCurrentBranchIsOmittedWhenQueryDoesNotMatchIt() {
+        let current = makeLocalBranch(name: "main", isCurrent: true)
+        let other = makeLocalBranch(name: "feature", isCurrent: false)
+        let model = BranchListResolver.resolve(branches: [other, current], query: "feat", now: fixedNow)
+        XCTAssertEqual(model.local.map(\.branch.name), ["feature"])
     }
 
     func testStaleTenDayBoundary() {
@@ -424,5 +423,21 @@ final class BranchListModelTests: XCTestCase {
         XCTAssertEqual(removal?.mode, .removeWorktree)
         XCTAssertEqual(removal?.worktree, detached)
         XCTAssertNil(snapshot.worktreeRemovalUnit(for: dirty))
+    }
+
+    func testCleanupConfirmationDefaultSelectionExcludesUnmergedBranches() {
+        let merged = makeCleanupUnit(branchName: "feature/merged", branchStatus: .mergedIntoDefault)
+        let unmerged = makeCleanupUnit(branchName: "feature/unmerged", branchStatus: .notMerged)
+        let worktreeOnly = makeCleanupUnit(
+            branchName: "feature/clean-worktree",
+            branchStatus: .notMerged,
+            worktreeInfo: makeWorktreeInfo(branchName: "feature/clean-worktree", path: "/tmp/clean", status: .eligible),
+            mode: .removeWorktree
+        )
+
+        let selected = CleanupConfirmationView.defaultSelectedIDs(for: [merged, unmerged, worktreeOnly])
+        XCTAssertTrue(selected.contains(merged.id))
+        XCTAssertFalse(selected.contains(unmerged.id))
+        XCTAssertTrue(selected.contains(worktreeOnly.id))
     }
 }

@@ -29,6 +29,9 @@ enum WorkbenchMetrics {
     static let sectionSpacing: CGFloat = 12
     static let groupSpacing: CGFloat = 20
     static let panelPadding: CGFloat = 16
+    /// Leading edge of dense list row content (status slot). Row padding and
+    /// list section headers and captions share it so their edges line up.
+    static let rowContentInset: CGFloat = sectionSpacing
     static let windowPadding: CGFloat = 12
     static let headerVerticalPadding: CGFloat = 2
     static let microCornerRadius: CGFloat = 6

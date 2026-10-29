@@ -125,8 +125,8 @@ struct SidePanelBranchManagementView: View {
                 if model.readyCount + model.blockedCount > 0 {
                     cleanupBanner(model: model)
                 }
-                if let current = model.current {
-                    pinnedCurrentBranchRow(current, model: model, units: units)
+                if let currentRow = model.local.first(where: \.branch.isCurrent) {
+                    pinnedCurrentBranchRow(currentRow, units: units)
                 }
                 localSection(model: model, units: units)
                 remoteSection(model: model)
@@ -175,7 +175,8 @@ struct SidePanelBranchManagementView: View {
                 .accessibilityLabel("Clear branch filter and search")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(WorkbenchMetrics.compactSpacing)
+        .padding(.vertical, WorkbenchMetrics.compactSpacing)
+        .padding(.horizontal, WorkbenchMetrics.rowContentInset)
     }
 
     private func clearFilters() {
@@ -196,6 +197,7 @@ struct SidePanelBranchManagementView: View {
             .textCase(.uppercase)
             .tracking(WorkbenchTypography.tracking(for: WorkbenchTypography.caption))
             .foregroundStyle(.secondary)
+            .padding(.leading, WorkbenchMetrics.rowContentInset)
     }
 
     private var headerCaption: some View {
@@ -249,16 +251,16 @@ struct SidePanelBranchManagementView: View {
         .background(fill, in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
     }
 
+    /// Current branch row, pinned only while it matches the active query and filter.
+    /// Neutral border keeps the accent for the checkmark and the selected filter chip.
     private func pinnedCurrentBranchRow(
-        _ current: BranchInfo,
-        model: BranchListModel,
+        _ current: BranchListRow,
         units: [String: GitCleanupUnit]
     ) -> some View {
-        let currentStatus = model.local.first(where: \.branch.isCurrent)?.cleanupStatus
-        return localManagementRow(current, unit: units[current.name], badgeStatus: currentStatus)
-            .background(
-                WorkbenchPalette.accentFill(contrast: colorSchemeContrast),
-                in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
+        localManagementRow(current.branch, unit: units[current.branch.name], badgeStatus: current.cleanupStatus)
+            .overlay(
+                RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
+                    .strokeBorder(WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast), lineWidth: 1)
             )
             .transition(.opacity)
     }
@@ -292,6 +294,7 @@ struct SidePanelBranchManagementView: View {
                             .font(WorkbenchTypography.caption)
                             .foregroundStyle(.secondary)
                     }
+                    .padding(.leading, WorkbenchMetrics.rowContentInset)
                 }
             }
         }
@@ -322,6 +325,7 @@ struct SidePanelBranchManagementView: View {
                                 .background(Capsule().fill(WorkbenchPalette.hoverFill()))
                         }
                     }
+                    .padding(.leading, WorkbenchMetrics.rowContentInset)
                 }
 
                 ForEach(model.ungroupedRemote) { branch in
@@ -329,7 +333,10 @@ struct SidePanelBranchManagementView: View {
                 }
             }
         } else if filter != .all, !isNoMatches(model: model), gitManager.branchInfos.contains(where: \.isRemote) {
-            Text("Remote branches hidden by filter").font(WorkbenchTypography.caption).foregroundStyle(.secondary)
+            Text("Remote branches hidden by filter")
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.secondary)
+                .padding(.leading, WorkbenchMetrics.rowContentInset)
         }
     }
 

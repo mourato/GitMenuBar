@@ -76,11 +76,13 @@ struct BranchManagementRowView: View {
                 Image(systemName: "checkmark")
                     .font(WorkbenchTypography.captionStrong)
                     .foregroundStyle(Color.accentColor)
+                    .frame(width: Layout.statusSlotDiameter)
                     .accessibilityHidden(true)
             } else if branch.isRemote {
                 Image(systemName: "icloud")
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
+                    .frame(width: Layout.statusSlotDiameter)
                     .accessibilityHidden(true)
             } else {
                 Circle()
@@ -126,7 +128,7 @@ struct BranchManagementRowView: View {
             // VoiceOver reaches the same actions through the row's context menu.
             .accessibilityHidden(true)
         }
-        .padding(.horizontal, WorkbenchMetrics.sectionSpacing)
+        .padding(.horizontal, WorkbenchMetrics.rowContentInset)
         .padding(.vertical, WorkbenchMetrics.chipSpacing)
         .frame(minHeight: Layout.minimumHeight)
         .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)

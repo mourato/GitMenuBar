@@ -165,7 +165,8 @@ Merged status includes both default-branch reachability and Git's
 cherry-equivalent result. Clean worktrees may be removed even when their branch
 is not merged, and clean detached worktrees may be removed. Deleting an
 unmerged branch, alone or with its worktree, requires the shared confirmation to
-show a clear data-loss warning and an explicit risk-review step. Force Remove
+show a clear data-loss warning and an explicit risk-review step; unmerged
+branches are unchecked by default in cleanup confirmation. Force Remove
 Worktree requires a dedicated warning that its directory and uncommitted changes
 are permanently deleted while its branch is kept. Remote branch management lists
 all remote-tracking refs, including `upstream`, and labels the remote being
@@ -179,13 +180,21 @@ eligibility contract.
 - Filter chips: single selection; the selected chip is accent-tinted and its
   accessibility label names the count (for example, "Dirty, 2 branches").
   Chips use a 32-point hit area and carry the only count for their filter.
+  The Mergeable chip counts merged local rows; the cleanup banner counts
+  cleanup units, which also include unmerged clean branches and worktree-only
+  units. Those sets differ, so both counts stay.
+- List alignment: section headers, the remote hidden-by-filter caption, and
+  nested disclosure labels use `WorkbenchMetrics.rowContentInset`, the leading
+  edge of the row status slot. Row horizontal padding uses the same token.
 - Cleanup review banner: one summary line and one action. Hide the action when
   nothing is ready; the blocked count and its help text explain the state.
 
 ## Visual hierarchy rules
 
 - One selection highlight per window. The sidebar selection uses the neutral
-  selected fill; only the focused content selection uses the accent.
+  selected fill; only the focused content selection uses the accent. A pinned
+  current branch row gets a neutral border, not an accent fill; accent stays on
+  its checkmark and the selected filter chip.
 - Color carries meaning, never decoration. Sidebar status dots use severity:
   red for diverged or behind, orange for uncommitted changes, secondary for
   unmerged branches only. Untracked files alone are not a warning.
