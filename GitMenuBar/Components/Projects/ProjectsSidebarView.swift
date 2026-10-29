@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProjectsSidebarView: View {
     @Environment(ProjectMonitorStore.self) private var monitor
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @AppStorage(AppPreferences.Keys.showAgentActivity) private var showAgentActivity = true
     @AppStorage(AppPreferences.Keys.isCleanProjectsGroupCollapsed) private var isCleanGroupCollapsed = false
     @State private var renameProject: ProjectReference?
@@ -169,7 +170,7 @@ struct ProjectsSidebarView: View {
     private func projectRow(_ snapshot: ProjectStatusSnapshot) -> some View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
             Circle()
-                .fill(snapshot.classification == .clean ? .green : .orange)
+                .fill(dotColor(for: snapshot))
                 .frame(width: 7, height: 7)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -184,25 +185,25 @@ struct ProjectsSidebarView: View {
 
             Spacer(minLength: 0)
 
-            if showAgentActivity, !(monitor.agentActivities[snapshot.project.path] ?? []).isEmpty {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: WorkbenchMetrics.microSpacing) {
-                        ForEach(monitor.agentActivities[snapshot.project.path] ?? []) { activity in
-                            AgentBadgeIconView(activity: activity)
+            HStack(spacing: WorkbenchMetrics.microSpacing) {
+                if showAgentActivity, !(monitor.agentActivities[snapshot.project.path] ?? []).isEmpty {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: WorkbenchMetrics.microSpacing) {
+                            ForEach(monitor.agentActivities[snapshot.project.path] ?? []) { activity in
+                                AgentBadgeIconView(activity: activity)
+                            }
                         }
+                        .fixedSize()
+                        Color.clear.frame(width: 0, height: 0)
                     }
-                    .fixedSize()
-                    Color.clear.frame(width: 0, height: 0)
+                }
+
+                if snapshot.hasWorkingTreeChanges {
+                    changeCountBadge(for: snapshot)
                 }
             }
-
-            if snapshot.hasWorkingTreeChanges {
-                Text(changeCountSummary(for: snapshot))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
         .contentShape(Rectangle())
         .contextMenu {
             Button("Rename Project") {
@@ -215,6 +216,38 @@ struct ProjectsSidebarView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel(for: snapshot))
+    }
+
+    private func dotColor(for snapshot: ProjectStatusSnapshot) -> Color {
+        guard snapshot.classification != .clean else {
+            return .green
+        }
+        switch snapshot.severity {
+        case .divergedOrBehind:
+            return .red
+        case .uncommittedChanges:
+            return .orange
+        case .unmergedOnly, .none:
+            return .secondary
+        }
+    }
+
+    private func changeCountBadge(for snapshot: ProjectStatusSnapshot) -> some View {
+        let count = snapshot.stagedCount + snapshot.unstagedCount + snapshot.untrackedCount
+        return Text("\(count)")
+            .font(WorkbenchTypography.caption)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, WorkbenchMetrics.chipSpacing)
+            .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
+            .background(
+                Capsule()
+                    .fill(WorkbenchPalette.hoverFill())
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast), lineWidth: 1)
+            )
     }
 
     private var cleanGroupExpanded: Binding<Bool> {
@@ -293,11 +326,6 @@ struct ProjectsSidebarView: View {
         return parts.joined(separator: ", ")
     }
 
-    private func changeCountSummary(for snapshot: ProjectStatusSnapshot) -> String {
-        let count = snapshot.stagedCount + snapshot.unstagedCount + snapshot.untrackedCount
-        return count == 1 ? "1 to commit" : "\(count) to commit"
-    }
-
     private func pullRequestSummary(for snapshot: ProjectStatusSnapshot) -> String? {
         if let pullRequest = snapshot.pullRequests.first(where: { $0.headBranch == snapshot.branchName }) {
             return "PR #\(pullRequest.number) \(pullRequest.statusSummary)"
@@ -307,27 +335,38 @@ struct ProjectsSidebarView: View {
         return "\(count) open pull request\(count == 1 ? "" : "s")"
     }
 
+    private func branchSummary(for snapshot: ProjectStatusSnapshot) -> String? {
+        if snapshot.isDetachedHead {
+            return "Detached"
+        }
+        if snapshot.branchName.isEmpty {
+            return "Unknown branch"
+        }
+        return snapshot.isDefaultBranch ? nil : snapshot.branchName
+    }
+
+    private func upstreamSummary(for snapshot: ProjectStatusSnapshot) -> [String] {
+        guard snapshot.hasUpstream else { return [] }
+        var parts: [String] = []
+        if snapshot.aheadCount > 0 {
+            parts.append("\(snapshot.aheadCount) commit\(snapshot.aheadCount == 1 ? "" : "s") to push")
+        }
+        if snapshot.behindCount > 0 {
+            parts.append("\(snapshot.behindCount) commit\(snapshot.behindCount == 1 ? "" : "s") behind")
+        }
+        return parts
+    }
+
     private func statusSummary(for snapshot: ProjectStatusSnapshot) -> String {
         if snapshot.lastErrorDescription != nil {
             return "Unavailable"
         }
 
-        let branch = if snapshot.isDetachedHead {
-            "Detached"
-        } else if snapshot.branchName.isEmpty {
-            "Unknown branch"
-        } else {
-            snapshot.branchName
+        var parts: [String] = []
+        if let branch = branchSummary(for: snapshot) {
+            parts.append(branch)
         }
-        var parts = [branch]
-        if snapshot.hasUpstream {
-            if snapshot.aheadCount > 0 {
-                parts.append("\(snapshot.aheadCount) commit\(snapshot.aheadCount == 1 ? "" : "s") to push")
-            }
-            if snapshot.behindCount > 0 {
-                parts.append("\(snapshot.behindCount) commit\(snapshot.behindCount == 1 ? "" : "s") behind")
-            }
-        }
+        parts.append(contentsOf: upstreamSummary(for: snapshot))
         if snapshot.unmergedBranchCount > 0 {
             parts.append("\(snapshot.unmergedBranchCount) branch\(snapshot.unmergedBranchCount == 1 ? "" : "es") not merged")
         }
@@ -336,6 +375,9 @@ struct ProjectsSidebarView: View {
         }
         if snapshot.isStale {
             parts.append("Stale work")
+        }
+        if parts.isEmpty {
+            return snapshot.hasWorkingTreeChanges ? "Uncommitted changes" : "Up to date"
         }
         return parts.joined(separator: " ")
     }
