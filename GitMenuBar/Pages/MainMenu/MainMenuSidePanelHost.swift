@@ -112,7 +112,6 @@ private struct SidePanelHostPreviewContent: View {
                 isCommitInFuture: { _ in false },
                 onSelectRow: { _ in },
                 onOpenCommit: { _ in },
-                onBackToHistory: {},
                 onEditCommitMessage: { _ in },
                 onGenerateCommitMessage: { _ in },
                 onLoadMore: {},

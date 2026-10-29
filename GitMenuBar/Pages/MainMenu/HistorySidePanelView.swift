@@ -11,29 +11,26 @@ struct HistorySidePanelView: View {
     @State private var pendingReset: Commit?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-            SidePanelHeaderView(
-                projectName: projectName,
-                title: selection?.title ?? "History",
-                onClose: onClose
-            )
-            historyContent
+        Group {
+            if case let .commit(hash) = selection {
+                commitDetail(for: hash)
+            } else {
+                VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
+                    SidePanelHeaderView(
+                        projectName: projectName,
+                        title: selection?.title ?? "History",
+                        onClose: onClose
+                    )
+                    ScrollView(.vertical) {
+                        SidePanelHistoryBrowserView(history: history, pendingReset: $pendingReset)
+                            .padding(.bottom, WorkbenchMetrics.compactSpacing)
+                    }
+                }
+            }
         }
         .sidePanelResetAlert(commit: $pendingReset) { commit in
             Task {
                 _ = await actionCoordinator.sidePanel.resetSidePanelCommit(hash: commit.id)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var historyContent: some View {
-        if case let .commit(hash) = selection {
-            commitDetail(for: hash)
-        } else {
-            ScrollView(.vertical) {
-                SidePanelHistoryBrowserView(history: history, pendingReset: $pendingReset)
-                    .padding(.bottom, WorkbenchMetrics.compactSpacing)
             }
         }
     }
@@ -46,9 +43,7 @@ struct HistorySidePanelView: View {
             currentHash: gitManager.currentHash,
             remoteUrl: gitManager.remoteUrl,
             isCommitInFuture: history.isCommitInFuture,
-            onBack: {
-                history.onBackToHistory()
-            },
+            onClose: onClose,
             onRestoreCommit: { commit in
                 guard let adapter, adapter.actions.canRestore else { return }
                 pendingReset = commit

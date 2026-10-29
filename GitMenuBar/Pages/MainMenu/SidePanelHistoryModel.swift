@@ -11,7 +11,6 @@ struct SidePanelHistoryModel {
     let isCommitInFuture: (Commit) -> Bool
     let onSelectRow: (HistoryRowAdapter) -> Void
     let onOpenCommit: (String) -> Void
-    let onBackToHistory: () -> Void
     let onEditCommitMessage: (Commit) -> Void
     let onGenerateCommitMessage: (Commit) -> Void
     let onLoadMore: () -> Void
@@ -31,7 +30,6 @@ struct SidePanelHistoryModel {
             isCommitInFuture: { _ in false },
             onSelectRow: { _ in },
             onOpenCommit: { _ in },
-            onBackToHistory: {},
             onEditCommitMessage: { _ in },
             onGenerateCommitMessage: { _ in },
             onLoadMore: {},

@@ -146,9 +146,6 @@ extension MainMenuView {
                 workspace.selectedSidePanelSelection = .commit(id: commitID)
                 workspace.selectedMainItemID = .historyCommit(id: commitID)
             },
-            onBackToHistory: {
-                workspace.selectedSidePanelSelection = nil
-            },
             onEditCommitMessage: { commit in
                 Task {
                     await startManualCommitMessageEdit(for: commit)

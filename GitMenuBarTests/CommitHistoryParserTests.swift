@@ -97,6 +97,54 @@ final class CommitHistoryParserTests: XCTestCase {
         )
     }
 
+    func testParseCommitWithSubjectAndBodyYieldsBodyWithoutSubject() {
+        let subject = "feat(ui): add commit inspector header"
+        let body = "Detailed description line 1.\nDetailed description line 2."
+        let output = makeRecord(
+            CommitRecord(
+                hash: "aabbccddeeff0011",
+                shortHash: "aabbccd",
+                timestamp: 1_709_856_000,
+                authorName: "Developer",
+                authorEmail: "developer@example.com",
+                parents: "1122334",
+                subject: subject,
+                body: body,
+                stats: []
+            )
+        )
+
+        let commits = parser.parse(output)
+
+        XCTAssertEqual(commits.count, 1)
+        XCTAssertEqual(commits.first?.subject, subject)
+        XCTAssertEqual(commits.first?.body, body)
+        XCTAssertFalse(commits.first?.body.contains(subject) ?? true)
+    }
+
+    func testParseSubjectOnlyCommitYieldsEmptyBody() {
+        let subject = "chore(cleanup): remove unused file"
+        let output = makeRecord(
+            CommitRecord(
+                hash: "1122334455667788",
+                shortHash: "1122334",
+                timestamp: 1_709_856_000,
+                authorName: "Developer",
+                authorEmail: "developer@example.com",
+                parents: "0011223",
+                subject: subject,
+                body: "",
+                stats: []
+            )
+        )
+
+        let commits = parser.parse(output)
+
+        XCTAssertEqual(commits.count, 1)
+        XCTAssertEqual(commits.first?.subject, subject)
+        XCTAssertEqual(commits.first?.body, "")
+    }
+
     func testParseDeduplicatesHashesFromReflog() {
         let output = [
             makeRecord(
@@ -218,6 +266,33 @@ final class CommitHistoryParserTests: XCTestCase {
         let commits = fetchParser.fetchCommitHistory(in: repoURL.path)
 
         XCTAssertEqual(commits.count, 50)
+    }
+
+    func testFetchCommitHistoryParsesBodyWithoutSubjectAndEmptyBody() throws {
+        let repoURL = try createTemporaryGitRepository(testName: #function)
+        let runner = GitCommandRunner()
+        let fetchParser = CommitHistoryParser(runner: runner)
+
+        try runGit(["commit", "--allow-empty", "-m", "feat: subject only"], in: repoURL)
+        try runGit([
+            "commit",
+            "--allow-empty",
+            "-m", "feat: subject with body",
+            "-m", "Detailed body line 1.",
+            "-m", "Detailed body line 2."
+        ], in: repoURL)
+
+        let commits = fetchParser.fetchCommitHistory(in: repoURL.path, limit: 10)
+        XCTAssertEqual(commits.count, 3)
+
+        let commitWithBody = commits.first { $0.subject == "feat: subject with body" }
+        XCTAssertNotNil(commitWithBody)
+        XCTAssertEqual(commitWithBody?.body, "Detailed body line 1.\n\nDetailed body line 2.")
+        XCTAssertFalse(commitWithBody?.body.contains("feat: subject with body") ?? true)
+
+        let commitSubjectOnly = commits.first { $0.subject == "feat: subject only" }
+        XCTAssertNotNil(commitSubjectOnly)
+        XCTAssertEqual(commitSubjectOnly?.body, "")
     }
 
     @MainActor
