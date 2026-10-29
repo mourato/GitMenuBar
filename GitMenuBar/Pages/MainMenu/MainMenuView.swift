@@ -7,11 +7,11 @@ import SwiftUI
 
 struct MainMenuView: View {
     @Namespace var animationNamespace
-    @State var errorCenter = MainMenuErrorCenter()
-    @State var branchDialogs = MainMenuBranchDialogs()
+    @State var errorCenter: MainMenuErrorCenter
+    @State var branchDialogs: MainMenuBranchDialogs
     @State var workspace = MainMenuWorkspaceState()
     @State var repoOptions = MainMenuRepositoryOptionsState()
-    @State var sync = MainMenuSyncSheetState()
+    @State var sync: MainMenuSyncSheetState
     @State var repoConfirm = MainMenuRepositoryConfirmations()
     @FocusState var isCommentFieldFocused: Bool
     @FocusState var isMainKeyboardNavigationFocused: Bool
@@ -42,6 +42,7 @@ struct MainMenuView: View {
     let closeWindow: () -> Void
     let openSettingsWindow: () -> Void
     let setAutoHideSuspended: (Bool) -> Void
+    let onBranchSelectorPresentationChanged: (Bool) -> Void
 
     var currentRepositoryPath: String {
         repositorySelectionCoordinator.selectedPath
@@ -50,11 +51,19 @@ struct MainMenuView: View {
     init(
         closeWindow: @escaping () -> Void = {},
         openSettingsWindow: @escaping () -> Void = {},
-        setAutoHideSuspended: @escaping (Bool) -> Void = { _ in }
+        setAutoHideSuspended: @escaping (Bool) -> Void = { _ in },
+        branchDialogs: MainMenuBranchDialogs = MainMenuBranchDialogs(),
+        errorCenter: MainMenuErrorCenter = MainMenuErrorCenter(),
+        sync: MainMenuSyncSheetState = MainMenuSyncSheetState(),
+        onBranchSelectorPresentationChanged: @escaping (Bool) -> Void = { _ in }
     ) {
         self.closeWindow = closeWindow
         self.openSettingsWindow = openSettingsWindow
         self.setAutoHideSuspended = setAutoHideSuspended
+        self.onBranchSelectorPresentationChanged = onBranchSelectorPresentationChanged
+        _branchDialogs = State(initialValue: branchDialogs)
+        _errorCenter = State(initialValue: errorCenter)
+        _sync = State(initialValue: sync)
     }
 
     var body: some View {
@@ -113,6 +122,7 @@ struct MainMenuView: View {
             presentPendingRepositoryOptionsIfPossible()
         }
         .onChange(of: branchDialogs.showBranchSelector) {
+            onBranchSelectorPresentationChanged(branchDialogs.showBranchSelector)
             presentPendingRepositoryOptionsIfPossible()
         }
         .onChange(of: palette.isPresented) { _, isPresented in

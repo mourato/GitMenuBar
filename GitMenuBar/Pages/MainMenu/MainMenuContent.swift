@@ -18,78 +18,6 @@ extension MainMenuView {
         )
     }
 
-    private var branchSelectorContent: some View {
-        MainMenuBranchSelectorHost(
-            isDetachedHead: gitManager.isDetachedHead,
-            isRemoteAhead: gitManager.isRemoteAhead,
-            behindCount: gitManager.behindCount,
-            availableBranches: gitManager.availableBranches,
-            currentBranch: gitManager.currentBranch,
-            onCreateBranchFromDetached: {
-                dismissTransientPresentations()
-                branchDialogs.showCreateBranch = true
-            },
-            onQuickPull: {
-                dismissTransientPresentations()
-                sync.useRebase = false
-                sync.syncWithRemote(using: actionCoordinator)
-            },
-            onSelectBranch: { branch in
-                dismissTransientPresentations()
-                guard branch != gitManager.currentBranch else { return }
-
-                if hasWorkingTreeChanges {
-                    branchDialogs.pendingSwitchBranch = branch
-                    branchDialogs.showDirtySwitchConfirmation = true
-                } else {
-                    gitManager.switchBranch(branchName: branch) { result in
-                        if case let .failure(error) = result {
-                            errorCenter.branchSwitch = error.localizedDescription
-                        }
-                    }
-                }
-            },
-            onMergeBranch: { branch in
-                dismissTransientPresentations()
-                if gitManager.currentBranch == "main" || gitManager.currentBranch == "master" {
-                    branchDialogs.mergeBranchName = branch
-                    branchDialogs.mergeTargetBranch = gitManager.currentBranch
-                    branchDialogs.showMergeConfirmation = true
-                } else {
-                    gitManager.mergeBranch(fromBranch: branch) { result in
-                        if case let .failure(error) = result {
-                            errorCenter.merge = error.localizedDescription
-                        }
-                    }
-                }
-            },
-            onDeleteBranch: { branch in
-                dismissTransientPresentations()
-                branchDialogs.branchNameToDelete = branch
-                branchDialogs.showBranchDeleteConfirmation = true
-            },
-            onRenameBranch: { branch in
-                dismissTransientPresentations()
-                branchDialogs.oldBranchName = branch
-                branchDialogs.renameBranchNewName = branch
-                branchDialogs.showRenameBranch = true
-            },
-            onMergeToDefaultBranch: { branch in
-                dismissTransientPresentations()
-                Task {
-                    guard let detectedDefaultBranch = await gitManager.getSelectedDefaultBranchNameAsync() else { return }
-                    branchDialogs.featureBranchName = branch
-                    branchDialogs.defaultBranchName = detectedDefaultBranch
-                    branchDialogs.showMergeToDefaultConfirmation = true
-                }
-            },
-            onNewBranch: {
-                dismissTransientPresentations()
-                branchDialogs.showCreateBranch = true
-            }
-        )
-    }
-
     @ViewBuilder
     private var routeContent: some View {
         switch presentationModel.route {
@@ -290,9 +218,6 @@ extension MainMenuView {
             shortcutActions: shortcutActionBridge.actions,
             onShortcutAction: handleShortcutAction
         )
-        .popover(isPresented: $branchDialogs.showBranchSelector, arrowEdge: .top) {
-            branchSelectorContent
-        }
         .modifier(MainMenuSheetsModifier(
             branchDialogs: branchDialogs,
             errorCenter: errorCenter,

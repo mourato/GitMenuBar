@@ -48,6 +48,88 @@ struct MainMenuWindowOverlayView: View {
 
 /// Branch selector popover wiring. Branch state arrives as plain values;
 /// selection, merge, delete, rename, and creation effects arrive as closures.
+struct MainMenuBranchSelectorContent: View {
+    @Bindable var branchDialogs: MainMenuBranchDialogs
+    let errorCenter: MainMenuErrorCenter
+    @Bindable var sync: MainMenuSyncSheetState
+    let onDismissTransientPresentations: () -> Void
+
+    @Environment(GitManager.self) private var gitManager
+    @Environment(MainMenuActionCoordinator.self) private var actionCoordinator
+
+    var body: some View {
+        MainMenuBranchSelectorHost(
+            isDetachedHead: gitManager.isDetachedHead,
+            isRemoteAhead: gitManager.isRemoteAhead,
+            behindCount: gitManager.behindCount,
+            availableBranches: gitManager.availableBranches,
+            currentBranch: gitManager.currentBranch,
+            onCreateBranchFromDetached: {
+                onDismissTransientPresentations()
+                branchDialogs.showCreateBranch = true
+            },
+            onQuickPull: {
+                onDismissTransientPresentations()
+                sync.useRebase = false
+                sync.syncWithRemote(using: actionCoordinator)
+            },
+            onSelectBranch: { branch in
+                onDismissTransientPresentations()
+                guard branch != gitManager.currentBranch else { return }
+
+                if !gitManager.stagedFiles.isEmpty || !gitManager.changedFiles.isEmpty {
+                    branchDialogs.pendingSwitchBranch = branch
+                    branchDialogs.showDirtySwitchConfirmation = true
+                } else {
+                    gitManager.switchBranch(branchName: branch) { result in
+                        if case let .failure(error) = result {
+                            errorCenter.branchSwitch = error.localizedDescription
+                        }
+                    }
+                }
+            },
+            onMergeBranch: { branch in
+                onDismissTransientPresentations()
+                if gitManager.currentBranch == "main" || gitManager.currentBranch == "master" {
+                    branchDialogs.mergeBranchName = branch
+                    branchDialogs.mergeTargetBranch = gitManager.currentBranch
+                    branchDialogs.showMergeConfirmation = true
+                } else {
+                    gitManager.mergeBranch(fromBranch: branch) { result in
+                        if case let .failure(error) = result {
+                            errorCenter.merge = error.localizedDescription
+                        }
+                    }
+                }
+            },
+            onDeleteBranch: { branch in
+                onDismissTransientPresentations()
+                branchDialogs.branchNameToDelete = branch
+                branchDialogs.showBranchDeleteConfirmation = true
+            },
+            onRenameBranch: { branch in
+                onDismissTransientPresentations()
+                branchDialogs.oldBranchName = branch
+                branchDialogs.renameBranchNewName = branch
+                branchDialogs.showRenameBranch = true
+            },
+            onMergeToDefaultBranch: { branch in
+                onDismissTransientPresentations()
+                Task {
+                    guard let detectedDefaultBranch = await gitManager.getSelectedDefaultBranchNameAsync() else { return }
+                    branchDialogs.featureBranchName = branch
+                    branchDialogs.defaultBranchName = detectedDefaultBranch
+                    branchDialogs.showMergeToDefaultConfirmation = true
+                }
+            },
+            onNewBranch: {
+                onDismissTransientPresentations()
+                branchDialogs.showCreateBranch = true
+            }
+        )
+    }
+}
+
 struct MainMenuBranchSelectorHost: View {
     let isDetachedHead: Bool
     let isRemoteAhead: Bool

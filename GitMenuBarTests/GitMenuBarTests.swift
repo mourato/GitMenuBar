@@ -217,7 +217,14 @@ final class ToolbarStateMappingTests: XCTestCase {
             state.repositoryItems,
             [.branchPicker, .aheadBehind, .fetch, .sync, .commit]
         )
+        XCTAssertEqual(state.branchTitle, "feature/toolbar")
+        XCTAssertEqual(state.fetchTitle, "Fetch")
+        XCTAssertEqual(state.syncTitle, "Sync")
+        XCTAssertEqual(state.commitTitle, "Commit")
         XCTAssertEqual(state.commitAccessibilityLabel, "Commit 1 change in NetNewsWire")
+        XCTAssertEqual(state.commitBadgeCount, 1)
+        XCTAssertFalse(state.isSyncEnabled)
+        XCTAssertEqual(state.syncToolTip, "Commit changes before syncing")
         XCTAssertEqual(state.aheadBehindTitle, "↑1 ↓2")
     }
 
@@ -236,6 +243,7 @@ final class ToolbarStateMappingTests: XCTestCase {
         XCTAssertEqual(state.repositoryItems, [.branchPicker, .aheadBehind, .fetch])
         XCTAssertFalse(state.showsSyncItem)
         XCTAssertFalse(state.showsCommitItem)
+        XCTAssertNil(state.commitBadgeCount)
         XCTAssertEqual(state.aheadBehindAccessibilityLabel, "NetNewsWire is up to date")
     }
 

@@ -1,98 +1,5 @@
 import AppKit
-
-enum MainWindowToolbarRepositoryItem: Equatable {
-    case branchPicker
-    case aheadBehind
-    case fetch
-    case sync
-    case commit
-}
-
-struct MainWindowToolbarRepositoryState: Equatable {
-    let repositoryName: String
-    let branchName: String
-    let aheadCount: Int
-    let behindCount: Int
-    let changeCount: Int
-    let isBusy: Bool
-    let busyItem: MainWindowToolbarRepositoryItem?
-    let progressAccessibilityLabel: String?
-
-    var repositoryItems: [MainWindowToolbarRepositoryItem] {
-        var items: [MainWindowToolbarRepositoryItem] = [.branchPicker, .aheadBehind, .fetch]
-        if showsSyncItem {
-            items.append(.sync)
-        }
-        if showsCommitItem {
-            items.append(.commit)
-        }
-        return items
-    }
-
-    var showsSyncItem: Bool {
-        aheadCount > 0 || behindCount > 0 || busyItem == .sync
-    }
-
-    var showsCommitItem: Bool {
-        changeCount > 0 || busyItem == .commit
-    }
-
-    var branchTitle: String {
-        branchName.isEmpty ? "Branch" : branchName
-    }
-
-    var branchAccessibilityLabel: String {
-        "Current branch \(branchTitle) in \(repositoryName)"
-    }
-
-    var aheadBehindTitle: String {
-        var parts: [String] = []
-        if aheadCount > 0 {
-            parts.append("↑\(aheadCount)")
-        }
-        if behindCount > 0 {
-            parts.append("↓\(behindCount)")
-        }
-        return parts.isEmpty ? "Up to date" : parts.joined(separator: " ")
-    }
-
-    var aheadBehindAccessibilityLabel: String {
-        switch (aheadCount, behindCount) {
-        case (0, 0):
-            "\(repositoryName) is up to date"
-        case let (ahead, 0):
-            "\(repositoryName) is ahead by \(ahead) commit\(ahead == 1 ? "" : "s")"
-        case let (0, behind):
-            "\(repositoryName) is behind by \(behind) commit\(behind == 1 ? "" : "s")"
-        case let (ahead, behind):
-            "\(repositoryName) is ahead by \(ahead) and behind by \(behind) commits"
-        }
-    }
-
-    var fetchAccessibilityLabel: String {
-        "Fetch remote updates for \(repositoryName)"
-    }
-
-    var syncAccessibilityLabel: String {
-        "Sync changes in \(repositoryName)"
-    }
-
-    var commitAccessibilityLabel: String {
-        "Commit \(changeCount) change\(changeCount == 1 ? "" : "s") in \(repositoryName)"
-    }
-
-    var isSyncEnabled: Bool {
-        !isBusy && changeCount == 0
-    }
-
-    var isFetchEnabled: Bool {
-        !isBusy
-    }
-
-    var isCommitEnabled: Bool {
-        !isBusy && changeCount > 0
-    }
-}
+import SwiftUI
 
 @MainActor
 final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
@@ -108,9 +15,18 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
     private weak var window: NSWindow?
     private var toolbar: NSToolbar?
     private var repositoryState: MainWindowToolbarRepositoryState?
+    private let branchSelectorContent: @MainActor () -> AnyView
+    private let onBranchSelectorPopoverClosed: @MainActor () -> Void
+    private var branchSelectorPopover: NSPopover?
 
-    init(target: StatusBarController) {
+    init(
+        target: StatusBarController,
+        branchSelectorContent: @escaping @MainActor () -> AnyView,
+        onBranchSelectorPopoverClosed: @escaping @MainActor () -> Void
+    ) {
         self.target = target
+        self.branchSelectorContent = branchSelectorContent
+        self.onBranchSelectorPopoverClosed = onBranchSelectorPopoverClosed
         super.init()
     }
 
@@ -125,11 +41,19 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
 
         let toolbar = NSToolbar(identifier: Self.toolbarIdentifier)
         toolbar.delegate = self
-        toolbar.displayMode = .iconAndLabel
+        toolbar.displayMode = .iconOnly
         toolbar.allowsUserCustomization = false
         toolbar.allowsDisplayModeCustomization = false
         window.toolbar = toolbar
         self.toolbar = toolbar
+    }
+
+    func setBranchSelectorPopoverPresented(_ isPresented: Bool) {
+        if isPresented {
+            presentBranchSelectorPopover()
+        } else {
+            branchSelectorPopover?.close()
+        }
     }
 
     func update(
@@ -217,89 +141,80 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         for repositoryItem: MainWindowToolbarRepositoryItem,
         state: MainWindowToolbarRepositoryState
     ) {
-        item.label = accessibilityLabel(for: repositoryItem, state: state)
-        item.paletteLabel = item.label
-        item.toolTip = item.label
+        let accessibilityLabel = accessibilityLabel(for: repositoryItem, state: state)
+        let visibleLabel = visibleLabel(for: repositoryItem, state: state)
+        item.label = visibleLabel
+        item.paletteLabel = visibleLabel
+        item.title = visibleLabel
+        item.toolTip = toolTip(for: repositoryItem, state: state)
+        item.image = image(for: repositoryItem, accessibilityLabel: accessibilityLabel)
+        item.target = nil
+        item.action = nil
+        item.view = nil
+        item.isBordered = false
+        clearBadge(from: item)
 
         if state.isBusy, state.busyItem == repositoryItem {
-            item.view = makeProgressView(accessibilityLabel: state.progressAccessibilityLabel ?? item.label)
+            item.toolTip = state.progressAccessibilityLabel ?? item.toolTip
+            item.view = makeProgressView(accessibilityLabel: state.progressAccessibilityLabel ?? accessibilityLabel)
             item.isEnabled = false
             return
         }
 
         guard let target else {
-            item.view = nil
             item.isEnabled = false
             return
         }
 
         switch repositoryItem {
         case .branchPicker:
-            let button = makeButton(
-                title: state.branchTitle,
-                imageName: "arrow.triangle.branch",
-                accessibilityLabel: state.branchAccessibilityLabel,
+            configureStandardItem(
+                item,
                 action: #selector(StatusBarController.presentBranchSelectorFromToolbar(_:)),
-                target: target
+                target: target,
+                isEnabled: true
             )
-            item.view = button
-            item.isEnabled = true
         case .aheadBehind:
             item.view = makeStatusView(
                 title: state.aheadBehindTitle,
-                accessibilityLabel: state.aheadBehindAccessibilityLabel
+                accessibilityLabel: accessibilityLabel
             )
             item.isEnabled = true
         case .fetch:
-            let button = makeButton(
-                title: "Fetch",
-                imageName: "arrow.triangle.2.circlepath",
-                accessibilityLabel: state.fetchAccessibilityLabel,
+            configureStandardItem(
+                item,
                 action: #selector(StatusBarController.performFetchFromToolbar(_:)),
-                target: target
+                target: target,
+                isEnabled: state.isFetchEnabled
             )
-            button.isEnabled = state.isFetchEnabled
-            item.view = button
-            item.isEnabled = state.isFetchEnabled
         case .sync:
-            let button = makeButton(
-                title: "Sync",
-                imageName: "arrow.2.circlepath",
-                accessibilityLabel: state.syncAccessibilityLabel,
+            configureStandardItem(
+                item,
                 action: #selector(StatusBarController.performSyncFromToolbar(_:)),
-                target: target
+                target: target,
+                isEnabled: state.isSyncEnabled
             )
-            button.isEnabled = state.isSyncEnabled
-            item.view = button
-            item.isEnabled = state.isSyncEnabled
         case .commit:
-            let button = makeButton(
-                title: "Commit \(state.changeCount)",
-                imageName: "checkmark",
-                accessibilityLabel: state.commitAccessibilityLabel,
+            configureStandardItem(
+                item,
                 action: #selector(StatusBarController.selectWorkingTreeFromToolbar(_:)),
-                target: target
+                target: target,
+                isEnabled: state.isCommitEnabled
             )
-            button.isEnabled = state.isCommitEnabled
-            item.view = button
-            item.isEnabled = state.isCommitEnabled
+            setCommitBadge(on: item, count: state.commitBadgeCount)
         }
     }
 
-    private func makeButton(
-        title: String,
-        imageName: String,
-        accessibilityLabel: String,
+    private func configureStandardItem(
+        _ item: NSToolbarItem,
         action: Selector,
-        target: StatusBarController
-    ) -> NSButton {
-        let button = NSButton(title: title, target: target, action: action)
-        button.image = NSImage(systemSymbolName: imageName, accessibilityDescription: accessibilityLabel)
-        button.imagePosition = .imageLeading
-        button.isBordered = false
-        button.toolTip = accessibilityLabel
-        button.setAccessibilityLabel(accessibilityLabel)
-        return button
+        target: StatusBarController,
+        isEnabled: Bool
+    ) {
+        item.target = target
+        item.action = action
+        item.isBordered = true
+        item.isEnabled = isEnabled
     }
 
     private func makeStatusView(title: String, accessibilityLabel: String) -> NSTextField {
@@ -307,6 +222,94 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         view.toolTip = accessibilityLabel
         view.setAccessibilityLabel(accessibilityLabel)
         return view
+    }
+
+    private func presentBranchSelectorPopover() {
+        guard let branchPickerItem = toolbar?.items.first(where: {
+            $0.itemIdentifier == Self.branchPickerIdentifier
+        }) else {
+            return
+        }
+
+        let popover = branchSelectorPopover ?? makeBranchSelectorPopover()
+        popover.contentViewController = NSHostingController(rootView: branchSelectorContent())
+        popover.show(relativeTo: branchPickerItem)
+    }
+
+    private func makeBranchSelectorPopover() -> NSPopover {
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.delegate = self
+        branchSelectorPopover = popover
+        return popover
+    }
+
+    private func visibleLabel(
+        for item: MainWindowToolbarRepositoryItem,
+        state: MainWindowToolbarRepositoryState
+    ) -> String {
+        switch item {
+        case .branchPicker:
+            state.branchTitle
+        case .aheadBehind:
+            state.aheadBehindTitle
+        case .fetch:
+            state.fetchTitle
+        case .sync:
+            state.syncTitle
+        case .commit:
+            state.commitTitle
+        }
+    }
+
+    private func toolTip(
+        for item: MainWindowToolbarRepositoryItem,
+        state: MainWindowToolbarRepositoryState
+    ) -> String {
+        switch item {
+        case .branchPicker:
+            state.branchAccessibilityLabel
+        case .aheadBehind:
+            state.aheadBehindAccessibilityLabel
+        case .fetch:
+            state.fetchAccessibilityLabel
+        case .sync:
+            state.syncToolTip
+        case .commit:
+            state.commitAccessibilityLabel
+        }
+    }
+
+    private func image(
+        for item: MainWindowToolbarRepositoryItem,
+        accessibilityLabel: String
+    ) -> NSImage? {
+        let imageName: String? = switch item {
+        case .branchPicker:
+            "chevron.down"
+        case .aheadBehind:
+            nil
+        case .fetch:
+            "arrow.triangle.2.circlepath"
+        case .sync:
+            "arrow.2.circlepath"
+        case .commit:
+            "checkmark"
+        }
+        guard let imageName else { return nil }
+        return NSImage(systemSymbolName: imageName, accessibilityDescription: accessibilityLabel)
+    }
+
+    private func clearBadge(from item: NSToolbarItem) {
+        if #available(macOS 26.0, *) {
+            item.badge = nil
+        }
+    }
+
+    private func setCommitBadge(on item: NSToolbarItem, count: Int?) {
+        if #available(macOS 26.0, *) {
+            item.badge = count.map { .count($0) }
+        }
     }
 
     private func makeProgressView(accessibilityLabel: String) -> NSProgressIndicator {
@@ -388,5 +391,11 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
             }
             toolbar.insertItem(withItemIdentifier: identifier, at: index)
         }
+    }
+}
+
+extension MainWindowToolbarController: NSPopoverDelegate {
+    func popoverDidClose(_: Notification) {
+        onBranchSelectorPopoverClosed()
     }
 }

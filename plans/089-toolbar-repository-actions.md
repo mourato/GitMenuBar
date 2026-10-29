@@ -29,6 +29,23 @@
 - **Rationale**: Toolbar items need live repository state and action routing through AppKit; mistakes break primary Git actions.
 - **Escalate when**: an action needs a new Git service call, or toolbar state needs a second source of truth beside the selected repository snapshot.
 
+## UI-owner review amendments
+
+- Keep toolbar labels short and use the long repository-specific sentences only
+  for accessibility descriptions and tooltips. Use icon-only display mode unless
+  a native item genuinely needs its title.
+- Configure Fetch, Sync, Commit, and the branch picker as native bordered
+  `NSToolbarItem`s. Keep only the busy spinner and ahead/behind status text as
+  custom views. Commit uses the native count badge where the deployment OS
+  provides it; its visible title remains `Commit`.
+- Keep Sync in the toolbar whenever it is represented by repository state, but
+  disable it when working-tree changes exist and explain that state with the
+  tooltip `Commit changes before syncing`.
+- Present the existing branch selector content from an `NSPopover` anchored to
+  the branch `NSToolbarItem`; do not attach it to the root window content or
+  duplicate the selector UI.
+- Delete the now-unused `MainMenuFooterSection.swift`.
+
 ## Problem
 
 Commit and Sync sit inside the Working Tree card, the branch picker sits in a
@@ -37,24 +54,37 @@ disabled button when there is nothing to sync.
 
 ## Scope
 
-1. Extend `GitMenuBar/App/MainWindowToolbarController.swift` with items for
-   branch picker, ahead/behind indicator, Fetch, Sync, and Commit. Feed them
-   from the existing selected-repository state through `update(...)`; do not
-   query Git from the controller.
+1. Extend `GitMenuBar/App/MainWindowToolbarController.swift` with native items
+   for branch picker, ahead/behind indicator, Fetch, Sync, and Commit. Keep the
+   pure state mapping in `MainWindowToolbarRepositoryState.swift`. Feed the
+   items from the existing selected-repository state through `update(...)`; do
+   not query Git from the controller.
 2. Commit shows the change count and selects the Working Tree side panel
    (existing `MainMenuSidePanelSelection`). Sync appears only when ahead or
    behind. Fetch is always enabled while no operation runs.
-3. Branch picker opens the existing `MainMenuBranchSelectorOverlay`.
+3. Branch picker opens the existing `MainMenuBranchSelectorOverlay` in an
+   `NSPopover` anchored to the branch toolbar item. `MainWindowController` owns
+   the shared presentation state; `MainMenuView` and the toolbar share the
+   existing selector content rather than maintaining duplicate UI.
 4. Remove Commit/Sync from the Working Tree card
-   (`RepositoryOverviewView.swift`) and remove `MainMenuFooterSection` usage.
+   (`RepositoryOverviewView.swift`), remove `MainMenuFooterSection` usage, and
+   delete `MainMenuFooterSection.swift`.
 5. Hide repository items on non-repository routes.
 6. Keep command palette and keyboard shortcuts for these actions working.
 
 ## Acceptance
 
-- Each toolbar item has an accessibility label that names the object
-  ("Commit 1 change in NetNewsWire").
+- Native toolbar items use short visible labels/titles (Fetch, Sync, Commit,
+  and the branch name); repository-specific sentences remain in accessibility
+  descriptions and tooltips (for example, "Commit 1 change in NetNewsWire").
+- Commit uses a native count badge for the working-tree change count when the
+  running macOS version supports `NSToolbarItem` badges.
+- Sync remains visible and disabled when working-tree changes exist, with the
+  tooltip "Commit changes before syncing".
 - Busy state disables Fetch/Sync/Commit and shows progress in place.
+- The branch selector popover is anchored to the branch toolbar item and uses
+  the existing selector content.
+- `MainMenuFooterSection.swift` is absent and has no remaining users.
 - Focused tests for the toolbar state mapping (counts, Sync visibility).
 - Matches the approved prototype and `docs/ui.md` hierarchy rules.
 
@@ -63,10 +93,8 @@ disabled button when there is nothing to sync.
 - `make lint-changed`
 - `make check-preview` (add or update previews for every changed view)
 - `make build`
-- Screenshots of the changed surface in Dark and Light, plus Increase
-  Contrast, attached to the handoff.
-- Add a focused test for the state-to-items mapping, then
-  `make test-focused TEST_FILTER='GitMenuBarTests/<NewTest>'`
+- `make test-focused TEST_FILTER='GitMenuBarTests/ToolbarStateMappingTests'`
+- `git diff --check`
 
 ## STOP conditions
 
