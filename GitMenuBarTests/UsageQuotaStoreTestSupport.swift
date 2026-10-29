@@ -24,6 +24,11 @@ func writeCodexSessionFixture(to homeDirectory: URL, now: Date) throws {
 /// state is guarded by one lock; `@unchecked` covers the lock-protected
 /// cross-task state of this test-only fake.
 final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
+    enum CancellationMode: Sendable {
+        case autoResume
+        case holdUntilGate
+    }
+
     let id: UsageProviderID
     private let lock = NSLock()
     private var storedSnapshot: UsageQuotaSnapshot
@@ -32,6 +37,10 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
     private var storedIsCancelled = false
     private var storedOnCancel: (@Sendable () -> Void)?
     private var pendingByFetch: [Int: CheckedContinuation<Void, Never>] = [:]
+    private var defaultCancellationMode: CancellationMode = .autoResume
+    private var cancellationModeByFetch: [Int: CancellationMode] = [:]
+    private var activeFetches: Set<Int> = []
+    private var completionContinuations: [CheckedContinuation<Void, Never>] = []
 
     init(id: UsageProviderID = .codex, snapshot: UsageQuotaSnapshot) {
         self.id = id
@@ -61,10 +70,33 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
         set { lock.withLock { storedOnCancel = newValue } }
     }
 
+    func setCancellationMode(_ mode: CancellationMode, forFetch fetchNumber: Int? = nil) {
+        lock.withLock {
+            if let fetchNumber {
+                cancellationModeByFetch[fetchNumber] = mode
+            } else {
+                defaultCancellationMode = mode
+            }
+        }
+    }
+
     func fetchSnapshot() async -> UsageQuotaSnapshot {
         let (fetchNumber, snapshotForRequest) = lock.withLock { () -> (Int, UsageQuotaSnapshot) in
             storedFetchCount += 1
+            activeFetches.insert(storedFetchCount)
             return (storedFetchCount, storedSnapshot)
+        }
+        defer {
+            lock.withLock {
+                activeFetches.remove(fetchNumber)
+                if activeFetches.isEmpty {
+                    let continuations = completionContinuations
+                    completionContinuations.removeAll()
+                    for continuation in continuations {
+                        continuation.resume()
+                    }
+                }
+            }
         }
 
         await withTaskCancellationHandler {
@@ -89,7 +121,13 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
             let (hook, continuation) = self.lock.withLock { () -> ((@Sendable () -> Void)?, CheckedContinuation<Void, Never>?) in
                 self.storedIsCancelled = true
                 let hook = self.storedOnCancel
-                let continuation = self.pendingByFetch.removeValue(forKey: fetchNumber)
+                let mode = self.cancellationModeByFetch[fetchNumber] ?? self.defaultCancellationMode
+                let continuation: CheckedContinuation<Void, Never>? = switch mode {
+                case .autoResume:
+                    self.pendingByFetch.removeValue(forKey: fetchNumber)
+                case .holdUntilGate:
+                    nil
+                }
                 return (hook, continuation)
             }
             hook?()
@@ -115,6 +153,24 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
         }
         for continuation in continuations {
             continuation.resume()
+        }
+    }
+
+    func awaitAllFetches() async {
+        let shouldWait: Bool = lock.withLock { !activeFetches.isEmpty }
+        guard shouldWait else { return }
+
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let immediateResume: Bool = lock.withLock {
+                if activeFetches.isEmpty {
+                    return true
+                }
+                completionContinuations.append(continuation)
+                return false
+            }
+            if immediateResume {
+                continuation.resume()
+            }
         }
     }
 }
@@ -153,6 +209,8 @@ final class GatedPricingLoader: @unchecked Sendable {
     private var storedIsCancelled = false
     private var storedOnCancel: (@Sendable () -> Void)?
     private var pending: CheckedContinuation<UsageQuotaModelsDevStore.PricingSource, Never>?
+    private var activeLoads = 0
+    private var completionContinuations: [CheckedContinuation<Void, Never>] = []
 
     var loadCount: Int {
         lock.withLock { storedLoadCount }
@@ -173,7 +231,21 @@ final class GatedPricingLoader: @unchecked Sendable {
     }
 
     func load() async -> UsageQuotaModelsDevStore.PricingSource {
-        await withTaskCancellationHandler {
+        lock.withLock { activeLoads += 1 }
+        defer {
+            lock.withLock {
+                activeLoads -= 1
+                if activeLoads == 0 {
+                    let continuations = completionContinuations
+                    completionContinuations.removeAll()
+                    for continuation in continuations {
+                        continuation.resume()
+                    }
+                }
+            }
+        }
+
+        return await withTaskCancellationHandler {
             await withCheckedContinuation { (continuation: CheckedContinuation<UsageQuotaModelsDevStore.PricingSource, Never>) in
                 let state = lock.withLock { () -> (
                     hook: (@Sendable () -> Void)?,
@@ -202,6 +274,24 @@ final class GatedPricingLoader: @unchecked Sendable {
 
     func openGate() {
         resumePending()
+    }
+
+    func awaitAllLoads() async {
+        let shouldWait: Bool = lock.withLock { activeLoads > 0 }
+        guard shouldWait else { return }
+
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let immediateResume: Bool = lock.withLock {
+                if activeLoads == 0 {
+                    return true
+                }
+                completionContinuations.append(continuation)
+                return false
+            }
+            if immediateResume {
+                continuation.resume()
+            }
+        }
     }
 
     private func resumePending() {

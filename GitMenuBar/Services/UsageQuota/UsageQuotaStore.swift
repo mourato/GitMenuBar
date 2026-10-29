@@ -24,60 +24,38 @@ final class UsageQuotaStore {
     private(set) var costEstimates: UsageQuotaCostEstimate?
     /// Reset credits with a redemption in flight; their menu items stay disabled until the attempt settles.
     private(set) var redeemingResetCreditIDs: Set<String> = []
+    private func updatePreference(_ key: String, value: Bool, oldValue: Bool) {
+        guard value != oldValue else { return }
+        defaults.set(value, forKey: key)
+        handlePreferenceChange()
+    }
+
     var showAIUsageQuotas: Bool {
-        didSet {
-            guard showAIUsageQuotas != oldValue else { return }
-            defaults.set(showAIUsageQuotas, forKey: AppPreferences.Keys.showAIUsageQuotas)
-            handlePreferenceChange()
-        }
+        didSet { updatePreference(AppPreferences.Keys.showAIUsageQuotas, value: showAIUsageQuotas, oldValue: oldValue) }
     }
 
     var showClaudeCodeUsageQuota: Bool {
-        didSet {
-            guard showClaudeCodeUsageQuota != oldValue else { return }
-            defaults.set(showClaudeCodeUsageQuota, forKey: AppPreferences.Keys.showClaudeCodeUsageQuota)
-            handlePreferenceChange()
-        }
+        didSet { updatePreference(AppPreferences.Keys.showClaudeCodeUsageQuota, value: showClaudeCodeUsageQuota, oldValue: oldValue) }
     }
 
     var showCodexUsageQuota: Bool {
-        didSet {
-            guard showCodexUsageQuota != oldValue else { return }
-            defaults.set(showCodexUsageQuota, forKey: AppPreferences.Keys.showCodexUsageQuota)
-            handlePreferenceChange()
-        }
+        didSet { updatePreference(AppPreferences.Keys.showCodexUsageQuota, value: showCodexUsageQuota, oldValue: oldValue) }
     }
 
     var showCursorUsageQuota: Bool {
-        didSet {
-            guard showCursorUsageQuota != oldValue else { return }
-            defaults.set(showCursorUsageQuota, forKey: AppPreferences.Keys.showCursorUsageQuota)
-            handlePreferenceChange()
-        }
+        didSet { updatePreference(AppPreferences.Keys.showCursorUsageQuota, value: showCursorUsageQuota, oldValue: oldValue) }
     }
 
     var showOpenRouterUsageQuota: Bool {
-        didSet {
-            guard showOpenRouterUsageQuota != oldValue else { return }
-            defaults.set(showOpenRouterUsageQuota, forKey: AppPreferences.Keys.showOpenRouterUsageQuota)
-            handlePreferenceChange()
-        }
+        didSet { updatePreference(AppPreferences.Keys.showOpenRouterUsageQuota, value: showOpenRouterUsageQuota, oldValue: oldValue) }
     }
 
     var showGeminiUsageQuota: Bool {
-        didSet {
-            guard showGeminiUsageQuota != oldValue else { return }
-            defaults.set(showGeminiUsageQuota, forKey: AppPreferences.Keys.showGeminiUsageQuota)
-            handlePreferenceChange()
-        }
+        didSet { updatePreference(AppPreferences.Keys.showGeminiUsageQuota, value: showGeminiUsageQuota, oldValue: oldValue) }
     }
 
     var showAntigravityUsageQuota: Bool {
-        didSet {
-            guard showAntigravityUsageQuota != oldValue else { return }
-            defaults.set(showAntigravityUsageQuota, forKey: AppPreferences.Keys.showAntigravityUsageQuota)
-            handlePreferenceChange()
-        }
+        didSet { updatePreference(AppPreferences.Keys.showAntigravityUsageQuota, value: showAntigravityUsageQuota, oldValue: oldValue) }
     }
 
     /// Resolves the pricing source for a cost scan. Injectable so tests never
@@ -100,7 +78,8 @@ final class UsageQuotaStore {
     @ObservationIgnored private var costScanGeneration = 0
     @ObservationIgnored private var costScanTask: Task<Void, Never>?
     @ObservationIgnored private var costScanWorkerTask: Task<UsageQuotaCostEstimate, Never>?
-    @ObservationIgnored private var inFlightTasks: [Task<Void, Never>] = []
+    @ObservationIgnored private var pendingTasks: [UInt64: Task<Void, Never>] = [:]
+    @ObservationIgnored private var nextTaskID: UInt64 = 0
 
     isolated deinit {
         refreshTimer?.invalidate()
@@ -117,17 +96,26 @@ final class UsageQuotaStore {
         refreshTimer
     }
 
-    private func trackTask(_ task: Task<Void, Never>) {
-        inFlightTasks.append(task)
+    private func trackPendingTask(_ operation: @escaping @MainActor () async -> Void) -> Task<Void, Never> {
+        let id = nextTaskID
+        nextTaskID &+= 1
+        let task = Task { [weak self] in
+            defer {
+                self?.pendingTasks.removeValue(forKey: id)
+            }
+            await operation()
+        }
+        pendingTasks[id] = task
+        return task
     }
 
     func awaitPendingWork() async {
-        let tasks = inFlightTasks
-        inFlightTasks.removeAll()
-        for task in tasks {
-            _ = await task.value
+        while !pendingTasks.isEmpty {
+            let tasks = Array(pendingTasks.values)
+            for task in tasks {
+                _ = await task.value
+            }
         }
-        _ = await costScanWorkerTask?.value
     }
 
     init(
@@ -170,25 +158,19 @@ final class UsageQuotaStore {
         }
     }
 
-    func refresh(reason: RefreshReason = .manual) {
-        guard showAIUsageQuotas else { return }
+    private func shouldThrottleRefresh(reason: RefreshReason) -> Bool {
         switch reason {
         case .manual:
-            // Manual stays a forced refresh: it may cancel and replace in-flight work.
-            break
+            false
         case .windowPresented:
-            guard !isRefreshInFlight else { return }
-            if let lastPresentationRefreshAt,
-               now().timeIntervalSince(lastPresentationRefreshAt) < Constants.refreshInterval
-            {
-                return
-            }
+            isRefreshInFlight || (lastPresentationRefreshAt.map { now().timeIntervalSince($0) < Constants.refreshInterval } ?? false)
         case .timer, .settingsEnabled, .contentAppeared:
-            // Automatic requests coalesce with an in-flight cycle instead of
-            // cancelling and restarting it; the cycle reconciles provider changes
-            // before publishing its final snapshot.
-            guard !isRefreshInFlight else { return }
+            isRefreshInFlight
         }
+    }
+
+    func refresh(reason: RefreshReason = .manual) {
+        guard showAIUsageQuotas, !shouldThrottleRefresh(reason: reason) else { return }
 
         // Only manual refreshes reach here with non-nil work in flight.
         refreshTask?.cancel()
@@ -203,21 +185,53 @@ final class UsageQuotaStore {
             return
         }
 
-        let task = Task { [weak self] in
-            let trace = GitPerformanceTrace.begin("usage.quota.refresh")
-            defer { GitPerformanceTrace.end("usage.quota.refresh", id: trace) }
-
-            let initialResults = await Self.fetchSnapshots(for: activeProviders)
-            guard let self else { return }
-            await finalizeRefresh(
-                initialResults: initialResults,
+        refreshTask = trackPendingTask { [weak self] in
+            await Self.runRefreshLoop(
                 initialProviders: activeProviders,
-                reason: reason,
-                generation: generation
+                reconcile: { [weak self] newlyFetched, accumulated, fetchedIDs in
+                    self?.reconcileFetchStep(
+                        newlyFetched: newlyFetched,
+                        accumulated: accumulated,
+                        fetchedProviderIDs: fetchedIDs,
+                        generation: generation
+                    )
+                },
+                finalize: { [weak self] allSnapshots in
+                    self?.finalizeRefreshSynchronous(snapshots: allSnapshots, reason: reason, generation: generation)
+                }
             )
         }
-        refreshTask = task
-        trackTask(task)
+    }
+
+    private static func runRefreshLoop(
+        initialProviders: [any UsageQuotaProviding],
+        reconcile: ([UsageQuotaSnapshot], [UsageQuotaSnapshot], Set<UsageProviderID>) -> ReconciliationStepAction?,
+        finalize: ([UsageQuotaSnapshot]) -> Void
+    ) async {
+        let trace = GitPerformanceTrace.begin("usage.quota.refresh")
+        defer { GitPerformanceTrace.end("usage.quota.refresh", id: trace) }
+
+        var providersToFetch = initialProviders
+        var accumulatedSnapshots: [UsageQuotaSnapshot] = []
+        var fetchedProviderIDs = Set<UsageProviderID>()
+
+        while !providersToFetch.isEmpty {
+            fetchedProviderIDs.formUnion(providersToFetch.map(\.id))
+            let newlyFetched = await fetchSnapshots(for: providersToFetch)
+
+            guard let action = reconcile(newlyFetched, accumulatedSnapshots, fetchedProviderIDs) else {
+                return
+            }
+
+            switch action {
+            case let .fetchMore(nextProviders, updatedAccumulated):
+                providersToFetch = nextProviders
+                accumulatedSnapshots = updatedAccumulated
+            case let .finalize(allSnapshots):
+                finalize(allSnapshots)
+                return
+            }
+        }
     }
 
     /// Spends one Codex reset credit and refreshes usage so counts match the server.
@@ -293,68 +307,64 @@ final class UsageQuotaStore {
 
     func isProviderEnabled(_ providerID: UsageProviderID) -> Bool {
         switch providerID {
-        case .claudeCode:
-            showClaudeCodeUsageQuota
-        case .codex:
-            showCodexUsageQuota
-        case .cursor:
-            showCursorUsageQuota
-        case .openrouter:
-            showOpenRouterUsageQuota
-        case .gemini:
-            showGeminiUsageQuota
-        case .antigravity:
-            showAntigravityUsageQuota
+        case .claudeCode: showClaudeCodeUsageQuota
+        case .codex: showCodexUsageQuota
+        case .cursor: showCursorUsageQuota
+        case .openrouter: showOpenRouterUsageQuota
+        case .gemini: showGeminiUsageQuota
+        case .antigravity: showAntigravityUsageQuota
         }
     }
 
     func setProviderEnabled(_ isEnabled: Bool, for providerID: UsageProviderID) {
         switch providerID {
-        case .claudeCode:
-            showClaudeCodeUsageQuota = isEnabled
-        case .codex:
-            showCodexUsageQuota = isEnabled
-        case .cursor:
-            showCursorUsageQuota = isEnabled
-        case .openrouter:
-            showOpenRouterUsageQuota = isEnabled
-        case .gemini:
-            showGeminiUsageQuota = isEnabled
-        case .antigravity:
-            showAntigravityUsageQuota = isEnabled
+        case .claudeCode: showClaudeCodeUsageQuota = isEnabled
+        case .codex: showCodexUsageQuota = isEnabled
+        case .cursor: showCursorUsageQuota = isEnabled
+        case .openrouter: showOpenRouterUsageQuota = isEnabled
+        case .gemini: showGeminiUsageQuota = isEnabled
+        case .antigravity: showAntigravityUsageQuota = isEnabled
         }
     }
 
-    private func finalizeRefresh(
-        initialResults: [UsageQuotaSnapshot],
-        initialProviders: [any UsageQuotaProviding],
+    private enum ReconciliationStepAction {
+        case fetchMore([any UsageQuotaProviding], [UsageQuotaSnapshot])
+        case finalize([UsageQuotaSnapshot])
+    }
+
+    private func reconcileFetchStep(
+        newlyFetched: [UsageQuotaSnapshot],
+        accumulated: [UsageQuotaSnapshot],
+        fetchedProviderIDs: Set<UsageProviderID>,
+        generation: Int
+    ) -> ReconciliationStepAction? {
+        guard showAIUsageQuotas, generation == refreshGeneration else {
+            return nil
+        }
+
+        let totalAccumulated = accumulated + newlyFetched
+        let currentProviders = enabledProviders()
+        let newlyEnabledProviders = currentProviders.filter { !fetchedProviderIDs.contains($0.id) }
+
+        if !newlyEnabledProviders.isEmpty {
+            return .fetchMore(newlyEnabledProviders, totalAccumulated)
+        } else {
+            return .finalize(totalAccumulated)
+        }
+    }
+
+    private func finalizeRefreshSynchronous(
+        snapshots rawSnapshots: [UsageQuotaSnapshot],
         reason: RefreshReason,
         generation: Int
-    ) async {
+    ) {
         guard showAIUsageQuotas, generation == refreshGeneration else {
             finishRefresh(reason: reason, generation: generation)
             return
         }
 
-        var merged = initialResults
-        var fetchedProviderIDs = Set(initialProviders.map(\.id))
-        var currentProviderIDs = fetchedProviderIDs
-
-        // A settings change can arrive while a provider fetch is suspended.
-        // Reconcile until no provider was added during the previous fetch.
-        while true {
-            guard showAIUsageQuotas, generation == refreshGeneration else { return }
-            let currentProviders = enabledProviders()
-            currentProviderIDs = Set(currentProviders.map(\.id))
-            let newlyEnabledProviders = currentProviders.filter { !fetchedProviderIDs.contains($0.id) }
-            guard !newlyEnabledProviders.isEmpty else { break }
-
-            fetchedProviderIDs.formUnion(newlyEnabledProviders.map(\.id))
-            let newlyEnabledSnapshots = await Self.fetchSnapshots(for: newlyEnabledProviders)
-            guard showAIUsageQuotas, generation == refreshGeneration else { return }
-            merged.append(contentsOf: newlyEnabledSnapshots)
-        }
-        guard showAIUsageQuotas, generation == refreshGeneration else { return }
+        let currentProviderIDs = Set(enabledProviders().map(\.id))
+        var merged = rawSnapshots
         merged.removeAll { !currentProviderIDs.contains($0.providerID) }
 
         var resolved = merged.map { resolveSnapshot($0) }
@@ -417,7 +427,7 @@ final class UsageQuotaStore {
         }
         costScanWorkerTask = workerTask
 
-        let task = Task { [weak self, workerTask] in
+        let task = trackPendingTask { [weak self, workerTask] in
             defer { GitPerformanceTrace.end("usage.cost.scan", id: trace) }
             let estimates = await withTaskCancellationHandler {
                 await workerTask.value
@@ -436,7 +446,6 @@ final class UsageQuotaStore {
             }
         }
         costScanTask = task
-        trackTask(task)
     }
 
     private func finishRefresh(reason: RefreshReason, generation: Int) {
@@ -465,25 +474,15 @@ final class UsageQuotaStore {
         timeout: TimeInterval
     ) async -> UsageQuotaSnapshot {
         await withTaskGroup(of: UsageQuotaSnapshot?.self) { group in
-            group.addTask {
-                await provider.fetchSnapshot()
-            }
+            group.addTask { await provider.fetchSnapshot() }
             group.addTask {
                 try? await Task.sleep(for: .seconds(timeout))
                 return nil
             }
-
             defer { group.cancelAll() }
-
-            // First completed child wins: a non-nil snapshot from the provider, or
-            // nil from the timeout task. Skipping nil used to ignore timeouts entirely.
-            if let first = await group.next() {
-                if let snapshot = first {
-                    return snapshot
-                }
-                return .unavailable(providerID: provider.id, statusNote: "refresh timed out")
+            if let first = await group.next(), let snapshot = first {
+                return snapshot
             }
-
             return .unavailable(providerID: provider.id, statusNote: "refresh timed out")
         }
     }
