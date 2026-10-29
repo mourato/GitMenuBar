@@ -25,21 +25,53 @@ private enum CommitDetailPagePreviewData {
             )
         ]
     )
-}
 
-private struct CommitDetailPreviewNamespace {
-    @Namespace var animationNamespace
+    static let longSubjectCommit = Commit(
+        id: "fedcba9876543210fedcba9876543210fedcba98",
+        shortHash: "fedcba9",
+        subject: "feat(history): keep the selected row title visible while the open commit detail panel shows the same commit with its full metadata",
+        body: "",
+        authorName: "Renato Silva",
+        authorEmail: "renato@example.com",
+        committedAt: .now.addingTimeInterval(-7200),
+        stats: CommitStats(filesChanged: 1, insertions: 6, deletions: 1),
+        changedFiles: [
+            CommitFileChange(
+                path: "GitMenuBar/Components/History/HistoryTimelineSectionView.swift",
+                lineDiff: LineDiffStats(added: 6, removed: 1)
+            )
+        ]
+    )
 }
 
 #if DEBUG
     #Preview("Commit Detail") {
-        let previewNS = CommitDetailPreviewNamespace()
-        return CommitDetailPageView(
+        CommitDetailPageView(
             commit: CommitDetailPagePreviewData.commit,
             currentHash: "abcdef1234567890",
             remoteUrl: "https://github.com/example/repo.git",
             isCommitInFuture: { _ in false },
-            animationNamespace: previewNS.animationNamespace,
+            onBack: {},
+            onRestoreCommit: { _ in },
+            onEditCommitMessage: { _ in },
+            onGenerateCommitMessage: { _ in }
+        )
+        .environment(
+            GitHubAuthManager(
+                tokenStore: InMemoryGitHubTokenStore(),
+                preloadStoredToken: false
+            )
+        )
+        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+        .frame(width: 420, height: 580)
+    }
+
+    #Preview("Commit Detail - Long Subject") {
+        CommitDetailPageView(
+            commit: CommitDetailPagePreviewData.longSubjectCommit,
+            currentHash: "abcdef1234567890",
+            remoteUrl: "https://github.com/example/repo.git",
+            isCommitInFuture: { _ in false },
             onBack: {},
             onRestoreCommit: { _ in },
             onEditCommitMessage: { _ in },
@@ -56,13 +88,11 @@ private struct CommitDetailPreviewNamespace {
     }
 
     #Preview("Commit Detail - Missing Commit") {
-        let previewNS = CommitDetailPreviewNamespace()
-        return CommitDetailPageView(
+        CommitDetailPageView(
             commit: nil,
             currentHash: "abcdef1234567890",
             remoteUrl: "https://github.com/example/repo.git",
             isCommitInFuture: { _ in false },
-            animationNamespace: previewNS.animationNamespace,
             onBack: {},
             onRestoreCommit: { _ in },
             onEditCommitMessage: { _ in },

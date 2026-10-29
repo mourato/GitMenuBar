@@ -9,7 +9,6 @@ struct CommitDetailPageView: View {
     let currentHash: String
     let remoteUrl: String
     let isCommitInFuture: (Commit) -> Bool
-    let animationNamespace: Namespace.ID
     let onBack: () -> Void
     let onRestoreCommit: (Commit) -> Void
     let onEditCommitMessage: (Commit) -> Void
@@ -105,7 +104,6 @@ struct CommitDetailPageView: View {
                 .font(WorkbenchTypography.windowTitle)
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
-                .matchedGeometryEffect(id: "commit-\(commit.id)", in: animationNamespace)
 
             if !commit.body.isEmpty {
                 Text(commit.body)

@@ -8,7 +8,6 @@ struct SidePanelHistoryModel {
     let selectedItemID: MainMenuSelectableItem?
     let isLoading: Bool
     let canLoadMore: Bool
-    let animationNamespace: Namespace.ID
     let isCommitInFuture: (Commit) -> Bool
     let onSelectRow: (HistoryRowAdapter) -> Void
     let onOpenCommit: (String) -> Void
@@ -29,7 +28,6 @@ struct SidePanelHistoryModel {
             selectedItemID: selectedItemID,
             isLoading: isLoading,
             canLoadMore: canLoadMore,
-            animationNamespace: Namespace().wrappedValue,
             isCommitInFuture: { _ in false },
             onSelectRow: { _ in },
             onOpenCommit: { _ in },

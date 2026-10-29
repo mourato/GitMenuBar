@@ -5,7 +5,6 @@ struct HistorySectionView: View {
     let selectedItemID: MainMenuSelectableItem?
     let isLoading: Bool
     let canLoadMore: Bool
-    let animationNamespace: Namespace.ID
     let onSelectRow: (HistoryRowAdapter) -> Void
     let onActivateCommit: (HistoryRowAdapter) -> Void
     let onRestoreCommit: (HistoryRowAdapter) -> Void
@@ -28,7 +27,6 @@ struct HistorySectionView: View {
                     sections: sections,
                     selectedItemID: selectedItemID,
                     isLoading: isLoading,
-                    animationNamespace: animationNamespace,
                     onSelectRow: onSelectRow,
                     onActivateCommit: onActivateCommit,
                     onRestoreCommit: onRestoreCommit,
@@ -94,7 +92,6 @@ struct HistorySectionView: View {
         selectedItemID: nil,
         isLoading: false,
         canLoadMore: true,
-        animationNamespace: Namespace().wrappedValue,
         onSelectRow: { _ in },
         onActivateCommit: { _ in },
         onRestoreCommit: { _ in },
