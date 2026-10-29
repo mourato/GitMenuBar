@@ -10,9 +10,6 @@ private enum ChangedFilesListMetrics {
     static let proportionBarCornerRadius: CGFloat = 2.5
     /// Files shown before the list asks to reveal the rest.
     static let collapsedFileLimit = 8
-    // Directory context stays secondary, so it carries a short fixed budget
-    // of characters and keeps the nearest folder name. The row tooltip
-    // carries the full path.
 }
 
 private struct ChangedFilesGroup: Identifiable {
