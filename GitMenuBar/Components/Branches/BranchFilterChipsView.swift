@@ -49,7 +49,6 @@ struct BranchFilterChipsView: View {
     BranchFilterChipsView(
         filter: .constant(.all),
         model: BranchListModel(
-            current: nil,
             local: [],
             visible: [],
             collapsedMerged: [],

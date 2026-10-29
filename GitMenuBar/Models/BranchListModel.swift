@@ -85,7 +85,6 @@ struct RemoteBranchGroup: Identifiable, Hashable, Sendable {
 
 /// Resolved state produced by `BranchListResolver`.
 struct BranchListModel: Equatable, Sendable {
-    let current: BranchInfo?
     let local: [BranchListRow]
     let visible: [BranchListRow]
     let collapsedMerged: [BranchListRow]
@@ -118,7 +117,6 @@ enum BranchListResolver {
         now: Date
     ) -> BranchListModel {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        let currentBranch = branches.first(where: \.isCurrent)
 
         let index = SnapshotIndex(snapshot: snapshot)
         let evaluatedLocal = evaluateLocalRows(branches: branches, query: trimmedQuery, index: index)
@@ -136,7 +134,6 @@ enum BranchListResolver {
         let (readyCount, blockedCount) = snapshot?.cleanupCounts(matching: trimmedQuery) ?? (0, 0)
 
         return BranchListModel(
-            current: currentBranch,
             local: sortedLocal,
             visible: visible,
             collapsedMerged: collapsed,

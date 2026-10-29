@@ -84,19 +84,18 @@ final class BranchListModelTests: XCTestCase {
 
     // MARK: - Tests
 
-    func testResolveCurrentBranch() {
+    func testCurrentBranchLeadsLocalRows() {
         let current = makeLocalBranch(name: "main", isCurrent: true)
         let other = makeLocalBranch(name: "feature", isCurrent: false)
         let model = BranchListResolver.resolve(branches: [other, current], now: fixedNow)
-        XCTAssertEqual(model.current?.name, "main")
-        XCTAssertEqual(model.current?.isCurrent, true)
+        XCTAssertEqual(model.local.map(\.branch.name), ["main", "feature"])
     }
 
-    func testResolveCurrentBranchNilWhenDetached() {
-        let branch1 = makeLocalBranch(name: "feature-1", isCurrent: false)
-        let branch2 = makeLocalBranch(name: "feature-2", isCurrent: false)
-        let model = BranchListResolver.resolve(branches: [branch1, branch2], now: fixedNow)
-        XCTAssertNil(model.current)
+    func testCurrentBranchIsOmittedWhenQueryDoesNotMatchIt() {
+        let current = makeLocalBranch(name: "main", isCurrent: true)
+        let other = makeLocalBranch(name: "feature", isCurrent: false)
+        let model = BranchListResolver.resolve(branches: [other, current], query: "feat", now: fixedNow)
+        XCTAssertEqual(model.local.map(\.branch.name), ["feature"])
     }
 
     func testStaleTenDayBoundary() {
