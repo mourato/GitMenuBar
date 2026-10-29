@@ -133,7 +133,8 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
 
         if identifier == Self.titleIdentifier {
             let item = NSToolbarItem(itemIdentifier: identifier)
-            item.view = titleLabel
+            // Leading inset aligns the title with the content column below the toolbar.
+            item.view = Self.inset(titleLabel, leading: WorkbenchMetrics.chipSpacing, trailing: WorkbenchMetrics.compactSpacing)
             return item
         }
 
@@ -268,13 +269,20 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         return chip
     }
 
-    private func makeStatusView(title: String, accessibilityLabel: String) -> NSTextField {
-        let view = NSTextField(labelWithString: title)
-        view.font = .preferredFont(forTextStyle: .subheadline)
-        view.textColor = .secondaryLabelColor
-        view.toolTip = accessibilityLabel
-        view.setAccessibilityLabel(accessibilityLabel)
-        return view
+    private func makeStatusView(title: String, accessibilityLabel: String) -> NSView {
+        let label = NSTextField(labelWithString: title)
+        label.font = .preferredFont(forTextStyle: .subheadline)
+        label.textColor = .secondaryLabelColor
+        label.toolTip = accessibilityLabel
+        label.setAccessibilityLabel(accessibilityLabel)
+        return Self.inset(label, leading: 0, trailing: WorkbenchMetrics.compactSpacing)
+    }
+
+    /// Wraps a toolbar view with horizontal insets; toolbar items add no spacing around custom views.
+    private static func inset(_ view: NSView, leading: CGFloat, trailing: CGFloat) -> NSView {
+        let stack = NSStackView(views: [view])
+        stack.edgeInsets = NSEdgeInsets(top: 0, left: leading, bottom: 0, right: trailing)
+        return stack
     }
 
     private func presentBranchSelectorPopover() {
