@@ -1,22 +1,43 @@
 import AppKit
 import SwiftUI
 
+private enum ChangedFilesListMetrics {
+    /// Changed-file row height floor from the commit inspector contract.
+    static let rowMinHeight: CGFloat = 24
+    /// Summary proportion bar: 40 x 5 pt, radius 2.5.
+    static let proportionBarWidth: CGFloat = 40
+    static let proportionBarHeight: CGFloat = 5
+    static let proportionBarCornerRadius: CGFloat = 2.5
+    /// Files shown before the list asks to reveal the rest.
+    static let collapsedFileLimit = 8
+    /// Directory context stays secondary, so it carries a short fixed budget
+    /// of characters and keeps the nearest folder name. The row tooltip
+    /// carries the full path.
+    static let directoryCharacterLimit = 14
+}
+
+private struct ChangedFilesGroup: Identifiable {
+    let label: String
+    let files: [CommitFileChange]
+
+    var id: String {
+        label
+    }
+}
+
 struct ChangedFilesSummaryView: View {
     let changedFiles: [CommitFileChange]
     let commitSHA: String
     let remoteURL: String
     var onOpenLocalFile: ((String) -> Void)?
 
-    @State private var isCollapsed: Bool
-    @State private var allDirectoriesExpanded: Bool
-    @State private var directoryExpansionOverrides: [String: Bool] = [:]
+    @State private var showsAllFiles = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     private let aggregateStat: DiffTreeStat
-    private let treeNodes: [DiffTreeNode]
-    private let directoryPaths: [String]
-    private let hasDirectoryNodes: Bool
+    private let groups: [ChangedFilesGroup]
 
     init(
         changedFiles: [CommitFileChange],
@@ -29,27 +50,8 @@ struct ChangedFilesSummaryView: View {
         self.remoteURL = remoteURL
         self.onOpenLocalFile = onOpenLocalFile
 
-        let totalChangedLines = changedFiles.reduce(into: 0) { total, file in
-            total += file.lineDiff.added + file.lineDiff.removed
-        }
-        let shouldAutoExpand = ChangedFilesPresentation.shouldAutoExpandChangedFiles(
-            fileCount: changedFiles.count,
-            totalChangedLines: totalChangedLines,
-            isPrimaryContext: true
-        )
-        _isCollapsed = State(initialValue: !shouldAutoExpand)
-        _allDirectoriesExpanded = State(initialValue: shouldAutoExpand)
-
-        let nodes = DiffTreeBuilder.buildDiffTree(changedFiles.map(\.diffTreeFileInput))
-        let dirPaths = Self.collectDirectoryPaths(in: nodes)
-        treeNodes = nodes
-        directoryPaths = dirPaths
-        hasDirectoryNodes = !dirPaths.isEmpty
         aggregateStat = DiffTreeBuilder.summarizeDiffTreeStats(changedFiles.map(\.diffTreeFileInput))
-    }
-
-    private var paths: [String] {
-        changedFiles.map(\.path)
+        groups = Self.makeGroups(from: changedFiles)
     }
 
     private var commitURL: URL? {
@@ -65,12 +67,32 @@ struct ChangedFilesSummaryView: View {
         return "\(count) changed file\(count == 1 ? "" : "s")"
     }
 
-    private var scopeSummary: [ChangedFilesScopeSummary] {
-        ChangedFilesPresentation.summarizeChangedFileScopes(paths: paths)
+    private var totalChangedLines: Int {
+        aggregateStat.additions + aggregateStat.deletions
     }
 
-    private var previewPaths: [String] {
-        ChangedFilesPresentation.selectChangedFilePreview(paths: paths)
+    private var isTruncated: Bool {
+        changedFiles.count > ChangedFilesListMetrics.collapsedFileLimit && !showsAllFiles
+    }
+
+    private var visibleGroups: [ChangedFilesGroup] {
+        guard isTruncated else {
+            return groups
+        }
+
+        var remaining = ChangedFilesListMetrics.collapsedFileLimit
+        var truncated: [ChangedFilesGroup] = []
+
+        for group in groups {
+            guard remaining > 0 else {
+                break
+            }
+            let files = Array(group.files.prefix(remaining))
+            remaining -= files.count
+            truncated.append(ChangedFilesGroup(label: group.label, files: files))
+        }
+
+        return truncated
     }
 
     var body: some View {
@@ -80,167 +102,146 @@ struct ChangedFilesSummaryView: View {
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             } else {
-                summaryHeader
+                summaryRow
+                fileList
+            }
+        }
+        .onChange(of: changedFiles) {
+            showsAllFiles = false
+        }
+    }
 
-                if isCollapsed {
-                    compactPreview
-                        .transition(
-                            reduceMotion
-                                ? .opacity
-                                : .opacity.combined(with: .move(edge: .top))
-                        )
-                } else {
-                    diffTree
-                        .transition(
-                            reduceMotion
-                                ? .opacity
-                                : .opacity.combined(with: .move(edge: .top))
-                        )
+    private var summaryRow: some View {
+        HStack(spacing: WorkbenchMetrics.chipSpacing) {
+            Text(changedFilesTitle)
+                .font(WorkbenchTypography.body)
+                .lineLimit(1)
+                .layoutPriority(1)
+
+            WorkingTreeLineDiffView(
+                addedCount: aggregateStat.additions,
+                removedCount: aggregateStat.deletions
+            )
+
+            proportionBar
+
+            Spacer(minLength: WorkbenchMetrics.compactSpacing)
+
+            Button("Open Diff") {
+                openCommitDiff()
+            }
+            .workbenchGhost()
+            .disabled(!canOpenCommitOnGitHub)
+            .accessibilityLabel("Open diff")
+            .accessibilityHint(
+                canOpenCommitOnGitHub
+                    ? "Opens this commit on GitHub."
+                    : "Unavailable without a GitHub remote."
+            )
+        }
+        .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
+        .padding(.horizontal, WorkbenchMetrics.microSpacing)
+    }
+
+    private var proportionBar: some View {
+        HStack(spacing: 0) {
+            if totalChangedLines == 0 {
+                Rectangle()
+                    .fill(WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast))
+            } else {
+                if aggregateStat.additions > 0 {
+                    Rectangle()
+                        .fill(Color.green)
+                        .frame(width: proportionWidth(for: aggregateStat.additions))
+                }
+                if aggregateStat.deletions > 0 {
+                    Rectangle()
+                        .fill(Color.red)
+                        .frame(width: proportionWidth(for: aggregateStat.deletions))
                 }
             }
         }
-        .animation(
-            WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
-            value: isCollapsed
+        .frame(
+            width: ChangedFilesListMetrics.proportionBarWidth,
+            height: ChangedFilesListMetrics.proportionBarHeight
         )
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: ChangedFilesListMetrics.proportionBarCornerRadius,
+                style: .continuous
+            )
+        )
+        .accessibilityHidden(true)
     }
 
-    private var summaryHeader: some View {
-        WorkbenchSectionHeaderChrome(
-            title: changedFilesTitle,
-            isCollapsed: $isCollapsed,
-            accessibilityLabel: "\(changedFilesTitle) section",
-            accessibilityHintExpanded: "Shows changed files.",
-            accessibilityHintCollapsed: "Hides changed files."
-        ) { isHovered in
-            HStack(spacing: WorkbenchMetrics.microSpacing) {
-                WorkingTreeLineDiffView(
-                    addedCount: aggregateStat.additions,
-                    removedCount: aggregateStat.deletions
-                )
-
-                if isHovered {
-                    Text(isCollapsed ? "Show files" : "Hide files")
-                        .font(WorkbenchTypography.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                if !isCollapsed, hasDirectoryNodes {
-                    Button(action: toggleAllDirectories) {
-                        Image(
-                            systemName: allDirectoriesExpanded
-                                ? "arrow.down.right.and.arrow.up.left"
-                                : "arrow.up.left.and.arrow.down.right"
-                        )
-                        .font(WorkbenchTypography.captionStrong)
-                        .foregroundStyle(.primary)
-                        .frame(
-                            width: WorkingTreeLayoutMetrics.actionHitTarget,
-                            height: WorkingTreeLayoutMetrics.actionHitTarget
-                        )
-                        .contentShape(Rectangle())
-                    }
-                    .workbenchIcon()
-                    .help(allDirectoriesExpanded ? "Collapse all folders" : "Expand all folders")
-                    .accessibilityLabel(allDirectoriesExpanded ? "Collapse all folders" : "Expand all folders")
-                }
-
-                Button("Open Diff") {
-                    openCommitDiff()
-                }
-                .workbenchGhost()
-                .disabled(!canOpenCommitOnGitHub)
-                .accessibilityLabel("Open diff")
-                .accessibilityHint(
-                    canOpenCommitOnGitHub
-                        ? "Opens this commit on GitHub."
-                        : "Unavailable without a GitHub remote."
-                )
-            }
-        }
-    }
-
-    private var compactPreview: some View {
+    private var fileList: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-            if !scopeSummary.isEmpty {
-                HStack(spacing: WorkbenchMetrics.chipSpacing) {
-                    ForEach(Array(scopeSummary.enumerated()), id: \.element.label) { index, scope in
-                        if index > 0 {
-                            Text("·")
-                                .font(WorkbenchTypography.caption)
-                                .foregroundStyle(.secondary)
-                                .accessibilityHidden(true)
-                        }
-
-                        HStack(spacing: WorkbenchMetrics.microSpacing) {
-                            Text(scope.label)
-                                .font(WorkbenchTypography.captionStrong)
-                                .foregroundStyle(.primary.opacity(0.75))
-                            Text("\(scope.fileCount) file\(scope.fileCount == 1 ? "" : "s")")
-                                .font(WorkbenchTypography.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
+            ForEach(visibleGroups) { group in
+                groupSection(group)
             }
 
-            ChangedFilesPreviewFlowLayout(spacing: WorkbenchMetrics.chipSpacing) {
-                ForEach(previewPaths, id: \.self) { path in
-                    previewChip(for: path)
-                }
-
-                Button("Show all \(changedFiles.count) files") {
-                    withAnimation(
-                        WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion)
-                    ) {
-                        isCollapsed = false
-                    }
+            if isTruncated {
+                Button("Show All \(changedFiles.count) Files") {
+                    showsAllFiles = true
                 }
                 .workbenchGhost()
                 .font(WorkbenchTypography.captionStrong)
                 .accessibilityLabel("Show all \(changedFiles.count) changed files")
             }
         }
-        .padding(.leading, WorkbenchMetrics.compactSpacing)
-    }
-
-    private func previewChip(for path: String) -> some View {
-        Button {
-            openFile(at: path)
-        } label: {
-            HStack(spacing: WorkbenchMetrics.microSpacing) {
-                FileTypeIconView(path: path)
-
-                Text(ChangedFilesPresentation.changedFileName(path: path))
-                    .font(WorkbenchTypography.captionStrong)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, WorkbenchMetrics.chipSpacing)
-            .padding(.vertical, WorkbenchMetrics.microSpacing)
-            .background(WorkbenchPalette.hoverFill().opacity(0.45))
-            .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .help(path)
-        .accessibilityLabel(previewChipAccessibilityLabel(for: path))
-    }
-
-    private var diffTree: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-            ForEach(treeNodes, id: \.self) { node in
-                ChangedFilesDiffTreeNodeView(
-                    node: node,
-                    depth: 0,
-                    hasDirectoryNodes: hasDirectoryNodes,
-                    allDirectoriesExpanded: allDirectoriesExpanded,
-                    directoryExpansionOverrides: directoryExpansionOverrides,
-                    onToggleDirectory: toggleDirectory,
-                    onOpenFile: openFile(at:)
-                )
-            }
-        }
         .padding(.leading, WorkbenchMetrics.microSpacing)
+        .animation(
+            WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
+            value: showsAllFiles
+        )
+    }
+
+    private func groupSection(_ group: ChangedFilesGroup) -> some View {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+            Text(group.label)
+                .font(WorkbenchTypography.captionStrong)
+                .textCase(.uppercase)
+                .tracking(WorkbenchTypography.tracking(for: .caption))
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(group.label)
+                .accessibilityAddTraits(.isHeader)
+
+            ForEach(group.files) { file in
+                ChangedFilesFileRow(
+                    file: file,
+                    directoryTitle: relativeDirectory(for: file, in: group)
+                ) {
+                    openFile(at: file.path)
+                }
+            }
+        }
+    }
+
+    private func proportionWidth(for count: Int) -> CGFloat {
+        guard totalChangedLines > 0 else {
+            return 0
+        }
+        return ChangedFilesListMetrics.proportionBarWidth
+            * CGFloat(count)
+            / CGFloat(totalChangedLines)
+    }
+
+    /// Nearest directory under the group label. The group already names the
+    /// top-level folder, so the row keeps the shortest distinguishing context
+    /// and the full path stays in the row tooltip.
+    private func relativeDirectory(for file: CommitFileChange, in group: ChangedFilesGroup) -> String {
+        let directory = file.directoryPath
+        guard !directory.isEmpty, directory != group.label else {
+            return ""
+        }
+
+        let prefix = "\(group.label)/"
+        let relative = directory.hasPrefix(prefix) ? String(directory.dropFirst(prefix.count)) : directory
+        let parent = relative.split(separator: "/").last.map(String.init) ?? ""
+        guard parent.count > ChangedFilesListMetrics.directoryCharacterLimit else {
+            return parent
+        }
+        return "…" + parent.suffix(ChangedFilesListMetrics.directoryCharacterLimit - 1)
     }
 
     private func openCommitDiff() {
@@ -263,25 +264,91 @@ struct ChangedFilesSummaryView: View {
         onOpenLocalFile?(path)
     }
 
-    private func toggleAllDirectories() {
-        allDirectoriesExpanded.toggle()
-        directoryExpansionOverrides = [:]
-    }
+    private static func makeGroups(from files: [CommitFileChange]) -> [ChangedFilesGroup] {
+        var order: [String] = []
+        var filesByLabel: [String: [CommitFileChange]] = [:]
 
-    private func toggleDirectory(_ path: String) {
-        let isExpanded = directoryExpansionOverrides[path] ?? allDirectoriesExpanded
-        directoryExpansionOverrides[path] = !isExpanded
-    }
-
-    private func previewChipAccessibilityLabel(for path: String) -> String {
-        guard let file = changedFiles.first(where: { $0.path == path }) else {
-            return ChangedFilesPresentation.changedFileName(path: path)
+        for file in files {
+            let label = groupLabel(for: file.path)
+            if filesByLabel[label] == nil {
+                order.append(label)
+                filesByLabel[label] = []
+            }
+            filesByLabel[label]?.append(file)
         }
-        return fileAccessibilityLabel(for: file)
+
+        return order.map { ChangedFilesGroup(label: $0, files: filesByLabel[$0] ?? []) }
     }
 
-    private func fileAccessibilityLabel(for file: CommitFileChange) -> String {
-        var label = ChangedFilesPresentation.changedFileName(path: file.path)
+    private static func groupLabel(for path: String) -> String {
+        let segments = path
+            .replacingOccurrences(of: "\\", with: "/")
+            .split(separator: "/", omittingEmptySubsequences: true)
+        guard let topLevel = segments.first, segments.count > 1 else {
+            return "Root"
+        }
+        return String(topLevel)
+    }
+}
+
+private struct ChangedFilesFileRow: View {
+    let file: CommitFileChange
+    let directoryTitle: String
+    let onOpen: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: onOpen) {
+            HStack(spacing: WorkbenchMetrics.chipSpacing) {
+                FileTypeIconView(path: file.path)
+
+                Text(file.fileName)
+                    .font(WorkbenchTypography.body)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .layoutPriority(1)
+
+                if !directoryTitle.isEmpty {
+                    Text(directoryTitle)
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+
+                Spacer(minLength: WorkbenchMetrics.compactSpacing)
+
+                lineDiffLabel
+            }
+            .padding(.horizontal, WorkbenchMetrics.chipSpacing)
+            .frame(minHeight: ChangedFilesListMetrics.rowMinHeight)
+            .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .help(file.path)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint("Opens this file.")
+    }
+
+    private var lineDiffLabel: some View {
+        HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.microSpacing) {
+            Text("+\(file.lineDiff.added)")
+                .foregroundStyle(file.lineDiff.added > 0 ? .green : .secondary)
+            Text("-\(file.lineDiff.removed)")
+                .foregroundStyle(file.lineDiff.removed > 0 ? .red : .secondary)
+        }
+        .font(WorkbenchTypography.captionStrong.monospacedDigit())
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityHidden(true)
+    }
+
+    private var accessibilityLabel: String {
+        var label = file.fileName
         if file.lineDiff.added > 0 {
             label += ", \(file.lineDiff.added) additions"
         }
@@ -289,16 +356,5 @@ struct ChangedFilesSummaryView: View {
             label += ", \(file.lineDiff.removed) deletions"
         }
         return label
-    }
-
-    private static func collectDirectoryPaths(in nodes: [DiffTreeNode]) -> [String] {
-        nodes.flatMap { node -> [String] in
-            switch node {
-            case let .directory(_, path, _, children):
-                [path] + collectDirectoryPaths(in: children)
-            case .file:
-                []
-            }
-        }
     }
 }
