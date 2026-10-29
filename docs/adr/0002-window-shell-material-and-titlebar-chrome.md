@@ -4,7 +4,7 @@ The main panel and Settings window use a **window-level material/vibrancy shell*
 
 **Liquid Glass:** earlier builds opted out of the SDK's newer system chrome through `UIDesignRequiresCompatibility`. That key was removed on 2026-09-02. The main window now adopts the current native `NSToolbar` while retaining the full-size content window style and traffic lights; the titlebar material is system-owned and opaque, matching the GUGU Settings chrome. A borderless `NSPanel` remains an alternative only if the product later chooses to remove window chrome altogether.
 
-**Status:** accepted (2026-07-25); native toolbar adoption and compatibility-key removal recorded 2026-09-02
+**Status:** accepted (2026-07-25); native toolbar adoption and compatibility-key removal recorded 2026-09-02; the "visible native window title" clause is superseded by [ADR 0020](0020-toolbar-actions-and-history-list.md) (2026-10-29), which hides the system title in favor of a plain toolbar title item
 
 **Update (native sidebar toggle and sidebar footer):** following Cue's native split view and unified chrome pattern, the sidebar collapse toggle is integrated natively via AppKit's standard `NSToolbarItem.Identifier.toggleSidebar` in the unified toolbar, placing the toggle at the top leading chrome aligned directly above the sidebar column. The manual toolbar toggle button (`MainWindowToolbarItemIdentifier.sidebarToggle`) and the redundant collapse button in the sidebar footer have been removed. The sidebar footer now hosts only the quota strip and Settings gear.
 

@@ -181,7 +181,8 @@ struct RepositoryOverviewView: View {
         if let unpushed, unpushed > 0 {
             return "unpushed"
         }
-        return "All clear"
+        // "All clear" needs both metrics known; a known zero beside an unavailable one is not clear.
+        return unmerged == nil || unpushed == nil ? "Unavailable" : "All clear"
     }
 
     private var branchesAccessibilityValue: String {
@@ -198,7 +199,11 @@ struct RepositoryOverviewView: View {
             if let unpushed = knownUnpushed, unpushed > 0 {
                 parts.append("\(unpushed) unpushed \(unpushed == 1 ? "branch" : "branches")")
             }
-            summary = parts.isEmpty ? "All clear" : parts.joined(separator: ", ")
+            if !parts.isEmpty {
+                summary = parts.joined(separator: ", ")
+            } else {
+                summary = knownUnmerged == nil || knownUnpushed == nil ? "Unavailable" : "All clear"
+            }
         } else {
             summary = "Unavailable"
         }

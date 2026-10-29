@@ -2,6 +2,7 @@ import SwiftUI
 
 struct UsageQuotaStripView: View {
     @Environment(UsageQuotaStore.self) private var usageQuotaStore
+    @Environment(UsageQuotaPresentationPreferences.self) private var preferences
     @State private var isPopoverPresented = false
 
     var body: some View {
@@ -33,9 +34,14 @@ struct UsageQuotaStripView: View {
     }
 
     private func accessibilityValue(for snapshots: [UsageQuotaSnapshot]) -> String {
+        // Mirrors UsageQuotaSummaryView: primary window, else the tightest model window.
         snapshots.compactMap { snapshot in
-            snapshot.primaryDisplayWindow.map {
-                "\(snapshot.displayName) \($0.remainingPercent) percent remaining"
+            let window = snapshot.primaryDisplayWindow
+                ?? snapshot.modelWindows.min { $0.remainingPercent < $1.remainingPercent }
+            return window.map {
+                preferences.valueStyle == .left
+                    ? "\(snapshot.displayName) \($0.remainingPercent) percent left"
+                    : "\(snapshot.displayName) \(100 - $0.remainingPercent) percent used"
             }
         }
         .joined(separator: ", ")
