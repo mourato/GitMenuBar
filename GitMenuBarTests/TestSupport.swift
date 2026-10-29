@@ -157,7 +157,8 @@ func makeIsolatedGitEnvironment(inheriting environment: [String: String] = Proce
 func runGit(_ args: [String], in directory: URL, environment: [String: String]? = nil) throws -> String {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-    process.arguments = args
+    // Align normal and bare fixtures without depending on the host default branch.
+    process.arguments = ["-c", "init.defaultBranch=main"] + args
     process.currentDirectoryURL = directory
     process.environment = environment ?? makeIsolatedGitEnvironment()
 

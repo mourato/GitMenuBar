@@ -101,6 +101,29 @@ final class GitTestEnvironmentTests: XCTestCase {
         XCTAssertEqual(logSubject, "isolated commit")
     }
 
+    func testBareRemoteAndCloneTrackFixtureMainBranch() throws {
+        let root = try makeTemporaryTestDirectory(testName: #function)
+        let remote = root.appendingPathComponent("remote.git")
+        let local = try createTemporaryGitRepository(testName: #function + "-local")
+        try runGit(["init", "--bare", remote.path], in: root)
+        XCTAssertEqual(
+            try runGit(["symbolic-ref", "HEAD"], in: remote).trimmingCharacters(in: .whitespacesAndNewlines),
+            "refs/heads/main"
+        )
+        try runGit(["remote", "add", "origin", remote.path], in: local)
+        try runGit(["push", "-u", "origin", "HEAD"], in: local)
+        let peer = root.appendingPathComponent("peer")
+        try runGit(["clone", remote.path, peer.path], in: root)
+        XCTAssertEqual(
+            try runGit(["branch", "--show-current"], in: peer).trimmingCharacters(in: .whitespacesAndNewlines),
+            "main"
+        )
+        XCTAssertEqual(
+            try runGit(["rev-parse", "HEAD"], in: peer),
+            try runGit(["rev-parse", "HEAD"], in: local)
+        )
+    }
+
     func testCreateTemporaryGitRepositoryInitializesDeterministicMainBranch() throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         let branch = try runGit(["rev-parse", "--abbrev-ref", "HEAD"], in: repoURL)
