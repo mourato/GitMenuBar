@@ -26,7 +26,7 @@ final class ConventionalCommitSubjectTests: XCTestCase {
         XCTAssertEqual(result.subject, "show commit metadata")
     }
 
-    func testParseBreakingChangeMarkerWithoutScope() {
+    func testParseBreakingChangeMarker() {
         let result = ConventionalCommitSubjectParser.parse("feat!: change the history row")
 
         XCTAssertEqual(result.type, "feat")

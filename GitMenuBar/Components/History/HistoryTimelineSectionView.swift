@@ -237,7 +237,7 @@ private struct HistoryTimelineRowView: View {
     private var subjectLine: some View {
         HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.chipSpacing) {
             if let type = knownType {
-                Text(type)
+                Text(parsedSubject.isBreaking ? "\(type)!" : type)
                     .font(WorkbenchTypography.captionStrong)
                     .foregroundStyle(commit.isMergeCommit ? Color.secondary : Color.accentColor)
                     .padding(.horizontal, WorkbenchMetrics.chipSpacing)
@@ -308,7 +308,7 @@ private struct HistoryTimelineRowView: View {
             .fill(isSelected ? Color.accentColor : Color.clear)
             .overlay {
                 Circle()
-                    .strokeBorder(dotStrokeStyle, lineWidth: WorkbenchMetrics.microSpacing / 2)
+                    .strokeBorder(dotStrokeStyle)
             }
             .frame(
                 width: commit.isMergeCommit ? WorkbenchMetrics.chipSpacing : WorkbenchMetrics.compactSpacing,
