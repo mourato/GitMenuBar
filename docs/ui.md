@@ -74,8 +74,9 @@ minimum of `WorkbenchMetrics.centralMinimumWidth` and grows with the window
 quota summary, sidebar visibility, and Settings access in one bottom surface;
 the native window title identifies the current repository or route. The
 toolbar holds the sidebar toggle, Back, and the repository actions from ADR
-0020. Branch context sits beside the title: a branch chip that opens the
-branch selector, then the secondary ahead/behind status. A flexible space
+0020. The repository title is a toolbar item, followed by the secondary
+ahead/behind status and a branch chip that opens the branch selector. History
+date headers show the day's commit count. A flexible space
 pushes the actions to the trailing edge: Fetch, Sync (only when ahead or
 behind), and Commit (opens the Working Tree side panel). Commit is the
 primary action and uses the prominent, accent-tinted toolbar style.
