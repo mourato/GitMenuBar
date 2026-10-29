@@ -4,7 +4,7 @@ struct BranchManagementRowView: View {
     let branch: BranchInfo
     let onSwitch: () -> Void
     let onRename: () -> Void
-    let onDelete: () -> Void
+    let onDelete: (() -> Void)?
     let onPush: (() -> Void)?
     let onMerge: (() -> Void)?
     let onDeleteRemote: (() -> Void)?
@@ -21,7 +21,7 @@ struct BranchManagementRowView: View {
         branch: BranchInfo,
         onSwitch: @escaping () -> Void,
         onRename: @escaping () -> Void,
-        onDelete: @escaping () -> Void,
+        onDelete: (() -> Void)? = nil,
         onPush: (() -> Void)? = nil,
         onMerge: (() -> Void)? = nil,
         onDeleteRemote: (() -> Void)? = nil,
@@ -161,9 +161,11 @@ struct BranchManagementRowView: View {
             if let onRemoveWorktree {
                 Button("Remove Worktree for \(branch.name)") { onRemoveWorktree() }
             }
-            Divider()
-            Button(role: .destructive) { onDelete() } label: {
-                Text("Delete Branch \(branch.name)")
+            if let onDelete {
+                Divider()
+                Button(role: .destructive) { onDelete() } label: {
+                    Text("Delete Branch \(branch.name)")
+                }
             }
         } else {
             Button("Check Out \(branch.displayName) Locally") { onCheckoutLocally?() }

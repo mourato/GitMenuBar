@@ -4,6 +4,7 @@ struct WorktreeManagementRowView: View {
     let info: GitWorktreeCleanupInfo
     let onReveal: () -> Void
     let onCopyPath: () -> Void
+    let onRemove: (() -> Void)?
     let onForceRemove: (() -> Void)?
 
     @State private var isHovered = false
@@ -12,11 +13,13 @@ struct WorktreeManagementRowView: View {
         info: GitWorktreeCleanupInfo,
         onReveal: @escaping () -> Void,
         onCopyPath: @escaping () -> Void,
+        onRemove: (() -> Void)? = nil,
         onForceRemove: (() -> Void)? = nil
     ) {
         self.info = info
         self.onReveal = onReveal
         self.onCopyPath = onCopyPath
+        self.onRemove = onRemove
         self.onForceRemove = onForceRemove
     }
 
@@ -69,6 +72,10 @@ struct WorktreeManagementRowView: View {
             Menu {
                 Button("Reveal in Finder", action: onReveal)
                 Button("Copy Path", action: onCopyPath)
+                if let onRemove {
+                    Divider()
+                    Button("Remove Worktree", action: onRemove)
+                }
                 if info.status == .dirty, let onForceRemove {
                     Divider()
                     Button("Force Remove Worktree", role: .destructive, action: onForceRemove)
@@ -107,6 +114,9 @@ struct WorktreeManagementRowView: View {
     private var accessibilityHint: String {
         if info.status == .dirty, onForceRemove != nil {
             return "Use the actions menu to reveal, copy, or permanently remove this worktree and its local changes."
+        }
+        if onRemove != nil {
+            return "Use the actions menu to reveal, copy, or remove this worktree."
         }
         return "Use the actions menu to reveal or copy this path. Removal is unavailable for this worktree."
     }

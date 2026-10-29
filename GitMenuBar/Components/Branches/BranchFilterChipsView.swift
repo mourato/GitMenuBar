@@ -32,6 +32,8 @@ struct BranchFilterChipsView: View {
                     .padding(.vertical, WorkbenchMetrics.microSpacing)
                     .background(Capsule().fill(isSelected ? Color.accentColor.opacity(0.15) : WorkbenchPalette.hoverFill()))
                     .overlay(Capsule().strokeBorder(isSelected ? Color.accentColor.opacity(0.3) : Color.clear, lineWidth: 1))
+                    .frame(minHeight: WorkbenchMetrics.minimumHitTarget)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(item.title), \(count) \(count == 1 ? "branch" : "branches")")

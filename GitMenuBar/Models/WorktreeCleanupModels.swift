@@ -310,6 +310,15 @@ struct GitWorktreeSnapshot: Hashable {
         cleanupUnits.filter(\.isPaired).count
     }
 
+    /// Worktree-only removal unit when cleanup policy allows removing this worktree; nil otherwise.
+    func worktreeRemovalUnit(for info: GitWorktreeCleanupInfo) -> GitCleanupUnit? {
+        guard let unit = managementUnits.first(where: { $0.worktree?.id == info.id }),
+              let removal = unit.removingWorktreeOnly(),
+              removal.canPrimaryClean
+        else { return nil }
+        return removal
+    }
+
     func canForceRemove(_ info: GitWorktreeCleanupInfo) -> Bool {
         let path = GitRepositoryContext.normalizedPath(info.worktree.path)
         return info.status == .dirty

@@ -6,6 +6,7 @@ struct WorktreeManagementContentView: View {
     let query: String
     let onReveal: (String) -> Void
     let onCopyPath: (String) -> Void
+    let onRemove: ((GitWorktreeCleanupInfo) -> Void)?
     let onForceRemove: ((GitWorktreeCleanupInfo) -> Void)?
     let onDismissError: () -> Void
     private var filteredWorktrees: [GitWorktreeCleanupInfo] {
@@ -33,16 +34,14 @@ struct WorktreeManagementContentView: View {
                 .padding(16)
         } else {
             VStack(alignment: .leading, spacing: 6) {
-                if let snapshot {
-                    Text("\(snapshot.worktrees.count) worktree\(snapshot.worktrees.count == 1 ? "" : "s")")
-                        .font(WorkbenchTypography.sectionLabel)
-                        .foregroundStyle(.secondary)
-                }
                 ForEach(filteredWorktrees) { info in
                     WorktreeManagementRowView(
                         info: info,
                         onReveal: { onReveal(info.worktree.path) },
                         onCopyPath: { onCopyPath(info.worktree.path) },
+                        onRemove: snapshot?.worktreeRemovalUnit(for: info) != nil
+                            ? onRemove.map { handler in { handler(info) } }
+                            : nil,
                         onForceRemove: snapshot?.canForceRemove(info) == true
                             ? onForceRemove.map { handler in { handler(info) } }
                             : nil

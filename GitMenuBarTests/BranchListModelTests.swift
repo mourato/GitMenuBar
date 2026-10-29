@@ -400,4 +400,29 @@ final class BranchListModelTests: XCTestCase {
         XCTAssertEqual(model.count(for: .dirty), 1)
         XCTAssertEqual(model.count(for: .stale), 1)
     }
+
+    func testWorktreeRemovalUnitReachesDetachedWorktreeButNotDirtyOne() {
+        let detached = GitWorktreeCleanupInfo(
+            worktree: GitWorktreeInfo(path: "/tmp/detached", headHash: "hash123", branchName: nil),
+            status: .detached
+        )
+        let dirty = makeWorktreeInfo(branchName: "feature/dirty", path: "/tmp/dirty", status: .dirty)
+        let detachedUnit = GitCleanupUnit(
+            repositoryIdentity: "test-repo",
+            branch: GitBranchCleanupInfo(
+                reference: GitBranchReference(name: "detached", headHash: "hash123", isRemote: false),
+                status: .notMerged,
+                worktreePath: detached.worktree.path
+            ),
+            worktree: detached,
+            mode: .removeWorktree
+        )
+        let dirtyUnit = makeCleanupUnit(branchName: "feature/dirty", branchStatus: .notMerged, worktreeInfo: dirty)
+        let snapshot = makeSnapshot(managementUnits: [detachedUnit, dirtyUnit], worktrees: [detached, dirty])
+
+        let removal = snapshot.worktreeRemovalUnit(for: detached)
+        XCTAssertEqual(removal?.mode, .removeWorktree)
+        XCTAssertEqual(removal?.worktree, detached)
+        XCTAssertNil(snapshot.worktreeRemovalUnit(for: dirty))
+    }
 }
