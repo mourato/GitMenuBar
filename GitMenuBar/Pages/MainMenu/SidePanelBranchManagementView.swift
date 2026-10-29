@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 
+// swiftlint:disable file_length
+
 private struct BranchListMotionState: Equatable {
     let visibleIDs: [String]
     let collapsedIDs: [String]
@@ -33,6 +35,22 @@ struct SidePanelBranchManagementView: View {
     @State private var pendingCleanupSnapshot: GitWorktreeSnapshot?
     @State private var showCleanupConfirmation = false
 
+    init(
+        onRequestDeleteBranch: @escaping (String) -> Void,
+        onRequestSwitchBranch: @escaping (String) -> Void,
+        onCreateBranch: @escaping () -> Void,
+        onRenameBranch: @escaping (String) -> Void,
+        initialFilter: BranchFilter = .all,
+        initialQuery: String = ""
+    ) {
+        self.onRequestDeleteBranch = onRequestDeleteBranch
+        self.onRequestSwitchBranch = onRequestSwitchBranch
+        self.onCreateBranch = onCreateBranch
+        self.onRenameBranch = onRenameBranch
+        _filter = State(initialValue: initialFilter)
+        _branchQuery = State(initialValue: initialQuery)
+    }
+
     private var defaultBranchDisplayName: String {
         gitManager.defaultBranchName.isEmpty ? "the default branch" : gitManager.defaultBranchName
     }
@@ -47,10 +65,19 @@ struct SidePanelBranchManagementView: View {
         )
     }
 
+    /// First management unit per branch name; built once per body pass for row lookups.
+    private var managementUnitsByBranch: [String: GitCleanupUnit] {
+        Dictionary(
+            (gitManager.worktreeSnapshot?.managementUnits ?? []).map { ($0.branch.reference.name, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
+
     var body: some View {
         let model = listModel
+        let units = managementUnitsByBranch
         VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
-            branchesGroup(model: model)
+            branchesGroup(model: model, units: units)
         }
         .onAppear {
             now = Date()
@@ -86,7 +113,7 @@ struct SidePanelBranchManagementView: View {
         }
     }
 
-    private func branchesGroup(model: BranchListModel) -> some View {
+    private func branchesGroup(model: BranchListModel, units: [String: GitCleanupUnit]) -> some View {
         DisclosureGroup(isExpanded: $branchesExpanded) {
             VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
                 headerCaption
@@ -99,14 +126,12 @@ struct SidePanelBranchManagementView: View {
                     cleanupBanner(model: model)
                 }
                 if let current = model.current {
-                    pinnedCurrentBranchRow(current, model: model)
+                    pinnedCurrentBranchRow(current, model: model, units: units)
                 }
-                localSection(model: model)
+                localSection(model: model, units: units)
                 remoteSection(model: model)
-                if isListEmpty(model: model) {
-                    Text("No branches match your filter.")
-                        .font(WorkbenchTypography.caption)
-                        .foregroundStyle(.secondary)
+                if isNoMatches(model: model) {
+                    emptyFilterState
                 }
                 footer
                 if worktreesExpanded {
@@ -128,6 +153,44 @@ struct SidePanelBranchManagementView: View {
         }
     }
 
+    private var isFiltering: Bool {
+        filter != .all || !branchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func isNoMatches(model: BranchListModel) -> Bool {
+        isFiltering && model.local.isEmpty && model.remoteGroups.isEmpty && model.ungroupedRemote.isEmpty
+    }
+
+    private var emptyFilterState: some View {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+            Text("No branches match")
+                .font(WorkbenchTypography.sectionLabel)
+            Text("Clear the filter or search")
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.secondary)
+            Button("Clear", action: clearFilters)
+                .workbenchSecondary()
+                .accessibilityLabel("Clear branch filter and search")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(WorkbenchMetrics.compactSpacing)
+    }
+
+    private func clearFilters() {
+        withAnimation(WorkbenchMotion.swap) {
+            branchQuery = ""
+            filter = .all
+        }
+    }
+
+    private func sectionHeader(_ title: String, count: Int) -> some View {
+        (Text(title) + Text(" · ") + Text("\(count)").monospacedDigit())
+            .font(WorkbenchTypography.captionStrong)
+            .textCase(.uppercase)
+            .tracking(WorkbenchTypography.tracking(for: WorkbenchTypography.caption))
+            .foregroundStyle(.secondary)
+    }
+
     private var headerCaption: some View {
         Text("vs \(defaultBranchDisplayName) · local")
             .font(WorkbenchTypography.caption)
@@ -144,8 +207,10 @@ struct SidePanelBranchManagementView: View {
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(model.readyCount) ready to clean, \(model.blockedCount) blocked")
             Spacer(minLength: WorkbenchMetrics.compactSpacing)
-            Button("Review…") {
+            Button("Review") {
                 guard let snapshot = gitManager.worktreeSnapshot else { return }
                 let matching = snapshot.managementUnits(matching: branchQuery)
                 presentCleanupConfirmation(
@@ -165,9 +230,13 @@ struct SidePanelBranchManagementView: View {
         )
     }
 
-    private func pinnedCurrentBranchRow(_ current: BranchInfo, model: BranchListModel) -> some View {
+    private func pinnedCurrentBranchRow(
+        _ current: BranchInfo,
+        model: BranchListModel,
+        units: [String: GitCleanupUnit]
+    ) -> some View {
         let currentStatus = model.local.first(where: \.branch.isCurrent)?.cleanupStatus
-        return localManagementRow(current, badgeStatus: currentStatus)
+        return localManagementRow(current, unit: units[current.name], badgeStatus: currentStatus)
             .background(
                 WorkbenchPalette.accentFill(contrast: colorSchemeContrast),
                 in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
@@ -176,21 +245,18 @@ struct SidePanelBranchManagementView: View {
     }
 
     @ViewBuilder
-    private func localSection(model: BranchListModel) -> some View {
+    private func localSection(model: BranchListModel, units: [String: GitCleanupUnit]) -> some View {
         let nonCurrentVisible = model.visible.filter { !$0.branch.isCurrent }
         let totalCount = nonCurrentVisible.count + model.collapsedMerged.count
 
         if totalCount > 0 {
             VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-                Text("LOCAL · \(totalCount)")
-                    .font(WorkbenchTypography.captionStrong)
-                    .textCase(.uppercase)
-                    .tracking(WorkbenchTypography.tracking(for: WorkbenchTypography.caption))
-                    .foregroundStyle(.secondary)
+                sectionHeader("LOCAL", count: totalCount)
 
                 VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
                     ForEach(nonCurrentVisible) { row in
-                        localManagementRow(row.branch, badgeStatus: row.cleanupStatus).transition(.opacity)
+                        localManagementRow(row.branch, unit: units[row.branch.name], badgeStatus: row.cleanupStatus)
+                            .transition(.opacity)
                     }
                 }
 
@@ -198,7 +264,8 @@ struct SidePanelBranchManagementView: View {
                     DisclosureGroup(isExpanded: $moreMergedExpanded) {
                         VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
                             ForEach(model.collapsedMerged) { row in
-                                localManagementRow(row.branch, badgeStatus: row.cleanupStatus).transition(.opacity)
+                                localManagementRow(row.branch, unit: units[row.branch.name], badgeStatus: row.cleanupStatus)
+                                    .transition(.opacity)
                             }
                         }
                     } label: {
@@ -217,11 +284,7 @@ struct SidePanelBranchManagementView: View {
 
         if remoteTotalCount > 0 {
             VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-                Text("REMOTE · \(remoteTotalCount)")
-                    .font(WorkbenchTypography.captionStrong)
-                    .textCase(.uppercase)
-                    .tracking(WorkbenchTypography.tracking(for: WorkbenchTypography.caption))
-                    .foregroundStyle(.secondary)
+                sectionHeader("REMOTE", count: remoteTotalCount)
 
                 ForEach(model.remoteGroups) { group in
                     DisclosureGroup {
@@ -246,7 +309,7 @@ struct SidePanelBranchManagementView: View {
                     remoteManagementRow(branch).transition(.opacity)
                 }
             }
-        } else if filter != .all, gitManager.branchInfos.contains(where: \.isRemote) {
+        } else if filter != .all, !isNoMatches(model: model), gitManager.branchInfos.contains(where: \.isRemote) {
             Text("Remote branches hidden by filter").font(WorkbenchTypography.caption).foregroundStyle(.secondary)
         }
     }
@@ -294,9 +357,12 @@ struct SidePanelBranchManagementView: View {
         }
     }
 
-    private func localManagementRow(_ info: BranchInfo, badgeStatus: BranchCleanupBadgeStatus? = nil) -> some View {
-        let unit = gitManager.worktreeSnapshot?.managementUnits.first { $0.branch.reference.name == info.name }
-        return BranchManagementRowView(
+    private func localManagementRow(
+        _ info: BranchInfo,
+        unit: GitCleanupUnit?,
+        badgeStatus: BranchCleanupBadgeStatus? = nil
+    ) -> some View {
+        BranchManagementRowView(
             branch: info,
             onSwitch: { onRequestSwitchBranch(info.displayName) },
             onRename: { onRenameBranch(info.name) },
@@ -351,7 +417,12 @@ struct SidePanelBranchManagementView: View {
     }
 
     private func removeWorktreeAction(for unit: GitCleanupUnit?) -> (() -> Void)? {
-        guard let removeUnit = unit?.removingWorktreeOnly() else { return nil }
+        guard let unit,
+              let status = unit.worktree?.status,
+              status != .main,
+              status != .current,
+              let removeUnit = unit.removingWorktreeOnly()
+        else { return nil }
         return {
             guard let current = gitManager.worktreeSnapshot else { return }
             presentCleanupConfirmation(
@@ -424,10 +495,6 @@ struct SidePanelBranchManagementView: View {
         .background(Color(nsColor: .controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .accessibilityLabel(placeholder)
-    }
-
-    private func isListEmpty(model: BranchListModel) -> Bool {
-        model.current == nil && model.local.isEmpty && model.remoteGroups.isEmpty && model.ungroupedRemote.isEmpty
     }
 
     private func needsPush(_ info: BranchInfo) -> Bool {

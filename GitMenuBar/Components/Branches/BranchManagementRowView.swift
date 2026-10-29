@@ -54,17 +54,24 @@ struct BranchManagementRowView: View {
         return formatter
     }()
 
+    private enum Layout {
+        static let statusDotDiameter: CGFloat = 6
+        static let statusSlotDiameter: CGFloat = 12
+        static let minimumHeight: CGFloat = 40
+    }
+
+    /// An empty `.help("")` still registers an AppKit tooltip, so attach it only
+    /// when there is a reason. Hover state lives in this view, not the branch.
     var body: some View {
         if let blockedReason, !blockedReason.isEmpty {
-            rowContent
-                .help(blockedReason)
+            rowContent.help(blockedReason)
         } else {
             rowContent
         }
     }
 
     private var rowContent: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
             if branch.isCurrent {
                 Image(systemName: "checkmark")
                     .font(WorkbenchTypography.captionStrong)
@@ -78,18 +85,18 @@ struct BranchManagementRowView: View {
             } else {
                 Circle()
                     .fill(statusDotColor)
-                    .frame(width: 6, height: 6)
-                    .frame(width: 12, height: 12)
+                    .frame(width: Layout.statusDotDiameter, height: Layout.statusDotDiameter)
+                    .frame(width: Layout.statusSlotDiameter, height: Layout.statusSlotDiameter)
                     .accessibilityHidden(true)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing / 2) {
                 Text(branch.displayName)
                     .font(WorkbenchTypography.body)
                     .lineLimit(1)
                     .truncationMode(.middle)
 
-                HStack(spacing: 6) {
+                HStack(spacing: WorkbenchMetrics.chipSpacing) {
                     trackingBadge
                     if let date = branch.lastCommitDate {
                         Text(BranchManagementRowView.relativeDateFormatter.localizedString(for: date, relativeTo: Date()))
@@ -119,9 +126,9 @@ struct BranchManagementRowView: View {
             // VoiceOver reaches the same actions through the row's context menu.
             .accessibilityHidden(true)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .frame(minHeight: 40)
+        .padding(.horizontal, WorkbenchMetrics.sectionSpacing)
+        .padding(.vertical, WorkbenchMetrics.chipSpacing)
+        .frame(minHeight: Layout.minimumHeight)
         .background(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .contentShape(Rectangle())
@@ -149,10 +156,10 @@ struct BranchManagementRowView: View {
                 Button("Merge \(branch.name) into Current") { onMerge() }
             }
             if let onCleanUnit {
-                Button("Clean \(branch.name)…") { onCleanUnit() }
+                Button("Clean \(branch.name)") { onCleanUnit() }
             }
             if let onRemoveWorktree {
-                Button("Remove Worktree for \(branch.name)…") { onRemoveWorktree() }
+                Button("Remove Worktree for \(branch.name)") { onRemoveWorktree() }
             }
             Divider()
             Button(role: .destructive) { onDelete() } label: {
@@ -281,7 +288,7 @@ struct BranchManagementRowView: View {
 }
 
 #Preview("Branch Management Row") {
-    VStack(spacing: 4) {
+    VStack(spacing: WorkbenchMetrics.microSpacing) {
         BranchManagementRowView(
             branch: BranchInfo(
                 name: "feature/ui",
@@ -355,7 +362,28 @@ struct BranchManagementRowView: View {
             onDeleteRemote: {},
             onCheckoutLocally: {}
         )
+        BranchManagementRowView(
+            branch: BranchInfo(
+                name: "feature/checkout-flow-with-very-long-descriptive-suffix-for-truncation-check",
+                isLocal: true,
+                isRemote: false,
+                isCurrent: false,
+                trackingStatus: .behind(3),
+                lastCommitDate: Date().addingTimeInterval(-259_200)
+            ),
+            onSwitch: {},
+            onRename: {},
+            onDelete: {},
+            onPush: nil,
+            onMerge: nil,
+            onDeleteRemote: nil,
+            onCheckoutLocally: nil,
+            worktreeStatus: .dirty,
+            blockedReason: "Uncommitted changes",
+            onCleanUnit: {},
+            onRemoveWorktree: {}
+        )
     }
     .padding()
-    .frame(width: 360)
+    .frame(width: WorkbenchMetrics.sidePanelWidth)
 }
