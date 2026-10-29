@@ -26,6 +26,27 @@ private enum CommitDetailPagePreviewData {
         ]
     )
 
+    static let unpushedCommit = Commit(
+        id: "7890123456abcdef7890123456abcdef78901234",
+        shortHash: "7890123",
+        subject: "feat(history): add commit inspector action overflow menu",
+        body: "Groups secondary actions into one row with copy and overflow menus.",
+        authorName: "Renato Silva",
+        authorEmail: "renato@example.com",
+        committedAt: .now.addingTimeInterval(-1800),
+        stats: CommitStats(filesChanged: 2, insertions: 18, deletions: 4),
+        changedFiles: [
+            CommitFileChange(
+                path: "GitMenuBar/Components/History/CommitDetailPageView.swift",
+                lineDiff: LineDiffStats(added: 15, removed: 2)
+            ),
+            CommitFileChange(
+                path: "GitMenuBar/Components/History/CommitDetailPageView+Preview.swift",
+                lineDiff: LineDiffStats(added: 3, removed: 2)
+            )
+        ]
+    )
+
     static let longSubjectCommit = Commit(
         id: "abcdef1234567890abcdef1234567890abcdef12",
         shortHash: "abcdef1",
@@ -71,14 +92,16 @@ private enum CommitDetailPagePreviewData {
 
 private struct CommitDetailPreviewContainer: View {
     let commit: Commit?
+    var currentHash: String = "head000000000000000000000000000000000000"
     var remoteUrl: String = "https://github.com/example/repo.git"
+    var isCommitInFuture: (Commit) -> Bool = { _ in false }
 
     var body: some View {
         CommitDetailPageView(
             commit: commit,
-            currentHash: "1234567890abcdef1234567890abcdef12345678",
+            currentHash: currentHash,
             remoteUrl: remoteUrl,
-            isCommitInFuture: { _ in false },
+            isCommitInFuture: isCommitInFuture,
             onClose: {},
             onRestoreCommit: { _ in },
             onEditCommitMessage: { _ in },
@@ -96,6 +119,31 @@ private struct CommitDetailPreviewContainer: View {
 }
 
 #if DEBUG
+    #Preview("Commit Detail - Pushed Commit") {
+        CommitDetailPreviewContainer(
+            commit: CommitDetailPagePreviewData.baseCommit,
+            currentHash: "head000000000000000000000000000000000000"
+        )
+    }
+
+    #Preview("Commit Detail - Unpushed Commit") {
+        CommitDetailPreviewContainer(
+            commit: CommitDetailPagePreviewData.unpushedCommit,
+            currentHash: CommitDetailPagePreviewData.unpushedCommit.id
+        )
+    }
+
+    #Preview("Commit Detail - Merge Commit") {
+        CommitDetailPreviewContainer(commit: CommitDetailPagePreviewData.mergeCommit)
+    }
+
+    #Preview("Commit Detail - No GitHub Remote") {
+        CommitDetailPreviewContainer(
+            commit: CommitDetailPagePreviewData.baseCommit,
+            remoteUrl: ""
+        )
+    }
+
     #Preview("Commit Detail - Default") {
         CommitDetailPreviewContainer(commit: CommitDetailPagePreviewData.baseCommit)
     }
@@ -104,19 +152,8 @@ private struct CommitDetailPreviewContainer: View {
         CommitDetailPreviewContainer(commit: CommitDetailPagePreviewData.longSubjectCommit)
     }
 
-    #Preview("Commit Detail - Merge Commit") {
-        CommitDetailPreviewContainer(commit: CommitDetailPagePreviewData.mergeCommit)
-    }
-
     #Preview("Commit Detail - No Body") {
         CommitDetailPreviewContainer(commit: CommitDetailPagePreviewData.noBodyCommit)
-    }
-
-    #Preview("Commit Detail - No GitHub Remote") {
-        CommitDetailPreviewContainer(
-            commit: CommitDetailPagePreviewData.baseCommit,
-            remoteUrl: ""
-        )
     }
 
     #Preview("Commit Detail - Missing Commit") {

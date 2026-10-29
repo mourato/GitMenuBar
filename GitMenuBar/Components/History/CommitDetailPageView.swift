@@ -151,54 +151,61 @@ struct CommitDetailPageView: View {
     }
 
     private func statsSection(commit: Commit) -> some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-            HStack(spacing: WorkbenchMetrics.compactSpacing) {
-                Button("Open on GitHub") {
-                    if let commitURL = actionSet?.commitURL {
-                        NSWorkspace.shared.open(commitURL)
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+            Button("Open on GitHub") {
+                if let commitURL = actionSet?.commitURL {
+                    NSWorkspace.shared.open(commitURL)
+                }
+            }
+            .workbenchSecondary()
+            .disabled(!(actionSet?.canOpenOnGitHub ?? false))
+
+            Menu {
+                Button("Copy Hash") {
+                    copyToPasteboard(commit.id)
+                }
+
+                Button("Copy Short Hash") {
+                    copyToPasteboard(commit.shortHash)
+                }
+
+                Button("Copy Message") {
+                    let message = commit.body.isEmpty ? commit.subject : "\(commit.subject)\n\n\(commit.body)"
+                    copyToPasteboard(message)
+                }
+            } label: {
+                Label("Copy", systemImage: "doc.on.doc")
+            }
+            .workbenchGhost()
+
+            Menu {
+                if !commit.isMergeCommit {
+                    Button("Generate Message with AI") {
+                        onGenerateCommitMessage(commit)
                     }
-                }
-                .workbenchSecondary()
-                .disabled(!(actionSet?.canOpenOnGitHub ?? false))
+                    .disabled(!(actionSet?.canGenerateMessage ?? false))
 
-                Menu {
-                    Button("Copy Hash") {
-                        copyToPasteboard(commit.id)
+                    Button("Edit Message") {
+                        onEditCommitMessage(commit)
                     }
+                    .disabled(!(actionSet?.canEditMessage ?? false))
 
-                    Button("Copy Message") {
-                        copyToPasteboard(commit.subject)
-                    }
-                } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
+                    Divider()
                 }
-                .workbenchGhost()
-            }
 
-            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-                Button("Generate Message with AI") {
-                    onGenerateCommitMessage(commit)
+                Button("Reset to Here", role: .destructive) {
+                    onRestoreCommit(commit)
                 }
-                .workbenchGhost()
-                .disabled(!(actionSet?.canGenerateMessage ?? false))
-
-                Button("Edit Message Manually") {
-                    onEditCommitMessage(commit)
-                }
-                .workbenchGhost()
-                .disabled(!(actionSet?.canEditMessage ?? false))
+                .disabled(!(actionSet?.canRestore ?? false))
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(WorkbenchTypography.body)
             }
-
-            Button("Reset to Here", role: .destructive) {
-                onRestoreCommit(commit)
-            }
-            .disabled(!(actionSet?.canRestore ?? false))
-
-            if commit.isMergeCommit {
-                Text("Editing merge commits is not supported yet.")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
-            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .workbenchIcon()
+            .accessibilityLabel("More commit actions")
+            .help("More commit actions")
         }
     }
 
