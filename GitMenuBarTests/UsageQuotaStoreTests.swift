@@ -7,9 +7,11 @@ final class UsageQuotaStoreTests: XCTestCase {
     private var suiteName: String!
     private var defaults: UserDefaults!
     private var snapshotStore: UsageQuotaSnapshotStore!
+    private var testHomeDirectory: URL!
 
-    override func setUp() {
-        super.setUp()
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        testHomeDirectory = try makeTemporaryTestDirectory(testName: "UsageQuotaStoreTests")
         suiteName = "UsageQuotaStoreTests.\(UUID().uuidString)"
         guard let isolatedDefaults = UserDefaults(suiteName: suiteName) else {
             preconditionFailure("Unable to create isolated test defaults")
@@ -133,7 +135,7 @@ final class UsageQuotaStoreTests: XCTestCase {
             defaults: defaults,
             snapshotStore: snapshotStore,
             providers: [provider],
-            pricingLoader: { .bundled }
+            pricingLoader: { .bundled }, homeDirectory: testHomeDirectory
         )
         store.showAIUsageQuotas = true
 
@@ -153,7 +155,7 @@ final class UsageQuotaStoreTests: XCTestCase {
             defaults: defaults,
             snapshotStore: snapshotStore,
             providers: [codexProvider, cursorProvider],
-            pricingLoader: { .bundled }
+            pricingLoader: { .bundled }, homeDirectory: testHomeDirectory
         )
         store.showCursorUsageQuota = false
         store.showAIUsageQuotas = true
@@ -199,7 +201,7 @@ final class UsageQuotaStoreTests: XCTestCase {
             snapshotStore: snapshotStore,
             providers: [provider],
             now: { currentDate },
-            pricingLoader: { .bundled }
+            pricingLoader: { .bundled }, homeDirectory: testHomeDirectory
         )
         store.showAIUsageQuotas = true
         await waitUntil { provider.fetchCount > 0 && !store.snapshots.isEmpty }
@@ -223,7 +225,7 @@ final class UsageQuotaStoreTests: XCTestCase {
             defaults: defaults,
             snapshotStore: snapshotStore,
             providers: [provider],
-            pricingLoader: { .bundled }
+            pricingLoader: { .bundled }, homeDirectory: testHomeDirectory
         )
         store.showAIUsageQuotas = true
 
@@ -253,7 +255,7 @@ final class UsageQuotaStoreTests: XCTestCase {
             defaults: defaults,
             snapshotStore: snapshotStore,
             providers: [provider, cursorProvider, geminiProvider],
-            pricingLoader: { .bundled }
+            pricingLoader: { .bundled }, homeDirectory: testHomeDirectory
         )
         defer {
             provider.onFetch = nil
@@ -358,8 +360,7 @@ final class UsageQuotaStoreTests: XCTestCase {
 
     func testCostScanPublishesAfterManualRefreshDuringPricingLoad() async throws {
         let currentDate = Date()
-        let homeDirectory = try makeTemporaryTestDirectory(testName: #function)
-        try writeCodexSessionFixture(to: homeDirectory, now: currentDate)
+        try writeCodexSessionFixture(to: testHomeDirectory, now: currentDate)
         let provider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
         let pricingLoader = GatedPricingLoader()
         let scanStarted = expectation(description: "cost scan started")
@@ -369,8 +370,7 @@ final class UsageQuotaStoreTests: XCTestCase {
             snapshotStore: snapshotStore,
             providers: [provider],
             now: { currentDate },
-            pricingLoader: { await pricingLoader.load() },
-            homeDirectory: homeDirectory
+            pricingLoader: { await pricingLoader.load() }, homeDirectory: testHomeDirectory
         )
 
         store.showAIUsageQuotas = true
@@ -400,7 +400,7 @@ final class UsageQuotaStoreTests: XCTestCase {
             snapshotStore: snapshotStore,
             providers: [provider],
             now: now,
-            pricingLoader: pricingLoader
+            pricingLoader: pricingLoader, homeDirectory: testHomeDirectory
         )
     }
 
