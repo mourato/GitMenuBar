@@ -5,6 +5,19 @@ struct SidePanelHeaderView: View {
     let projectName: String
     let title: String
     let onClose: () -> Void
+    let onStash: (() -> Void)?
+
+    init(
+        projectName: String,
+        title: String,
+        onClose: @escaping () -> Void,
+        onStash: (() -> Void)? = nil
+    ) {
+        self.projectName = projectName
+        self.title = title
+        self.onClose = onClose
+        self.onStash = onStash
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
@@ -20,6 +33,20 @@ struct SidePanelHeaderView: View {
             }
 
             Spacer(minLength: 0)
+
+            if let onStash {
+                Menu("More actions", systemImage: "ellipsis") {
+                    Button("Stash changes", action: onStash)
+                }
+                .labelStyle(.iconOnly)
+                .font(.system(size: 12, weight: .semibold))
+                .frame(width: WorkbenchMetrics.iconHitTarget, height: WorkbenchMetrics.iconHitTarget)
+                .contentShape(Rectangle())
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .help("More actions")
+                .accessibilityLabel("More actions")
+            }
 
             Button(action: onClose) {
                 Image(systemName: "xmark")
@@ -38,7 +65,8 @@ struct SidePanelHeaderView: View {
     SidePanelHeaderView(
         projectName: "GitMenuBar",
         title: "Working Tree",
-        onClose: {}
+        onClose: {},
+        onStash: {}
     )
     .frame(width: WorkbenchMetrics.sidePanelWidth)
     .padding()
