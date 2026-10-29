@@ -21,7 +21,7 @@ dense, calm, and semantic—not a SaaS dashboard or marketing surface.
 - Layout persistence: the stable `NSWindow.FrameAutosaveName` in
   `MainWindowController`. `AppPreferences.Keys.inspectorColumnWidth` is a
   legacy unused key retained for compatibility after the side-panel change.
-- Related decisions: [`docs/adr/0001-workbench-depth-and-token-naming.md`](adr/0001-workbench-depth-and-token-naming.md), [`docs/adr/0002-window-shell-material-and-titlebar-chrome.md`](adr/0002-window-shell-material-and-titlebar-chrome.md), [`docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md`](adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md), [`docs/adr/0017-narrow-contextual-side-panel.md`](adr/0017-narrow-contextual-side-panel.md) (supersedes ADRs 0010–0015), and [`docs/adr/0021-side-panel-split-column.md`](adr/0021-side-panel-split-column.md) (split column; supersedes the overlay parts of 0017)
+- Related decisions: [`docs/adr/0001-workbench-depth-and-token-naming.md`](adr/0001-workbench-depth-and-token-naming.md), [`docs/adr/0002-window-shell-material-and-titlebar-chrome.md`](adr/0002-window-shell-material-and-titlebar-chrome.md), [`docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md`](adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md), [`docs/adr/0017-narrow-contextual-side-panel.md`](adr/0017-narrow-contextual-side-panel.md) (supersedes ADRs 0010–0015), [`docs/adr/0021-side-panel-split-column.md`](adr/0021-side-panel-split-column.md) (split column; supersedes the overlay parts of 0017), and [`docs/adr/0022-unified-branch-list-and-cleanup-review.md`](adr/0022-unified-branch-list-and-cleanup-review.md) (unified branch list and cleanup review; supersedes the work-unit list part of Branch Health cleanup)
 
 The former `.interface-design/system.md` is a legacy pointer. Do not create a
 second canonical design-system document. Reconcile code and this file when
@@ -50,8 +50,8 @@ they drift, and use an ADR for a durable decision rather than a task log.
 - Prefer native SwiftUI/AppKit button styles. Keep shared wrappers only for
   semantic variants (Primary, Secondary, Ghost, Icon, Destructive, Row), not
   for custom hover, press scaling, pointer, or scrollbar behavior. Prefer
-  32-point hit areas; never ship a tiny visible icon with an undersized hit
-  target.
+  32-point hit areas (`WorkbenchMetrics.minimumHitTarget`); never ship a tiny
+  visible icon with an undersized hit target.
 
 ## Composition and interaction
 
@@ -137,25 +137,50 @@ in [`ADR 0015`](adr/0015-contextual-side-panel.md) and [`ADR 0021`](adr/0021-sid
 
 ## Branch Health cleanup
 
-Side Panel Branch Health → Cleanup is the primary local cleanup surface. Show
-each local branch and its linked worktree as one work unit; detached worktrees
-appear as worktree-only units. The unit action removes a linked worktree before
-its branch, while its ellipsis menu exposes branch-only and worktree-only
-actions. A branch-only action is unavailable while that branch is checked out
-in a worktree because Git requires the worktree to be removed first.
+Side Panel Branches is the primary local cleanup surface ([ADR 0022](adr/0022-unified-branch-list-and-cleanup-review.md)).
+It shows one unified local branch list. Each branch appears once; its linked
+worktree shows as the row's status badge. Detached worktrees appear only in the
+Worktrees section (footer toggle).
+
+- Filter chips (All, Mergeable, Dirty, Stale) select one filter and carry the
+  counts. The search field applies alongside the chip. Stale means the last
+  commit is more than 10 days old on a non-current local branch. A dirty
+  worktree badge wins over the merged badge.
+- The cleanup review banner shows `N ready to clean` and `M blocked`. Review
+  opens the shared cleanup sheet with Ready and Blocked sections and a checked
+  subset of ready units. With no ready units, hide Review and state
+  `M blocked` with help text.
+- Row actions: `Clean <branch>` removes the linked worktree before its branch.
+  `Remove Worktree for <branch>` removes only the worktree. `Delete Branch`
+  removes only the branch and runs through the cleanup sheet with
+  `deletingBranchOnly()`, so the risk gate applies. Hide `Delete Branch` while
+  the branch is checked out in a worktree, because Git requires that worktree
+  removed first. A branch without a management unit keeps the plain legacy
+  confirmation.
+- The Worktrees section offers Remove Worktree when the worktree-only unit is
+  allowed (eligible, branch not merged, or detached), plus Reveal in Finder,
+  Copy Path, and Force Remove Worktree for dirty linked worktrees.
 
 Merged status includes both default-branch reachability and Git's
 cherry-equivalent result. Clean worktrees may be removed even when their branch
 is not merged, and clean detached worktrees may be removed. Deleting an
-unmerged branch requires the shared confirmation to show a clear data-loss
-warning and an explicit risk-review step. A dirty linked worktree may expose
-an explicit Force Remove Worktree action; require a dedicated warning that its
-directory and uncommitted changes are permanently deleted while its branch is
-kept. Remote branch management lists all remote-tracking refs, including
-`upstream`, and labels the remote being removed.
+unmerged branch, alone or with its worktree, requires the shared confirmation to
+show a clear data-loss warning and an explicit risk-review step. Force Remove
+Worktree requires a dedicated warning that its directory and uncommitted changes
+are permanently deleted while its branch is kept. Remote branch management lists
+all remote-tracking refs, including `upstream`, and labels the remote being
+removed.
 
 Project Cleanup remains the multi-repo shortcut and keeps its existing safe
 eligibility contract.
+
+### Reusable patterns
+
+- Filter chips: single selection; the selected chip is accent-tinted and its
+  accessibility label names the count (for example, "Dirty, 2 branches").
+  Chips use a 32-point hit area and carry the only count for their filter.
+- Cleanup review banner: one summary line and one action. Hide the action when
+  nothing is ready; the blocked count and its help text explain the state.
 
 ## Visual hierarchy rules
 
