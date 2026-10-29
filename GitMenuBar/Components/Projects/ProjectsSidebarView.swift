@@ -30,6 +30,8 @@ struct ProjectsSidebarView: View {
                 }
             }
             .listStyle(.sidebar)
+            // Navigation stays neutral while the focused content owns the accent selection.
+            .environment(\.controlActiveState, .inactive)
             .scrollContentBackground(.hidden)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(spacing: 0) {
