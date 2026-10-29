@@ -23,18 +23,35 @@ struct UsageQuotaSummaryView: View {
 private struct UsageQuotaSummaryItem: View {
     let snapshot: UsageQuotaSnapshot
 
+    @Environment(UsageQuotaPresentationPreferences.self) private var preferences
+    @Environment(\.colorSchemeContrast) private var contrast
+
     var body: some View {
         if let window = snapshot.primaryDisplayWindow ?? tightestModelWindow {
+            let displayPercent = preferences.valueStyle == .left ? window.remainingPercent : 100 - window.remainingPercent
+            let tint = levelColor(UsageQuotaFormatting.alertLevel(
+                remainingPercent: window.remainingPercent,
+                thresholds: warningThresholds
+            ))
             HStack(spacing: WorkbenchMetrics.microSpacing) {
                 ProviderIconView(providerID: snapshot.providerID)
 
-                Text("\(window.remainingPercent)%")
-                    .font(WorkbenchTypography.captionStrong)
-                    .foregroundStyle(UsageQuotaTrafficLightColor.swiftUI(for: window.remainingPercent))
+                switch preferences.meterStyle {
+                case .text:
+                    Text("\(displayPercent)%")
+                        .font(WorkbenchTypography.captionStrong)
+                        .foregroundStyle(tint)
+                case .bars:
+                    UsageQuotaSummaryBar(
+                        fraction: Double(displayPercent) / 100,
+                        tint: tint,
+                        track: WorkbenchPalette.neutralBorder(contrast: contrast)
+                    )
+                }
             }
             .opacity(snapshot.isStale ? 0.72 : 1)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilityLabel(window: window))
+            .accessibilityLabel(accessibilityLabel(displayPercent: displayPercent))
         }
     }
 
@@ -42,9 +59,44 @@ private struct UsageQuotaSummaryItem: View {
         snapshot.modelWindows.min { $0.remainingPercent < $1.remainingPercent }
     }
 
-    private func accessibilityLabel(window: UsageWindow) -> String {
+    /// The session thresholds apply when the session window drives the summary; otherwise weekly.
+    private var warningThresholds: [Int] {
+        snapshot.sessionWindow == nil ? preferences.weeklyWarningThresholds : preferences.sessionWarningThresholds
+    }
+
+    private func levelColor(_ level: UsageQuotaAlertLevel) -> Color {
+        switch level {
+        case .normal:
+            .secondary
+        case .warning:
+            .orange
+        case .error:
+            .red
+        }
+    }
+
+    private func accessibilityLabel(displayPercent: Int) -> String {
+        let suffix = preferences.valueStyle == .left ? "left" : "used"
         let staleText = snapshot.isStale ? ", stale" : ""
-        return "\(snapshot.displayName), \(window.remainingPercent) percent remaining\(staleText)"
+        return "\(snapshot.displayName), \(displayPercent) percent \(suffix)\(staleText)"
+    }
+}
+
+/// Compact fill bar for the summary's `.bars` meter style; sized by the quota meter metrics.
+private struct UsageQuotaSummaryBar: View {
+    let fraction: Double
+    let tint: Color
+    let track: Color
+
+    var body: some View {
+        Capsule(style: .continuous)
+            .fill(track)
+            .frame(width: WorkbenchMetrics.quotaMeterWidth, height: WorkbenchMetrics.quotaMeterHeight)
+            .overlay(alignment: .leading) {
+                Capsule(style: .continuous)
+                    .fill(tint)
+                    .frame(width: WorkbenchMetrics.quotaMeterWidth * CGFloat(fraction))
+            }
     }
 }
 
@@ -120,32 +172,89 @@ enum UsageQuotaTrafficLightColor {
     }
 }
 
-#Preview("Usage Quota Summary") {
-    UsageQuotaSummaryView(snapshots: [
-        UsageQuotaSnapshot(
-            providerID: .codex,
-            displayName: "Codex",
-            sessionWindow: UsageWindow(
-                remainingPercent: 62,
-                resetAt: Date().addingTimeInterval(3600),
-                label: "5h",
-                durationSeconds: 5 * 3600
-            ),
-            weeklyWindow: nil,
-            isAvailable: true
-        ),
-        UsageQuotaSnapshot(
-            providerID: .cursor,
-            displayName: "Cursor",
-            sessionWindow: UsageWindow(
-                remainingPercent: 41,
-                resetAt: Date().addingTimeInterval(86400),
-                label: "Plan",
-                durationSeconds: 30 * 86400
-            ),
-            weeklyWindow: nil,
-            isAvailable: true
-        )
+#Preview("Usage Quota Summary – Normal") {
+    UsageQuotaSummaryPreviewHarness(snapshots: [
+        previewSnapshot(.codex, name: "Codex", remainingPercent: 62),
+        previewSnapshot(.cursor, name: "Cursor", remainingPercent: 70)
     ])
-    .padding()
+}
+
+#Preview("Usage Quota Summary – Near Limit") {
+    UsageQuotaSummaryPreviewHarness(snapshots: [
+        previewSnapshot(.codex, name: "Codex", remainingPercent: 45),
+        previewSnapshot(.cursor, name: "Cursor", remainingPercent: 12)
+    ])
+}
+
+#Preview("Usage Quota Summary – Used") {
+    UsageQuotaSummaryPreviewHarness(
+        snapshots: [
+            previewSnapshot(.codex, name: "Codex", remainingPercent: 62),
+            previewSnapshot(.cursor, name: "Cursor", remainingPercent: 12)
+        ],
+        valueStyle: .used
+    )
+}
+
+#Preview("Usage Quota Summary – Stale") {
+    UsageQuotaSummaryPreviewHarness(snapshots: [
+        previewSnapshot(.codex, name: "Codex", remainingPercent: 45, isStale: true)
+    ])
+}
+
+#Preview("Usage Quota Summary – Bars") {
+    UsageQuotaSummaryPreviewHarness(
+        snapshots: [
+            previewSnapshot(.codex, name: "Codex", remainingPercent: 45),
+            previewSnapshot(.cursor, name: "Cursor", remainingPercent: 12)
+        ],
+        meterStyle: .bars
+    )
+}
+
+private func previewSnapshot(
+    _ providerID: UsageProviderID,
+    name: String,
+    remainingPercent: Int,
+    isStale: Bool = false
+) -> UsageQuotaSnapshot {
+    UsageQuotaSnapshot(
+        providerID: providerID,
+        displayName: name,
+        sessionWindow: UsageWindow(
+            remainingPercent: remainingPercent,
+            resetAt: Date().addingTimeInterval(3600),
+            label: "5h",
+            durationSeconds: 5 * 3600
+        ),
+        weeklyWindow: nil,
+        isAvailable: true,
+        isStale: isStale
+    )
+}
+
+private struct UsageQuotaSummaryPreviewHarness: View {
+    let snapshots: [UsageQuotaSnapshot]
+    @State private var preferences: UsageQuotaPresentationPreferences
+
+    init(
+        snapshots: [UsageQuotaSnapshot],
+        valueStyle: UsageQuotaPresentationPreferences.ValueStyle = .left,
+        meterStyle: UsageQuotaPresentationPreferences.MeterStyle = .text
+    ) {
+        self.snapshots = snapshots
+        let name = "UsageQuotaSummaryPreview-\(valueStyle.rawValue)-\(meterStyle.rawValue)"
+        let defaults = UserDefaults(suiteName: name) ?? .standard
+        defaults.removePersistentDomain(forName: name)
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.valueStyle = valueStyle
+        preferences.meterStyle = meterStyle
+        _preferences = State(wrappedValue: preferences)
+    }
+
+    var body: some View {
+        UsageQuotaSummaryView(snapshots: snapshots)
+            .environment(preferences)
+            .padding()
+    }
 }
