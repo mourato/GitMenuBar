@@ -136,9 +136,9 @@ struct ProjectsSidebarView: View {
     @ViewBuilder
     private func groupSection(title: String, snapshots: [ProjectStatusSnapshot]) -> some View {
         if title == "Clean" {
-            DisclosureGroup(isExpanded: cleanGroupExpanded) {
+            Section(isExpanded: cleanGroupExpanded) {
                 projectRows(snapshots)
-            } label: {
+            } header: {
                 groupHeader(title: title, count: snapshots.count)
             }
         } else {
