@@ -26,6 +26,7 @@ Active local execution briefs only. Completed and withdrawn plans live in
 | [092](092-sidebar-signal-cleanup.md) | Reduce noise and add severity to the Projects sidebar | P2 | READY |
 | [093](093-quota-meter-respects-preferences.md) | Make the sidebar quota summary respect quota preferences | P2 | READY |
 | [094](094-typography-and-finish.md) | Typography and spacing finish for the main window | P3 | READY |
+| [095](095-quota-cards-respect-thresholds.md) | Make quota cards respect configured warning thresholds | P2 | READY |
 
 ## Archive notes
 
