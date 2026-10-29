@@ -7,6 +7,17 @@ enum MainWindowToolbarRepositoryItem: Equatable {
 }
 
 struct MainWindowToolbarRepositoryState: Equatable {
+    /// Repository actions belong only to the main route with a selected Git repository;
+    /// a plain folder gets the create-repo banner instead.
+    static func isAvailable(
+        isMainRoute: Bool,
+        repositoryPath: String?,
+        isGitRepository: (String) -> Bool
+    ) -> Bool {
+        guard isMainRoute, let repositoryPath else { return false }
+        return isGitRepository(repositoryPath)
+    }
+
     let repositoryName: String
     let branchName: String
     let aheadCount: Int

@@ -369,11 +369,11 @@ final class StatusBarController: NSObject {
             false
         }
         let repositoryState: MainWindowToolbarRepositoryState?
-        // A selected folder that is not a Git repository shows the create-repo banner, not Git actions.
-        if presentationModel.route == .main,
-           let path = currentRepositoryPath(),
-           presentationModel.createRepoSuggestionPath != path
-        {
+        if MainWindowToolbarRepositoryState.isAvailable(
+            isMainRoute: presentationModel.route == .main,
+            repositoryPath: currentRepositoryPath(),
+            isGitRepository: gitManager.isGitRepository(at:)
+        ) {
             let operationStatus = actionCoordinator.operationStatus
             repositoryState = MainWindowToolbarRepositoryState(
                 repositoryName: mainWindowTitle,

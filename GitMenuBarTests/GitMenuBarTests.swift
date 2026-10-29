@@ -201,6 +201,24 @@ final class GitMenuBarTests: XCTestCase {
 }
 
 final class ToolbarStateMappingTests: XCTestCase {
+    func testRepositoryToolbarRequiresMainRouteAndGitRepository() {
+        let gitPaths: Set = ["/repo"]
+        let isGit = { gitPaths.contains($0) }
+
+        XCTAssertTrue(MainWindowToolbarRepositoryState.isAvailable(
+            isMainRoute: true, repositoryPath: "/repo", isGitRepository: isGit
+        ))
+        XCTAssertFalse(MainWindowToolbarRepositoryState.isAvailable(
+            isMainRoute: true, repositoryPath: "/plain-folder", isGitRepository: isGit
+        ))
+        XCTAssertFalse(MainWindowToolbarRepositoryState.isAvailable(
+            isMainRoute: true, repositoryPath: nil, isGitRepository: isGit
+        ))
+        XCTAssertFalse(MainWindowToolbarRepositoryState.isAvailable(
+            isMainRoute: false, repositoryPath: "/repo", isGitRepository: isGit
+        ))
+    }
+
     func testRepositoryToolbarShowsCommitCountAndSyncWhenAheadOrBehind() {
         let state = MainWindowToolbarRepositoryState(
             repositoryName: "NetNewsWire",
