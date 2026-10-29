@@ -17,10 +17,6 @@ enum BranchFilter: String, CaseIterable, Hashable, Sendable {
         case .stale: "Stale"
         }
     }
-
-    var displayName: String {
-        title
-    }
 }
 
 // MARK: - Cleanup Badge Status
@@ -43,13 +39,6 @@ enum BranchCleanupBadgeStatus: Hashable, Sendable {
             return true
         }
         return false
-    }
-
-    var blockedReason: String? {
-        if case let .blocked(reason) = self {
-            return reason
-        }
-        return nil
     }
 }
 
@@ -96,26 +85,15 @@ struct RemoteBranchGroup: Identifiable, Hashable, Sendable {
 
 /// Resolved state produced by `BranchListResolver`.
 struct BranchListModel: Equatable, Sendable {
-    typealias Row = BranchListRow
-    typealias Filter = BranchFilter
-
     let current: BranchInfo?
-    let local: [Row]
-    let visible: [Row]
-    let collapsedMerged: [Row]
+    let local: [BranchListRow]
+    let visible: [BranchListRow]
+    let collapsedMerged: [BranchListRow]
     let remoteGroups: [RemoteBranchGroup]
     let ungroupedRemote: [BranchInfo]
     let readyCount: Int
     let blockedCount: Int
     let filterCounts: [BranchFilter: Int]
-
-    var visibleLocal: [Row] {
-        visible
-    }
-
-    var collapsedMergedLocal: [Row] {
-        collapsedMerged
-    }
 
     var hasCollapsedMerged: Bool {
         !collapsedMerged.isEmpty
@@ -129,7 +107,7 @@ struct BranchListModel: Equatable, Sendable {
 // MARK: - Branch List Resolver
 
 /// Pure resolver computing the branch list display model from branch data and worktree snapshots.
-struct BranchListResolver: Sendable {
+enum BranchListResolver {
     private static let staleThresholdSeconds: TimeInterval = 10 * 24 * 60 * 60
 
     static func resolve(
@@ -137,7 +115,7 @@ struct BranchListResolver: Sendable {
         snapshot: GitWorktreeSnapshot? = nil,
         query: String = "",
         filter: BranchFilter = .all,
-        now: Date = Date()
+        now: Date
     ) -> BranchListModel {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let currentBranch = branches.first(where: \.isCurrent)
@@ -155,10 +133,7 @@ struct BranchListResolver: Sendable {
             query: trimmedQuery
         )
 
-        let (readyCount, blockedCount) = resolveCleanupCounts(
-            units: snapshot?.cleanupUnits ?? [],
-            query: trimmedQuery
-        )
+        let (readyCount, blockedCount) = snapshot?.cleanupCounts(matching: trimmedQuery) ?? (0, 0)
 
         return BranchListModel(
             current: currentBranch,
@@ -214,11 +189,14 @@ struct BranchListResolver: Sendable {
         if linkedWorktree?.status == .dirty {
             return .dirty
         }
-        if let cleanupUnit = index.cleanupUnit(for: branch.name) {
-            return cleanupUnit.canPrimaryClean ? .merged : blockedStatus(from: cleanupUnit, worktree: linkedWorktree)
-        }
-        if let managementUnit = index.managementUnit(for: branch.name) {
-            return blockedStatus(from: managementUnit, worktree: linkedWorktree)
+        if let unit = index.unit(for: branch.name) {
+            if unit.worktree?.status == .dirty {
+                return .dirty
+            }
+            if unit.canPrimaryClean, unit.branch.isMergedIntoDefault {
+                return .merged
+            }
+            return blockedStatus(from: unit, worktree: linkedWorktree ?? unit.worktree)
         }
         if let branchInfo = index.branchInfo(for: branch.name) {
             return blockedStatus(from: branchInfo.status)
@@ -229,7 +207,7 @@ struct BranchListResolver: Sendable {
     private static func blockedStatus(
         from unit: GitCleanupUnit,
         worktree: GitWorktreeCleanupInfo?
-    ) -> BranchCleanupBadgeStatus {
+    ) -> BranchCleanupBadgeStatus? {
         if let worktreeBlocked = blockedStatus(from: worktree?.status) {
             return worktreeBlocked
         }
@@ -256,20 +234,20 @@ struct BranchListResolver: Sendable {
         }
     }
 
-    private static func blockedStatus(from status: GitBranchCleanupStatus) -> BranchCleanupBadgeStatus {
+    private static func blockedStatus(from status: GitBranchCleanupStatus) -> BranchCleanupBadgeStatus? {
         switch status {
         case .current:
             .blocked(reason: "Current branch")
         case .protected:
             .blocked(reason: "Protected branch")
         case .notMerged:
-            .blocked(reason: "Not merged")
+            nil
         case let .checkedOutElsewhere(path):
             .blocked(reason: "Checked out at \(path)")
         case let .unknown(reason):
             .blocked(reason: reason)
         case .mergedIntoDefault:
-            .merged
+            nil
         }
     }
 
@@ -381,7 +359,7 @@ struct BranchListResolver: Sendable {
     }
 
     private static func longestCommonPathPrefix(branches: [BranchInfo]) -> String {
-        guard let first = branches.first else { return "" }
+        guard !branches.isEmpty else { return "" }
         let segmentLists = branches.map { $0.name.split(separator: "/").map(String.init) }
         let firstSegments = segmentLists[0]
         var commonSegments: [String] = []
@@ -404,20 +382,6 @@ struct BranchListResolver: Sendable {
             return firstSegments.first ?? ""
         }
         return commonSegments.joined(separator: "/")
-    }
-
-    static func resolveCleanupCounts(
-        units: [GitCleanupUnit],
-        query: String = ""
-    ) -> (ready: Int, blocked: Int) {
-        let matching = units.filter { unit in
-            query.isEmpty
-                || unit.branch.reference.name.localizedStandardContains(query)
-                || (unit.worktree?.worktree.path.localizedStandardContains(query) ?? false)
-        }
-        let ready = matching.filter(\.canPrimaryClean).count
-        let blocked = matching.count - ready
-        return (ready, blocked)
     }
 }
 
@@ -466,35 +430,11 @@ private struct SnapshotIndex {
             ?? cleanupUnitsByBranch[branchName]?.worktree
     }
 
-    func cleanupUnit(for branchName: String) -> GitCleanupUnit? {
-        cleanupUnitsByBranch[branchName]
-    }
-
-    func managementUnit(for branchName: String) -> GitCleanupUnit? {
-        managementUnitsByBranch[branchName]
+    func unit(for branchName: String) -> GitCleanupUnit? {
+        managementUnitsByBranch[branchName] ?? cleanupUnitsByBranch[branchName]
     }
 
     func branchInfo(for branchName: String) -> GitBranchCleanupInfo? {
         branchesByName[branchName]
-    }
-}
-
-// MARK: - Convenience Resolver on Model
-
-extension BranchListModel {
-    static func resolve(
-        branches: [BranchInfo],
-        snapshot: GitWorktreeSnapshot? = nil,
-        query: String = "",
-        filter: BranchFilter = .all,
-        now: Date = Date()
-    ) -> BranchListModel {
-        BranchListResolver.resolve(
-            branches: branches,
-            snapshot: snapshot,
-            query: query,
-            filter: filter,
-            now: now
-        )
     }
 }
