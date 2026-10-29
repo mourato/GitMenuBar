@@ -329,6 +329,8 @@ final class StatusBarController: NSObject {
             _ = gitManager.changedFiles
             _ = gitManager.isAheadOfRemote
             _ = gitManager.isRemoteAhead
+            _ = gitManager.commitCount
+            _ = gitManager.behindCount
             _ = gitManager.remoteUrl
             _ = gitManager.currentBranch
             _ = gitManager.defaultBranchName

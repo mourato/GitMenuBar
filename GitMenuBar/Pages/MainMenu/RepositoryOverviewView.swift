@@ -145,17 +145,19 @@ struct RepositoryOverviewView: View {
         }
     }
 
+    /// Unmerged and unpushed branches can overlap, so the value never sums them:
+    /// it leads with unmerged and the qualifier names any unpushed count separately.
     private var branchesValue: String {
         if branchesIsLoading || branchesIsError {
             return "—"
         }
-        guard
-            case let .known(unmerged) = overview.unmergedBranches,
-            case let .known(unpushed) = overview.unpushedBranches
-        else {
-            return "—"
+        if let unmerged = knownUnmerged, unmerged > 0 {
+            return "\(unmerged)"
         }
-        return "\(unmerged + unpushed)"
+        if let unpushed = knownUnpushed {
+            return "\(unpushed)"
+        }
+        return knownUnmerged.map { "\($0)" } ?? "—"
     }
 
     private var branchesQualifier: String {
@@ -165,19 +167,21 @@ struct RepositoryOverviewView: View {
         if branchesIsError {
             return "Unavailable"
         }
-        guard
-            case let .known(unmerged) = overview.unmergedBranches,
-            case let .known(unpushed) = overview.unpushedBranches
-        else {
+        let unmerged = knownUnmerged
+        let unpushed = knownUnpushed
+        if unmerged == nil, unpushed == nil {
             return "Unavailable"
         }
-        if unmerged == 0, unpushed == 0 {
-            return "All clear"
+        if let unmerged, unmerged > 0 {
+            if let unpushed, unpushed > 0 {
+                return "unmerged, \(unpushed) unpushed"
+            }
+            return "unmerged"
         }
-        if unmerged > 0, unpushed > 0 {
-            return "\(unmerged) unmerged, \(unpushed) unpushed"
+        if let unpushed, unpushed > 0 {
+            return "unpushed"
         }
-        return unmerged > 0 ? "unmerged" : "unpushed"
+        return "All clear"
     }
 
     private var branchesAccessibilityValue: String {
@@ -186,19 +190,15 @@ struct RepositoryOverviewView: View {
             summary = "Checking…"
         } else if branchesIsError {
             summary = "Unavailable"
-        } else if let unmerged = knownUnmerged, let unpushed = knownUnpushed {
-            if unmerged == 0, unpushed == 0 {
-                summary = "All clear"
-            } else {
-                var parts: [String] = []
-                if unmerged > 0 {
-                    parts.append("\(unmerged) unmerged")
-                }
-                if unpushed > 0 {
-                    parts.append("\(unpushed) unpushed")
-                }
-                summary = "\(unmerged + unpushed) branches, \(parts.joined(separator: ", "))"
+        } else if knownUnmerged != nil || knownUnpushed != nil {
+            var parts: [String] = []
+            if let unmerged = knownUnmerged, unmerged > 0 {
+                parts.append("\(unmerged) unmerged \(unmerged == 1 ? "branch" : "branches")")
             }
+            if let unpushed = knownUnpushed, unpushed > 0 {
+                parts.append("\(unpushed) unpushed \(unpushed == 1 ? "branch" : "branches")")
+            }
+            summary = parts.isEmpty ? "All clear" : parts.joined(separator: ", ")
         } else {
             summary = "Unavailable"
         }
@@ -265,9 +265,12 @@ struct RepositoryOverviewView: View {
     }
 
     private var stashesAccessibilityValue: String {
+        if stashesIsLoading {
+            return "Checking…"
+        }
         let summary: String = switch overview.stashCount {
         case let .known(count):
-            count == 0 ? "0 stashes, None" : "\(count) stashes retained"
+            count == 0 ? "No stashes" : "\(count) \(count == 1 ? "stash" : "stashes") retained"
         case .loading:
             "Checking…"
         case .unavailable:

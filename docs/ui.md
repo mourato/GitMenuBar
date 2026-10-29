@@ -32,8 +32,10 @@ they drift, and use an ADR for a durable decision rather than a task log.
 - Use one depth strategy: window-level material/vibrancy for the shell, quiet
   borders/tints for structure, and shadows only for floating overlays.
 - The header uses the native macOS titlebar and unified toolbar pattern used by
-  GUGU Settings: the titlebar is opaque, the window title is visible in the
-  system's leading title area, and the titlebar hairline is hidden. The titled
+  GUGU Settings: the titlebar is opaque and the titlebar hairline is hidden.
+  The system title is hidden; a plain, unbordered toolbar title item shows the
+  repository or route so branch context can sit beside it (ADR 0020). The
+  `NSWindow` title stays set for the Window menu and accessibility. The titled
   `NSWindow` remains the owner of traffic lights and toolbar chrome; do not add
   a hand-drawn titlebar or material plate above the content. Inputs are slightly
   inset from their surrounding surface.
@@ -72,7 +74,7 @@ control beside Settings. When the sidebar is collapsed, the native toolbar item
 minimum of `WorkbenchMetrics.centralMinimumWidth` and grows with the window
 (no max-width cap feeding a third column). The sidebar footer concentrates the
 quota summary, sidebar visibility, and Settings access in one bottom surface;
-the native window title identifies the current repository or route. The
+the toolbar title item identifies the current repository or route. The
 toolbar holds the sidebar toggle, Back, and the repository actions from ADR
 0020. The repository title is a toolbar item, followed by the secondary
 ahead/behind status and a branch chip that opens the branch selector. History

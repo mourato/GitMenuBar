@@ -269,7 +269,7 @@ extension MainMenuView {
                 await actionCoordinator.performFetch()
             }
         case .branchSelector:
-            presentBranchSelector()
+            toggleBranchSelectorPresentation()
         case .toolbarCommit:
             guard hasWorkingTreeChanges else { return }
             workspace.selectedSidePanelSelection = .workingTree

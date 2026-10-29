@@ -21,6 +21,11 @@ decoration that looked like data.
   The commit composer stays in the side panel.
 - Sync appears only when the branch is ahead or behind. Fetch is always
   available.
+- The system window title is hidden and the repository title is a plain,
+  unbordered toolbar item. The native title consumed the toolbar's flexible
+  width, so branch context could not sit beside it. The `NSWindow` title stays
+  set for the Window menu and accessibility.
+- The branch picker is a compact chip beside the title, not a bordered button.
 - The branch footer is removed. The branch picker uses the existing branch
   selector overlay.
 - The history is a plain list without a connecting line. A dot marks state:
