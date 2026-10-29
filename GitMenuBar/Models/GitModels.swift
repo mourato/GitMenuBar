@@ -192,10 +192,7 @@ struct BranchInfo: Identifiable, Hashable {
 
     var id: String {
         guard isLocal else {
-            if let remoteName, remoteName != "origin" {
-                return "remote/\(remoteName)/\(name)"
-            }
-            return "remote/\(name)"
+            return "remote/\(remoteName ?? "origin")/\(name)"
         }
         return "local/\(name)"
     }

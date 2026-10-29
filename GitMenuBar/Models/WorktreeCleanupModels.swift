@@ -32,10 +32,7 @@ struct GitBranchReference: Identifiable, Hashable {
 
     var id: String {
         guard isRemote else { return "local/\(name)" }
-        if let remoteName, remoteName != "origin" {
-            return "remote/\(remoteName)/\(name)"
-        }
-        return "remote/\(name)"
+        return "remote/\(remoteName ?? "origin")/\(name)"
     }
 
     var qualifiedName: String {
