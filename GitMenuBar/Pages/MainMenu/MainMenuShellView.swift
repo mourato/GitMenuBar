@@ -19,7 +19,6 @@ struct MainMenuShellView<Detail: View, SidePanel: View>: View {
     var sidebarVisibility: Binding<NavigationSplitViewVisibility>
     @ViewBuilder let detail: Detail
     var sidePanelPresented: Binding<Bool>
-    let dismissSidePanelOnOutsideTap: Bool
     @ViewBuilder let sidePanel: SidePanel
     let onExitCommand: () -> Void
     let shortcutActions: PassthroughSubject<MainMenuShortcutAction, Never>
@@ -63,8 +62,7 @@ struct MainMenuShellView<Detail: View, SidePanel: View>: View {
                     alignment: .top
                 )
                 .sidePanel(
-                    isPresented: sidePanelPresented,
-                    dismissOnOutsideTap: dismissSidePanelOnOutsideTap
+                    isPresented: sidePanelPresented
                 ) {
                     sidePanel
                 }
@@ -76,15 +74,18 @@ struct MainMenuShellView<Detail: View, SidePanel: View>: View {
     }
 }
 
-#Preview("Shell") {
-    MainMenuPreviewHarness(showsTransparentTitlebar: true) {
+#Preview("Shell – Side Panel Open at Minimum Width") {
+    MainMenuPreviewHarness(
+        width: WorkbenchMetrics.mainWindowMinimumWidth,
+        showsTransparentTitlebar: true
+    ) {
         ShellPreviewContent()
     }
 }
 
 private struct ShellPreviewContent: View {
     @State private var isSidebarCollapsed = false
-    @State private var isSidePanelPresented = false
+    @State private var isSidePanelPresented = true
     private let shortcutActions = PassthroughSubject<MainMenuShortcutAction, Never>()
 
     var body: some View {
@@ -109,7 +110,6 @@ private struct ShellPreviewContent: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             },
             sidePanelPresented: $isSidePanelPresented,
-            dismissSidePanelOnOutsideTap: true,
             sidePanel: {
                 Text("Side panel")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

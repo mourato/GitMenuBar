@@ -127,10 +127,8 @@ extension MainMenuView {
             }
         }
         .padding(.horizontal, WorkbenchMetrics.panelPadding)
-        .padding(.top, WorkbenchMetrics.iconHitTarget + WorkbenchMetrics.compactSpacing)
         .padding(.bottom, WorkbenchMetrics.panelPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .ignoresSafeArea(.container, edges: .top)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
             workspace.selectedSidePanelSelection.map { "Details for \($0.title)" } ?? "Details"
@@ -192,10 +190,6 @@ extension MainMenuView {
         )
     }
 
-    private var sidePanelDismissesOnOutsideTap: Bool {
-        workspace.selectedSidePanelSelection != .workingTree
-    }
-
     var mainView: some View {
         MainMenuShellView(
             currentRepositoryPath: currentRepositoryPath,
@@ -212,7 +206,6 @@ extension MainMenuView {
             sidebarVisibility: projectsSidebarVisibility,
             detail: { routeContent },
             sidePanelPresented: isSidePanelPresented,
-            dismissSidePanelOnOutsideTap: sidePanelDismissesOnOutsideTap,
             sidePanel: { sidePanelContent },
             onExitCommand: handleExitCommand,
             shortcutActions: shortcutActionBridge.actions,

@@ -45,16 +45,19 @@ final class MainMenuSidePanelSelectionTests: XCTestCase {
                 + WorkbenchMetrics.sidePanelWidth
                 + (WorkbenchMetrics.windowPadding * 2)
                 + WorkbenchMetrics.splitDividerThickness
+                + WorkbenchMetrics.sectionSpacing
         )
     }
 
-    func testMainWindowMinimumIsTwoColumnFloor() {
+    func testMainWindowMinimumIsThreeColumnFloor() {
         XCTAssertEqual(
             WorkbenchMetrics.mainWindowMinimumWidth,
             WorkbenchMetrics.projectsMinimumWidth
                 + WorkbenchMetrics.centralMinimumWidth
+                + WorkbenchMetrics.sidePanelWidth
                 + (WorkbenchMetrics.windowPadding * 2)
                 + WorkbenchMetrics.splitDividerThickness
+                + WorkbenchMetrics.sectionSpacing
         )
         XCTAssertGreaterThan(
             WorkbenchMetrics.projectsMaximumWidth,
