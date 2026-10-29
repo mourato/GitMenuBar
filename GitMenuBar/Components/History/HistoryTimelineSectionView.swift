@@ -1,12 +1,6 @@
 import AppKit
 import SwiftUI
 
-private enum HistoryTimelineMetrics {
-    static let gutterWidth: CGFloat = 18
-    static let circleSize: CGFloat = 8
-    static let rowContentVerticalPadding: CGFloat = 6
-}
-
 struct HistoryTimelineSectionView: View {
     let sections: [HistoryTimelineSectionModel]
     let selectedItemID: MainMenuSelectableItem?
@@ -19,7 +13,7 @@ struct HistoryTimelineSectionView: View {
     let onGenerateCommitMessage: (HistoryRowAdapter) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
             if sections.isEmpty {
                 placeholderView
             } else {
@@ -31,20 +25,20 @@ struct HistoryTimelineSectionView: View {
     @ViewBuilder
     private var placeholderView: some View {
         if isLoading {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
                 ForEach(0 ..< 3, id: \.self) { _ in
-                    HStack(spacing: 10) {
+                    HStack(spacing: WorkbenchMetrics.compactSpacing) {
                         Circle()
-                            .fill(Color.secondary.opacity(0.16))
-                            .frame(width: HistoryTimelineMetrics.circleSize, height: HistoryTimelineMetrics.circleSize)
+                            .fill(.tertiary)
+                            .frame(width: WorkbenchMetrics.chipSpacing, height: WorkbenchMetrics.chipSpacing)
                             .accessibilityHidden(true)
                         RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius)
-                            .fill(Color.secondary.opacity(0.14))
-                            .frame(height: 16)
+                            .fill(.tertiary)
+                            .frame(height: WorkbenchMetrics.compactSpacing)
                             .accessibilityHidden(true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, HistoryTimelineMetrics.rowContentVerticalPadding)
+                    .padding(.vertical, WorkbenchMetrics.chipSpacing)
                     .redacted(reason: .placeholder)
                 }
             }
@@ -59,14 +53,14 @@ struct HistoryTimelineSectionView: View {
     }
 
     private var timelineList: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
             ForEach(sections) { section in
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: WorkbenchMetrics.chipSpacing) {
                     Text(section.title)
                         .font(WorkbenchTypography.sectionLabel)
                         .foregroundStyle(.secondary)
 
-                    VStack(spacing: 0) {
+                    VStack(spacing: WorkbenchMetrics.microSpacing) {
                         ForEach(section.rows) { timelineRow in
                             HistoryTimelineRowView(
                                 commit: timelineRow.row.commit,
@@ -74,8 +68,6 @@ struct HistoryTimelineSectionView: View {
                                 isCurrentCommit: timelineRow.row.actionSet.isCurrentCommit,
                                 isFutureCommit: timelineRow.row.actionSet.isFutureCommit,
                                 isSelected: selectedItemID == timelineRow.row.id,
-                                showsTopConnector: timelineRow.showsTopConnector,
-                                showsBottomConnector: timelineRow.showsBottomConnector,
                                 animationNamespace: animationNamespace,
                                 onSelect: {
                                     onSelectRow(timelineRow.row)
@@ -105,8 +97,6 @@ private struct HistoryTimelineRowView: View {
     let isCurrentCommit: Bool
     let isFutureCommit: Bool
     let isSelected: Bool
-    let showsTopConnector: Bool
-    let showsBottomConnector: Bool
     let animationNamespace: Namespace.ID
     let onSelect: () -> Void
     let onActivate: () -> Void
@@ -119,52 +109,26 @@ private struct HistoryTimelineRowView: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            timelineGutter
+        HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
+            stateDot
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(commit.subject)
-                        .font(WorkbenchTypography.body)
-                        .foregroundStyle(titleColor)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .matchedGeometryEffect(id: "commit-\(commit.id)", in: animationNamespace)
-
-                    if isFutureCommit {
-                        Text("Future")
-                            .font(WorkbenchTypography.captionStrong)
-                            .foregroundStyle(Color.accentColor)
-                            .padding(.horizontal, WorkbenchMetrics.chipSpacing)
-                            .padding(.vertical, WorkbenchMetrics.microSpacing)
-                            .background(WorkbenchPalette.accentFill(contrast: colorSchemeContrast))
-                            .clipShape(Capsule())
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Image(systemName: "chevron.right")
-                        .accessibilityHidden(true)
-                        .font(WorkbenchTypography.captionStrong)
-                        .foregroundStyle(.secondary)
-                }
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                subjectLine
+                metadataLine
             }
-            .padding(.vertical, HistoryTimelineMetrics.rowContentVerticalPadding)
+            .padding(.vertical, commit.isMergeCommit ? WorkbenchMetrics.microSpacing : WorkbenchMetrics.chipSpacing)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, WorkbenchMetrics.compactSpacing)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(backgroundColor)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(borderColor, lineWidth: borderLineWidth)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .contentShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .animation(
             WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
             value: isHovered
         )
+        .onHover { isHovered = $0 }
         .onTapGesture {
             onSelect()
         }
@@ -172,7 +136,7 @@ private struct HistoryTimelineRowView: View {
             onActivate()
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(commit.subject)
+        .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(.isButton)
         .accessibilityHint("Press Return to open commit details.")
         .contextMenu {
@@ -231,7 +195,7 @@ private struct HistoryTimelineRowView: View {
             } label: {
                 Label("Edit Message", systemImage: "pencil")
             }
-            .tint(.orange)
+            .tint(.accentColor)
         }
     }
 
@@ -240,32 +204,116 @@ private struct HistoryTimelineRowView: View {
         NSPasteboard.general.setString(value, forType: .string)
     }
 
-    private var timelineGutter: some View {
-        VStack(spacing: 0) {
-            connectorSegment(isVisible: showsTopConnector)
+    private var subjectLine: some View {
+        HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.chipSpacing) {
+            if let type = knownType {
+                Text(type)
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(commit.isMergeCommit ? Color.secondary : Color.accentColor)
+                    .padding(.horizontal, WorkbenchMetrics.chipSpacing)
+                    .padding(.vertical, WorkbenchMetrics.microSpacing)
+                    .background(WorkbenchPalette.accentFill(contrast: colorSchemeContrast))
+                    .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
 
-            Circle()
-                .fill(circleFillColor)
-                .frame(width: HistoryTimelineMetrics.circleSize, height: HistoryTimelineMetrics.circleSize)
-                .overlay(
-                    Circle()
-                        .stroke(circleStrokeColor, lineWidth: isCurrentCommit ? 2 : 1)
-                )
+                if let scope = parsedSubject.scope {
+                    Text("(\(scope))")
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
 
-            connectorSegment(isVisible: showsBottomConnector)
+            Text(displaySubject)
+                .font(subjectFont)
+                .foregroundStyle(titleColor)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .matchedGeometryEffect(id: "commit-\(commit.id)", in: animationNamespace)
+
+            if isFutureCommit {
+                Text("Future")
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.horizontal, WorkbenchMetrics.chipSpacing)
+                    .padding(.vertical, WorkbenchMetrics.microSpacing)
+                    .background(WorkbenchPalette.accentFill(contrast: colorSchemeContrast))
+                    .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
+            }
         }
-        .frame(width: HistoryTimelineMetrics.gutterWidth)
     }
 
-    private func connectorSegment(isVisible: Bool) -> some View {
-        Rectangle()
-            .fill(connectorColor)
-            .frame(width: 1)
-            .frame(maxHeight: .infinity)
-            .opacity(isVisible ? 1 : 0)
+    private var metadataLine: some View {
+        HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.chipSpacing) {
+            Text(commit.shortHash)
+                .font(WorkbenchTypography.caption.monospaced())
+                .foregroundStyle(metadataStyle)
+
+            Text(commit.authorName)
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(metadataStyle)
+                .lineLimit(1)
+
+            Text(relativeTimestamp)
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(metadataStyle)
+                .lineLimit(1)
+
+            Spacer()
+        }
+    }
+
+    private var stateDot: some View {
+        Circle()
+            .fill(isSelected ? Color.accentColor : Color.clear)
+            .overlay {
+                Circle()
+                    .strokeBorder(dotStrokeStyle, lineWidth: WorkbenchMetrics.microSpacing / 2)
+            }
+            .frame(
+                width: commit.isMergeCommit ? WorkbenchMetrics.microSpacing : WorkbenchMetrics.chipSpacing,
+                height: commit.isMergeCommit ? WorkbenchMetrics.microSpacing : WorkbenchMetrics.chipSpacing
+            )
+            .padding(.top, WorkbenchMetrics.chipSpacing)
+            .accessibilityHidden(true)
+    }
+
+    private var parsedSubject: ConventionalCommitSubject {
+        ConventionalCommitSubjectParser.parse(commit.subject)
+    }
+
+    private var knownType: String? {
+        guard let type = parsedSubject.type,
+              ConventionalCommitSubjectParser.isKnownType(type)
+        else {
+            return nil
+        }
+
+        return type
+    }
+
+    private var displaySubject: String {
+        knownType == nil ? commit.subject : parsedSubject.subject
+    }
+
+    private var subjectFont: Font {
+        commit.isMergeCommit ? WorkbenchTypography.detail : WorkbenchTypography.body
+    }
+
+    private var relativeTimestamp: String {
+        HistoryTimelineDateFormatter.relativeTimestamp(for: commit.committedAt)
+    }
+
+    private var accessibilityLabel: String {
+        let mergeSuffix = commit.isMergeCommit ? ", merge commit" : ""
+        return "\(commit.subject), \(commit.authorName), \(relativeTimestamp)\(mergeSuffix)"
     }
 
     private var titleColor: Color {
+        if commit.isMergeCommit {
+            return .secondary
+        }
+
         if isFutureCommit {
             return .accentColor
         }
@@ -273,72 +321,24 @@ private struct HistoryTimelineRowView: View {
         return .primary
     }
 
+    private var metadataStyle: AnyShapeStyle {
+        commit.isMergeCommit ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.secondary)
+    }
+
     private var backgroundColor: Color {
         if isSelected {
-            return Color.accentColor.opacity(0.14)
+            return WorkbenchPalette.selectedFill()
         }
 
-        if isCurrentCommit {
-            return Color.accentColor.opacity(0.08)
-        }
-
-        if isHovered {
-            return Color.primary.opacity(0.05)
-        }
-
-        return Color.clear
+        return isHovered ? WorkbenchPalette.hoverFill() : .clear
     }
 
-    private var borderColor: Color {
+    private var dotStrokeStyle: AnyShapeStyle {
         if isSelected {
-            return Color.accentColor.opacity(0.35)
+            return AnyShapeStyle(Color.accentColor)
         }
 
-        if isCurrentCommit {
-            return Color.accentColor.opacity(0.35)
-        }
-
-        if isHovered {
-            return Color.primary.opacity(0.08)
-        }
-
-        return .clear
-    }
-
-    private var borderLineWidth: CGFloat {
-        if isCurrentCommit || isHovered {
-            return 1
-        }
-
-        return 0
-    }
-
-    private var connectorColor: Color {
-        isFutureCommit ? Color.accentColor.opacity(0.65) : Color.secondary.opacity(0.35)
-    }
-
-    private var circleFillColor: Color {
-        if isCurrentCommit {
-            return .accentColor
-        }
-
-        if isFutureCommit {
-            return .accentColor
-        }
-
-        return Color(nsColor: .windowBackgroundColor)
-    }
-
-    private var circleStrokeColor: Color {
-        if isCurrentCommit {
-            return .accentColor
-        }
-
-        if isFutureCommit {
-            return .blue
-        }
-
-        return Color.secondary.opacity(0.6)
+        return commit.isMergeCommit ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.secondary)
     }
 }
 
@@ -395,5 +395,5 @@ private struct HistoryTimelineRowView: View {
         onGenerateCommitMessage: { _ in }
     )
     .padding()
-    .frame(width: 380)
+    .frame(width: WorkbenchMetrics.sidePanelWidth)
 }
