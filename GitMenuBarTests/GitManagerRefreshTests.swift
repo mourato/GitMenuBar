@@ -134,12 +134,11 @@ final class GitManagerRefreshTests: XCTestCase {
 
     func testStartupWithRepositoryPathReusesSelectedRefreshLifecycle() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
-        let finished = expectation(description: "startup refresh completes")
-        let manager = StartupProbeGitManager(repositoryPath: repoURL.path, onFinished: finished)
+        let manager = StartupProbeGitManager(repositoryPath: repoURL.path)
 
         XCTAssertEqual(manager.refreshCount, 1)
         XCTAssertTrue(manager.refreshCalled)
-        await fulfillment(of: [finished], timeout: 5.0)
+        await manager.awaitStartupRefresh()
 
         XCTAssertEqual(manager.currentBranch, "main")
         XCTAssertTrue(manager.availableBranches.contains("main"))
@@ -163,9 +162,8 @@ final class GitManagerRefreshTests: XCTestCase {
         try runGit(["add", "file2.txt"], in: repoURL)
         try runGit(["commit", "-m", "commit 2"], in: repoURL)
 
-        let finished = expectation(description: "startup ahead count refresh completes")
-        let manager = StartupProbeGitManager(repositoryPath: repoURL.path, onFinished: finished)
-        await fulfillment(of: [finished], timeout: 5.0)
+        let manager = StartupProbeGitManager(repositoryPath: repoURL.path)
+        await manager.awaitStartupRefresh()
 
         XCTAssertEqual(manager.commitCount, 2)
         XCTAssertTrue(manager.isAheadOfRemote)
@@ -237,16 +235,42 @@ final class GitManagerRefreshTests: XCTestCase {
 
 @MainActor
 private final class StartupProbeGitManager: GitManager {
+    @MainActor
+    private final class RefreshCompletion {
+        private var didComplete = false
+        private var continuation: CheckedContinuation<Void, Never>?
+
+        func wait() async {
+            guard !didComplete else { return }
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                if didComplete {
+                    continuation.resume()
+                } else {
+                    self.continuation = continuation
+                }
+            }
+        }
+
+        func fulfill() {
+            didComplete = true
+            continuation?.resume()
+            continuation = nil
+        }
+    }
+
     var refreshCount = 0
     var refreshCalled: Bool {
         refreshCount > 0
     }
 
-    var onFinished: XCTestExpectation?
+    private let startupRefreshCompletion = RefreshCompletion()
 
-    init(repositoryPath: String, onFinished: XCTestExpectation? = nil) {
-        self.onFinished = onFinished
+    init(repositoryPath: String) {
         super.init(repositoryPathOverride: repositoryPath)
+    }
+
+    func awaitStartupRefresh() async {
+        await startupRefreshCompletion.wait()
     }
 
     override func refreshSelectedRepository(
@@ -255,10 +279,9 @@ private final class StartupProbeGitManager: GitManager {
         completion: (() -> Void)? = nil
     ) {
         refreshCount += 1
-        let expectation = onFinished
         super.refreshSelectedRepository(path: path, includeReflogHistory: includeReflogHistory) {
             completion?()
-            expectation?.fulfill()
+            self.startupRefreshCompletion.fulfill()
         }
     }
 }
