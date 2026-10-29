@@ -9,6 +9,7 @@ struct BranchManagementRowView: View {
     let onMerge: (() -> Void)?
     let onDeleteRemote: (() -> Void)?
     let onCheckoutLocally: (() -> Void)?
+    var cleanupStatus: GitBranchCleanupStatus?
 
     @State private var isHovered = false
 
@@ -25,16 +26,25 @@ struct BranchManagementRowView: View {
                 Image(systemName: "checkmark")
                     .font(WorkbenchTypography.captionStrong)
                     .foregroundStyle(Color.accentColor)
-            } else {
-                Image(systemName: branch.isRemote ? "icloud" : "arrow.triangle.branch")
+                    .accessibilityHidden(true)
+            } else if branch.isRemote {
+                Image(systemName: "icloud")
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            } else {
+                Circle()
+                    .fill(statusDotColor)
+                    .frame(width: 6, height: 6)
+                    .frame(width: 12, height: 12)
+                    .accessibilityHidden(true)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(branch.displayName)
                     .font(WorkbenchTypography.body)
                     .lineLimit(1)
+                    .truncationMode(.middle)
 
                 HStack(spacing: 6) {
                     trackingBadge
@@ -48,40 +58,21 @@ struct BranchManagementRowView: View {
 
             Spacer()
 
-            if branch.isLocal {
-                Menu("Branch actions", systemImage: "ellipsis.circle") {
-                    Button("Switch to \(branch.name)") { onSwitch() }
-                    Button("Rename") { onRename() }
-                    if let onPush {
-                        Button("Push to Remote") { onPush() }
-                    }
-                    if let onMerge {
-                        Button("Merge into Current") { onMerge() }
-                    }
-                    Divider()
-                    Button(role: .destructive) { onDelete() } label: {
-                        Text("Delete Branch")
-                    }
-                }
-                .labelStyle(.iconOnly)
-                .font(WorkbenchTypography.body)
-                .foregroundStyle(.secondary)
-                .menuStyle(.borderlessButton)
-                .opacity(isHovered ? 1 : 0.75)
-            } else {
-                Menu("Branch actions", systemImage: "ellipsis.circle") {
-                    Button("Checkout Locally") { onCheckoutLocally?() }
-                    Divider()
-                    Button(role: .destructive) { onDeleteRemote?() } label: {
-                        Text("Delete Remote Branch")
-                    }
-                }
-                .labelStyle(.iconOnly)
-                .font(WorkbenchTypography.body)
-                .foregroundStyle(.secondary)
-                .menuStyle(.borderlessButton)
-                .opacity(isHovered ? 1 : 0.75)
+            if let cleanupStatus {
+                CleanupStatusBadgeView(status: cleanupStatus)
             }
+
+            Menu("Branch actions", systemImage: "ellipsis.circle") {
+                branchActions
+            }
+            .labelStyle(.iconOnly)
+            .font(WorkbenchTypography.body)
+            .foregroundStyle(.secondary)
+            .menuStyle(.borderlessButton)
+            .opacity(isHovered ? 1 : 0)
+            .allowsHitTesting(isHovered)
+            // VoiceOver reaches the same actions through the row's context menu.
+            .accessibilityHidden(true)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -90,11 +81,38 @@ struct BranchManagementRowView: View {
         .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
         .contentShape(Rectangle())
         .onTapGesture(perform: onSwitch)
+        .contextMenu {
+            branchActions
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(.isButton)
         .onHover { inside in
             isHovered = inside
+        }
+    }
+
+    @ViewBuilder
+    private var branchActions: some View {
+        if branch.isLocal {
+            Button("Switch to \(branch.name)") { onSwitch() }
+            Button("Rename \(branch.name)") { onRename() }
+            if let onPush {
+                Button("Push \(branch.name) to Remote") { onPush() }
+            }
+            if let onMerge {
+                Button("Merge \(branch.name) into Current") { onMerge() }
+            }
+            Divider()
+            Button(role: .destructive) { onDelete() } label: {
+                Text("Delete Branch \(branch.name)")
+            }
+        } else {
+            Button("Check Out \(branch.displayName) Locally") { onCheckoutLocally?() }
+            Divider()
+            Button(role: .destructive) { onDeleteRemote?() } label: {
+                Text("Delete Remote Branch \(branch.displayName)")
+            }
         }
     }
 
@@ -118,13 +136,22 @@ struct BranchManagementRowView: View {
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.orange)
         case .noRemote:
-            Label("No upstream", systemImage: "dot")
-                .font(WorkbenchTypography.caption)
-                .foregroundStyle(.secondary)
+            EmptyView()
         case .unknown:
             Label("Unknown", systemImage: "questionmark")
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private var statusDotColor: Color {
+        switch cleanupStatus {
+        case .mergedIntoDefault:
+            .green
+        case .notMerged:
+            .orange
+        default:
+            .secondary
         }
     }
 
@@ -133,7 +160,33 @@ struct BranchManagementRowView: View {
         if branch.isCurrent {
             base += ", current branch"
         }
-        return base + ", " + branch.trackingStatus.description
+        if branch.isRemote {
+            return base + ", remote branch"
+        }
+        base += ", " + branch.trackingStatus.description
+        if let cleanupDescription {
+            base += ", " + cleanupDescription
+        }
+        return base
+    }
+
+    private var cleanupDescription: String? {
+        switch cleanupStatus {
+        case .none:
+            nil
+        case .mergedIntoDefault:
+            "merged"
+        case .notMerged:
+            "not merged"
+        case .protected:
+            "protected"
+        case .current:
+            nil
+        case .checkedOutElsewhere:
+            "checked out in another worktree"
+        case .unknown:
+            "cleanup status unknown"
+        }
     }
 }
 
@@ -154,7 +207,26 @@ struct BranchManagementRowView: View {
             onPush: {},
             onMerge: {},
             onDeleteRemote: nil,
-            onCheckoutLocally: nil
+            onCheckoutLocally: nil,
+            cleanupStatus: .mergedIntoDefault
+        )
+        BranchManagementRowView(
+            branch: BranchInfo(
+                name: "feature/stale-experiment",
+                isLocal: true,
+                isRemote: false,
+                isCurrent: false,
+                trackingStatus: .noRemote,
+                lastCommitDate: Date().addingTimeInterval(-172_800)
+            ),
+            onSwitch: {},
+            onRename: {},
+            onDelete: {},
+            onPush: {},
+            onMerge: {},
+            onDeleteRemote: nil,
+            onCheckoutLocally: nil,
+            cleanupStatus: .notMerged
         )
         BranchManagementRowView(
             branch: BranchInfo(
