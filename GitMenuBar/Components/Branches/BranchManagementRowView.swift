@@ -10,8 +10,42 @@ struct BranchManagementRowView: View {
     let onDeleteRemote: (() -> Void)?
     let onCheckoutLocally: (() -> Void)?
     var cleanupStatus: GitBranchCleanupStatus?
+    var worktreeStatus: GitWorktreeCleanupStatus?
+    var blockedReason: String?
+    var onCleanUnit: (() -> Void)?
+    var onRemoveWorktree: (() -> Void)?
 
     @State private var isHovered = false
+
+    init(
+        branch: BranchInfo,
+        onSwitch: @escaping () -> Void,
+        onRename: @escaping () -> Void,
+        onDelete: @escaping () -> Void,
+        onPush: (() -> Void)? = nil,
+        onMerge: (() -> Void)? = nil,
+        onDeleteRemote: (() -> Void)? = nil,
+        onCheckoutLocally: (() -> Void)? = nil,
+        cleanupStatus: GitBranchCleanupStatus? = nil,
+        worktreeStatus: GitWorktreeCleanupStatus? = nil,
+        blockedReason: String? = nil,
+        onCleanUnit: (() -> Void)? = nil,
+        onRemoveWorktree: (() -> Void)? = nil
+    ) {
+        self.branch = branch
+        self.onSwitch = onSwitch
+        self.onRename = onRename
+        self.onDelete = onDelete
+        self.onPush = onPush
+        self.onMerge = onMerge
+        self.onDeleteRemote = onDeleteRemote
+        self.onCheckoutLocally = onCheckoutLocally
+        self.cleanupStatus = cleanupStatus
+        self.worktreeStatus = worktreeStatus
+        self.blockedReason = blockedReason
+        self.onCleanUnit = onCleanUnit
+        self.onRemoveWorktree = onRemoveWorktree
+    }
 
     private static let relativeDateFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
@@ -21,6 +55,15 @@ struct BranchManagementRowView: View {
     }()
 
     var body: some View {
+        if let blockedReason, !blockedReason.isEmpty {
+            rowContent
+                .help(blockedReason)
+        } else {
+            rowContent
+        }
+    }
+
+    private var rowContent: some View {
         HStack(spacing: 10) {
             if branch.isCurrent {
                 Image(systemName: "checkmark")
@@ -58,7 +101,9 @@ struct BranchManagementRowView: View {
 
             Spacer()
 
-            if let cleanupStatus {
+            if let worktreeStatus {
+                CleanupStatusBadgeView(status: worktreeStatus)
+            } else if let cleanupStatus {
                 CleanupStatusBadgeView(status: cleanupStatus)
             }
 
@@ -103,6 +148,12 @@ struct BranchManagementRowView: View {
             if let onMerge {
                 Button("Merge \(branch.name) into Current") { onMerge() }
             }
+            if let onCleanUnit {
+                Button("Clean \(branch.name)…") { onCleanUnit() }
+            }
+            if let onRemoveWorktree {
+                Button("Remove Worktree for \(branch.name)…") { onRemoveWorktree() }
+            }
             Divider()
             Button(role: .destructive) { onDelete() } label: {
                 Text("Delete Branch \(branch.name)")
@@ -145,13 +196,21 @@ struct BranchManagementRowView: View {
     }
 
     private var statusDotColor: Color {
+        if let worktreeStatus {
+            switch worktreeStatus {
+            case .dirty, .locked:
+                return .orange
+            default:
+                break
+            }
+        }
         switch cleanupStatus {
         case .mergedIntoDefault:
-            .green
+            return .green
         case .notMerged:
-            .orange
+            return .orange
         default:
-            .secondary
+            return .secondary
         }
     }
 
@@ -164,10 +223,41 @@ struct BranchManagementRowView: View {
             return base + ", remote branch"
         }
         base += ", " + branch.trackingStatus.description
-        if let cleanupDescription {
+        if let worktreeDescription {
+            base += ", " + worktreeDescription
+        } else if let cleanupDescription {
             base += ", " + cleanupDescription
         }
+        if let blockedReason, !blockedReason.isEmpty {
+            if !base.localizedStandardContains(blockedReason) {
+                base += ", " + blockedReason
+            }
+        }
         return base
+    }
+
+    private var worktreeDescription: String? {
+        guard let worktreeStatus else { return nil }
+        switch worktreeStatus {
+        case .dirty:
+            return "worktree has uncommitted changes"
+        case let .locked(reason):
+            return "worktree locked: \(reason)"
+        case .main:
+            return "main worktree"
+        case .current:
+            return "current worktree"
+        case .eligible:
+            return "worktree eligible for cleanup"
+        case let .prunable(reason):
+            return "worktree prunable: \(reason)"
+        case .branchNotMerged:
+            return "worktree branch not merged"
+        case .detached:
+            return "detached worktree"
+        case let .unknown(reason):
+            return "worktree unknown: \(reason)"
+        }
     }
 
     private var cleanupDescription: String? {
@@ -209,6 +299,26 @@ struct BranchManagementRowView: View {
             onDeleteRemote: nil,
             onCheckoutLocally: nil,
             cleanupStatus: .mergedIntoDefault
+        )
+        BranchManagementRowView(
+            branch: BranchInfo(
+                name: "feature/dirty-worktree",
+                isLocal: true,
+                isRemote: false,
+                isCurrent: false,
+                trackingStatus: .upToDate,
+                lastCommitDate: Date().addingTimeInterval(-1800)
+            ),
+            onSwitch: {},
+            onRename: {},
+            onDelete: {},
+            onPush: {},
+            onMerge: {},
+            onDeleteRemote: nil,
+            onCheckoutLocally: nil,
+            worktreeStatus: .dirty,
+            onCleanUnit: {},
+            onRemoveWorktree: {}
         )
         BranchManagementRowView(
             branch: BranchInfo(

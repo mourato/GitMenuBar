@@ -1,9 +1,16 @@
 import AppKit
 import SwiftUI
 
-/// Branch Health management surface hosted by the inspector. It covers the
-/// Branches, Worktrees, and Cleanup modes previously owned by the
-/// BranchManagementSheet, reusing its row and content views.
+private struct BranchListMotionState: Equatable {
+    let visibleIDs: [String]
+    let collapsedIDs: [String]
+    let filter: BranchFilter
+}
+
+/// Unified branch management surface hosted in the inspector.
+/// Integrates branch filtering, reachability analysis against the default branch,
+/// inline cleanup actions and review banners, worktree inspection, and branch operations
+/// using `BranchListResolver`.
 struct SidePanelBranchManagementView: View {
     let onRequestDeleteBranch: (String) -> Void
     let onRequestSwitchBranch: (String) -> Void
@@ -12,20 +19,47 @@ struct SidePanelBranchManagementView: View {
 
     @Environment(GitManager.self) private var gitManager
     @Environment(MainMenuActionCoordinator.self) private var actionCoordinator
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    @State private var now = Date()
     @State private var branchQuery = ""
+    @State private var filter: BranchFilter = .all
     @State private var branchesExpanded = true
     @State private var worktreesExpanded = false
-    @State private var cleanupExpanded = true
+    @State private var moreMergedExpanded = false
     @State private var deleteRemoteBranch: BranchInfo?
-    @State private var selectedCleanupIDs: Set<String> = []
-    @State private var pendingCleanupUnits: [GitCleanupUnit] = []
+    @State private var pendingReadyUnits: [GitCleanupUnit] = []
+    @State private var pendingBlockedUnits: [GitCleanupUnit] = []
+    @State private var pendingCleanupSnapshot: GitWorktreeSnapshot?
     @State private var showCleanupConfirmation = false
 
+    private var defaultBranchDisplayName: String {
+        gitManager.defaultBranchName.isEmpty ? "the default branch" : gitManager.defaultBranchName
+    }
+
+    private var listModel: BranchListModel {
+        BranchListResolver.resolve(
+            branches: gitManager.branchInfos,
+            snapshot: gitManager.worktreeSnapshot,
+            query: branchQuery,
+            filter: filter,
+            now: now
+        )
+    }
+
     var body: some View {
+        let model = listModel
         VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
-            branchesGroup
-            worktreesGroup
-            cleanupGroup
+            branchesGroup(model: model)
+        }
+        .onAppear {
+            now = Date()
+        }
+        .onChange(of: gitManager.branchInfos) { _, _ in
+            now = Date()
+        }
+        .onChange(of: gitManager.worktreeSnapshot) { _, _ in
+            now = Date()
         }
         .alert("Delete Remote Branch?", isPresented: Binding(
             get: { deleteRemoteBranch != nil },
@@ -35,11 +69,7 @@ struct SidePanelBranchManagementView: View {
                 }
             }
         )) {
-            Button("Delete", role: .destructive) {
-                guard let branch = deleteRemoteBranch else { return }
-                deleteRemoteBranch = nil
-                Task { _ = await actionCoordinator.sidePanel.deleteRemoteSidePanelBranch(branch.name, remoteName: branch.remoteName ?? "origin") }
-            }
+            Button("Delete", role: .destructive, action: confirmDeleteRemote)
             Button("Cancel", role: .cancel) { deleteRemoteBranch = nil }
         } message: {
             if let branch = deleteRemoteBranch {
@@ -48,182 +78,334 @@ struct SidePanelBranchManagementView: View {
         }
         .sheet(isPresented: $showCleanupConfirmation) {
             CleanupConfirmationView(
-                units: pendingCleanupUnits,
+                units: pendingReadyUnits,
+                blocked: pendingBlockedUnits,
                 onCancel: dismissCleanupConfirmation,
-                onConfirm: runCleanup
+                onConfirm: { unitsToClean in runCleanup(units: unitsToClean) }
             )
         }
     }
 
-    private var branchesGroup: some View {
+    private func branchesGroup(model: BranchListModel) -> some View {
         DisclosureGroup(isExpanded: $branchesExpanded) {
             VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-                Text("Local Git reachability against \(gitManager.defaultBranchName.isEmpty ? "the default branch" : gitManager.defaultBranchName), not GitHub pull request status.")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
+                headerCaption
                 filterField(query: $branchQuery, placeholder: "Filter branches")
-                if !filteredLocalBranches.isEmpty {
-                    Text("Local Branches")
-                        .font(WorkbenchTypography.sectionLabel)
-                    ForEach(filteredLocalBranches) { localManagementRow($0) }
+                BranchFilterChipsView(filter: $filter, model: model)
+                if let progress = gitManager.cleanupProgress {
+                    CleanupProgressView(progress: progress)
                 }
-                if !filteredRemoteBranches.isEmpty {
-                    Text("Remote Branches")
-                        .font(WorkbenchTypography.sectionLabel)
-                    ForEach(filteredRemoteBranches) { remoteManagementRow($0) }
+                if model.readyCount + model.blockedCount > 0 {
+                    cleanupBanner(model: model)
                 }
-                if filteredLocalBranches.isEmpty, filteredRemoteBranches.isEmpty {
+                if let current = model.current {
+                    pinnedCurrentBranchRow(current, model: model)
+                }
+                localSection(model: model)
+                remoteSection(model: model)
+                if isListEmpty(model: model) {
                     Text("No branches match your filter.")
                         .font(WorkbenchTypography.caption)
                         .foregroundStyle(.secondary)
                 }
-                Button {
-                    onCreateBranch()
-                } label: {
-                    Label("New Branch", systemImage: "plus")
+                footer
+                if worktreesExpanded {
+                    worktreesContent
                 }
-                .workbenchSecondary()
-                .disabled(actionCoordinator.isBusy)
             }
+            .animation(
+                WorkbenchMotion.swap,
+                value: BranchListMotionState(
+                    visibleIDs: model.visible.map(\.id),
+                    collapsedIDs: model.collapsedMerged.map(\.id),
+                    filter: filter
+                )
+            )
+            .adaptiveMotion()
         } label: {
             Text("Branches (\(gitManager.branchInfos.filter(\.isLocal).count))")
                 .font(WorkbenchTypography.sectionLabel)
         }
     }
 
-    private var cleanupGroup: some View {
-        DisclosureGroup(isExpanded: $cleanupExpanded) {
-            if let snapshot = gitManager.worktreeSnapshot {
-                VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-                    if let progress = gitManager.cleanupProgress {
-                        CleanupProgressView(progress: progress)
-                    }
-                    CleanupManagementContentView(
-                        snapshot: snapshot,
-                        errorMessage: nil,
-                        query: branchQuery,
-                        selectedIDs: $selectedCleanupIDs,
-                        onDismissError: {},
-                        onReveal: revealWorktree,
-                        onCopyPath: copyPath,
-                        onForceRemove: forceRemoveWorktree,
-                        onCleanUnit: { unit in
-                            presentCleanupConfirmation(units: [unit])
-                        },
-                        onDeleteBranch: { unit in
-                            presentCleanupConfirmation(units: [unit])
-                        },
-                        onRemoveWorktree: { unit in
-                            presentCleanupConfirmation(units: [unit])
-                        }
-                    )
-                    Button("Clean Selected") {
-                        presentCleanupConfirmation(units: selectedCleanupUnits(snapshot))
-                    }
-                    .workbenchSecondary()
-                    .disabled(actionCoordinator.isBusy || selectedCleanupUnits(snapshot).isEmpty)
-                    .help(
-                        selectedCleanupUnits(snapshot).isEmpty
-                            ? "Select at least one safe branch first."
-                            : "Review the selected branches and worktrees."
-                    )
-                }
-            } else {
-                Text("No cleanup analysis is available.")
+    private var headerCaption: some View {
+        Text("vs \(defaultBranchDisplayName) · local")
+            .font(WorkbenchTypography.caption)
+            .foregroundStyle(.secondary)
+            .help("Local Git reachability against \(defaultBranchDisplayName), not GitHub pull request status.")
+    }
+
+    private func cleanupBanner(model: BranchListModel) -> some View {
+        HStack(alignment: .center, spacing: WorkbenchMetrics.compactSpacing) {
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                Text("\(model.readyCount) ready to clean")
+                    .font(WorkbenchTypography.sectionLabel)
+                Text("\(model.blockedCount) blocked")
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(.secondary)
             }
-        } label: {
-            Text("Cleanup")
-                .font(WorkbenchTypography.sectionLabel)
-        }
-    }
-
-    private var worktreesGroup: some View {
-        DisclosureGroup(isExpanded: $worktreesExpanded) {
-            if let snapshot = gitManager.worktreeSnapshot {
-                WorktreeManagementContentView(
+            Spacer(minLength: WorkbenchMetrics.compactSpacing)
+            Button("Review…") {
+                guard let snapshot = gitManager.worktreeSnapshot else { return }
+                let matching = snapshot.managementUnits(matching: branchQuery)
+                presentCleanupConfirmation(
                     snapshot: snapshot,
-                    errorMessage: nil,
-                    query: branchQuery,
-                    onReveal: revealWorktree,
-                    onCopyPath: copyPath,
-                    onForceRemove: forceRemoveWorktree,
-                    onDismissError: {}
+                    ready: matching.filter(\.canPrimaryClean),
+                    blocked: matching.filter { !$0.canPrimaryClean }
                 )
-            } else {
-                Text("No cleanup analysis is available.")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
             }
-        } label: {
-            Text("Worktrees (\(gitManager.worktreeSnapshot?.worktrees.count ?? 0))")
-                .font(WorkbenchTypography.sectionLabel)
+            .workbenchSecondary()
+            .disabled(actionCoordinator.isBusy || model.readyCount == 0)
+            .help(model.readyCount == 0 ? "Nothing is ready to clean" : "Review branches and worktrees ready to clean")
+        }
+        .padding(WorkbenchMetrics.compactSpacing)
+        .background(
+            WorkbenchPalette.successFill(contrast: colorSchemeContrast),
+            in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
+        )
+    }
+
+    private func pinnedCurrentBranchRow(_ current: BranchInfo, model: BranchListModel) -> some View {
+        let currentStatus = model.local.first(where: \.branch.isCurrent)?.cleanupStatus
+        return localManagementRow(current, badgeStatus: currentStatus)
+            .background(
+                WorkbenchPalette.accentFill(contrast: colorSchemeContrast),
+                in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
+            )
+            .transition(.opacity)
+    }
+
+    @ViewBuilder
+    private func localSection(model: BranchListModel) -> some View {
+        let nonCurrentVisible = model.visible.filter { !$0.branch.isCurrent }
+        let totalCount = nonCurrentVisible.count + model.collapsedMerged.count
+
+        if totalCount > 0 {
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+                Text("LOCAL · \(totalCount)")
+                    .font(WorkbenchTypography.captionStrong)
+                    .textCase(.uppercase)
+                    .tracking(WorkbenchTypography.tracking(for: WorkbenchTypography.caption))
+                    .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                    ForEach(nonCurrentVisible) { row in
+                        localManagementRow(row.branch, badgeStatus: row.cleanupStatus).transition(.opacity)
+                    }
+                }
+
+                if model.hasCollapsedMerged {
+                    DisclosureGroup(isExpanded: $moreMergedExpanded) {
+                        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                            ForEach(model.collapsedMerged) { row in
+                                localManagementRow(row.branch, badgeStatus: row.cleanupStatus).transition(.opacity)
+                            }
+                        }
+                    } label: {
+                        Text("\(model.collapsedMerged.count) more merged branches")
+                            .font(WorkbenchTypography.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
         }
     }
 
-    private func localManagementRow(_ info: BranchInfo) -> BranchManagementRowView {
-        BranchManagementRowView(
+    @ViewBuilder
+    private func remoteSection(model: BranchListModel) -> some View {
+        let remoteTotalCount = model.remoteGroups.reduce(0) { $0 + $1.branches.count } + model.ungroupedRemote.count
+
+        if remoteTotalCount > 0 {
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+                Text("REMOTE · \(remoteTotalCount)")
+                    .font(WorkbenchTypography.captionStrong)
+                    .textCase(.uppercase)
+                    .tracking(WorkbenchTypography.tracking(for: WorkbenchTypography.caption))
+                    .foregroundStyle(.secondary)
+
+                ForEach(model.remoteGroups) { group in
+                    DisclosureGroup {
+                        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                            ForEach(group.branches) { branch in
+                                remoteManagementRow(branch).transition(.opacity)
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                            Text(group.name).font(WorkbenchTypography.body).foregroundStyle(.primary)
+                            Text("\(group.branches.count)")
+                                .font(WorkbenchTypography.caption).monospacedDigit().foregroundStyle(.secondary)
+                                .padding(.horizontal, WorkbenchMetrics.chipSpacing)
+                                .padding(.vertical, WorkbenchMetrics.microSpacing / 2)
+                                .background(Capsule().fill(WorkbenchPalette.hoverFill()))
+                        }
+                    }
+                }
+
+                ForEach(model.ungroupedRemote) { branch in
+                    remoteManagementRow(branch).transition(.opacity)
+                }
+            }
+        } else if filter != .all, gitManager.branchInfos.contains(where: \.isRemote) {
+            Text("Remote branches hidden by filter").font(WorkbenchTypography.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private var footer: some View {
+        let worktreeCount = gitManager.worktreeSnapshot?.worktrees.count ?? 0
+        return HStack {
+            Button("New Branch", systemImage: "plus", action: onCreateBranch)
+                .workbenchSecondary()
+                .disabled(actionCoordinator.isBusy)
+            Spacer()
+            Button {
+                withAnimation(WorkbenchMotion.swap) { worktreesExpanded.toggle() }
+            } label: {
+                HStack(spacing: WorkbenchMetrics.microSpacing) {
+                    Text("Worktrees \(worktreeCount)")
+                    Image(systemName: "chevron.right").rotationEffect(.degrees(worktreesExpanded ? 90 : 0))
+                }
+            }
+            .workbenchGhost()
+            .disabled(actionCoordinator.isBusy)
+            .accessibilityLabel("Worktrees, \(worktreeCount)")
+            .accessibilityValue(worktreesExpanded ? "Expanded" : "Collapsed")
+        }
+    }
+
+    @ViewBuilder
+    private var worktreesContent: some View {
+        if let snapshot = gitManager.worktreeSnapshot {
+            WorktreeManagementContentView(
+                snapshot: snapshot,
+                errorMessage: nil,
+                query: branchQuery,
+                onReveal: { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: $0)]) },
+                onCopyPath: {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString($0, forType: .string)
+                },
+                onForceRemove: forceRemoveWorktree,
+                onDismissError: {}
+            )
+            .transition(.opacity)
+        } else {
+            Text("No cleanup analysis is available.").font(WorkbenchTypography.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private func localManagementRow(_ info: BranchInfo, badgeStatus: BranchCleanupBadgeStatus? = nil) -> some View {
+        let unit = gitManager.worktreeSnapshot?.managementUnits.first { $0.branch.reference.name == info.name }
+        return BranchManagementRowView(
             branch: info,
             onSwitch: { onRequestSwitchBranch(info.displayName) },
             onRename: { onRenameBranch(info.name) },
             onDelete: { onRequestDeleteBranch(info.name) },
-            onPush: needsPush(info) ? {
-                Task {
-                    if info.trackingStatus == .noRemote {
-                        _ = await actionCoordinator.sidePanel.publishSidePanelBranch(info.name)
-                    } else {
-                        _ = await actionCoordinator.sidePanel.pushSidePanelBranch(info.name)
-                    }
-                }
-            } : nil,
-            onMerge: gitManager.unmergedIntoDefaultBranches.contains(info.name) && !info.isCurrent ? {
-                Task { _ = await actionCoordinator.sidePanel.mergeSidePanelBranch(info.name) }
-            } : nil,
-            onDeleteRemote: nil,
-            onCheckoutLocally: nil
+            onPush: needsPush(info) ? { pushBranch(info) } : nil,
+            onMerge: canMerge(info) ? { mergeBranch(info) } : nil,
+            cleanupStatus: mapCleanupStatus(badgeStatus),
+            worktreeStatus: resolvedWorktreeStatus(unit: unit, badgeStatus: badgeStatus),
+            blockedReason: resolvedBlockedReason(unit: unit, badgeStatus: badgeStatus),
+            onCleanUnit: cleanAction(for: unit),
+            onRemoveWorktree: removeWorktreeAction(for: unit)
         )
+        .disabled(actionCoordinator.isBusy)
     }
 
-    private func remoteManagementRow(_ info: BranchInfo) -> BranchManagementRowView {
+    private func resolvedWorktreeStatus(
+        unit: GitCleanupUnit?,
+        badgeStatus: BranchCleanupBadgeStatus?
+    ) -> GitWorktreeCleanupStatus? {
+        if let status = unit?.worktree?.status {
+            switch status {
+            case .dirty, .locked: return status
+            default: break
+            }
+        }
+        return badgeStatus == .dirty ? .dirty : nil
+    }
+
+    private func resolvedBlockedReason(
+        unit: GitCleanupUnit?,
+        badgeStatus: BranchCleanupBadgeStatus?
+    ) -> String? {
+        if case let .blocked(reason) = badgeStatus {
+            return reason
+        }
+        if let worktree = unit?.worktree, case let .locked(reason) = worktree.status {
+            return "Locked: \(reason)"
+        }
+        return nil
+    }
+
+    private func cleanAction(for unit: GitCleanupUnit?) -> (() -> Void)? {
+        guard let unit else { return nil }
+        return {
+            guard let current = gitManager.worktreeSnapshot else { return }
+            presentCleanupConfirmation(
+                snapshot: current,
+                ready: unit.canPrimaryClean ? [unit] : [],
+                blocked: unit.canPrimaryClean ? [] : [unit]
+            )
+        }
+    }
+
+    private func removeWorktreeAction(for unit: GitCleanupUnit?) -> (() -> Void)? {
+        guard let removeUnit = unit?.removingWorktreeOnly() else { return nil }
+        return {
+            guard let current = gitManager.worktreeSnapshot else { return }
+            presentCleanupConfirmation(
+                snapshot: current,
+                ready: removeUnit.canPrimaryClean ? [removeUnit] : [],
+                blocked: removeUnit.canPrimaryClean ? [] : [removeUnit]
+            )
+        }
+    }
+
+    private func canMerge(_ info: BranchInfo) -> Bool {
+        gitManager.unmergedIntoDefaultBranches.contains(info.name) && !info.isCurrent
+    }
+
+    private func pushBranch(_ info: BranchInfo) {
+        Task {
+            if info.trackingStatus == .noRemote {
+                _ = await actionCoordinator.sidePanel.publishSidePanelBranch(info.name)
+            } else {
+                _ = await actionCoordinator.sidePanel.pushSidePanelBranch(info.name)
+            }
+        }
+    }
+
+    private func mergeBranch(_ info: BranchInfo) {
+        Task { _ = await actionCoordinator.sidePanel.mergeSidePanelBranch(info.name) }
+    }
+
+    private func remoteManagementRow(_ info: BranchInfo) -> some View {
         BranchManagementRowView(
             branch: info,
             onSwitch: {},
             onRename: {},
             onDelete: {},
-            onPush: nil,
-            onMerge: nil,
             onDeleteRemote: { deleteRemoteBranch = info },
             onCheckoutLocally: {
-                Task { _ = await actionCoordinator.sidePanel.checkoutRemoteSidePanelBranch(info.name, remoteName: info.remoteName ?? "origin") }
+                Task {
+                    _ = await actionCoordinator.sidePanel.checkoutRemoteSidePanelBranch(
+                        info.name,
+                        remoteName: info.remoteName ?? "origin"
+                    )
+                }
             }
         )
+        .disabled(actionCoordinator.isBusy)
     }
 
-    private var filteredLocalBranches: [BranchInfo] {
-        filteredBranches { $0.isLocal }
-    }
-
-    private var filteredRemoteBranches: [BranchInfo] {
-        filteredBranches { $0.isRemote }
-    }
-
-    private func filteredBranches(matching predicate: (BranchInfo) -> Bool) -> [BranchInfo] {
-        gitManager.branchInfos
-            .filter(predicate)
-            .filter { branchQuery.isEmpty || $0.displayName.localizedStandardContains(branchQuery) }
-            .sorted { lhs, rhs in
-                if lhs.isCurrent != rhs.isCurrent {
-                    return lhs.isCurrent
-                }
-                return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
-            }
+    private func mapCleanupStatus(_ status: BranchCleanupBadgeStatus?) -> GitBranchCleanupStatus? {
+        status == .merged ? .mergedIntoDefault : nil
     }
 
     private func filterField(query: Binding<String>, placeholder: String) -> some View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
             TextField(placeholder, text: query)
                 .textFieldStyle(.plain)
                 .font(WorkbenchTypography.body)
@@ -231,8 +413,7 @@ struct SidePanelBranchManagementView: View {
                 Button {
                     query.wrappedValue = ""
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Clear filter")
@@ -245,66 +426,61 @@ struct SidePanelBranchManagementView: View {
         .accessibilityLabel(placeholder)
     }
 
+    private func isListEmpty(model: BranchListModel) -> Bool {
+        model.current == nil && model.local.isEmpty && model.remoteGroups.isEmpty && model.ungroupedRemote.isEmpty
+    }
+
     private func needsPush(_ info: BranchInfo) -> Bool {
         switch info.trackingStatus {
         case .noRemote, .ahead, .diverged:
             true
-        case .upToDate, .behind, .unknown:
+        default:
             false
         }
     }
 
-    private func selectedCleanupUnits(_ snapshot: GitWorktreeSnapshot) -> [GitCleanupUnit] {
-        snapshot.managementUnits.filter { selectedCleanupIDs.contains($0.id) && $0.canPrimaryClean }
-    }
-
-    private func presentCleanupConfirmation(units: [GitCleanupUnit]) {
-        guard !units.isEmpty else { return }
-        pendingCleanupUnits = units
+    private func presentCleanupConfirmation(
+        snapshot: GitWorktreeSnapshot,
+        ready: [GitCleanupUnit],
+        blocked: [GitCleanupUnit] = []
+    ) {
+        guard !ready.isEmpty || !blocked.isEmpty else { return }
+        pendingCleanupSnapshot = snapshot
+        pendingReadyUnits = ready
+        pendingBlockedUnits = blocked
         showCleanupConfirmation = true
     }
 
     private func forceRemoveWorktree(_ info: GitWorktreeCleanupInfo) {
         guard let snapshot = gitManager.worktreeSnapshot, snapshot.canForceRemove(info) else { return }
-        presentCleanupConfirmation(units: [
-            GitCleanupUnit.forceWorktreeRemoval(repositoryIdentity: snapshot.repositoryIdentity, info: info)
-        ])
+        presentCleanupConfirmation(
+            snapshot: snapshot,
+            ready: [GitCleanupUnit.forceWorktreeRemoval(repositoryIdentity: snapshot.repositoryIdentity, info: info)],
+            blocked: []
+        )
     }
 
     private func dismissCleanupConfirmation() {
         showCleanupConfirmation = false
-        pendingCleanupUnits = []
+        pendingReadyUnits = []
+        pendingBlockedUnits = []
+        pendingCleanupSnapshot = nil
     }
 
-    private func runCleanup() {
-        guard let snapshot = gitManager.worktreeSnapshot else { return }
-        let units = pendingCleanupUnits
-        guard !units.isEmpty else { return }
+    private func runCleanup(units: [GitCleanupUnit]) {
+        guard let snapshot = pendingCleanupSnapshot ?? gitManager.worktreeSnapshot, !units.isEmpty else { return }
         dismissCleanupConfirmation()
+        Task { _ = await actionCoordinator.sidePanel.performSidePanelCleanup(units: units, snapshot: snapshot) }
+    }
+
+    private func confirmDeleteRemote() {
+        guard let branch = deleteRemoteBranch else { return }
+        deleteRemoteBranch = nil
         Task {
-            _ = await actionCoordinator.sidePanel.performSidePanelCleanup(units: units, snapshot: snapshot)
-            selectedCleanupIDs.subtract(Set(units.map(\.id)))
+            _ = await actionCoordinator.sidePanel.deleteRemoteSidePanelBranch(
+                branch.name,
+                remoteName: branch.remoteName ?? "origin"
+            )
         }
     }
-
-    private func revealWorktree(_ path: String) {
-        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
-    }
-
-    private func copyPath(_ path: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(path, forType: .string)
-    }
-}
-
-#Preview("Side Panel Branch Management") {
-    MainMenuPreviewHarness {
-        SidePanelBranchManagementView(
-            onRequestDeleteBranch: { _ in },
-            onRequestSwitchBranch: { _ in },
-            onCreateBranch: {},
-            onRenameBranch: { _ in }
-        )
-    }
-    .frame(width: WorkbenchMetrics.sidePanelWidth, height: 640)
 }

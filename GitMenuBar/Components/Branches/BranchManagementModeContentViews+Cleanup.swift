@@ -1,33 +1,5 @@
 import Foundation
 
-extension CleanupManagementContentView {
-    func cleanupAccessibilityLabel(for info: GitBranchCleanupInfo) -> String {
-        let reason = switch info.status {
-        case .mergedIntoDefault:
-            "merged into the default branch"
-        case .notMerged:
-            "not merged into the default branch"
-        case .protected:
-            "protected branch"
-        case .current:
-            "current branch"
-        case let .checkedOutElsewhere(path):
-            "checked out elsewhere at \(path)"
-        case let .unknown(reason: value):
-            "unknown status: \(value)"
-        }
-        return "\(info.reference.name), \(reason), cleanup unavailable"
-    }
-
-    func statusDetail(for status: GitBranchCleanupStatus) -> String? {
-        CleanupDetailText.branchStatus(status)
-    }
-
-    func worktreeStatusDetail(for status: GitWorktreeCleanupStatus) -> String {
-        CleanupDetailText.worktreeStatus(status)
-    }
-}
-
 /// Shared one-line cleanup explanations; used by the cleanup list and the cleanup confirmation sheet.
 enum CleanupDetailText {
     static func branchStatus(_ status: GitBranchCleanupStatus) -> String? {
