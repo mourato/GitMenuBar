@@ -5,6 +5,7 @@ import SwiftUI
 final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
     private static let toolbarIdentifier = NSToolbar.Identifier("GitMenuBar.MainWindowToolbar")
     private static let backIdentifier = NSToolbarItem.Identifier("GitMenuBar.back")
+    private static let titleIdentifier = NSToolbarItem.Identifier("GitMenuBar.title")
     private static let branchPickerIdentifier = NSToolbarItem.Identifier("GitMenuBar.branchPicker")
     private static let aheadBehindIdentifier = NSToolbarItem.Identifier("GitMenuBar.aheadBehind")
     private static let fetchIdentifier = NSToolbarItem.Identifier("GitMenuBar.fetch")
@@ -15,6 +16,14 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
     private weak var window: NSWindow?
     private var toolbar: NSToolbar?
     private var repositoryState: MainWindowToolbarRepositoryState?
+    private let titleLabel: NSTextField = {
+        let label = NSTextField(labelWithString: "")
+        let base = NSFont.preferredFont(forTextStyle: .title3)
+        label.font = NSFontManager.shared.convert(base, toHaveTrait: .boldFontMask)
+        label.lineBreakMode = .byTruncatingTail
+        return label
+    }()
+
     private let branchSelectorContent: @MainActor () -> AnyView
     private let onBranchSelectorPopoverClosed: @MainActor () -> Void
     private var branchSelectorPopover: NSPopover?
@@ -33,7 +42,9 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
     func install(in window: NSWindow) {
         self.window = window
 
-        window.titleVisibility = .visible
+        // The title is a toolbar item so branch context can sit right beside it;
+        // the window title stays set for the Window menu and accessibility.
+        window.titleVisibility = .hidden
         window.toolbarStyle = .unified
         window.titlebarSeparatorStyle = .none
         window.titlebarAppearsTransparent = false
@@ -63,6 +74,8 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         repositoryState: MainWindowToolbarRepositoryState?
     ) {
         window?.title = title
+        titleLabel.stringValue = title
+        titleLabel.setAccessibilityLabel(title)
         self.repositoryState = repositoryState
 
         var desiredItems: [NSToolbarItem.Identifier] = [.sidebarTrackingSeparator]
@@ -72,14 +85,15 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         if showsBackItem {
             desiredItems.append(Self.backIdentifier)
         }
+        desiredItems.append(Self.titleIdentifier)
         if let repositoryState {
-            // Branch context sits beside the title; the flexible space pushes actions to the trailing edge.
-            for item in repositoryState.repositoryItems {
-                desiredItems.append(Self.identifier(for: item))
-                if item == .aheadBehind {
-                    desiredItems.append(.flexibleSpace)
-                }
-            }
+            // Title, sync status, and branch chip stay together; actions sit on the trailing edge.
+            let items = repositoryState.repositoryItems
+            let leading: [MainWindowToolbarRepositoryItem] = [.aheadBehind, .branchPicker].filter(items.contains)
+            let trailing = items.filter { !leading.contains($0) }
+            desiredItems.append(contentsOf: leading.map(Self.identifier(for:)))
+            desiredItems.append(.flexibleSpace)
+            desiredItems.append(contentsOf: trailing.map(Self.identifier(for:)))
         }
         synchronizeItems(desiredItems)
         applyRepositoryState()
@@ -90,6 +104,7 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
             .sidebarTrackingSeparator,
             .toggleSidebar,
             .flexibleSpace,
+            Self.titleIdentifier,
             Self.backIdentifier,
             Self.branchPickerIdentifier,
             Self.aheadBehindIdentifier,
@@ -114,6 +129,12 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
     private func makeItem(identifier: NSToolbarItem.Identifier) -> NSToolbarItem? {
         if identifier == .sidebarTrackingSeparator || identifier == .toggleSidebar || identifier == .flexibleSpace {
             return NSToolbarItem(itemIdentifier: identifier)
+        }
+
+        if identifier == Self.titleIdentifier {
+            let item = NSToolbarItem(itemIdentifier: identifier)
+            item.view = titleLabel
+            return item
         }
 
         if let repositoryItem = repositoryItem(for: identifier), let repositoryState {

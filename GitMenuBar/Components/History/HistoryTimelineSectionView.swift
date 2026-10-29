@@ -56,10 +56,17 @@ struct HistoryTimelineSectionView: View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
             ForEach(sections) { section in
                 VStack(alignment: .leading, spacing: WorkbenchMetrics.chipSpacing) {
-                    Text(section.title)
-                        .font(WorkbenchTypography.captionStrong)
-                        .foregroundStyle(.secondary)
-                        .padding(.top, WorkbenchMetrics.sectionSpacing)
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(section.title)
+                        Spacer(minLength: WorkbenchMetrics.compactSpacing)
+                        Text(section.rows.count == 1 ? "1 commit" : "\(section.rows.count) commits")
+                            .monospacedDigit()
+                    }
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, WorkbenchMetrics.sectionSpacing)
+                    .padding(.trailing, WorkbenchMetrics.compactSpacing)
+                    .accessibilityElement(children: .combine)
 
                     VStack(spacing: WorkbenchMetrics.microSpacing) {
                         ForEach(section.rows) { timelineRow in
