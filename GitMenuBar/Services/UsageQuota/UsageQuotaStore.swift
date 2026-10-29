@@ -91,7 +91,7 @@ final class UsageQuotaStore {
     private let now: () -> Date
     private let pricingLoader: PricingLoader
     private let homeDirectory: URL
-    @ObservationIgnored private nonisolated(unsafe) var refreshTimer: Timer?
+    @ObservationIgnored private var refreshTimer: Timer?
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     @ObservationIgnored private var refreshGeneration = 0
     @ObservationIgnored private var isRefreshInFlight = false
@@ -100,12 +100,34 @@ final class UsageQuotaStore {
     @ObservationIgnored private var costScanGeneration = 0
     @ObservationIgnored private var costScanTask: Task<Void, Never>?
     @ObservationIgnored private var costScanWorkerTask: Task<UsageQuotaCostEstimate, Never>?
+    @ObservationIgnored private var inFlightTasks: [Task<Void, Never>] = []
 
-    deinit {
+    isolated deinit {
         refreshTimer?.invalidate()
         refreshTask?.cancel()
         costScanTask?.cancel()
         costScanWorkerTask?.cancel()
+    }
+
+    var isRefreshTimerActive: Bool {
+        refreshTimer?.isValid == true
+    }
+
+    var activeRefreshTimer: Timer? {
+        refreshTimer
+    }
+
+    private func trackTask(_ task: Task<Void, Never>) {
+        inFlightTasks.append(task)
+    }
+
+    func awaitPendingWork() async {
+        let tasks = inFlightTasks
+        inFlightTasks.removeAll()
+        for task in tasks {
+            _ = await task.value
+        }
+        _ = await costScanWorkerTask?.value
     }
 
     init(
@@ -173,9 +195,29 @@ final class UsageQuotaStore {
         refreshGeneration += 1
         let generation = refreshGeneration
         isRefreshInFlight = true
-        refreshTask = Task { [weak self] in
-            await self?.performRefresh(reason: reason, generation: generation)
+
+        let activeProviders = enabledProviders()
+        guard !activeProviders.isEmpty else {
+            snapshots = []
+            finishRefresh(reason: reason, generation: generation)
+            return
         }
+
+        let task = Task { [weak self] in
+            let trace = GitPerformanceTrace.begin("usage.quota.refresh")
+            defer { GitPerformanceTrace.end("usage.quota.refresh", id: trace) }
+
+            let initialResults = await Self.fetchSnapshots(for: activeProviders)
+            guard let self else { return }
+            await finalizeRefresh(
+                initialResults: initialResults,
+                initialProviders: activeProviders,
+                reason: reason,
+                generation: generation
+            )
+        }
+        refreshTask = task
+        trackTask(task)
     }
 
     /// Spends one Codex reset credit and refreshes usage so counts match the server.
@@ -201,6 +243,8 @@ final class UsageQuotaStore {
             invalidateRefreshTimer()
             cancelRefresh()
             cancelCostScan()
+            lastCostScanAt = nil
+            lastPresentationRefreshAt = nil
             snapshots = []
             costEstimates = nil
         }
@@ -216,9 +260,7 @@ final class UsageQuotaStore {
     private func cancelCostScan() {
         costScanGeneration += 1
         costScanWorkerTask?.cancel()
-        costScanWorkerTask = nil
         costScanTask?.cancel()
-        costScanTask = nil
     }
 
     private func loadCachedSnapshots() {
@@ -283,27 +325,19 @@ final class UsageQuotaStore {
         }
     }
 
-    private func performRefresh(reason: RefreshReason, generation: Int) async {
+    private func finalizeRefresh(
+        initialResults: [UsageQuotaSnapshot],
+        initialProviders: [any UsageQuotaProviding],
+        reason: RefreshReason,
+        generation: Int
+    ) async {
         guard showAIUsageQuotas, generation == refreshGeneration else {
             finishRefresh(reason: reason, generation: generation)
             return
         }
-        let trace = GitPerformanceTrace.begin("usage.quota.refresh")
-        defer { GitPerformanceTrace.end("usage.quota.refresh", id: trace) }
 
-        let activeProviders = enabledProviders()
-        guard !activeProviders.isEmpty else {
-            if showAIUsageQuotas, generation == refreshGeneration {
-                snapshots = []
-            }
-            finishRefresh(reason: reason, generation: generation)
-            return
-        }
-
-        var merged = await fetchSnapshots(for: activeProviders)
-        guard showAIUsageQuotas, generation == refreshGeneration else { return }
-
-        var fetchedProviderIDs = Set(activeProviders.map(\.id))
+        var merged = initialResults
+        var fetchedProviderIDs = Set(initialProviders.map(\.id))
         var currentProviderIDs = fetchedProviderIDs
 
         // A settings change can arrive while a provider fetch is suspended.
@@ -316,21 +350,26 @@ final class UsageQuotaStore {
             guard !newlyEnabledProviders.isEmpty else { break }
 
             fetchedProviderIDs.formUnion(newlyEnabledProviders.map(\.id))
-            let newlyEnabledSnapshots = await fetchSnapshots(for: newlyEnabledProviders)
+            let newlyEnabledSnapshots = await Self.fetchSnapshots(for: newlyEnabledProviders)
             guard showAIUsageQuotas, generation == refreshGeneration else { return }
             merged.append(contentsOf: newlyEnabledSnapshots)
         }
         guard showAIUsageQuotas, generation == refreshGeneration else { return }
         merged.removeAll { !currentProviderIDs.contains($0.providerID) }
 
-        merged.sort { $0.providerID.rawValue < $1.providerID.rawValue }
+        var resolved = merged.map { resolveSnapshot($0) }
+        resolved.sort { $0.providerID.rawValue < $1.providerID.rawValue }
+
         guard showAIUsageQuotas, generation == refreshGeneration else { return }
-        snapshots = merged
+        for snapshot in resolved where snapshot.isAvailable {
+            snapshotStore.save(snapshot)
+        }
+        snapshots = resolved
         finishRefresh(reason: reason, generation: generation)
         refreshCostEstimates()
     }
 
-    private func fetchSnapshots(for providers: [any UsageQuotaProviding]) async -> [UsageQuotaSnapshot] {
+    private static func fetchSnapshots(for providers: [any UsageQuotaProviding]) async -> [UsageQuotaSnapshot] {
         await withTaskGroup(of: UsageQuotaSnapshot.self, returning: [UsageQuotaSnapshot].self) { group in
             for provider in providers {
                 group.addTask {
@@ -338,11 +377,11 @@ final class UsageQuotaStore {
                 }
             }
 
-            var merged: [UsageQuotaSnapshot] = []
+            var results: [UsageQuotaSnapshot] = []
             for await snapshot in group {
-                merged.append(mergeSnapshot(snapshot))
+                results.append(snapshot)
             }
-            return merged
+            return results
         }
     }
 
@@ -378,7 +417,7 @@ final class UsageQuotaStore {
         }
         costScanWorkerTask = workerTask
 
-        costScanTask = Task { [weak self, workerTask] in
+        let task = Task { [weak self, workerTask] in
             defer { GitPerformanceTrace.end("usage.cost.scan", id: trace) }
             let estimates = await withTaskCancellationHandler {
                 await workerTask.value
@@ -396,6 +435,8 @@ final class UsageQuotaStore {
                 costScanWorkerTask = nil
             }
         }
+        costScanTask = task
+        trackTask(task)
     }
 
     private func finishRefresh(reason: RefreshReason, generation: Int) {
@@ -407,9 +448,8 @@ final class UsageQuotaStore {
         }
     }
 
-    private func mergeSnapshot(_ fetched: UsageQuotaSnapshot) -> UsageQuotaSnapshot {
+    private func resolveSnapshot(_ fetched: UsageQuotaSnapshot) -> UsageQuotaSnapshot {
         if fetched.isAvailable {
-            snapshotStore.save(fetched)
             return fetched
         }
 

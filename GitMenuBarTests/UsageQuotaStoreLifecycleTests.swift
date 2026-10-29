@@ -9,6 +9,7 @@ final class UsageQuotaStoreLifecycleTests: XCTestCase {
     private var snapshotStore: UsageQuotaSnapshotStore!
     private var testHomeDirectory: URL!
     private var openGates: [() -> Void] = []
+    private var activeStores: [UsageQuotaStore] = []
 
     override func setUpWithError() throws {
         try super.setUpWithError()
@@ -20,20 +21,30 @@ final class UsageQuotaStoreLifecycleTests: XCTestCase {
         defaults = isolatedDefaults
         snapshotStore = UsageQuotaSnapshotStore(defaults: defaults)
         openGates.removeAll()
+        activeStores.removeAll()
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         for gate in openGates {
             gate()
         }
         openGates.removeAll()
+        for store in activeStores {
+            store.showAIUsageQuotas = false
+            await store.awaitPendingWork()
+        }
+        activeStores.removeAll()
+        if let testHomeDirectory {
+            try? FileManager.default.removeItem(at: testHomeDirectory)
+        }
+        testHomeDirectory = nil
         if let suiteName {
             defaults?.removePersistentDomain(forName: suiteName)
         }
         defaults = nil
         snapshotStore = nil
         suiteName = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testDisableDuringFetchPreventsLatePublication() async {
@@ -56,16 +67,18 @@ final class UsageQuotaStoreLifecycleTests: XCTestCase {
         store.showAIUsageQuotas = false
         XCTAssertTrue(store.snapshots.isEmpty)
         XCTAssertTrue(store.visibleSnapshots.isEmpty)
+        XCTAssertNil(snapshotStore.load(providerID: .codex))
 
         // Open gate to let the suspended provider fetch complete.
         provider.openGate()
 
-        // Yield to allow any scheduled async actor work to drain.
-        await Task.yield()
+        // Explicitly await pending actor and worker tasks instead of guessing with Task.yield.
+        await store.awaitPendingWork()
 
-        // Verify late-arriving snapshot was discarded and not published.
+        // Verify late-arriving snapshot was discarded and not published or cached.
         XCTAssertTrue(store.snapshots.isEmpty)
         XCTAssertTrue(store.visibleSnapshots.isEmpty)
+        XCTAssertNil(snapshotStore.load(providerID: .codex))
         XCTAssertNil(store.costEstimates)
     }
 
@@ -100,22 +113,132 @@ final class UsageQuotaStoreLifecycleTests: XCTestCase {
         // Re-enable: this should start a fresh cycle (generation 2).
         store.showAIUsageQuotas = true
 
-        // First fetch was cancelled by disable, which unblocks its continuation.
         // Wait for second fetch to start.
         await fulfillment(of: [secondFetchStarted], timeout: 2.0)
         XCTAssertEqual(provider.fetchCount, 2)
 
-        // Release gate for second fetch so fresh cycle completes.
-        provider.openGate()
+        // Explicit completion ordering: fresh cycle completes first.
+        provider.openGate(forFetch: 2)
 
         await waitForObservedCondition(timeout: 2.0) {
-            !store.snapshots.isEmpty
+            store.snapshots.first?.sessionWindow?.remainingPercent == 95
         }
 
-        // Verify only the fresh snapshot was published.
+        // Verify fresh snapshot was published and cached.
         XCTAssertEqual(store.snapshots.count, 1)
         XCTAssertEqual(store.snapshots.first?.sessionWindow?.remainingPercent, 95)
+        XCTAssertEqual(snapshotStore.load(providerID: .codex)?.sessionWindow?.remainingPercent, 95)
         XCTAssertEqual(store.visibleSnapshots.first?.sessionWindow?.remainingPercent, 95)
+
+        // Stale 10 arrives AFTER fresh 95 has published.
+        provider.openGate(forFetch: 1)
+        await store.awaitPendingWork()
+
+        // Cache and snapshot remain 95: stale cycle cannot overwrite fresh state.
+        XCTAssertEqual(store.snapshots.count, 1)
+        XCTAssertEqual(store.snapshots.first?.sessionWindow?.remainingPercent, 95)
+        XCTAssertEqual(snapshotStore.load(providerID: .codex)?.sessionWindow?.remainingPercent, 95)
+        XCTAssertEqual(store.visibleSnapshots.first?.sessionWindow?.remainingPercent, 95)
+    }
+
+    func testDisableAndReenableWithSameClockYieldsCostEstimate() async throws {
+        let snapshot = Self.sampleSnapshot(providerID: .codex, remainingPercent: 80)
+        let provider = FakeImmediateQuotaProvider(snapshot: snapshot)
+        let fixedNow = Date()
+        try writeCodexSessionFixture(to: testHomeDirectory, now: fixedNow)
+
+        let store = makeStore(provider: provider, now: { fixedNow })
+        store.showAIUsageQuotas = true
+
+        await waitForObservedCondition(timeout: 2.0) {
+            store.costEstimates != nil
+        }
+        XCTAssertNotNil(store.costEstimates)
+
+        // Disable clears cost estimates and resets freshness.
+        store.showAIUsageQuotas = false
+        XCTAssertNil(store.costEstimates)
+
+        // Re-enabling on the exact same clock must run a new scan rather than
+        // suppressing replacement for the 10-minute scan interval.
+        store.showAIUsageQuotas = true
+
+        await waitForObservedCondition(timeout: 2.0) {
+            store.costEstimates != nil
+        }
+        XCTAssertNotNil(store.costEstimates)
+        XCTAssertEqual(store.costEstimates?.rows.first?.providerID, .codex)
+    }
+
+    func testStaleCycleCannotMutatePersistedCacheAfterDisable() async {
+        let staleSnapshot = Self.sampleSnapshot(providerID: .codex, remainingPercent: 10)
+        let provider = GatedUsageQuotaProvider(id: .codex, snapshot: staleSnapshot)
+        openGates.append { provider.openGate() }
+
+        let fetchStarted = expectation(description: "Fetch started")
+        provider.onFetch = {
+            fetchStarted.fulfill()
+        }
+
+        let store = makeStore(provider: provider)
+        store.showAIUsageQuotas = true
+
+        await fulfillment(of: [fetchStarted], timeout: 2.0)
+        XCTAssertEqual(provider.fetchCount, 1)
+
+        // Disable quotas while fetch is in-flight.
+        store.showAIUsageQuotas = false
+        XCTAssertNil(snapshotStore.load(providerID: .codex))
+
+        // Late result from cancelled cycle arrives after disable.
+        provider.openGate()
+        await store.awaitPendingWork()
+
+        // Cache must not be mutated by stale cycle.
+        XCTAssertNil(snapshotStore.load(providerID: .codex))
+
+        // Re-enabling later starts a fresh cycle without loading stale cache.
+        provider.onFetch = nil
+        store.showAIUsageQuotas = true
+        XCTAssertNil(snapshotStore.load(providerID: .codex))
+        provider.openGate()
+        await store.awaitPendingWork()
+    }
+
+    func testReleaseOwnerDuringFetchCancelsAndDeallocates() async {
+        let snapshot = Self.sampleSnapshot(providerID: .codex, remainingPercent: 70)
+        let provider = GatedUsageQuotaProvider(id: .codex, snapshot: snapshot)
+        openGates.append { provider.openGate() }
+
+        let fetchStarted = expectation(description: "Fetch started")
+        provider.onFetch = {
+            fetchStarted.fulfill()
+        }
+
+        let fetchCancelled = expectation(description: "Fetch cancelled")
+        provider.onCancel = {
+            fetchCancelled.fulfill()
+        }
+
+        var store: UsageQuotaStore? = makeStore(provider: provider, track: false)
+        weak var weakStore: UsageQuotaStore? = store
+        store?.showAIUsageQuotas = true
+
+        await fulfillment(of: [fetchStarted], timeout: 2.0)
+        XCTAssertEqual(provider.fetchCount, 1)
+        XCTAssertFalse(provider.isCancelled)
+        XCTAssertNotNil(weakStore)
+
+        // Release owner reference while fetch is suspended at the gate.
+        store = nil
+
+        // Verify task cancellation propagates and store deallocates immediately
+        // without being held by a strong self in the Task closure.
+        await fulfillment(of: [fetchCancelled], timeout: 2.0)
+        XCTAssertTrue(provider.isCancelled)
+        XCTAssertNil(weakStore, "UsageQuotaStore should deallocate when released during an active fetch")
+
+        provider.openGate()
     }
 
     func testCostLoaderCancellationReachesBackgroundWork() async {
@@ -156,21 +279,20 @@ final class UsageQuotaStoreLifecycleTests: XCTestCase {
         let provider = FakeImmediateQuotaProvider(snapshot: snapshot)
 
         weak var weakStore: UsageQuotaStore?
+        var retainedTimer: Timer?
         autoreleasepool {
-            let store = UsageQuotaStore(
-                defaults: defaults,
-                snapshotStore: snapshotStore,
-                providers: [provider],
-                now: Date.init,
-                pricingLoader: { .bundled },
-                homeDirectory: testHomeDirectory
-            )
+            let store = makeStore(provider: provider, track: false)
             store.showAIUsageQuotas = true
+            XCTAssertTrue(store.isRefreshTimerActive)
             weakStore = store
+            retainedTimer = store.activeRefreshTimer
             XCTAssertNotNil(weakStore)
+            XCTAssertNotNil(retainedTimer)
+            XCTAssertTrue(retainedTimer?.isValid == true)
         }
 
         XCTAssertNil(weakStore, "UsageQuotaStore should deallocate without self-retention from timers or tasks")
+        XCTAssertEqual(retainedTimer?.isValid, false, "Refresh timer must be invalidated when store deallocates")
     }
 
     // MARK: - Helpers
@@ -178,9 +300,10 @@ final class UsageQuotaStoreLifecycleTests: XCTestCase {
     private func makeStore(
         provider: any UsageQuotaProviding,
         now: @escaping () -> Date = Date.init,
-        pricingLoader: @escaping UsageQuotaStore.PricingLoader = { .bundled }
+        pricingLoader: @escaping UsageQuotaStore.PricingLoader = { .bundled },
+        track: Bool = true
     ) -> UsageQuotaStore {
-        UsageQuotaStore(
+        let store = UsageQuotaStore(
             defaults: defaults,
             snapshotStore: snapshotStore,
             providers: [provider],
@@ -188,6 +311,10 @@ final class UsageQuotaStoreLifecycleTests: XCTestCase {
             pricingLoader: pricingLoader,
             homeDirectory: testHomeDirectory
         )
+        if track {
+            activeStores.append(store)
+        }
+        return store
     }
 
     private static func sampleSnapshot(

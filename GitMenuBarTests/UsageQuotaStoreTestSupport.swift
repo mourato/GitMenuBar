@@ -31,7 +31,7 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
     private var storedOnFetch: (@Sendable () -> Void)?
     private var storedIsCancelled = false
     private var storedOnCancel: (@Sendable () -> Void)?
-    private var pending: CheckedContinuation<Void, Never>?
+    private var pendingByFetch: [Int: CheckedContinuation<Void, Never>] = [:]
 
     init(id: UsageProviderID = .codex, snapshot: UsageQuotaSnapshot) {
         self.id = id
@@ -62,6 +62,11 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
     }
 
     func fetchSnapshot() async -> UsageQuotaSnapshot {
+        let (fetchNumber, snapshotForRequest) = lock.withLock { () -> (Int, UsageQuotaSnapshot) in
+            storedFetchCount += 1
+            return (storedFetchCount, storedSnapshot)
+        }
+
         await withTaskCancellationHandler {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                 // Register the continuation before notifying the test so opening
@@ -70,41 +75,47 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
                     hook: (@Sendable () -> Void)?,
                     immediate: CheckedContinuation<Void, Never>?
                 ) in
-                    storedFetchCount += 1
                     let hook = storedOnFetch
                     if Task.isCancelled {
                         return (hook: hook, immediate: continuation)
                     }
-                    pending = continuation
+                    pendingByFetch[fetchNumber] = continuation
                     return (hook: hook, immediate: nil)
                 }
                 state.hook?()
                 state.immediate?.resume()
             }
         } onCancel: {
-            let hook = self.lock.withLock {
+            let (hook, continuation) = self.lock.withLock { () -> ((@Sendable () -> Void)?, CheckedContinuation<Void, Never>?) in
                 self.storedIsCancelled = true
-                return self.storedOnCancel
+                let hook = self.storedOnCancel
+                let continuation = self.pendingByFetch.removeValue(forKey: fetchNumber)
+                return (hook, continuation)
             }
             hook?()
-            // Cancelled fetches wake without the gate, so later cycles still block.
-            self.resumePending()
+            continuation?.resume()
         }
-        return lock.withLock { storedSnapshot }
+        return snapshotForRequest
     }
 
-    /// Releases the pending fetch; a later fetch re-checks cancellation itself.
+    /// Releases a specific fetch's continuation.
+    func openGate(forFetch fetchNumber: Int) {
+        let continuation = lock.withLock {
+            pendingByFetch.removeValue(forKey: fetchNumber)
+        }
+        continuation?.resume()
+    }
+
+    /// Releases all pending fetches; later cycles still block until opened.
     func openGate() {
-        resumePending()
-    }
-
-    private func resumePending() {
-        let woke = lock.withLock {
-            let woke = pending
-            pending = nil
-            return woke
+        let continuations = lock.withLock {
+            let all = Array(pendingByFetch.values)
+            pendingByFetch.removeAll()
+            return all
         }
-        woke?.resume()
+        for continuation in continuations {
+            continuation.resume()
+        }
     }
 }
 
