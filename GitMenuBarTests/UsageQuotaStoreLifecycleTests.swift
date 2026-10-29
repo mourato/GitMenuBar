@@ -438,7 +438,7 @@ final class UsageQuotaStoreLifecycleTests: XCTestCase {
     // MARK: - Helpers
 
     private func makeStore(
-        provider: any UsageQuotaProviding,
+        provider: any UsageQuotaProviding, // justified: Swift protocol existential, not an unchecked type escape.
         now: @escaping () -> Date = Date.init,
         pricingLoader: @escaping UsageQuotaStore.PricingLoader = { .bundled },
         track: Bool = true
@@ -491,7 +491,7 @@ private final class FakeImmediateQuotaProvider: UsageQuotaProviding {
         self.snapshot = snapshot
     }
 
-    // swiftlint:disable:next async_without_await
+    // swiftlint:disable:next async_without_await // justified: Immediate test double implements the async provider contract.
     func fetchSnapshot() async -> UsageQuotaSnapshot {
         snapshot
     }
