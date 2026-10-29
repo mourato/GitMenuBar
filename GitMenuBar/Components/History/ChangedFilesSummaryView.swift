@@ -295,20 +295,25 @@ private struct ChangedFilesFileRow: View {
             HStack(spacing: WorkbenchMetrics.chipSpacing) {
                 FileTypeIconView(path: file.path)
 
-                Text(file.fileName)
-                    .font(WorkbenchTypography.body)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .layoutPriority(1)
+                // Directory context appears only when it fits whole; the
+                // row tooltip always carries the full path.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: WorkbenchMetrics.chipSpacing) {
+                        fileNameLabel
+                            .fixedSize()
+                        if !directoryTitle.isEmpty {
+                            Text(directoryTitle)
+                                .font(WorkbenchTypography.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .fixedSize()
+                        }
+                    }
 
-                if !directoryTitle.isEmpty {
-                    Text(directoryTitle)
-                        .font(WorkbenchTypography.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.head)
+                    fileNameLabel
+                        .truncationMode(.middle)
                 }
+                .layoutPriority(1)
 
                 Spacer(minLength: WorkbenchMetrics.compactSpacing)
 
@@ -325,6 +330,13 @@ private struct ChangedFilesFileRow: View {
         .help(file.path)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Opens this file.")
+    }
+
+    private var fileNameLabel: some View {
+        Text(file.fileName)
+            .font(WorkbenchTypography.body)
+            .foregroundStyle(.primary)
+            .lineLimit(1)
     }
 
     private var lineDiffLabel: some View {
