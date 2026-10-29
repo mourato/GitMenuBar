@@ -113,14 +113,15 @@ struct ProjectsSidebarView: View {
     }
 
     private var sidebarBottomActions: some View {
-        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+        HStack(alignment: .center, spacing: WorkbenchMetrics.compactSpacing) {
             Button(action: onOpenSettings) {
                 Image(systemName: "gearshape")
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.borderless)
             .controlSize(.small)
-            .frame(minWidth: WorkbenchMetrics.iconHitTarget, minHeight: WorkbenchMetrics.iconHitTarget)
+            .frame(width: WorkbenchMetrics.iconHitTarget, height: WorkbenchMetrics.iconHitTarget)
+            .contentShape(Rectangle())
             .help("Settings")
             .accessibilityLabel("Settings")
             .accessibilityHint("Open GitMenuBar settings.")
@@ -129,6 +130,7 @@ struct ProjectsSidebarView: View {
 
             UsageQuotaStripView()
         }
+        .frame(minHeight: WorkbenchMetrics.iconHitTarget)
         .padding(.horizontal, WorkbenchMetrics.windowPadding)
         .padding(.vertical, WorkbenchMetrics.microSpacing)
     }
