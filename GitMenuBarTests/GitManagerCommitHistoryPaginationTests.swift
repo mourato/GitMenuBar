@@ -13,26 +13,24 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
             try runGit(["commit", "-m", "feat: commit \(index)"], in: repoURL)
         }
 
-        try await withGitRepoPath(repoURL.path) {
-            let gitManager = GitManager()
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-            await gitManager.fetchCommitHistoryAsync(limit: 25)
-            XCTAssertEqual(gitManager.commitHistoryLimit, 25)
-            XCTAssertEqual(gitManager.commitHistory.count, 25)
+        await gitManager.fetchCommitHistoryAsync(limit: 25)
+        XCTAssertEqual(gitManager.commitHistoryLimit, 25)
+        XCTAssertEqual(gitManager.commitHistory.count, 25)
 
-            // Awaits the same fetch that loadMoreCommitHistory starts; the +25 step itself is not covered here.
-            await gitManager.fetchCommitHistoryAsync(limit: 50)
-            XCTAssertEqual(gitManager.commitHistoryLimit, 50)
-            XCTAssertEqual(gitManager.commitHistory.count, 50)
+        // Awaits the same fetch that loadMoreCommitHistory starts; the +25 step itself is not covered here.
+        await gitManager.fetchCommitHistoryAsync(limit: 50)
+        XCTAssertEqual(gitManager.commitHistoryLimit, 50)
+        XCTAssertEqual(gitManager.commitHistory.count, 50)
 
-            XCTAssertTrue(gitManager.canLoadMoreCommitHistory)
+        XCTAssertTrue(gitManager.canLoadMoreCommitHistory)
 
-            await gitManager.fetchCommitHistoryAsync(limit: 75)
-            XCTAssertEqual(gitManager.commitHistoryLimit, 75)
-            XCTAssertEqual(gitManager.commitHistory.count, 61)
+        await gitManager.fetchCommitHistoryAsync(limit: 75)
+        XCTAssertEqual(gitManager.commitHistoryLimit, 75)
+        XCTAssertEqual(gitManager.commitHistory.count, 61)
 
-            XCTAssertFalse(gitManager.canLoadMoreCommitHistory)
-        }
+        XCTAssertFalse(gitManager.canLoadMoreCommitHistory)
     }
 
     func testFetchCommitHistoryExcludesReflogOnlyCommitsByDefault() async throws {
@@ -50,19 +48,17 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
 
         try runGit(["reset", "--hard", "HEAD~1"], in: repoURL)
 
-        try await withGitRepoPath(repoURL.path) {
-            let gitManager = GitManager()
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-            await gitManager.fetchCommitHistoryAsync(limit: 10, includeReflog: false)
-            await waitForObservedCondition(timeout: 15) {
-                gitManager.commitHistory.count == 2
-            }
-
-            XCTAssertEqual(
-                gitManager.commitHistory.map(\.subject),
-                ["feat: visible commit", "chore: initial"]
-            )
+        await gitManager.fetchCommitHistoryAsync(limit: 10, includeReflog: false)
+        await waitForObservedCondition(timeout: 15) {
+            gitManager.commitHistory.count == 2
         }
+
+        XCTAssertEqual(
+            gitManager.commitHistory.map(\.subject),
+            ["feat: visible commit", "chore: initial"]
+        )
     }
 
     func testResetToCommitIncludesReflogCommitsForRestore() async throws {
@@ -81,23 +77,21 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
         let targetHash = try runGit(["rev-parse", "HEAD~1"], in: repoURL)
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        try await withGitRepoPath(repoURL.path) {
-            let gitManager = GitManager()
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-            await waitForObservedCondition(timeout: 15) {
-                gitManager.commitHistory.count >= 3
-            }
-
-            try await gitManager.resetToCommitAsync(hash: targetHash, context: gitManager.makeRepositoryOperationContext()).get()
-
-            await waitForObservedCondition(timeout: 15) {
-                gitManager.currentHash == targetHash &&
-                    gitManager.commitHistory.contains(where: { $0.subject == "feat: future commit" })
-            }
-
-            XCTAssertEqual(gitManager.currentHash, targetHash)
-            XCTAssertTrue(gitManager.commitHistory.contains(where: { $0.subject == "feat: future commit" }))
-            XCTAssertTrue(gitManager.commitHistory.contains(where: { $0.subject == "feat: visible commit" }))
+        await waitForObservedCondition(timeout: 15) {
+            gitManager.commitHistory.count >= 3
         }
+
+        try await gitManager.resetToCommitAsync(hash: targetHash, context: gitManager.makeRepositoryOperationContext()).get()
+
+        await waitForObservedCondition(timeout: 15) {
+            gitManager.currentHash == targetHash &&
+                gitManager.commitHistory.contains(where: { $0.subject == "feat: future commit" })
+        }
+
+        XCTAssertEqual(gitManager.currentHash, targetHash)
+        XCTAssertTrue(gitManager.commitHistory.contains(where: { $0.subject == "feat: future commit" }))
+        XCTAssertTrue(gitManager.commitHistory.contains(where: { $0.subject == "feat: visible commit" }))
     }
 }

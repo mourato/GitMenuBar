@@ -10,15 +10,13 @@ final class GitManagerCommitMessageRewriteTests: XCTestCase {
         try runGit(["add", "README.md"], in: repoURL)
         try runGit(["commit", "-m", "feat: original head"], in: repoURL)
 
-        try await withGitRepoPath(repoURL.path) {
-            let gitManager = GitManager()
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-            try await gitManager.rewriteCommitMessageAsync(commitHash: currentHeadHash(in: repoURL), newMessage: "feat: rewritten head")
+        try await gitManager.rewriteCommitMessageAsync(commitHash: currentHeadHash(in: repoURL), newMessage: "feat: rewritten head")
 
-            let headSubject = try runGit(["log", "-1", "--pretty=%s"], in: repoURL)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            XCTAssertEqual(headSubject, "feat: rewritten head")
-        }
+        let headSubject = try runGit(["log", "-1", "--pretty=%s"], in: repoURL)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertEqual(headSubject, "feat: rewritten head")
     }
 
     func testRewriteEarlierCommitMessagePreservesDescendants() async throws {
@@ -28,16 +26,14 @@ final class GitManagerCommitMessageRewriteTests: XCTestCase {
         let targetHash = currentHeadHash(in: repoURL)
         try appendCommit(named: "third.txt", contents: "third\n", message: "feat: third", in: repoURL)
 
-        try await withGitRepoPath(repoURL.path) {
-            let gitManager = GitManager()
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-            try await gitManager.rewriteCommitMessageAsync(commitHash: targetHash, newMessage: "feat: rewritten second")
+        try await gitManager.rewriteCommitMessageAsync(commitHash: targetHash, newMessage: "feat: rewritten second")
 
-            let subjects = try runGit(["log", "--pretty=%s", "-3"], in: repoURL)
-                .components(separatedBy: .newlines)
-                .filter { !$0.isEmpty }
-            XCTAssertEqual(subjects, ["feat: third", "feat: rewritten second", "chore: initial"])
-        }
+        let subjects = try runGit(["log", "--pretty=%s", "-3"], in: repoURL)
+            .components(separatedBy: .newlines)
+            .filter { !$0.isEmpty }
+        XCTAssertEqual(subjects, ["feat: third", "feat: rewritten second", "chore: initial"])
     }
 
     func testRewriteCommitMessageRejectsMergeCommits() async throws {
@@ -51,15 +47,13 @@ final class GitManagerCommitMessageRewriteTests: XCTestCase {
         try appendCommit(named: "main.txt", contents: "main\n", message: "feat: main branch", in: repoURL)
         try runGit(["merge", "feature/history", "-m", "Merge branch 'feature/history'"], in: repoURL)
 
-        try await withGitRepoPath(repoURL.path) {
-            let gitManager = GitManager()
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-            do {
-                try await gitManager.rewriteCommitMessageAsync(commitHash: currentHeadHash(in: repoURL), newMessage: "feat: rewrite merge")
-                XCTFail("Expected merge commit rewrite to fail")
-            } catch {
-                XCTAssertTrue(error.localizedDescription.contains("merge commits"))
-            }
+        do {
+            try await gitManager.rewriteCommitMessageAsync(commitHash: currentHeadHash(in: repoURL), newMessage: "feat: rewrite merge")
+            XCTFail("Expected merge commit rewrite to fail")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("merge commits"))
         }
     }
 
@@ -78,14 +72,12 @@ final class GitManagerCommitMessageRewriteTests: XCTestCase {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let localOnlyHash = currentHeadHash(in: repoURL)
 
-        try await withGitRepoPath(repoURL.path) {
-            let gitManager = GitManager()
+        let gitManager = GitManager(repositoryPathOverride: repoURL.path)
 
-            let published = try await gitManager.isCommitPublishedToUpstreamAsync(publishedHash)
-            let local = try await gitManager.isCommitPublishedToUpstreamAsync(localOnlyHash)
-            XCTAssertTrue(published)
-            XCTAssertFalse(local)
-        }
+        let published = try await gitManager.isCommitPublishedToUpstreamAsync(publishedHash)
+        let local = try await gitManager.isCommitPublishedToUpstreamAsync(localOnlyHash)
+        XCTAssertTrue(published)
+        XCTAssertFalse(local)
     }
 
     private func appendCommit(named fileName: String, contents: String, message: String, in repoURL: URL) throws {

@@ -82,8 +82,6 @@ func requestBodyData(from request: URLRequest) -> Data {
     return data
 }
 
-let gitRepoPathLock = NSLock()
-
 /// Thread-safe box for capturing request payloads from `MockURLProtocol` handlers
 /// that run on background `URLSession` threads.
 final class PromptCapture: @unchecked Sendable {
@@ -125,12 +123,48 @@ final class PromptListCapture: @unchecked Sendable {
     }
 }
 
+func makeIsolatedGitEnvironment(inheriting environment: [String: String] = ProcessInfo.processInfo.environment) -> [String: String] {
+    var isolated = environment
+
+    isolated.removeValue(forKey: "GIT_DIR")
+    isolated.removeValue(forKey: "GIT_WORK_TREE")
+    isolated.removeValue(forKey: "GIT_INDEX_FILE")
+    isolated.removeValue(forKey: "GIT_OBJECT_DIRECTORY")
+    isolated.removeValue(forKey: "GIT_ALTERNATE_OBJECT_DIRECTORIES")
+    isolated.removeValue(forKey: "GIT_COMMON_DIR")
+    isolated.removeValue(forKey: "GIT_TEMPLATE_DIR")
+    isolated.removeValue(forKey: "GIT_CONFIG")
+    isolated.removeValue(forKey: "GIT_CONFIG_PARAMETERS")
+
+    if let countString = isolated.removeValue(forKey: "GIT_CONFIG_COUNT"), let count = Int(countString) {
+        for index in 0 ..< count {
+            isolated.removeValue(forKey: "GIT_CONFIG_KEY_\(index)")
+            isolated.removeValue(forKey: "GIT_CONFIG_VALUE_\(index)")
+        }
+    }
+    for key in Array(isolated.keys) where key.hasPrefix("GIT_CONFIG_KEY_") || key.hasPrefix("GIT_CONFIG_VALUE_") {
+        isolated.removeValue(forKey: key)
+    }
+
+    isolated["GIT_CONFIG_GLOBAL"] = "/dev/null"
+    isolated["GIT_CONFIG_SYSTEM"] = "/dev/null"
+    isolated["GIT_CONFIG_NOSYSTEM"] = "1"
+    isolated["GIT_TERMINAL_PROMPT"] = "0"
+    isolated["GIT_AUTHOR_NAME"] = "GitMenuBar Tests"
+    isolated["GIT_AUTHOR_EMAIL"] = "test@example.com"
+    isolated["GIT_COMMITTER_NAME"] = "GitMenuBar Tests"
+    isolated["GIT_COMMITTER_EMAIL"] = "test@example.com"
+
+    return isolated
+}
+
 @discardableResult
-func runGit(_ args: [String], in directory: URL) throws -> String {
+func runGit(_ args: [String], in directory: URL, environment: [String: String]? = nil) throws -> String {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
     process.arguments = args
     process.currentDirectoryURL = directory
+    process.environment = environment ?? makeIsolatedGitEnvironment()
 
     let pipe = Pipe()
     process.standardOutput = pipe
@@ -147,42 +181,6 @@ func runGit(_ args: [String], in directory: URL) throws -> String {
     }
 
     return output
-}
-
-func withGitRepoPath<T>(_ path: String, execute: () throws -> T) rethrows -> T {
-    gitRepoPathLock.lock()
-    defer { gitRepoPathLock.unlock() }
-
-    let defaults = UserDefaults.standard
-    let previous = defaults.string(forKey: AppPreferences.Keys.gitRepoPath)
-    defaults.set(path, forKey: AppPreferences.Keys.gitRepoPath)
-
-    defer {
-        if let previous {
-            defaults.set(previous, forKey: AppPreferences.Keys.gitRepoPath)
-        } else {
-            defaults.removeObject(forKey: AppPreferences.Keys.gitRepoPath)
-        }
-    }
-
-    return try execute()
-}
-
-@MainActor
-func withGitRepoPath<T>(_ path: String, execute: () async throws -> T) async rethrows -> T {
-    let defaults = UserDefaults.standard
-    let previous = defaults.string(forKey: AppPreferences.Keys.gitRepoPath)
-    defaults.set(path, forKey: AppPreferences.Keys.gitRepoPath)
-
-    defer {
-        if let previous {
-            defaults.set(previous, forKey: AppPreferences.Keys.gitRepoPath)
-        } else {
-            defaults.removeObject(forKey: AppPreferences.Keys.gitRepoPath)
-        }
-    }
-
-    return try await execute()
 }
 
 /// Re-evaluates `condition` under observation tracking, so a change made after the
@@ -262,7 +260,7 @@ extension XCTestCase {
     func createTemporaryGitRepository(testName: String) throws -> URL {
         let tempRoot = try makeTemporaryTestDirectory(testName: testName)
 
-        try runGit(["init"], in: tempRoot)
+        try runGit(["init", "-b", "main"], in: tempRoot)
         try runGit(["config", "user.email", "test@example.com"], in: tempRoot)
         try runGit(["config", "user.name", "GitMenuBar Tests"], in: tempRoot)
 
