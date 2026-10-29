@@ -128,14 +128,16 @@ struct CommitDetailPageView: View {
     private func shortHashChip(for commit: Commit) -> some View {
         Button {
             copyToPasteboard(commit.id)
+            AccessibilityNotification.Announcement("Commit hash copied").post()
         } label: {
             Text(commit.shortHash)
-                .font(.caption.monospaced())
+                .font(WorkbenchTypography.caption.monospaced())
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, WorkbenchMetrics.chipSpacing)
                 .padding(.vertical, WorkbenchMetrics.microSpacing)
                 .background(WorkbenchPalette.hoverFill())
                 .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
+                .frame(minHeight: WorkbenchMetrics.iconHitTarget)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
