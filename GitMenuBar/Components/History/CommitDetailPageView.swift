@@ -10,13 +10,37 @@ struct CommitDetailPageView: View {
     let remoteUrl: String
     let isCommitInFuture: (Commit) -> Bool
     let animationNamespace: Namespace.ID
-    let onBack: () -> Void
+    let onClose: () -> Void
     let onRestoreCommit: (Commit) -> Void
     let onEditCommitMessage: (Commit) -> Void
     let onGenerateCommitMessage: (Commit) -> Void
     var onOpenLocalFile: ((String) -> Void)?
     @State private var authorAvatarURL: URL?
     @State private var loadedAvatarLookupKey: String?
+
+    init(
+        commit: Commit?,
+        currentHash: String,
+        remoteUrl: String,
+        isCommitInFuture: @escaping (Commit) -> Bool,
+        animationNamespace: Namespace.ID,
+        onClose: @escaping () -> Void = {},
+        onRestoreCommit: @escaping (Commit) -> Void,
+        onEditCommitMessage: @escaping (Commit) -> Void,
+        onGenerateCommitMessage: @escaping (Commit) -> Void,
+        onOpenLocalFile: ((String) -> Void)? = nil
+    ) {
+        self.commit = commit
+        self.currentHash = currentHash
+        self.remoteUrl = remoteUrl
+        self.isCommitInFuture = isCommitInFuture
+        self.animationNamespace = animationNamespace
+        self.onClose = onClose
+        self.onRestoreCommit = onRestoreCommit
+        self.onEditCommitMessage = onEditCommitMessage
+        self.onGenerateCommitMessage = onGenerateCommitMessage
+        self.onOpenLocalFile = onOpenLocalFile
+    }
 
     private var actionSet: HistoryActionSet? {
         guard let commit else {
@@ -32,21 +56,18 @@ struct CommitDetailPageView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.panelPadding) {
-            Button {
-                onBack()
-            } label: {
-                Label("Back to History", systemImage: "chevron.left")
-            }
-            .workbenchGhost()
-            .frame(minHeight: WorkbenchMetrics.iconHitTarget, alignment: .leading)
-            .accessibilityLabel("Back to History")
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
+            headerRow
 
             if let commit {
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
-                        metadataSection(commit: commit)
-                        titleSection(commit: commit)
+                        authorMetadataSection(commit: commit)
+
+                        if !commit.body.isEmpty {
+                            bodySection(commit: commit)
+                        }
+
                         statsSection(commit: commit)
 
                         Divider()
@@ -66,17 +87,48 @@ struct CommitDetailPageView: View {
         }
     }
 
-    private func metadataSection(commit: Commit) -> some View {
+    private var headerRow: some View {
+        HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
+            if let commit {
+                Text(commit.subject)
+                    .font(WorkbenchTypography.windowTitle)
+                    .foregroundStyle(.primary)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .matchedGeometryEffect(id: "commit-\(commit.id)", in: animationNamespace)
+                    .accessibilityAddTraits(.isHeader)
+            } else {
+                Text("Commit Details")
+                    .font(WorkbenchTypography.windowTitle)
+                    .foregroundStyle(.primary)
+                    .accessibilityAddTraits(.isHeader)
+            }
+
+            Spacer(minLength: 0)
+
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .frame(width: WorkbenchMetrics.iconHitTarget, height: WorkbenchMetrics.iconHitTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Close details")
+            .accessibilityLabel("Close details")
+        }
+    }
+
+    private func authorMetadataSection(commit: Commit) -> some View {
         HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
             authorIdentityBadge(for: commit)
 
             VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-                HStack(spacing: WorkbenchMetrics.microSpacing) {
+                HStack(spacing: WorkbenchMetrics.compactSpacing) {
                     Text(commit.authorName)
                         .font(WorkbenchTypography.detail.weight(.semibold))
-                    Text(commit.authorEmail)
-                        .font(WorkbenchTypography.caption)
-                        .foregroundStyle(.secondary)
+                        .help(commit.authorEmail)
+
+                    shortHashChip(for: commit)
                 }
 
                 Text(timestampLine(for: commit))
@@ -99,21 +151,29 @@ struct CommitDetailPageView: View {
         }
     }
 
-    private func titleSection(commit: Commit) -> some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-            Text(commit.subject)
-                .font(WorkbenchTypography.windowTitle)
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
-                .matchedGeometryEffect(id: "commit-\(commit.id)", in: animationNamespace)
-
-            if !commit.body.isEmpty {
-                Text(commit.body)
-                    .font(WorkbenchTypography.detail)
-                    .foregroundStyle(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+    private func shortHashChip(for commit: Commit) -> some View {
+        Button {
+            copyToPasteboard(commit.id)
+        } label: {
+            Text(commit.shortHash)
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, WorkbenchMetrics.chipSpacing)
+                .padding(.vertical, WorkbenchMetrics.microSpacing)
+                .background(WorkbenchPalette.hoverFill())
+                .clipShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous))
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .help(commit.id)
+        .accessibilityLabel("Copy commit hash")
+    }
+
+    private func bodySection(commit: Commit) -> some View {
+        Text(commit.body)
+            .font(WorkbenchTypography.detail)
+            .foregroundStyle(.primary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func statsSection(commit: Commit) -> some View {
@@ -189,16 +249,12 @@ struct CommitDetailPageView: View {
         return avatarLookupKey(for: commit)
     }
 
-    private var avatarBadgeShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: WorkbenchMetrics.microCornerRadius, style: .continuous)
-    }
-
     private func avatarBadge(@ViewBuilder content: () -> some View) -> some View {
         content()
             .frame(width: 24, height: 24)
-            .clipShape(avatarBadgeShape)
+            .clipShape(Circle())
             .overlay {
-                avatarBadgeShape
+                Circle()
                     .stroke(Color.primary.opacity(0.1), lineWidth: 1)
             }
     }

@@ -15,7 +15,7 @@ final class CommitHistoryParser {
         limit: Int = 50,
         includeReflog: Bool = false
     ) -> [Commit] {
-        let format = "%x1e%H%x1f%h%x1f%at%x1f%an%x1f%ae%x1f%P%x1f%s%x1f%B%x1d"
+        let format = "%x1e%H%x1f%h%x1f%at%x1f%an%x1f%ae%x1f%P%x1f%s%x1f%b%x1d"
         var args = [
             "log",
             "--date-order",
@@ -64,11 +64,7 @@ final class CommitHistoryParser {
                 .split(separator: " ", omittingEmptySubsequences: true)
                 .map(String.init)
             let subject = String(fields[6]).trimmingCharacters(in: .whitespacesAndNewlines)
-            guard shouldIncludeCommit(subject: subject) else {
-                continue
-            }
-
-            guard let timestamp = TimeInterval(String(fields[2]).trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            guard shouldIncludeCommit(subject: subject), let timestamp = TimeInterval(String(fields[2]).trimmingCharacters(in: .whitespacesAndNewlines)) else {
                 continue
             }
 
