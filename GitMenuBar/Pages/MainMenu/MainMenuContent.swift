@@ -140,7 +140,6 @@ extension MainMenuView {
             selectedItemID: workspace.selectedMainItemID,
             isLoading: presentationModel.isDetailLoading,
             canLoadMore: gitManager.canLoadMoreCommitHistory,
-            animationNamespace: animationNamespace,
             isCommitInFuture: isCommitInFuture,
             onSelectRow: { workspace.selectMainItem($0.id) },
             onOpenCommit: { commitID in

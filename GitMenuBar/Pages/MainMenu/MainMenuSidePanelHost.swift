@@ -98,7 +98,6 @@ struct MainMenuSidePanelHost: View {
 private struct SidePanelHostPreviewContent: View {
     @State private var message = ""
     @FocusState private var isFocused: Bool
-    @Namespace private var namespace
 
     var body: some View {
         MainMenuSidePanelHost(
@@ -110,7 +109,6 @@ private struct SidePanelHostPreviewContent: View {
                 selectedItemID: nil,
                 isLoading: false,
                 canLoadMore: false,
-                animationNamespace: namespace,
                 isCommitInFuture: { _ in false },
                 onSelectRow: { _ in },
                 onOpenCommit: { _ in },

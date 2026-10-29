@@ -46,7 +46,6 @@ struct HistorySidePanelView: View {
             currentHash: gitManager.currentHash,
             remoteUrl: gitManager.remoteUrl,
             isCommitInFuture: history.isCommitInFuture,
-            animationNamespace: history.animationNamespace,
             onBack: {
                 history.onBackToHistory()
             },

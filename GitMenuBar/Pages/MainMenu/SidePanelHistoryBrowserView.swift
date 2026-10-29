@@ -15,7 +15,6 @@ struct SidePanelHistoryBrowserView: View {
             selectedItemID: history.selectedItemID,
             isLoading: history.isLoading,
             canLoadMore: history.canLoadMore,
-            animationNamespace: history.animationNamespace,
             onSelectRow: history.onSelectRow,
             onActivateCommit: { history.onOpenCommit($0.commit.id) },
             onRestoreCommit: { row in

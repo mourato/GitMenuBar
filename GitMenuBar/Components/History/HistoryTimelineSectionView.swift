@@ -5,7 +5,6 @@ struct HistoryTimelineSectionView: View {
     let sections: [HistoryTimelineSectionModel]
     let selectedItemID: MainMenuSelectableItem?
     let isLoading: Bool
-    let animationNamespace: Namespace.ID
     let onSelectRow: (HistoryRowAdapter) -> Void
     let onActivateCommit: (HistoryRowAdapter) -> Void
     let onRestoreCommit: (HistoryRowAdapter) -> Void
@@ -76,7 +75,6 @@ struct HistoryTimelineSectionView: View {
                                 isCurrentCommit: timelineRow.row.actionSet.isCurrentCommit,
                                 isFutureCommit: timelineRow.row.actionSet.isFutureCommit,
                                 isSelected: selectedItemID == timelineRow.row.id,
-                                animationNamespace: animationNamespace,
                                 onSelect: {
                                     onSelectRow(timelineRow.row)
                                 },
@@ -105,7 +103,6 @@ private struct HistoryTimelineRowView: View {
     let isCurrentCommit: Bool
     let isFutureCommit: Bool
     let isSelected: Bool
-    let animationNamespace: Namespace.ID
     let onSelect: () -> Void
     let onActivate: () -> Void
     let onRestoreCommit: () -> Void
@@ -124,7 +121,6 @@ private struct HistoryTimelineRowView: View {
         isCurrentCommit: Bool,
         isFutureCommit: Bool,
         isSelected: Bool,
-        animationNamespace: Namespace.ID,
         onSelect: @escaping () -> Void,
         onActivate: @escaping () -> Void,
         onRestoreCommit: @escaping () -> Void,
@@ -136,7 +132,6 @@ private struct HistoryTimelineRowView: View {
         self.isCurrentCommit = isCurrentCommit
         self.isFutureCommit = isFutureCommit
         self.isSelected = isSelected
-        self.animationNamespace = animationNamespace
         self.onSelect = onSelect
         self.onActivate = onActivate
         self.onRestoreCommit = onRestoreCommit
@@ -267,7 +262,6 @@ private struct HistoryTimelineRowView: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .matchedGeometryEffect(id: "commit-\(commit.id)", in: animationNamespace)
 
             if isFutureCommit {
                 Text("Future")
@@ -387,17 +381,23 @@ private struct HistoryTimelineRowView: View {
     }
 }
 
-#Preview("History Timeline Section") {
-    let previewRows = [
+private enum HistoryTimelinePreviewData {
+    static func row(
+        id: String,
+        subject: String,
+        committedAt: Date = .now.addingTimeInterval(-3600),
+        isMergeCommit: Bool = false
+    ) -> HistoryRowAdapter {
         HistoryRowAdapter(
             commit: Commit(
-                id: "1234567890abcdef",
-                shortHash: "1234567",
-                subject: "feat(git): improve status bar and menu item logic",
+                id: id,
+                shortHash: String(id.prefix(7)),
+                subject: subject,
                 body: "",
                 authorName: "Renato",
                 authorEmail: "renato@example.com",
-                committedAt: .now.addingTimeInterval(-3600),
+                committedAt: committedAt,
+                isMergeCommit: isMergeCommit,
                 stats: CommitStats(filesChanged: 5, insertions: 114, deletions: 19),
                 changedFiles: [
                     CommitFileChange(
@@ -409,36 +409,82 @@ private struct HistoryTimelineRowView: View {
             currentHash: "abcdef1234567890",
             remoteUrl: "https://github.com/example/repo",
             isCommitInFuture: false
-        ),
-        HistoryRowAdapter(
-            commit: Commit(
-                id: "abcdef1234567890",
-                shortHash: "abcdef1",
-                subject: "fix(history): group commits by day",
-                body: "",
-                authorName: "Renato",
-                authorEmail: "renato@example.com",
-                committedAt: .now.addingTimeInterval(-86400),
-                stats: CommitStats(filesChanged: 2, insertions: 8, deletions: 3),
-                changedFiles: []
-            ),
-            currentHash: "abcdef1234567890",
-            remoteUrl: "https://github.com/example/repo",
-            isCommitInFuture: false
+        )
+    }
+
+    static let defaultRows = [
+        row(id: "1234567890abcdef", subject: "feat(git): improve status bar and menu item logic"),
+        row(
+            id: "abcdef1234567890",
+            subject: "fix(history): group commits by day",
+            committedAt: .now.addingTimeInterval(-86400)
         )
     ]
 
-    HistoryTimelineSectionView(
-        sections: HistoryTimelineSectionModel.build(from: previewRows),
-        selectedItemID: .historyCommit(id: "abcdef1234567890"),
-        isLoading: false,
-        animationNamespace: Namespace().wrappedValue,
-        onSelectRow: { _ in },
-        onActivateCommit: { _ in },
-        onRestoreCommit: { _ in },
-        onEditCommitMessage: { _ in },
-        onGenerateCommitMessage: { _ in }
+    static let longSubjectRows = [
+        row(
+            id: "fedcba9876543210",
+            subject: "feat(history): keep the selected row title visible while the open commit detail panel shows the same commit",
+            committedAt: .now.addingTimeInterval(-7200)
+        ),
+        row(
+            id: "abcdef1234567890",
+            subject: "fix(history): group commits by day",
+            committedAt: .now.addingTimeInterval(-86400)
+        )
+    ]
+
+    static let mergeCommitRows = [
+        row(
+            id: "0123456789abcdef",
+            subject: "Merge branch 'feat/commit-inspector' into main",
+            isMergeCommit: true
+        ),
+        row(
+            id: "abcdef1234567890",
+            subject: "fix(history): group commits by day",
+            committedAt: .now.addingTimeInterval(-86400)
+        )
+    ]
+}
+
+private struct HistoryTimelinePreview: View {
+    let rows: [HistoryRowAdapter]
+    let selectedItemID: MainMenuSelectableItem?
+
+    var body: some View {
+        HistoryTimelineSectionView(
+            sections: HistoryTimelineSectionModel.build(from: rows),
+            selectedItemID: selectedItemID,
+            isLoading: false,
+            onSelectRow: { _ in },
+            onActivateCommit: { _ in },
+            onRestoreCommit: { _ in },
+            onEditCommitMessage: { _ in },
+            onGenerateCommitMessage: { _ in }
+        )
+        .padding()
+        .frame(width: WorkbenchMetrics.sidePanelWidth)
+    }
+}
+
+#Preview("History Timeline Section") {
+    HistoryTimelinePreview(
+        rows: HistoryTimelinePreviewData.defaultRows,
+        selectedItemID: .historyCommit(id: "abcdef1234567890")
     )
-    .padding()
-    .frame(width: WorkbenchMetrics.sidePanelWidth)
+}
+
+#Preview("History Timeline Section - Selected Long Subject") {
+    HistoryTimelinePreview(
+        rows: HistoryTimelinePreviewData.longSubjectRows,
+        selectedItemID: .historyCommit(id: "fedcba9876543210")
+    )
+}
+
+#Preview("History Timeline Section - Selected Merge Commit") {
+    HistoryTimelinePreview(
+        rows: HistoryTimelinePreviewData.mergeCommitRows,
+        selectedItemID: .historyCommit(id: "0123456789abcdef")
+    )
 }

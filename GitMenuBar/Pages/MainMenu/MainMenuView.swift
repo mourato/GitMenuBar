@@ -6,7 +6,6 @@
 import SwiftUI
 
 struct MainMenuView: View {
-    @Namespace var animationNamespace
     @State var errorCenter: MainMenuErrorCenter
     @State var branchDialogs: MainMenuBranchDialogs
     @State var workspace = MainMenuWorkspaceState()
