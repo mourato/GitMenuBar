@@ -20,6 +20,17 @@ extension CleanupManagementContentView {
     }
 
     func statusDetail(for status: GitBranchCleanupStatus) -> String? {
+        CleanupDetailText.branchStatus(status)
+    }
+
+    func worktreeStatusDetail(for status: GitWorktreeCleanupStatus) -> String {
+        CleanupDetailText.worktreeStatus(status)
+    }
+}
+
+/// Shared one-line cleanup explanations; used by the cleanup list and the cleanup confirmation sheet.
+enum CleanupDetailText {
+    static func branchStatus(_ status: GitBranchCleanupStatus) -> String? {
         switch status {
         case .mergedIntoDefault:
             "Tip is already in the default branch."
@@ -36,7 +47,7 @@ extension CleanupManagementContentView {
         }
     }
 
-    func worktreeStatusDetail(for status: GitWorktreeCleanupStatus) -> String {
+    static func worktreeStatus(_ status: GitWorktreeCleanupStatus) -> String {
         switch status {
         case .eligible:
             "Ready for cleanup."
