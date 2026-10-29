@@ -12,6 +12,10 @@ struct CleanupConfirmationView: View {
     private static let collapsedReadyThreshold = 6
     private static let collapsedReadyCount = 4
 
+    static func defaultSelectedIDs(for units: [GitCleanupUnit]) -> Set<String> {
+        Set(units.filter { !$0.isDangerousBranchDeletion }.map(\.id))
+    }
+
     init(
         units: [GitCleanupUnit],
         blocked: [GitCleanupUnit] = [],
@@ -22,7 +26,7 @@ struct CleanupConfirmationView: View {
         self.blocked = blocked
         self.onCancel = onCancel
         self.onConfirm = onConfirm
-        _selectedIDs = State(initialValue: Set(units.map(\.id)))
+        _selectedIDs = State(initialValue: Self.defaultSelectedIDs(for: units))
     }
 
     private var selectedUnits: [GitCleanupUnit] {

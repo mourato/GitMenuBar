@@ -165,7 +165,8 @@ Merged status includes both default-branch reachability and Git's
 cherry-equivalent result. Clean worktrees may be removed even when their branch
 is not merged, and clean detached worktrees may be removed. Deleting an
 unmerged branch, alone or with its worktree, requires the shared confirmation to
-show a clear data-loss warning and an explicit risk-review step. Force Remove
+show a clear data-loss warning and an explicit risk-review step; unmerged
+branches are unchecked by default in cleanup confirmation. Force Remove
 Worktree requires a dedicated warning that its directory and uncommitted changes
 are permanently deleted while its branch is kept. Remote branch management lists
 all remote-tracking refs, including `upstream`, and labels the remote being
