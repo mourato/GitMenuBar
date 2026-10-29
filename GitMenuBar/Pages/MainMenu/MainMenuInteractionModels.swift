@@ -182,8 +182,6 @@ struct HistoryRowAdapter: Identifiable, Equatable {
 
 struct HistoryTimelineRowModel: Identifiable, Equatable {
     let row: HistoryRowAdapter
-    let showsTopConnector: Bool
-    let showsBottomConnector: Bool
 
     var id: MainMenuSelectableItem {
         row.id
@@ -202,13 +200,7 @@ struct HistoryTimelineSectionModel: Identifiable, Equatable {
         let rowByCommitID = Dictionary(uniqueKeysWithValues: rows.map { ($0.commit.id, $0) })
         return HistoryCommitGrouping.group(commits: rows.map(\.commit)).map { section in
             let sectionRows = section.commits.compactMap { rowByCommitID[$0.id] }
-            let timelineRows = sectionRows.enumerated().map { index, row in
-                HistoryTimelineRowModel(
-                    row: row,
-                    showsTopConnector: index > 0,
-                    showsBottomConnector: index < sectionRows.count - 1
-                )
-            }
+            let timelineRows = sectionRows.map(HistoryTimelineRowModel.init(row:))
 
             return HistoryTimelineSectionModel(title: section.title, rows: timelineRows)
         }
