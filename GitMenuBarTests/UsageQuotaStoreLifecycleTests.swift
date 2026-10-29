@@ -491,8 +491,7 @@ private final class FakeImmediateQuotaProvider: UsageQuotaProviding {
         self.snapshot = snapshot
     }
 
-    // swiftlint:disable:next async_without_await // justified: Immediate test double implements the async provider contract.
-    func fetchSnapshot() async -> UsageQuotaSnapshot {
+    func fetchSnapshot() -> UsageQuotaSnapshot {
         snapshot
     }
 }
