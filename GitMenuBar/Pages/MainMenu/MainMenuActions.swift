@@ -85,7 +85,7 @@ extension MainMenuView {
     }
 
     func toggleBranchSelectorPresentation() {
-        guard presentationModel.route == .main else {
+        guard presentationModel.route == .main, !currentRepoPath.isEmpty else {
             return
         }
 
@@ -101,7 +101,7 @@ extension MainMenuView {
     }
 
     func presentBranchSelector() {
-        guard presentationModel.route == .main else {
+        guard presentationModel.route == .main, !currentRepoPath.isEmpty else {
             return
         }
 
@@ -206,11 +206,10 @@ extension MainMenuView {
     }
 
     func handleRepositoryOptionsPresentationRequest(_ token: Int) {
-        guard repoOptions.claimPresentationRequest(token) else {
-            return
-        }
-
-        guard presentationModel.route == .main, canPresentRepositoryOptions else {
+        guard repoOptions.claimPresentationRequest(token),
+              presentationModel.route == .main,
+              canPresentRepositoryOptions
+        else {
             return
         }
 

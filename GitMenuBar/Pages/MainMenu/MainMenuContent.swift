@@ -18,92 +18,6 @@ extension MainMenuView {
         )
     }
 
-    private var footerSection: some View {
-        MainMenuFooterSection(
-            currentBranch: gitManager.currentBranch,
-            commitCount: gitManager.commitCount,
-            isRemoteAhead: gitManager.isRemoteAhead,
-            behindCount: gitManager.behindCount,
-            isDetachedHead: gitManager.isDetachedHead,
-            onBranchTap: toggleBranchSelectorPresentation,
-            isBranchSelectorPresented: $branchDialogs.showBranchSelector
-        ) {
-            branchSelectorContent
-        }
-    }
-
-    private var branchSelectorContent: some View {
-        MainMenuBranchSelectorHost(
-            isDetachedHead: gitManager.isDetachedHead,
-            isRemoteAhead: gitManager.isRemoteAhead,
-            behindCount: gitManager.behindCount,
-            availableBranches: gitManager.availableBranches,
-            currentBranch: gitManager.currentBranch,
-            onCreateBranchFromDetached: {
-                dismissTransientPresentations()
-                branchDialogs.showCreateBranch = true
-            },
-            onQuickPull: {
-                dismissTransientPresentations()
-                sync.useRebase = false
-                sync.syncWithRemote(using: actionCoordinator)
-            },
-            onSelectBranch: { branch in
-                dismissTransientPresentations()
-                guard branch != gitManager.currentBranch else { return }
-
-                if hasWorkingTreeChanges {
-                    branchDialogs.pendingSwitchBranch = branch
-                    branchDialogs.showDirtySwitchConfirmation = true
-                } else {
-                    gitManager.switchBranch(branchName: branch) { result in
-                        if case let .failure(error) = result {
-                            errorCenter.branchSwitch = error.localizedDescription
-                        }
-                    }
-                }
-            },
-            onMergeBranch: { branch in
-                dismissTransientPresentations()
-                if gitManager.currentBranch == "main" || gitManager.currentBranch == "master" {
-                    branchDialogs.mergeBranchName = branch
-                    branchDialogs.mergeTargetBranch = gitManager.currentBranch
-                    branchDialogs.showMergeConfirmation = true
-                } else {
-                    gitManager.mergeBranch(fromBranch: branch) { result in
-                        if case let .failure(error) = result {
-                            errorCenter.merge = error.localizedDescription
-                        }
-                    }
-                }
-            },
-            onDeleteBranch: { branch in
-                dismissTransientPresentations()
-                branchDialogs.branchNameToDelete = branch
-                branchDialogs.showBranchDeleteConfirmation = true
-            },
-            onRenameBranch: { branch in
-                dismissTransientPresentations()
-                branchDialogs.oldBranchName = branch
-                branchDialogs.renameBranchNewName = branch
-                branchDialogs.showRenameBranch = true
-            },
-            onMergeToDefaultBranch: { branch in
-                dismissTransientPresentations()
-                Task {
-                    guard let detectedDefaultBranch = await gitManager.getSelectedDefaultBranchNameAsync() else { return }
-                    branchDialogs.featureBranchName = branch
-                    branchDialogs.defaultBranchName = detectedDefaultBranch
-                    branchDialogs.showMergeToDefaultConfirmation = true
-                }
-            },
-            onNewBranch: {
-                dismissTransientPresentations()
-                branchDialogs.showCreateBranch = true
-            }
-        )
-    }
-
     @ViewBuilder
     private var routeContent: some View {
         switch presentationModel.route {
@@ -124,11 +38,6 @@ extension MainMenuView {
                     currentRepoPath: currentRepoPath,
                     onCreateRepo: { presentationModel.showCreateRepo(path: $0) },
                     overview: snapshotModel.renderSnapshot.overview,
-                    commitActionTitle: resolvedCommitButtonAction.buttonTitle,
-                    canCommit: actionCoordinator.canAutoCommit,
-                    onCommit: performQuickCommit,
-                    canSync: actionCoordinator.canSync,
-                    onSync: syncRepository,
                     onSelectSection: { workspace.selectedSidePanelSelection = $0 },
                     history: sidePanelHistory
                 )
@@ -139,8 +48,6 @@ extension MainMenuView {
             .refreshable {
                 await gitManager.refreshSelectedRepositoryAsync(includeReflogHistory: false)
             }
-
-            footerSection
         }
         .disabled(presentationModel.isFastLoading)
         .accessibilityElement(children: .contain)
@@ -357,6 +264,15 @@ extension MainMenuView {
             Task {
                 await actionCoordinator.performSync()
             }
+        case .fetch:
+            Task {
+                await actionCoordinator.performFetch()
+            }
+        case .branchSelector:
+            presentBranchSelector()
+        case .toolbarCommit:
+            guard hasWorkingTreeChanges else { return }
+            workspace.selectedSidePanelSelection = .workingTree
         case .atomicCommits:
             startAtomicCommitFlow()
         }

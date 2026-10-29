@@ -335,6 +335,9 @@ final class StatusBarController: NSObject {
             _ = gitManager.isBehindRemote
             _ = githubAuthManager.isAuthenticated
             _ = projectMonitor.snapshots
+            _ = repositorySelectionCoordinator.selectedPath
+            _ = actionCoordinator.isBusy
+            _ = actionCoordinator.operationStatus
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -363,11 +366,41 @@ final class StatusBarController: NSObject {
         case .main, .createRepo:
             false
         }
+        let repositoryState: MainWindowToolbarRepositoryState?
+        if presentationModel.route == .main, currentRepositoryPath() != nil {
+            let operationStatus = actionCoordinator.operationStatus
+            repositoryState = MainWindowToolbarRepositoryState(
+                repositoryName: mainWindowTitle,
+                branchName: gitManager.currentBranch,
+                aheadCount: gitManager.isAheadOfRemote ? gitManager.commitCount : 0,
+                behindCount: gitManager.isRemoteAhead ? gitManager.behindCount : 0,
+                changeCount: gitManager.stagedFiles.count + gitManager.changedFiles.count,
+                isBusy: actionCoordinator.isBusy,
+                busyItem: actionCoordinator.isBusy ? toolbarBusyItem(for: operationStatus) : nil,
+                progressAccessibilityLabel: operationStatus?.accessibilityLabel
+            )
+        } else {
+            repositoryState = nil
+        }
         mainWindowController.updateToolbar(
             title: mainWindowTitle,
             showsSidebarItem: shouldShowSidebarItem,
-            showsBackItem: needsBackItem
+            showsBackItem: needsBackItem,
+            repositoryState: repositoryState
         )
+    }
+
+    private func toolbarBusyItem(
+        for operationStatus: MainMenuOperationStatus?
+    ) -> MainWindowToolbarRepositoryItem {
+        switch operationStatus {
+        case .fetching:
+            .fetch
+        case .pushing, .pushingCommits:
+            .sync
+        case .generatingCommitMessage, .groupingChanges, .committing, .committingGroup, nil:
+            .commit
+        }
     }
 
     private var mainWindowTitle: String {
@@ -388,6 +421,26 @@ final class StatusBarController: NSObject {
     @objc
     func goBackFromToolbar(_: NSToolbarItem) {
         presentationModel.showMain()
+    }
+
+    @objc
+    func presentBranchSelectorFromToolbar(_: Any?) {
+        shortcutActionBridge.send(.branchSelector)
+    }
+
+    @objc
+    func performFetchFromToolbar(_: Any?) {
+        shortcutActionBridge.send(.fetch)
+    }
+
+    @objc
+    func performSyncFromToolbar(_: Any?) {
+        shortcutActionBridge.send(.sync)
+    }
+
+    @objc
+    func selectWorkingTreeFromToolbar(_: Any?) {
+        shortcutActionBridge.send(.toolbarCommit)
     }
 
     private func handleActionShortcut(_ action: MainMenuShortcutAction) {
@@ -735,6 +788,12 @@ final class StatusBarController: NSObject {
             "sync"
         case .atomicCommits:
             "atomicCommits"
+        case .fetch:
+            "fetch"
+        case .branchSelector:
+            "branchSelector"
+        case .toolbarCommit:
+            "toolbarCommit"
         }
     }
 }

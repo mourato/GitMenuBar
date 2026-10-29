@@ -25,6 +25,9 @@ final class MainWindowController: NSWindowController {
 
     private weak var statusBarController: StatusBarController?
     private let usageQuotaStore: UsageQuotaStore
+    private let branchDialogs = MainMenuBranchDialogs()
+    private let errorCenter = MainMenuErrorCenter()
+    private let syncSheetState = MainMenuSyncSheetState()
     private var mainWindow: NSWindow? {
         window
     }
@@ -47,9 +50,17 @@ final class MainWindowController: NSWindowController {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func updateToolbar(title: String, showsSidebarItem: Bool, showsBackItem: Bool) {
+    func updateToolbar(
+        title: String,
+        showsSidebarItem: Bool,
+        showsBackItem: Bool,
+        repositoryState: MainWindowToolbarRepositoryState?
+    ) {
         mainWindowToolbarController?.update(
-            title: title, showsSidebarItem: showsSidebarItem, showsBackItem: showsBackItem
+            title: title,
+            showsSidebarItem: showsSidebarItem,
+            showsBackItem: showsBackItem,
+            repositoryState: repositoryState
         )
     }
 
@@ -80,7 +91,15 @@ final class MainWindowController: NSWindowController {
 
         configureMainWindowAppearance(window)
         window.title = "GitMenuBar"
-        let toolbarController = MainWindowToolbarController(target: statusBarController)
+        let toolbarController = MainWindowToolbarController(
+            target: statusBarController,
+            branchSelectorContent: { [weak self] in
+                self?.makeBranchSelectorContent() ?? AnyView(EmptyView())
+            },
+            onBranchSelectorPopoverClosed: { [weak self] in
+                self?.branchDialogs.showBranchSelector = false
+            }
+        )
         toolbarController.install(in: window)
         mainWindowToolbarController = toolbarController
         window.isReleasedWhenClosed = false
@@ -130,6 +149,12 @@ final class MainWindowController: NSWindowController {
             },
             setAutoHideSuspended: { [weak self] suspended in
                 self?.setAutoHideSuspended(suspended)
+            },
+            branchDialogs: branchDialogs,
+            errorCenter: errorCenter,
+            sync: syncSheetState,
+            onBranchSelectorPresentationChanged: { [weak self] isPresented in
+                self?.mainWindowToolbarController?.setBranchSelectorPopoverPresented(isPresented)
             }
         )
         .environment(statusBarController.gitManager)
@@ -148,6 +173,25 @@ final class MainWindowController: NSWindowController {
         .environment(statusBarController.projectCleanupStore)
 
         return AnyView(rootView)
+    }
+
+    private func makeBranchSelectorContent() -> AnyView {
+        guard let statusBarController else {
+            return AnyView(EmptyView())
+        }
+
+        return AnyView(
+            MainMenuBranchSelectorContent(
+                branchDialogs: branchDialogs,
+                errorCenter: errorCenter,
+                sync: syncSheetState,
+                onDismissTransientPresentations: { [weak self] in
+                    self?.branchDialogs.showBranchSelector = false
+                }
+            )
+            .environment(statusBarController.gitManager)
+            .environment(statusBarController.actionCoordinator)
+        )
     }
 
     func setAutoHideSuspended(_ suspended: Bool) {

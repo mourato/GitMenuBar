@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 
 enum MainMenuOperationStatus: Equatable {
+    case fetching
     case generatingCommitMessage
     case groupingChanges
     case committing
@@ -11,6 +12,8 @@ enum MainMenuOperationStatus: Equatable {
 
     var title: String {
         switch self {
+        case .fetching:
+            "Fetching remote…"
         case .generatingCommitMessage:
             "Generating commit message…"
         case .groupingChanges:
@@ -35,6 +38,8 @@ enum MainMenuOperationStatus: Equatable {
 
     var accessibilityLabel: String {
         switch self {
+        case .fetching:
+            "Fetching remote"
         case .generatingCommitMessage:
             "Generating commit message"
         case .groupingChanges:
