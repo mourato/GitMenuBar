@@ -148,7 +148,7 @@ struct SidePanelBranchManagementView: View {
             )
             .adaptiveMotion()
         } label: {
-            Text("Branches (\(gitManager.branchInfos.filter(\.isLocal).count))")
+            Text("Branches")
                 .font(WorkbenchTypography.sectionLabel)
         }
     }
@@ -170,6 +170,8 @@ struct SidePanelBranchManagementView: View {
                 .foregroundStyle(.secondary)
             Button("Clear", action: clearFilters)
                 .workbenchSecondary()
+                .frame(minHeight: WorkbenchMetrics.minimumHitTarget)
+                .contentShape(Rectangle())
                 .accessibilityLabel("Clear branch filter and search")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -183,8 +185,13 @@ struct SidePanelBranchManagementView: View {
         }
     }
 
-    private func sectionHeader(_ title: String, count: Int) -> some View {
-        (Text(title) + Text(" · ") + Text("\(count)").monospacedDigit())
+    /// Pass `count` only when no filter chip already shows the same number.
+    private func sectionHeader(_ title: String, count: Int? = nil) -> some View {
+        var label = Text(title)
+        if let count {
+            label = label + Text(" · ") + Text("\(count)").monospacedDigit()
+        }
+        return label
             .font(WorkbenchTypography.captionStrong)
             .textCase(.uppercase)
             .tracking(WorkbenchTypography.tracking(for: WorkbenchTypography.caption))
@@ -198,36 +205,48 @@ struct SidePanelBranchManagementView: View {
             .help("Local Git reachability against \(defaultBranchDisplayName), not GitHub pull request status.")
     }
 
+    /// Shows the Review entry only when something is ready; with none ready, states the blocked count.
     private func cleanupBanner(model: BranchListModel) -> some View {
-        HStack(alignment: .center, spacing: WorkbenchMetrics.compactSpacing) {
-            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-                Text("\(model.readyCount) ready to clean")
-                    .font(WorkbenchTypography.sectionLabel)
+        let hasReady = model.readyCount > 0
+        let fill = hasReady
+            ? WorkbenchPalette.successFill(contrast: colorSchemeContrast)
+            : WorkbenchPalette.hoverFill()
+        return HStack(alignment: .center, spacing: WorkbenchMetrics.compactSpacing) {
+            if hasReady {
+                VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                    Text("\(model.readyCount) ready to clean")
+                        .font(WorkbenchTypography.sectionLabel)
+                    Text("\(model.blockedCount) blocked")
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(model.readyCount) ready to clean, \(model.blockedCount) blocked")
+                Spacer(minLength: WorkbenchMetrics.compactSpacing)
+                Button("Review") {
+                    guard let snapshot = gitManager.worktreeSnapshot else { return }
+                    let matching = snapshot.managementUnits(matching: branchQuery)
+                    presentCleanupConfirmation(
+                        snapshot: snapshot,
+                        ready: matching.filter(\.canPrimaryClean),
+                        blocked: matching.filter { !$0.canPrimaryClean }
+                    )
+                }
+                .workbenchSecondary()
+                .frame(minHeight: WorkbenchMetrics.minimumHitTarget)
+                .contentShape(Rectangle())
+                .disabled(actionCoordinator.isBusy)
+                .help("Review branches and worktrees ready to clean")
+            } else {
                 Text("\(model.blockedCount) blocked")
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .font(WorkbenchTypography.sectionLabel)
+                    .help("Nothing is ready to clean. Blocked branches and worktrees need attention first.")
+                    .accessibilityLabel("\(model.blockedCount) blocked, nothing ready to clean")
+                Spacer(minLength: WorkbenchMetrics.compactSpacing)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(model.readyCount) ready to clean, \(model.blockedCount) blocked")
-            Spacer(minLength: WorkbenchMetrics.compactSpacing)
-            Button("Review") {
-                guard let snapshot = gitManager.worktreeSnapshot else { return }
-                let matching = snapshot.managementUnits(matching: branchQuery)
-                presentCleanupConfirmation(
-                    snapshot: snapshot,
-                    ready: matching.filter(\.canPrimaryClean),
-                    blocked: matching.filter { !$0.canPrimaryClean }
-                )
-            }
-            .workbenchSecondary()
-            .disabled(actionCoordinator.isBusy || model.readyCount == 0)
-            .help(model.readyCount == 0 ? "Nothing is ready to clean" : "Review branches and worktrees ready to clean")
         }
         .padding(WorkbenchMetrics.compactSpacing)
-        .background(
-            WorkbenchPalette.successFill(contrast: colorSchemeContrast),
-            in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
-        )
+        .background(fill, in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
     }
 
     private func pinnedCurrentBranchRow(
@@ -251,7 +270,7 @@ struct SidePanelBranchManagementView: View {
 
         if totalCount > 0 {
             VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-                sectionHeader("LOCAL", count: totalCount)
+                sectionHeader("LOCAL")
 
                 VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
                     ForEach(nonCurrentVisible) { row in
@@ -328,6 +347,8 @@ struct SidePanelBranchManagementView: View {
                     Text("Worktrees \(worktreeCount)")
                     Image(systemName: "chevron.right").rotationEffect(.degrees(worktreesExpanded ? 90 : 0))
                 }
+                .frame(minHeight: WorkbenchMetrics.minimumHitTarget)
+                .contentShape(Rectangle())
             }
             .workbenchGhost()
             .disabled(actionCoordinator.isBusy)
@@ -348,6 +369,7 @@ struct SidePanelBranchManagementView: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString($0, forType: .string)
                 },
+                onRemove: removeWorktree,
                 onForceRemove: forceRemoveWorktree,
                 onDismissError: {}
             )
@@ -366,7 +388,7 @@ struct SidePanelBranchManagementView: View {
             branch: info,
             onSwitch: { onRequestSwitchBranch(info.displayName) },
             onRename: { onRenameBranch(info.name) },
-            onDelete: { onRequestDeleteBranch(info.name) },
+            onDelete: deleteBranchAction(for: info, unit: unit),
             onPush: needsPush(info) ? { pushBranch(info) } : nil,
             onMerge: canMerge(info) ? { mergeBranch(info) } : nil,
             cleanupStatus: mapCleanupStatus(badgeStatus),
@@ -433,6 +455,20 @@ struct SidePanelBranchManagementView: View {
         }
     }
 
+    /// Branches with a management unit delete through the cleanup sheet (risk gate applies).
+    /// Without a unit, the legacy confirmation stays. Hidden while Git requires worktree removal first.
+    private func deleteBranchAction(for info: BranchInfo, unit: GitCleanupUnit?) -> (() -> Void)? {
+        guard let unit else {
+            return { onRequestDeleteBranch(info.name) }
+        }
+        let branchOnly = unit.deletingBranchOnly()
+        guard branchOnly.canPrimaryClean else { return nil }
+        return {
+            guard let snapshot = gitManager.worktreeSnapshot else { return }
+            presentCleanupConfirmation(snapshot: snapshot, ready: [branchOnly], blocked: [])
+        }
+    }
+
     private func canMerge(_ info: BranchInfo) -> Bool {
         gitManager.unmergedIntoDefaultBranches.contains(info.name) && !info.isCurrent
     }
@@ -456,7 +492,6 @@ struct SidePanelBranchManagementView: View {
             branch: info,
             onSwitch: {},
             onRename: {},
-            onDelete: {},
             onDeleteRemote: { deleteRemoteBranch = info },
             onCheckoutLocally: {
                 Task {
@@ -516,6 +551,11 @@ struct SidePanelBranchManagementView: View {
         pendingReadyUnits = ready
         pendingBlockedUnits = blocked
         showCleanupConfirmation = true
+    }
+
+    private func removeWorktree(_ info: GitWorktreeCleanupInfo) {
+        guard let snapshot = gitManager.worktreeSnapshot, let unit = snapshot.worktreeRemovalUnit(for: info) else { return }
+        presentCleanupConfirmation(snapshot: snapshot, ready: [unit], blocked: [])
     }
 
     private func forceRemoveWorktree(_ info: GitWorktreeCleanupInfo) {

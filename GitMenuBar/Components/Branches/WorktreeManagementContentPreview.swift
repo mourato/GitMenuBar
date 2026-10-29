@@ -24,6 +24,7 @@ import SwiftUI
         query: "",
         onReveal: { _ in },
         onCopyPath: { _ in },
+        onRemove: { _ in },
         onForceRemove: { _ in },
         onDismissError: {}
     )
