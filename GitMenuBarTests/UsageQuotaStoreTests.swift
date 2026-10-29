@@ -21,7 +21,9 @@ final class UsageQuotaStoreTests: XCTestCase {
     }
 
     override func tearDown() {
-        defaults.removePersistentDomain(forName: suiteName)
+        if let suiteName {
+            defaults?.removePersistentDomain(forName: suiteName)
+        }
         defaults = nil
         snapshotStore = nil
         suiteName = nil
