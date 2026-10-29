@@ -17,7 +17,6 @@ struct CommitDetailPageView: View {
     @State private var authorAvatarURL: URL?
     @State private var loadedAvatarLookupKey: String?
 
-
     private var actionSet: HistoryActionSet? {
         guard let commit else {
             return nil
