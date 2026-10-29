@@ -55,34 +55,11 @@ extension GitBranchService {
         let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else { return "main" }
 
-        let detected: String? = await runOnBackground { () -> String? in
-            GitCleanupRepository(runner: self.commandRunner).defaultBranchName(in: repositoryPath)
+        let resolved = await runOnBackground {
+            GitCleanupRepository(runner: self.commandRunner).resolvedDefaultBranchName(in: repositoryPath)
         }
-
-        if let detected, !detected.isEmpty {
-            await GitExecution.publishOnMainActor(ifCurrent: session) { self.defaultBranchName = detected }
-            return detected
-        }
-
-        let fallback = await defaultBranchNameFallback(repositoryPath: repositoryPath)
-        await GitExecution.publishOnMainActor(ifCurrent: session) { self.defaultBranchName = fallback }
-        return fallback
-    }
-
-    private func defaultBranchNameFallback(repositoryPath: String) async -> String {
-        let local = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["branch", "--format=%(refname:short)"]).output
-                .components(separatedBy: .newlines)
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-        }
-        if local.contains("main") {
-            return "main"
-        }
-        if local.contains("master") {
-            return "master"
-        }
-        return "main"
+        await GitExecution.publishOnMainActor(ifCurrent: session) { self.defaultBranchName = resolved }
+        return resolved
     }
 
     func resolveBranchInfoAsync() async -> [BranchInfo] {
@@ -163,8 +140,8 @@ extension GitBranchService {
         return infos.filter { !$0.isRemote || $0.remoteName != "origin" || !localNames.contains($0.name) }
     }
 
-    /// Local branches whose commits are not reachable from the selected local default branch.
-    /// This is Git `--no-merged` reachability, not GitHub pull-request merge status.
+    /// Local branches with changes not yet in the selected local default branch.
+    /// This is Git reachability plus cherry-pick equivalence, not GitHub pull-request merge status.
     func listLocalBranchesNotMergedIntoDefaultAsync(session: GitRefreshSession? = nil) async -> [String] {
         let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {
@@ -173,25 +150,9 @@ extension GitBranchService {
 
         let defaultBranch = await getDefaultBranchNameAsync(session: session)
         return await runOnBackground {
-            let result = self.executeGitCommand(
-                in: repositoryPath,
-                args: ["branch", "--format=%(refname:short)", "--no-merged", defaultBranch]
-            )
-            guard !result.failure else {
-                return [String]()
-            }
-            return result.output
-                .components(separatedBy: .newlines)
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty && $0 != "HEAD" && $0 != defaultBranch }
-                .filter { !self.isCherryEquivalent(in: repositoryPath, upstream: defaultBranch, branch: $0) }
+            GitCleanupRepository(runner: self.commandRunner)
+                .localBranchesNotIntegrated(in: repositoryPath, defaultBranchName: defaultBranch) ?? []
         }
-    }
-
-    private nonisolated func isCherryEquivalent(in repositoryPath: String, upstream: String, branch: String) -> Bool {
-        let result = executeGitCommand(in: repositoryPath, args: ["cherry", upstream, branch])
-        guard !result.failure else { return false }
-        return !result.output.split(whereSeparator: \.isNewline).contains { $0.first == "+" }
     }
 
     // swiftlint:disable:next cyclomatic_complexity

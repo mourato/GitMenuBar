@@ -136,6 +136,32 @@ final class ProjectStatusReaderTests: XCTestCase {
         XCTAssertNotNil(snapshot.lastActivityAt)
     }
 
+    func testReaderExcludesCherryPickedBranchesFromUnmergedCount() throws {
+        let root = try createTemporaryGitRepository(testName: #function)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try runGit(["branch", "-M", "main"], in: root)
+        try runGit(["checkout", "-qb", "feature/picked"], in: root)
+        try "picked\n".write(to: root.appendingPathComponent("picked.txt"), atomically: true, encoding: .utf8)
+        try runGit(["add", "picked.txt"], in: root)
+        try runGit(["commit", "-m", "picked"], in: root)
+        let pickedCommit = try runGit(["rev-parse", "HEAD"], in: root).trimmingCharacters(in: .whitespacesAndNewlines)
+        try runGit(["checkout", "-qb", "feature/pending", "main"], in: root)
+        try "pending\n".write(to: root.appendingPathComponent("pending.txt"), atomically: true, encoding: .utf8)
+        try runGit(["add", "pending.txt"], in: root)
+        try runGit(["commit", "-m", "pending"], in: root)
+        try runGit(["checkout", "-q", "main"], in: root)
+        try "main only\n".write(to: root.appendingPathComponent("main.txt"), atomically: true, encoding: .utf8)
+        try runGit(["add", "main.txt"], in: root)
+        try runGit(["commit", "-m", "main only"], in: root)
+        try runGit(["cherry-pick", pickedCommit], in: root)
+
+        let snapshot = ProjectStatusReader(runner: GitCommandRunner()).read(
+            project: ProjectReference(path: root.path), includeLineDiff: false
+        )
+
+        XCTAssertEqual(snapshot.unmergedBranchCount, 1)
+    }
+
     func testReaderPreservesUnavailableAndNonGitErrors() {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("GitMenuBarStatusReader-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

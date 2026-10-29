@@ -218,10 +218,10 @@ struct ProjectStatusReader {
     }
 
     private func readBranchHealth(projectPath: String, currentBranch: String) -> BranchHealth {
-        let defaultBranch = defaultBranchName(projectPath: projectPath, currentBranch: currentBranch)
-        let unmerged = runner.runGitCommand(
+        let repository = GitCleanupRepository(runner: runner)
+        let unmerged = repository.localBranchesNotIntegrated(
             in: projectPath,
-            args: ["branch", "--format=%(refname:short)", "--no-merged", defaultBranch]
+            defaultBranchName: repository.resolvedDefaultBranchName(in: projectPath)
         )
         let tracking = runner.runGitCommand(
             in: projectPath,
@@ -236,22 +236,10 @@ struct ProjectStatusReader {
         return BranchHealth(
             branchesWithoutUpstreamCount: tracking.failure ? 0 : trackingCounts.branchesWithoutUpstreamCount,
             unpushedBranchCount: tracking.failure ? 0 : trackingCounts.unpushedBranchCount,
-            unmergedBranchCount: unmerged.failure ? 0 : Self.countBranchLines(unmerged.output),
+            unmergedBranchCount: unmerged?.count ?? 0,
             stashCount: stashes.failure ? 0 : Self.countBranchLines(stashes.output),
             lastActivityAt: tracking.failure ? nil : trackingCounts.lastActivityAt
         )
-    }
-
-    private func defaultBranchName(projectPath: String, currentBranch: String) -> String {
-        let symbolic = runner.runGitCommand(in: projectPath, args: ["symbolic-ref", "refs/remotes/origin/HEAD"])
-        if !symbolic.failure {
-            let reference = symbolic.output.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !reference.isEmpty {
-                return reference
-            }
-        }
-
-        return currentBranch == "master" ? "master" : "main"
     }
 
     private func readLineDiff(project: ProjectReference, untrackedPaths: Set<String>) -> LineDiffStats {
