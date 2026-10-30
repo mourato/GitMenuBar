@@ -122,6 +122,16 @@ struct WorkingTreeRowAdapter: Identifiable, Equatable {
     let file: WorkingTreeFile
     let actions: WorkingTreeItemActions
 
+    /// Keeps list identity scoped to the visible working-tree section while
+    /// leaving selection identity semantic and section-aware.
+    var visualID: String {
+        switch id {
+        case let .stagedFile(path): "staged:\(path)"
+        case let .unstagedFile(path): "unstaged:\(path)"
+        case let .historyCommit(id): "history:\(id)"
+        }
+    }
+
     static func staged(file: WorkingTreeFile) -> WorkingTreeRowAdapter {
         WorkingTreeRowAdapter(
             id: .stagedFile(path: file.path),

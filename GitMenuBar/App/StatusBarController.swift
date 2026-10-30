@@ -20,6 +20,7 @@ final class StatusBarController: NSObject {
     }
 
     var statusItem: NSStatusItem?
+    private var isWorkingTreePresented = false
     private lazy var mainWindowController = MainWindowController(statusBarController: self)
     private lazy var appCommandRouter = AppCommandRouter(
         gitManager: gitManager,
@@ -310,6 +311,14 @@ final class StatusBarController: NSObject {
         observeGitCommandState()
     }
 
+    /// Mirrors whether the Working Tree side panel is open; the panel owns the
+    /// primary commit action while visible, so the toolbar hides its Commit item.
+    func setWorkingTreePresented(_ isPresented: Bool) {
+        guard isWorkingTreePresented != isPresented else { return }
+        isWorkingTreePresented = isPresented
+        updateMainWindowToolbar()
+    }
+
     private func observePresentationRoute() {
         withObservationTracking {
             _ = presentationModel.route
@@ -381,9 +390,11 @@ final class StatusBarController: NSObject {
                 aheadCount: gitManager.isAheadOfRemote ? gitManager.commitCount : 0,
                 behindCount: gitManager.isRemoteAhead ? gitManager.behindCount : 0,
                 changeCount: gitManager.stagedFiles.count + gitManager.changedFiles.count,
+                commitFileCount: gitManager.commitFileCount,
                 isBusy: actionCoordinator.isBusy,
                 busyItem: actionCoordinator.isBusy ? toolbarBusyItem(for: operationStatus) : nil,
-                progressAccessibilityLabel: operationStatus?.accessibilityLabel
+                progressAccessibilityLabel: operationStatus?.accessibilityLabel,
+                isWorkingTreeOpen: isWorkingTreePresented
             )
         } else {
             repositoryState = nil

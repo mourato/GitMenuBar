@@ -23,9 +23,37 @@ struct MainWindowToolbarRepositoryState: Equatable {
     let aheadCount: Int
     let behindCount: Int
     let changeCount: Int
+    /// Files the next commit includes: staged files, or every change when
+    /// nothing is staged. Matches the Working Tree commit button.
+    let commitFileCount: Int
     let isBusy: Bool
     let busyItem: MainWindowToolbarRepositoryItem?
     let progressAccessibilityLabel: String?
+    let isWorkingTreeOpen: Bool
+
+    init(
+        repositoryName: String,
+        branchName: String,
+        aheadCount: Int,
+        behindCount: Int,
+        changeCount: Int,
+        commitFileCount: Int,
+        isBusy: Bool,
+        busyItem: MainWindowToolbarRepositoryItem?,
+        progressAccessibilityLabel: String?,
+        isWorkingTreeOpen: Bool = false
+    ) {
+        self.repositoryName = repositoryName
+        self.branchName = branchName
+        self.aheadCount = aheadCount
+        self.behindCount = behindCount
+        self.changeCount = changeCount
+        self.commitFileCount = commitFileCount
+        self.isBusy = isBusy
+        self.busyItem = busyItem
+        self.progressAccessibilityLabel = progressAccessibilityLabel
+        self.isWorkingTreeOpen = isWorkingTreeOpen
+    }
 
     var repositoryItems: [MainWindowToolbarRepositoryItem] {
         var items: [MainWindowToolbarRepositoryItem] = [.branchPicker, .aheadBehind, .fetch]
@@ -43,7 +71,8 @@ struct MainWindowToolbarRepositoryState: Equatable {
     }
 
     var showsCommitItem: Bool {
-        changeCount > 0 || busyItem == .commit
+        guard !isWorkingTreeOpen else { return false }
+        return changeCount > 0 || busyItem == .commit
     }
 
     var branchTitle: String {
@@ -87,7 +116,7 @@ struct MainWindowToolbarRepositoryState: Equatable {
     }
 
     var commitAccessibilityLabel: String {
-        "Commit \(changeCount) change\(changeCount == 1 ? "" : "s") in \(repositoryName)"
+        "Commit \(commitFileCount) file\(commitFileCount == 1 ? "" : "s") in \(repositoryName)"
     }
 
     var fetchTitle: String {
@@ -106,8 +135,8 @@ struct MainWindowToolbarRepositoryState: Equatable {
         "Commit"
     }
 
-    var commitBadgeCount: Int? {
-        changeCount > 0 ? changeCount : nil
+    var commitItemTitle: String {
+        commitFileCount > 0 ? "Commit (\(commitFileCount))" : commitTitle
     }
 
     var isSyncEnabled: Bool {

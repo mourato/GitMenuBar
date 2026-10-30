@@ -11,6 +11,8 @@ struct WorkingTreeDiffTreeView: View {
     let onReveal: (String) -> Void
     @Binding var allDirectoriesExpanded: Bool
     @Binding var directoryExpansionOverrides: [String: Bool]
+    let matchedGeometryNamespace: Namespace.ID?
+    let matchedGeometryPaths: Set<String>
 
     private let treeNodes: [DiffTreeNode]
     private let hasDirectoryNodes: Bool
@@ -26,7 +28,9 @@ struct WorkingTreeDiffTreeView: View {
         onDiscard: @escaping (String, WorkingTreeFileStatus) -> Void,
         onReveal: @escaping (String) -> Void,
         allDirectoriesExpanded: Binding<Bool>,
-        directoryExpansionOverrides: Binding<[String: Bool]>
+        directoryExpansionOverrides: Binding<[String: Bool]>,
+        matchedGeometryNamespace: Namespace.ID? = nil,
+        matchedGeometryPaths: Set<String> = []
     ) {
         self.files = files
         self.actionIcon = actionIcon
@@ -38,6 +42,8 @@ struct WorkingTreeDiffTreeView: View {
         self.onReveal = onReveal
         _allDirectoriesExpanded = allDirectoriesExpanded
         _directoryExpansionOverrides = directoryExpansionOverrides
+        self.matchedGeometryNamespace = matchedGeometryNamespace
+        self.matchedGeometryPaths = matchedGeometryPaths
 
         treeNodes = DiffTreeBuilder.buildDiffTree(files.map(\.file.diffTreeFileInput))
         hasDirectoryNodes = files.contains { !$0.file.directoryPath.isEmpty }
@@ -57,11 +63,13 @@ struct WorkingTreeDiffTreeView: View {
             onStageToggle: onStageToggle,
             onOpen: onOpen,
             onDiscard: onDiscard,
-            onReveal: onReveal
+            onReveal: onReveal,
+            matchedGeometryNamespace: matchedGeometryNamespace,
+            matchedGeometryPaths: matchedGeometryPaths
         )
 
         VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-            ForEach(treeNodes, id: \.self) { node in
+            ForEach(treeNodes, id: \.workingTreeVisualID) { node in
                 WorkingTreeDiffTreeNodeView(
                     node: node,
                     depth: 0,
@@ -81,6 +89,15 @@ struct WorkingTreeDiffTreeView: View {
     }
 }
 
+private extension DiffTreeNode {
+    var workingTreeVisualID: String {
+        switch self {
+        case let .directory(_, path, _, _): "directory:\(path)"
+        case let .file(_, path, _): "file:\(path)"
+        }
+    }
+}
+
 private struct WorkingTreeDiffTreeContext {
     let hasDirectoryNodes: Bool
     let allDirectoriesExpanded: Bool
@@ -94,6 +111,8 @@ private struct WorkingTreeDiffTreeContext {
     let onOpen: (String) -> Void
     let onDiscard: (String, WorkingTreeFileStatus) -> Void
     let onReveal: (String) -> Void
+    let matchedGeometryNamespace: Namespace.ID?
+    let matchedGeometryPaths: Set<String>
 }
 
 extension WorkingTreeLayoutMetrics {
@@ -242,15 +261,15 @@ struct WorkingTreeDiffTreeNodeView: View {
 
             if isExpanded {
                 VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-                    ForEach(children, id: \.self) { child in
+                    ForEach(children, id: \.workingTreeVisualID) { child in
                         childNodeView(for: child)
                     }
                 }
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+                .transition(WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion))
             }
         }
         .animation(
-            WorkbenchMotion.adaptive(WorkbenchMotion.micro, usesReducedMotion: reduceMotion),
+            WorkbenchMotion.adaptive(WorkbenchMotion.disclosure, usesReducedMotion: reduceMotion),
             value: isExpanded
         )
     }
@@ -266,7 +285,7 @@ struct WorkingTreeDiffTreeNodeView: View {
     @ViewBuilder
     private func fileRow(name: String, path: String, stat: DiffTreeStat?) -> some View {
         if let adapter = context.adapterForPath(path) {
-            WorkingTreeDiffTreeFileRowView(
+            let row = WorkingTreeDiffTreeFileRowView(
                 name: name,
                 path: path,
                 depth: depth,
@@ -287,6 +306,11 @@ struct WorkingTreeDiffTreeNodeView: View {
                     } : nil,
                 onReveal: { context.onReveal(path) }
             )
+            row.modifier(WorkingTreeRowMotion(
+                path: path,
+                namespace: context.matchedGeometryNamespace,
+                sharedPaths: context.matchedGeometryPaths
+            ))
         }
     }
 
@@ -302,5 +326,31 @@ struct WorkingTreeDiffTreeNodeView: View {
             value += "\(stat.deletions) deletions"
         }
         return value.isEmpty ? "No line changes" : value
+    }
+}
+
+/// Inserts and removes a working-tree row with the section transition. A path
+/// that exists in only one section shares geometry across sections, so staging
+/// it moves the row instead of fading one out and another in. Reduce Motion
+/// keeps the plain transition.
+struct WorkingTreeRowMotion: ViewModifier {
+    let path: String
+    let namespace: Namespace.ID?
+    let sharedPaths: Set<String>
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        matchedContent(content)
+            .transition(WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion))
+    }
+
+    @ViewBuilder
+    private func matchedContent(_ content: Content) -> some View {
+        if let namespace, !reduceMotion, sharedPaths.contains(path) {
+            content.matchedGeometryEffect(id: path, in: namespace, properties: .frame)
+        } else {
+            content
+        }
     }
 }

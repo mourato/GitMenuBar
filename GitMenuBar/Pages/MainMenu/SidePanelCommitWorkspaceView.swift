@@ -34,6 +34,7 @@ struct SidePanelCommitWorkspaceView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(AppPreferences.Keys.workingTreeDisplayMode)
     private var displayMode = AppPreferences.WorkingTreeDisplayMode.tree
+    @Namespace private var workingTreeNamespace
     @State private var isStagedCollapsed = false
     @State private var isUnstagedCollapsed = false
 
@@ -57,7 +58,7 @@ struct SidePanelCommitWorkspaceView: View {
                 automaticRetryAvailable: commitAutomaticRetryAvailable,
                 isFallbackModelAvailable: isCommitFallbackModelAvailable,
                 primaryButtonTitle: commitPrimaryButtonTitle,
-                commitFileCount: commitFileCount,
+                commitFileCount: gitManager.commitFileCount,
                 isPrimaryButtonDisabled: isCommitPrimaryButtonDisabled,
                 canShowSplitCommits: canShowSplitCommits,
                 onPrimaryAction: onCommitPrimaryAction,
@@ -106,6 +107,8 @@ struct SidePanelCommitWorkspaceView: View {
                     files: gitManager.stagedFiles.map(WorkingTreeRowAdapter.staged(file:)),
                     isCollapsed: $isStagedCollapsed,
                     displayMode: $displayMode,
+                    matchedGeometryNamespace: workingTreeNamespace,
+                    matchedGeometryPaths: uniquelyPresentWorkingTreePaths,
                     selectedItemID: workspaceSelectedFileID,
                     onSelect: onSelectWorkspaceFile,
                     onStageToggle: { path in
@@ -126,10 +129,6 @@ struct SidePanelCommitWorkspaceView: View {
                 .transition(
                     WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion)
                 )
-                .animation(
-                    WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
-                    value: gitManager.stagedFiles
-                )
 
                 if !gitManager.changedFiles.isEmpty {
                     WorkingTreeSectionView(
@@ -138,6 +137,8 @@ struct SidePanelCommitWorkspaceView: View {
                         files: gitManager.changedFiles.map(WorkingTreeRowAdapter.unstaged(file:)),
                         isCollapsed: $isUnstagedCollapsed,
                         displayMode: $displayMode,
+                        matchedGeometryNamespace: workingTreeNamespace,
+                        matchedGeometryPaths: uniquelyPresentWorkingTreePaths,
                         selectedItemID: workspaceSelectedFileID,
                         onSelect: onSelectWorkspaceFile,
                         onStageToggle: { path in
@@ -157,26 +158,32 @@ struct SidePanelCommitWorkspaceView: View {
                     .transition(
                         WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion)
                     )
-                    .animation(
-                        WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
-                        value: gitManager.changedFiles
-                    )
                 }
             }
         }
         .animation(
             WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
-            value: workingTreeFileCounts
+            value: workingTreeAnimationState
         )
     }
 
-    private var workingTreeFileCounts: [Int] {
-        [gitManager.stagedFiles.count, gitManager.changedFiles.count]
+    private var workingTreeAnimationState: WorkingTreeAnimationState {
+        WorkingTreeAnimationState(
+            stagedFiles: gitManager.stagedFiles,
+            unstagedFiles: gitManager.changedFiles
+        )
     }
 
-    private var commitFileCount: Int {
-        gitManager.stagedFiles.isEmpty ? gitManager.changedFiles.count : gitManager.stagedFiles.count
+    private var uniquelyPresentWorkingTreePaths: Set<String> {
+        let stagedPaths = Set(gitManager.stagedFiles.map(\.path))
+        let unstagedPaths = Set(gitManager.changedFiles.map(\.path))
+        return stagedPaths.symmetricDifference(unstagedPaths)
     }
+}
+
+private struct WorkingTreeAnimationState: Equatable {
+    let stagedFiles: [WorkingTreeFile]
+    let unstagedFiles: [WorkingTreeFile]
 }
 
 #Preview("Commit Workspace") {

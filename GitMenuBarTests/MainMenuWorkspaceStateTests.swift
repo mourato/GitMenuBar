@@ -19,17 +19,31 @@ final class MainMenuWorkspaceStateTests: XCTestCase {
 
         workspace.synchronizeSelectedMainItem(with: [.stagedFile(path: "README.md")])
 
-        XCTAssertNil(workspace.selectedMainItemID)
+        XCTAssertEqual(workspace.selectedMainItemID, .stagedFile(path: "README.md"))
         XCTAssertEqual(workspace.selectedSidePanelSelection, .workingTree)
     }
 
-    func testFilePanelFallsBackToWorkingTreeWhenItsFileLeavesTheList() {
+    func testFilePanelFollowsFileWhenItMovesSections() {
         let workspace = MainMenuWorkspaceState()
         workspace.selectMainItem(.unstagedFile(path: "README.md"))
 
         workspace.synchronizeSelectedMainItem(with: [.stagedFile(path: "README.md")])
 
-        XCTAssertNil(workspace.selectedMainItemID)
+        XCTAssertEqual(workspace.selectedMainItemID, .stagedFile(path: "README.md"))
+        XCTAssertEqual(workspace.selectedSidePanelSelection, .stagedFile(path: "README.md"))
+    }
+
+    func testPartialStagingKeepsTheVisibleUnstagedSelection() {
+        let workspace = MainMenuWorkspaceState()
+        workspace.selectedSidePanelSelection = .workingTree
+        workspace.selectedMainItemID = .unstagedFile(path: "README.md")
+
+        workspace.synchronizeSelectedMainItem(with: [
+            .stagedFile(path: "README.md"),
+            .unstagedFile(path: "README.md")
+        ])
+
+        XCTAssertEqual(workspace.selectedMainItemID, .unstagedFile(path: "README.md"))
         XCTAssertEqual(workspace.selectedSidePanelSelection, .workingTree)
     }
 
