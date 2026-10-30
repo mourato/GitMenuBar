@@ -12,6 +12,7 @@ struct CommitWorkflowView: View {
     let automaticRetryAvailable: Bool
     let isFallbackModelAvailable: Bool
     let primaryButtonTitle: String
+    let commitFileCount: Int
     let isPrimaryButtonDisabled: Bool
     let canShowSplitCommits: Bool
     let onPrimaryAction: () -> Void
@@ -38,6 +39,7 @@ struct CommitWorkflowView: View {
             automaticRetryAvailable: automaticRetryAvailable,
             isFallbackModelAvailable: isFallbackModelAvailable,
             primaryButtonTitle: primaryButtonTitle,
+            commitFileCount: commitFileCount,
             isPrimaryButtonDisabled: isPrimaryButtonDisabled,
             canShowSplitCommits: canShowSplitCommits,
             onPrimaryAction: onPrimaryAction,
@@ -172,6 +174,7 @@ private struct CommitWorkflowPreviewContent: View {
             automaticRetryAvailable: false,
             isFallbackModelAvailable: false,
             primaryButtonTitle: "Commit",
+            commitFileCount: 3,
             isPrimaryButtonDisabled: false,
             canShowSplitCommits: true,
             onPrimaryAction: {},

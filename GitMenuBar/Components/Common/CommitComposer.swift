@@ -12,6 +12,7 @@ struct CommitComposerSectionView: View {
     let automaticRetryAvailable: Bool
     let isFallbackModelAvailable: Bool
     let primaryButtonTitle: String
+    let commitFileCount: Int
     let isPrimaryButtonDisabled: Bool
     let canShowSplitCommits: Bool
     let onPrimaryAction: () -> Void
@@ -31,29 +32,21 @@ struct CommitComposerSectionView: View {
                     .autocorrectionDisabled(true)
                     .focused(isCommentFieldFocused)
                     .accessibilityHint("Type a commit message or leave it empty to use automatic generation when available.")
+            } else {
+                GeneratedMessageCard(
+                    commentText: $commentText,
+                    isCommentFieldFocused: isCommentFieldFocused,
+                    automaticMessageHint: automaticMessageHint
+                )
             }
 
-            Button(action: onPrimaryAction) {
-                HStack(spacing: 8) {
-                    if isPrimaryActionBusy {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-
-                    if let primaryButtonSystemImage {
-                        Label(primaryButtonTitle, systemImage: primaryButtonSystemImage)
-                            .labelStyle(.titleAndIcon)
-                    } else {
-                        Text(primaryButtonTitle)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .primaryActionLayout(
-                canShowSplitCommits: canShowSplitCommits,
-                onSplitCommits: onSplitCommits,
-                isPrimaryButtonDisabled: isPrimaryButtonDisabled
-            )
+            primaryButtonContent
+                .primaryActionLayout(
+                    canShowSplitCommits: canShowSplitCommits,
+                    onPrimaryAction: onPrimaryAction,
+                    onSplitCommits: onSplitCommits,
+                    isPrimaryButtonDisabled: isPrimaryButtonDisabled
+                )
 
             if let operationStatus {
                 HStack(spacing: 8) {
@@ -71,12 +64,6 @@ struct CommitComposerSectionView: View {
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(operationStatus.accessibilityLabel)
-            }
-
-            if let automaticMessageHint {
-                Text(automaticMessageHint)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             if let generationDisabledReason {
@@ -129,47 +116,173 @@ struct CommitComposerSectionView: View {
     private var retryTaskID: String {
         "\(generationError ?? "")-\(automaticRetryAvailable)"
     }
+
+    private var primaryButtonContent: some View {
+        HStack(spacing: 8) {
+            if isPrimaryActionBusy {
+                ProgressView()
+                    .controlSize(.small)
+            }
+
+            if let primaryButtonSystemImage {
+                Label(resolvedPrimaryButtonTitle, systemImage: primaryButtonSystemImage)
+                    .labelStyle(.titleAndIcon)
+            } else {
+                Text(resolvedPrimaryButtonTitle)
+            }
+        }
+    }
+
+    private var resolvedPrimaryButtonTitle: String {
+        guard primaryButtonTitle == "Commit", !isPrimaryActionBusy else {
+            return primaryButtonTitle
+        }
+
+        let fileLabel = commitFileCount == 1 ? "file" : "files"
+        return "Commit \(commitFileCount) \(fileLabel)"
+    }
+}
+
+private struct GeneratedMessageCard: View {
+    @Binding var commentText: String
+    let isCommentFieldFocused: FocusState<Bool>.Binding
+    let automaticMessageHint: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+            Label("Generated message", systemImage: "sparkles")
+                .font(WorkbenchTypography.captionStrong)
+                .foregroundStyle(Color.accentColor)
+
+            TextField(
+                "",
+                text: messageBinding,
+                prompt: Text(messagePlaceholder),
+                axis: .vertical
+            )
+            .lineLimit(1 ... 4)
+            .textFieldStyle(.plain)
+            .font(WorkbenchTypography.body)
+            .autocorrectionDisabled(true)
+            .focused(isCommentFieldFocused)
+            .accessibilityLabel("Commit message")
+            .accessibilityHint("Edit the generated commit message.")
+
+            Text("Click to edit")
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(WorkbenchMetrics.compactSpacing)
+        .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.cornerRadius, material: .thin)
+    }
+
+    private var messageBinding: Binding<String> {
+        Binding(
+            get: {
+                if !commentText.isEmpty {
+                    return commentText
+                }
+                return generatedMessagePreview ?? ""
+            },
+            set: { commentText = $0 }
+        )
+    }
+
+    private var generatedMessagePreview: String? {
+        guard let automaticMessageHint else { return nil }
+
+        let trimmedHint = automaticMessageHint.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedHint.isEmpty,
+              trimmedHint != "Commit messages will be generated automatically.",
+              !trimmedHint.hasPrefix("Automatic commit generation is unavailable.")
+        else {
+            return nil
+        }
+
+        return trimmedHint
+    }
+
+    private var messagePlaceholder: String {
+        if automaticMessageHint?.hasPrefix("Automatic commit generation is unavailable.") == true {
+            return "Enter a message to commit manually."
+        }
+
+        return "A message will be generated when you commit."
+    }
 }
 
 private extension View {
-    @ViewBuilder
     func primaryActionLayout(
         canShowSplitCommits: Bool,
+        onPrimaryAction: @escaping () -> Void,
         onSplitCommits: @escaping () -> Void,
         isPrimaryButtonDisabled: Bool
     ) -> some View {
-        if canShowSplitCommits {
-            HStack(spacing: WorkbenchMetrics.compactSpacing) {
-                self
-                    .frame(maxWidth: .infinity)
-                    .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
-                    .disabled(isPrimaryButtonDisabled)
-                    .keyboardShortcut(.defaultAction)
-
-                Button(action: onSplitCommits) {
-                    Label("Split", systemImage: "sparkles")
-                        .labelStyle(.titleAndIcon)
+        HStack(spacing: 0) {
+            Button(action: onPrimaryAction) {
+                HStack(spacing: 8) {
+                    self
+                    Spacer(minLength: WorkbenchMetrics.compactSpacing)
+                    Text("⌘↩")
+                        .font(WorkbenchTypography.captionStrong)
+                        .accessibilityHidden(true)
                 }
-                .controlSize(.large)
-                .workbenchSecondary()
-                .accessibilityLabel("Split into atomic commits")
-                .help("Group changes into logical commits")
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, WorkbenchMetrics.compactSpacing)
             }
-        } else {
-            frame(maxWidth: .infinity)
-                .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
-                .disabled(isPrimaryButtonDisabled)
-                .keyboardShortcut(.defaultAction)
+            .buttonStyle(CommitSplitSegmentStyle(isMuted: isPrimaryButtonDisabled))
+            .keyboardShortcut(.defaultAction)
+
+            if canShowSplitCommits {
+                Divider()
+                    .overlay(.white.opacity(0.35))
+                    .padding(.vertical, 6)
+
+                Menu {
+                    Button(action: onSplitCommits) {
+                        Label("Split with AI", systemImage: "sparkles")
+                    }
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .frame(width: WorkbenchMetrics.iconHitTarget)
+                }
+                .menuStyle(.button)
+                .menuIndicator(.hidden)
+                .buttonStyle(CommitSplitSegmentStyle(isMuted: isPrimaryButtonDisabled))
+                .fixedSize(horizontal: true, vertical: false)
+                .accessibilityLabel("More commit actions")
+                .help("Split changes into commits with AI")
+            }
         }
+        .frame(height: 32)
+        .background(
+            isPrimaryButtonDisabled ? Color.gray.opacity(0.75) : Color.accentColor,
+            in: Capsule()
+        )
+        .clipShape(Capsule())
+        .disabled(isPrimaryButtonDisabled)
     }
 }
 
 private struct CommitComposerSectionPreviewContainer: View {
-    @State private var message = "feat(ui): improve spacing"
+    @State private var message: String
     @FocusState private var isFocused: Bool
     let showsCommentField: Bool
     let automaticMessageHint: String?
     let canShowSplitCommits: Bool
+
+    init(
+        initialMessage: String,
+        showsCommentField: Bool,
+        automaticMessageHint: String?,
+        canShowSplitCommits: Bool
+    ) {
+        _message = State(initialValue: initialMessage)
+        self.showsCommentField = showsCommentField
+        self.automaticMessageHint = automaticMessageHint
+        self.canShowSplitCommits = canShowSplitCommits
+    }
 
     var body: some View {
         CommitComposerSectionView(
@@ -184,6 +297,7 @@ private struct CommitComposerSectionPreviewContainer: View {
             automaticRetryAvailable: false,
             isFallbackModelAvailable: false,
             primaryButtonTitle: "Commit",
+            commitFileCount: 3,
             isPrimaryButtonDisabled: false,
             canShowSplitCommits: canShowSplitCommits,
             onPrimaryAction: {},
@@ -199,16 +313,43 @@ private struct CommitComposerSectionPreviewContainer: View {
 
 #Preview("Commit Composer") {
     CommitComposerSectionPreviewContainer(
+        initialMessage: "feat(ui): improve spacing",
         showsCommentField: true,
         automaticMessageHint: nil,
         canShowSplitCommits: true
     )
 }
 
-#Preview("Commit Composer Hidden Field") {
+#Preview("Generated Message Card") {
     CommitComposerSectionPreviewContainer(
+        initialMessage: "feat(ui): improve spacing",
         showsCommentField: false,
         automaticMessageHint: "Commit messages will be generated automatically.",
         canShowSplitCommits: false
     )
+}
+
+#Preview("Generated Message Placeholder") {
+    CommitComposerSectionPreviewContainer(
+        initialMessage: "",
+        showsCommentField: false,
+        automaticMessageHint: "Commit messages will be generated automatically.",
+        canShowSplitCommits: false
+    )
+}
+
+/// One segment of the commit split button; the shared capsule background
+/// comes from the container so both segments read as a single control.
+private struct CommitSplitSegmentStyle: ButtonStyle {
+    let isMuted: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.medium))
+            .foregroundStyle(.white)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .background(.black.opacity(configuration.isPressed ? 0.15 : 0))
+            .opacity(isMuted ? 0.7 : 1)
+    }
 }
