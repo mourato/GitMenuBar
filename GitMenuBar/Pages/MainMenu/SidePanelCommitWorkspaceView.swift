@@ -38,6 +38,8 @@ struct SidePanelCommitWorkspaceView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
+            // swiftlint:disable:next todo
+            // TODO(U4): pass onStash to SidePanelHeaderView
             SidePanelHeaderView(
                 projectName: projectName,
                 title: "Working Tree",
@@ -73,6 +75,13 @@ struct SidePanelCommitWorkspaceView: View {
         }
     }
 
+    private func stashChanges() {
+        guard !isCommitActionBusy, !actionCoordinator.isBusy else { return }
+        Task {
+            _ = await actionCoordinator.sidePanel.saveSidePanelStash()
+        }
+    }
+
     private var workingTreeContent: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
             if gitManager.stagedFiles.isEmpty, gitManager.changedFiles.isEmpty {
@@ -82,57 +91,35 @@ struct SidePanelCommitWorkspaceView: View {
                     description: Text("Stage files to start a commit.")
                 )
             } else {
-                HStack(alignment: .center) {
-                    Picker("View style", selection: $displayMode) {
-                        ForEach(AppPreferences.WorkingTreeDisplayMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .frame(width: 140)
+                WorkingTreeSectionView(
+                    title: "Staged",
+                    summary: gitManager.stagedFiles.sectionSummary,
+                    files: gitManager.stagedFiles.map(WorkingTreeRowAdapter.staged(file:)),
+                    isCollapsed: $isStagedCollapsed,
+                    displayMode: $displayMode,
+                    selectedItemID: workspaceSelectedFileID,
+                    onSelect: onSelectWorkspaceFile,
+                    onStageToggle: { path in
+                        Task { _ = await actionCoordinator.sidePanel.unstageSidePanelFile(path: path) }
+                    },
+                    onOpen: { gitManager.openFile(path: $0) },
+                    onDiscard: onRequestDiscard,
+                    onReveal: { gitManager.revealInFinder(path: $0) },
+                    onAction: {
+                        Task { _ = await actionCoordinator.sidePanel.unstageAllSidePanelFiles() }
+                    },
+                    onDiscardAll: nil,
+                    actionIcon: "minus.circle",
+                    actionHelp: "Unstage all staged changes"
+                )
 
-                    Spacer(minLength: 0)
-
-                    Button {
-                        Task { _ = await actionCoordinator.sidePanel.saveSidePanelStash() }
-                    } label: {
-                        Label("Stash changes", systemImage: "tray.and.arrow.down")
-                    }
-                    .workbenchGhost()
-                    .disabled(isCommitActionBusy || actionCoordinator.isBusy)
-                    .accessibilityHint("Parks working tree changes in a stash without committing")
-                }
-                if !gitManager.stagedFiles.isEmpty {
-                    WorkingTreeSectionView(
-                        title: "Staged",
-                        summary: gitManager.stagedFiles.sectionSummary,
-                        files: gitManager.stagedFiles.map(WorkingTreeRowAdapter.staged(file:)),
-                        isCollapsed: $isStagedCollapsed,
-                        displayMode: displayMode,
-                        selectedItemID: workspaceSelectedFileID,
-                        onSelect: onSelectWorkspaceFile,
-                        onStageToggle: { path in
-                            Task { _ = await actionCoordinator.sidePanel.unstageSidePanelFile(path: path) }
-                        },
-                        onOpen: { gitManager.openFile(path: $0) },
-                        onDiscard: onRequestDiscard,
-                        onReveal: { gitManager.revealInFinder(path: $0) },
-                        onAction: {
-                            Task { _ = await actionCoordinator.sidePanel.unstageAllSidePanelFiles() }
-                        },
-                        onDiscardAll: nil,
-                        actionIcon: "minus.circle",
-                        actionHelp: "Unstage all files"
-                    )
-                }
                 if !gitManager.changedFiles.isEmpty {
                     WorkingTreeSectionView(
                         title: "Unstaged",
                         summary: gitManager.changedFiles.sectionSummary,
                         files: gitManager.changedFiles.map(WorkingTreeRowAdapter.unstaged(file:)),
                         isCollapsed: $isUnstagedCollapsed,
-                        displayMode: displayMode,
+                        displayMode: $displayMode,
                         selectedItemID: workspaceSelectedFileID,
                         onSelect: onSelectWorkspaceFile,
                         onStageToggle: { path in
@@ -146,7 +133,7 @@ struct SidePanelCommitWorkspaceView: View {
                         },
                         onDiscardAll: onDiscardAllUnstaged,
                         actionIcon: "plus.circle",
-                        actionHelp: "Stage all files"
+                        actionHelp: "Stage all unstaged changes"
                     )
                 }
             }

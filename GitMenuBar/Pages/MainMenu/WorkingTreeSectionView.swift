@@ -5,7 +5,7 @@ struct WorkingTreeSectionView: View {
     let summary: WorkingTreeSectionSummary
     let files: [WorkingTreeRowAdapter]
     @Binding var isCollapsed: Bool
-    var displayMode: AppPreferences.WorkingTreeDisplayMode = .tree
+    @Binding var displayMode: AppPreferences.WorkingTreeDisplayMode
     let selectedItemID: MainMenuSelectableItem?
     let onSelect: (MainMenuSelectableItem) -> Void
     let onStageToggle: (String) -> Void
@@ -17,6 +17,7 @@ struct WorkingTreeSectionView: View {
     let actionIcon: String
     let actionHelp: String
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     @State private var allDirectoriesExpanded = true
     @State private var directoryExpansionOverrides: [String: Bool] = [:]
@@ -34,11 +35,16 @@ struct WorkingTreeSectionView: View {
                 onDiscardAll: onDiscardAll,
                 showsDirectoryControls: showsDirectoryControls,
                 allDirectoriesExpanded: allDirectoriesExpanded,
-                onToggleAllDirectories: toggleAllDirectories
+                onToggleAllDirectories: toggleAllDirectories,
+                displayMode: title == "Unstaged" ? $displayMode : nil
             )
 
             if !isCollapsed {
-                if displayMode == .flat {
+                if files.isEmpty {
+                    if title == "Staged" {
+                        stagedEmptyStateView
+                    }
+                } else if displayMode == .flat {
                     flatFilesView
                         .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
                 } else {
@@ -58,6 +64,26 @@ struct WorkingTreeSectionView: View {
                 }
             }
         }
+    }
+
+    private var stagedEmptyStateView: some View {
+        HStack {
+            Spacer(minLength: 0)
+            Text("No staged files")
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, WorkbenchMetrics.sectionSpacing)
+        .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+        .background(
+            RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius)
+                .strokeBorder(
+                    WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast),
+                    style: StrokeStyle(lineWidth: 1, dash: [4, 4])
+                )
+        )
+        .padding(.horizontal, WorkbenchMetrics.microSpacing)
     }
 
     private var flatFilesView: some View {
@@ -123,6 +149,7 @@ struct WorkingTreeSectionView: View {
             ))
         ],
         isCollapsed: .constant(false),
+        displayMode: .constant(.tree),
         selectedItemID: nil,
         onSelect: { _ in },
         onStageToggle: { _ in },
@@ -132,7 +159,29 @@ struct WorkingTreeSectionView: View {
         onAction: {},
         onDiscardAll: nil,
         actionIcon: "minus.circle",
-        actionHelp: "Unstage all files"
+        actionHelp: "Unstage all staged changes"
+    )
+    .padding()
+    .frame(width: 380)
+}
+
+#Preview("Staged Section — Empty") {
+    WorkingTreeSectionView(
+        title: "Staged",
+        summary: WorkingTreeSectionSummary(fileCount: 0, addedLineCount: 0, removedLineCount: 0),
+        files: [],
+        isCollapsed: .constant(false),
+        displayMode: .constant(.tree),
+        selectedItemID: nil,
+        onSelect: { _ in },
+        onStageToggle: { _ in },
+        onOpen: { _ in },
+        onDiscard: { _, _ in },
+        onReveal: { _ in },
+        onAction: {},
+        onDiscardAll: nil,
+        actionIcon: "minus.circle",
+        actionHelp: "Unstage all staged changes"
     )
     .padding()
     .frame(width: 380)
@@ -165,6 +214,7 @@ struct WorkingTreeSectionView: View {
             ))
         ],
         isCollapsed: .constant(false),
+        displayMode: .constant(.tree),
         selectedItemID: .unstagedFile(path: "GitMenuBar/Services/Git/GitManager.swift"),
         onSelect: { _ in },
         onStageToggle: { _ in },
@@ -174,7 +224,7 @@ struct WorkingTreeSectionView: View {
         onAction: {},
         onDiscardAll: {},
         actionIcon: "plus.circle",
-        actionHelp: "Stage all files"
+        actionHelp: "Stage all unstaged changes"
     )
     .padding()
     .frame(width: 380)
