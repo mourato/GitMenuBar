@@ -16,6 +16,8 @@ struct WorkingTreeSectionView: View {
     let onDiscardAll: (() -> Void)?
     let actionIcon: String
     let actionHelp: String
+    var showsViewModeToggle = false
+    var showsEmptyState = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
@@ -36,12 +38,12 @@ struct WorkingTreeSectionView: View {
                 showsDirectoryControls: showsDirectoryControls,
                 allDirectoriesExpanded: allDirectoriesExpanded,
                 onToggleAllDirectories: toggleAllDirectories,
-                displayMode: title == "Unstaged" ? $displayMode : nil
+                displayMode: showsViewModeToggle ? $displayMode : nil
             )
 
             if !isCollapsed {
                 if files.isEmpty {
-                    if title == "Staged" {
+                    if showsEmptyState {
                         stagedEmptyStateView
                     }
                 } else if displayMode == .flat {
@@ -181,7 +183,8 @@ struct WorkingTreeSectionView: View {
         onAction: {},
         onDiscardAll: nil,
         actionIcon: "minus.circle",
-        actionHelp: "Unstage all staged changes"
+        actionHelp: "Unstage all staged changes",
+        showsEmptyState: true
     )
     .padding()
     .frame(width: 380)
@@ -224,7 +227,8 @@ struct WorkingTreeSectionView: View {
         onAction: {},
         onDiscardAll: {},
         actionIcon: "plus.circle",
-        actionHelp: "Stage all unstaged changes"
+        actionHelp: "Stage all unstaged changes",
+        showsViewModeToggle: true
     )
     .padding()
     .frame(width: 380)

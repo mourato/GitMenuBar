@@ -39,11 +39,11 @@ struct SidePanelCommitWorkspaceView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
             // swiftlint:disable:next todo
-            // TODO(U4): pass onStash to SidePanelHeaderView
             SidePanelHeaderView(
                 projectName: projectName,
                 title: "Working Tree",
-                onClose: onClose
+                onClose: onClose,
+                onStash: stashChanges
             )
             CommitWorkflowView(
                 commentText: $commitMessage,
@@ -85,10 +85,15 @@ struct SidePanelCommitWorkspaceView: View {
     private var workingTreeContent: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
             if gitManager.stagedFiles.isEmpty, gitManager.changedFiles.isEmpty {
-                ContentUnavailableView(
-                    "Working tree is clean",
-                    systemImage: "checkmark.circle",
-                    description: Text("Stage files to start a commit.")
+                WorkingTreeCleanStateView(
+                    lastCommitSubject: gitManager.commitHistory.first?.subject,
+                    lastCommitRelativeDate: gitManager.commitHistory.first.map {
+                        $0.committedAt.formatted(.relative(presentation: .named))
+                    },
+                    aheadCount: gitManager.isAheadOfRemote ? gitManager.commitCount : 0,
+                    onPush: {
+                        Task { _ = await actionCoordinator.performSync() }
+                    }
                 )
             } else {
                 WorkingTreeSectionView(
@@ -110,7 +115,9 @@ struct SidePanelCommitWorkspaceView: View {
                     },
                     onDiscardAll: nil,
                     actionIcon: "minus.circle",
-                    actionHelp: "Unstage all staged changes"
+                    actionHelp: "Unstage all staged changes",
+                    showsViewModeToggle: gitManager.changedFiles.isEmpty,
+                    showsEmptyState: true
                 )
 
                 if !gitManager.changedFiles.isEmpty {
@@ -133,7 +140,8 @@ struct SidePanelCommitWorkspaceView: View {
                         },
                         onDiscardAll: onDiscardAllUnstaged,
                         actionIcon: "plus.circle",
-                        actionHelp: "Stage all unstaged changes"
+                        actionHelp: "Stage all unstaged changes",
+                        showsViewModeToggle: true
                     )
                 }
             }
