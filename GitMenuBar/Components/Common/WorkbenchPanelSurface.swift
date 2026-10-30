@@ -11,11 +11,21 @@ private struct WorkbenchPanelSurfaceModifier: ViewModifier {
     let materialWeight: WorkbenchMaterialWeight
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
         content
             .background(backgroundFill)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .clipShape(shape)
+            .overlay {
+                shape
+                    .strokeBorder(
+                        WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast),
+                        lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
+                    )
+            }
     }
 
     @ViewBuilder

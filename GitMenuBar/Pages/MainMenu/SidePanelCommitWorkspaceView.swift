@@ -31,6 +31,7 @@ struct SidePanelCommitWorkspaceView: View {
     @Environment(GitManager.self) private var gitManager
     @Environment(MainMenuActionCoordinator.self) private var actionCoordinator
     @Environment(CommitHistoryEditCoordinator.self) private var commitHistoryEditCoordinator
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(AppPreferences.Keys.workingTreeDisplayMode)
     private var displayMode = AppPreferences.WorkingTreeDisplayMode.tree
     @State private var isStagedCollapsed = false
@@ -94,6 +95,9 @@ struct SidePanelCommitWorkspaceView: View {
                         Task { _ = await actionCoordinator.performSync() }
                     }
                 )
+                .transition(
+                    WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion)
+                )
             } else {
                 WorkingTreeSectionView(
                     title: "Staged",
@@ -117,6 +121,13 @@ struct SidePanelCommitWorkspaceView: View {
                     actionHelp: "Unstage all staged changes",
                     showsViewModeToggle: gitManager.changedFiles.isEmpty,
                     showsEmptyState: true
+                )
+                .transition(
+                    WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion)
+                )
+                .animation(
+                    WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
+                    value: gitManager.stagedFiles
                 )
 
                 if !gitManager.changedFiles.isEmpty {
@@ -142,9 +153,24 @@ struct SidePanelCommitWorkspaceView: View {
                         actionHelp: "Stage all unstaged changes",
                         showsViewModeToggle: true
                     )
+                    .transition(
+                        WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion)
+                    )
+                    .animation(
+                        WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
+                        value: gitManager.changedFiles
+                    )
                 }
             }
         }
+        .animation(
+            WorkbenchMotion.adaptive(WorkbenchMotion.settle, usesReducedMotion: reduceMotion),
+            value: workingTreeFileCounts
+        )
+    }
+
+    private var workingTreeFileCounts: [Int] {
+        [gitManager.stagedFiles.count, gitManager.changedFiles.count]
     }
 }
 

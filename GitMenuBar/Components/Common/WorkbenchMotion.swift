@@ -36,4 +36,10 @@ enum WorkbenchMotion {
             with: .scale(scale: 0.98, anchor: origin.scaleAnchor)
         )
     }
+
+    static func workingTreeSectionTransition(usesReducedMotion: Bool) -> AnyTransition {
+        guard !usesReducedMotion else { return .opacity }
+
+        return .opacity.combined(with: .move(edge: .top))
+    }
 }
