@@ -244,10 +244,11 @@ private extension View {
                     onPrimaryAction()
                 }
             )
+            .menuStyle(.button)
             .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
+            .frame(maxWidth: .infinity)
             .disabled(isPrimaryButtonDisabled)
             .keyboardShortcut(.defaultAction)
-            .accessibilityLabel("Commit actions")
             .help("Commit or split changes")
         } else {
             Button(action: onPrimaryAction) {

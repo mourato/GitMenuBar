@@ -27,19 +27,18 @@ final class MainMenuWorkspaceState {
         selectedSidePanelSelection = MainMenuSidePanelSelection(mainMenuItem: itemID)
     }
 
-    /// Drops the main selection when it is no longer one of `items`.
+    /// Drops the main selection when it is no longer one of `items`. The side
+    /// panel closes only when it shows that dropped item, so panels opened on
+    /// their own (such as the working tree) survive list changes.
     func synchronizeSelectedMainItem(with items: [MainMenuSelectableItem]) {
-        guard let selectedMainItemID else {
-            clearSidePanelSelection()
-            return
-        }
-
-        if items.contains(selectedMainItemID) {
+        guard let selectedMainItemID, !items.contains(selectedMainItemID) else {
             return
         }
 
         self.selectedMainItemID = nil
-        clearSidePanelSelection()
+        if selectedSidePanelSelection == MainMenuSidePanelSelection(mainMenuItem: selectedMainItemID) {
+            clearSidePanelSelection()
+        }
     }
 
     func moveMainSelection(_ direction: MoveCommandDirection, in items: [MainMenuSelectableItem]) {
