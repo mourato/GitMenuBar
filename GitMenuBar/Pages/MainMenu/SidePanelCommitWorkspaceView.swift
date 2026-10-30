@@ -38,7 +38,6 @@ struct SidePanelCommitWorkspaceView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
-            // swiftlint:disable:next todo
             SidePanelHeaderView(
                 projectName: projectName,
                 title: "Working Tree",
