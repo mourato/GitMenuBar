@@ -212,45 +212,13 @@ private struct GeneratedMessageCard: View {
 }
 
 private extension View {
-    @ViewBuilder
     func primaryActionLayout(
         canShowSplitCommits: Bool,
         onPrimaryAction: @escaping () -> Void,
         onSplitCommits: @escaping () -> Void,
         isPrimaryButtonDisabled: Bool
     ) -> some View {
-        if canShowSplitCommits {
-            Menu(
-                content: {
-                    Button(action: onSplitCommits) {
-                        Label("Split with AI", systemImage: "sparkles")
-                    }
-                },
-                label: {
-                    HStack(spacing: 8) {
-                        self
-                        Spacer(minLength: WorkbenchMetrics.compactSpacing)
-                        Text("⌘↩")
-                            .font(WorkbenchTypography.captionStrong)
-                            .accessibilityHidden(true)
-                        Image(systemName: "chevron.down")
-                            .font(.caption.weight(.semibold))
-                            .accessibilityHidden(true)
-                    }
-                    .frame(maxWidth: .infinity)
-                },
-                primaryAction: {
-                    guard !isPrimaryButtonDisabled else { return }
-                    onPrimaryAction()
-                }
-            )
-            .menuStyle(.button)
-            .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
-            .frame(maxWidth: .infinity)
-            .disabled(isPrimaryButtonDisabled)
-            .keyboardShortcut(.defaultAction)
-            .help("Commit or split changes")
-        } else {
+        HStack(spacing: 0) {
             Button(action: onPrimaryAction) {
                 HStack(spacing: 8) {
                     self
@@ -260,11 +228,40 @@ private extension View {
                         .accessibilityHidden(true)
                 }
                 .frame(maxWidth: .infinity)
+                .padding(.horizontal, WorkbenchMetrics.compactSpacing)
             }
-            .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
-            .disabled(isPrimaryButtonDisabled)
+            .buttonStyle(CommitSplitSegmentStyle(isMuted: isPrimaryButtonDisabled))
             .keyboardShortcut(.defaultAction)
+
+            if canShowSplitCommits {
+                Divider()
+                    .overlay(.white.opacity(0.35))
+                    .padding(.vertical, 6)
+
+                Menu {
+                    Button(action: onSplitCommits) {
+                        Label("Split with AI", systemImage: "sparkles")
+                    }
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .frame(width: WorkbenchMetrics.iconHitTarget)
+                }
+                .menuStyle(.button)
+                .menuIndicator(.hidden)
+                .buttonStyle(CommitSplitSegmentStyle(isMuted: isPrimaryButtonDisabled))
+                .fixedSize(horizontal: true, vertical: false)
+                .accessibilityLabel("More commit actions")
+                .help("Split changes into commits with AI")
+            }
         }
+        .frame(height: 32)
+        .background(
+            isPrimaryButtonDisabled ? Color.gray.opacity(0.75) : Color.accentColor,
+            in: Capsule()
+        )
+        .clipShape(Capsule())
+        .disabled(isPrimaryButtonDisabled)
     }
 }
 
@@ -339,4 +336,20 @@ private struct CommitComposerSectionPreviewContainer: View {
         automaticMessageHint: "Commit messages will be generated automatically.",
         canShowSplitCommits: false
     )
+}
+
+/// One segment of the commit split button; the shared capsule background
+/// comes from the container so both segments read as a single control.
+private struct CommitSplitSegmentStyle: ButtonStyle {
+    let isMuted: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.medium))
+            .foregroundStyle(.white)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .background(.black.opacity(configuration.isPressed ? 0.15 : 0))
+            .opacity(isMuted ? 0.7 : 1)
+    }
 }
