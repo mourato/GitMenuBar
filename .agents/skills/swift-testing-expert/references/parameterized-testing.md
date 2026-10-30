@@ -282,3 +282,6 @@ func standardGreeting(day: Day) {
 - `#expect` uses concrete literal expectations, not values derived from the input itself.
 - No `if`/`switch` branching inside parameterized test bodies.
 - `CaseIterable.allCases` is only used for property-based assertions, not example-based mappings.
+
+
+

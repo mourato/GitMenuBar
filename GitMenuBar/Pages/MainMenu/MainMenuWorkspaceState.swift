@@ -27,9 +27,14 @@ final class MainMenuWorkspaceState {
         selectedSidePanelSelection = MainMenuSidePanelSelection(mainMenuItem: itemID)
     }
 
+    /// Highlights a file inside the working tree panel without replacing the panel.
+    func selectWorkspaceFile(_ itemID: MainMenuSelectableItem) {
+        selectedMainItemID = itemID
+    }
+
     /// Drops the main selection when it is no longer one of `items`. The side
-    /// panel closes only when it shows that dropped item, so panels opened on
-    /// their own (such as the working tree) survive list changes.
+    /// panel only closes on an explicit user dismissal, so a panel that showed
+    /// the dropped item falls back to its parent list instead.
     func synchronizeSelectedMainItem(with items: [MainMenuSelectableItem]) {
         guard let selectedMainItemID, !items.contains(selectedMainItemID) else {
             return
@@ -37,7 +42,14 @@ final class MainMenuWorkspaceState {
 
         self.selectedMainItemID = nil
         if selectedSidePanelSelection == MainMenuSidePanelSelection(mainMenuItem: selectedMainItemID) {
-            clearSidePanelSelection()
+            selectedSidePanelSelection = Self.parentSidePanelSelection(for: selectedMainItemID)
+        }
+    }
+
+    private static func parentSidePanelSelection(for itemID: MainMenuSelectableItem) -> MainMenuSidePanelSelection {
+        switch itemID {
+        case .stagedFile, .unstagedFile: .workingTree
+        case .historyCommit: .history
         }
     }
 
@@ -48,7 +60,6 @@ final class MainMenuWorkspaceState {
             direction: direction
         ) else {
             selectedMainItemID = nil
-            clearSidePanelSelection()
             return
         }
 

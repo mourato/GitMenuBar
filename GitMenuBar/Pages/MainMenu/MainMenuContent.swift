@@ -93,7 +93,7 @@ extension MainMenuView {
                         }
                     },
                     onRequestCommitFocus: requestCommitFieldFocus,
-                    onSelectWorkspaceFile: { workspace.selectMainItem($0) },
+                    onSelectWorkspaceFile: { workspace.selectWorkspaceFile($0) },
                     onDiscardAllUnstaged: {
                         workspace.showDiscardAllConfirmation = true
                     },
