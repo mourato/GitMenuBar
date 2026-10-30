@@ -58,7 +58,7 @@ struct SidePanelCommitWorkspaceView: View {
                 automaticRetryAvailable: commitAutomaticRetryAvailable,
                 isFallbackModelAvailable: isCommitFallbackModelAvailable,
                 primaryButtonTitle: commitPrimaryButtonTitle,
-                commitFileCount: commitFileCount,
+                commitFileCount: gitManager.commitFileCount,
                 isPrimaryButtonDisabled: isCommitPrimaryButtonDisabled,
                 canShowSplitCommits: canShowSplitCommits,
                 onPrimaryAction: onCommitPrimaryAction,
@@ -109,7 +109,6 @@ struct SidePanelCommitWorkspaceView: View {
                     displayMode: $displayMode,
                     matchedGeometryNamespace: workingTreeNamespace,
                     matchedGeometryPaths: uniquelyPresentWorkingTreePaths,
-                    matchedGeometrySectionID: "staged",
                     selectedItemID: workspaceSelectedFileID,
                     onSelect: onSelectWorkspaceFile,
                     onStageToggle: { path in
@@ -140,7 +139,6 @@ struct SidePanelCommitWorkspaceView: View {
                         displayMode: $displayMode,
                         matchedGeometryNamespace: workingTreeNamespace,
                         matchedGeometryPaths: uniquelyPresentWorkingTreePaths,
-                        matchedGeometrySectionID: "unstaged",
                         selectedItemID: workspaceSelectedFileID,
                         onSelect: onSelectWorkspaceFile,
                         onStageToggle: { path in
@@ -180,10 +178,6 @@ struct SidePanelCommitWorkspaceView: View {
         let stagedPaths = Set(gitManager.stagedFiles.map(\.path))
         let unstagedPaths = Set(gitManager.changedFiles.map(\.path))
         return stagedPaths.symmetricDifference(unstagedPaths)
-    }
-
-    private var commitFileCount: Int {
-        gitManager.stagedFiles.isEmpty ? gitManager.changedFiles.count : gitManager.stagedFiles.count
     }
 }
 

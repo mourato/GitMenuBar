@@ -8,7 +8,6 @@ struct WorkingTreeSectionView: View {
     @Binding var displayMode: AppPreferences.WorkingTreeDisplayMode
     let matchedGeometryNamespace: Namespace.ID?
     let matchedGeometryPaths: Set<String>
-    let matchedGeometrySectionID: String
     let selectedItemID: MainMenuSelectableItem?
     let onSelect: (MainMenuSelectableItem) -> Void
     let onStageToggle: (String) -> Void
@@ -65,8 +64,7 @@ struct WorkingTreeSectionView: View {
                         allDirectoriesExpanded: $allDirectoriesExpanded,
                         directoryExpansionOverrides: $directoryExpansionOverrides,
                         matchedGeometryNamespace: matchedGeometryNamespace,
-                        matchedGeometryPaths: matchedGeometryPaths,
-                        matchedGeometrySectionID: matchedGeometrySectionID
+                        matchedGeometryPaths: matchedGeometryPaths
                     )
                     .transition(WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion))
                 }
@@ -122,27 +120,13 @@ struct WorkingTreeSectionView: View {
                     onReveal: { onReveal(adapter.file.path) },
                     isFlatMode: true
                 )
-                if let namespace = matchedGeometryNamespace {
-                    row
-                        .matchedGeometryEffect(
-                            id: matchedGeometryID(for: adapter.file.path),
-                            in: namespace,
-                            properties: reduceMotion ? [] : .frame
-                        )
-                        .transition(WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion))
-                } else {
-                    row
-                        .transition(WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion))
-                }
+                row.modifier(WorkingTreeRowMotion(
+                    path: adapter.file.path,
+                    namespace: matchedGeometryNamespace,
+                    sharedPaths: matchedGeometryPaths
+                ))
             }
         }
-    }
-
-    private func matchedGeometryID(for path: String) -> String {
-        guard !reduceMotion, matchedGeometryPaths.contains(path) else {
-            return "\(matchedGeometrySectionID):\(path)"
-        }
-        return path
     }
 
     private var showsDirectoryControls: Bool {
@@ -180,7 +164,6 @@ struct WorkingTreeSectionView: View {
         displayMode: .constant(.tree),
         matchedGeometryNamespace: nil,
         matchedGeometryPaths: [],
-        matchedGeometrySectionID: "staged",
         selectedItemID: nil,
         onSelect: { _ in },
         onStageToggle: { _ in },
@@ -205,7 +188,6 @@ struct WorkingTreeSectionView: View {
         displayMode: .constant(.tree),
         matchedGeometryNamespace: nil,
         matchedGeometryPaths: [],
-        matchedGeometrySectionID: "staged",
         selectedItemID: nil,
         onSelect: { _ in },
         onStageToggle: { _ in },
@@ -252,7 +234,6 @@ struct WorkingTreeSectionView: View {
         displayMode: .constant(.tree),
         matchedGeometryNamespace: nil,
         matchedGeometryPaths: [],
-        matchedGeometrySectionID: "unstaged",
         selectedItemID: .unstagedFile(path: "GitMenuBar/Services/Git/GitManager.swift"),
         onSelect: { _ in },
         onStageToggle: { _ in },

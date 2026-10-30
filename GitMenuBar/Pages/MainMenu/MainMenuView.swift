@@ -42,6 +42,7 @@ struct MainMenuView: View {
     let openSettingsWindow: () -> Void
     let setAutoHideSuspended: (Bool) -> Void
     let onBranchSelectorPresentationChanged: (Bool) -> Void
+    let onWorkingTreePresentationChanged: (Bool) -> Void
 
     var currentRepositoryPath: String {
         repositorySelectionCoordinator.selectedPath
@@ -54,12 +55,14 @@ struct MainMenuView: View {
         branchDialogs: MainMenuBranchDialogs = MainMenuBranchDialogs(),
         errorCenter: MainMenuErrorCenter = MainMenuErrorCenter(),
         sync: MainMenuSyncSheetState = MainMenuSyncSheetState(),
-        onBranchSelectorPresentationChanged: @escaping (Bool) -> Void = { _ in }
+        onBranchSelectorPresentationChanged: @escaping (Bool) -> Void = { _ in },
+        onWorkingTreePresentationChanged: @escaping (Bool) -> Void = { _ in }
     ) {
         self.closeWindow = closeWindow
         self.openSettingsWindow = openSettingsWindow
         self.setAutoHideSuspended = setAutoHideSuspended
         self.onBranchSelectorPresentationChanged = onBranchSelectorPresentationChanged
+        self.onWorkingTreePresentationChanged = onWorkingTreePresentationChanged
         _branchDialogs = State(initialValue: branchDialogs)
         _errorCenter = State(initialValue: errorCenter)
         _sync = State(initialValue: sync)
@@ -116,6 +119,9 @@ struct MainMenuView: View {
         }
         .onChange(of: presentationModel.showRepositoryOptionsToken) { _, token in
             handleRepositoryOptionsPresentationRequest(token)
+        }
+        .onChange(of: workspace.selectedSidePanelSelection == .workingTree, initial: true) { _, isPresented in
+            onWorkingTreePresentationChanged(isPresented)
         }
         .onChange(of: repoOptions.showProjectSelector) {
             presentPendingRepositoryOptionsIfPossible()

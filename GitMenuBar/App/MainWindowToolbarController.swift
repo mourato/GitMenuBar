@@ -175,7 +175,7 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         let accessibilityLabel = accessibilityLabel(for: repositoryItem, state: state)
         let visibleLabel = visibleLabel(for: repositoryItem, state: state)
         item.label = visibleLabel
-        item.paletteLabel = repositoryItem == .commit ? "Commit" : visibleLabel
+        item.paletteLabel = repositoryItem == .commit ? state.commitTitle : visibleLabel
         item.title = visibleLabel
         item.toolTip = toolTip(for: repositoryItem, state: state)
         item.image = image(for: repositoryItem, accessibilityLabel: accessibilityLabel)

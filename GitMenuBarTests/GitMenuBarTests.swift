@@ -226,6 +226,7 @@ final class ToolbarStateMappingTests: XCTestCase {
             aheadCount: 1,
             behindCount: 2,
             changeCount: 1,
+            commitFileCount: 1,
             isBusy: false,
             busyItem: nil,
             progressAccessibilityLabel: nil
@@ -239,8 +240,8 @@ final class ToolbarStateMappingTests: XCTestCase {
         XCTAssertEqual(state.fetchTitle, "Fetch")
         XCTAssertEqual(state.syncTitle, "Sync")
         XCTAssertEqual(state.commitTitle, "Commit")
-        XCTAssertEqual(state.commitAccessibilityLabel, "Commit 1 change in NetNewsWire")
-        XCTAssertEqual(state.commitBadgeCount, 1)
+        XCTAssertEqual(state.commitAccessibilityLabel, "Commit 1 file in NetNewsWire")
+        XCTAssertEqual(state.commitItemTitle, "Commit (1)")
         XCTAssertFalse(state.isSyncEnabled)
         XCTAssertEqual(state.syncToolTip, "Commit changes before syncing")
         XCTAssertEqual(state.aheadBehindTitle, "↑1 ↓2")
@@ -253,6 +254,7 @@ final class ToolbarStateMappingTests: XCTestCase {
             aheadCount: 0,
             behindCount: 0,
             changeCount: 0,
+            commitFileCount: 0,
             isBusy: false,
             busyItem: nil,
             progressAccessibilityLabel: nil
@@ -261,7 +263,6 @@ final class ToolbarStateMappingTests: XCTestCase {
         XCTAssertEqual(state.repositoryItems, [.branchPicker, .aheadBehind, .fetch])
         XCTAssertFalse(state.showsSyncItem)
         XCTAssertFalse(state.showsCommitItem)
-        XCTAssertNil(state.commitBadgeCount)
         XCTAssertEqual(state.aheadBehindAccessibilityLabel, "NetNewsWire is up to date")
     }
 
@@ -272,6 +273,7 @@ final class ToolbarStateMappingTests: XCTestCase {
             aheadCount: 1,
             behindCount: 0,
             changeCount: 1,
+            commitFileCount: 1,
             isBusy: true,
             busyItem: .fetch,
             progressAccessibilityLabel: "Fetching remote"

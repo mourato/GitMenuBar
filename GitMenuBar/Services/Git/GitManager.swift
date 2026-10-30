@@ -23,6 +23,12 @@ class GitManager {
     var uncommittedFiles: [String] = []
     var stagedFiles: [WorkingTreeFile] = []
     var changedFiles: [WorkingTreeFile] = []
+    /// Files the next commit includes: the staged files, or every change when
+    /// nothing is staged, because committing then stages all changes first.
+    var commitFileCount: Int {
+        stagedFiles.isEmpty ? changedFiles.count : stagedFiles.count
+    }
+
     var currentBranch: String {
         get { branchService.currentBranch }
         set { branchService.currentBranch = newValue }

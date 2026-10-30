@@ -213,18 +213,6 @@ extension MainMenuView {
             sync: sync
         ))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-            NotificationCenter.default.post(
-                name: .mainMenuWorkspaceDidBind,
-                object: workspace
-            )
-        }
-        .onDisappear {
-            NotificationCenter.default.post(
-                name: .mainMenuWorkspaceDidUnbind,
-                object: workspace
-            )
-        }
     }
 
     private func handleExitCommand() {

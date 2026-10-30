@@ -20,6 +20,7 @@ final class StatusBarController: NSObject {
     }
 
     var statusItem: NSStatusItem?
+    private var isWorkingTreePresented = false
     private lazy var mainWindowController = MainWindowController(statusBarController: self)
     private lazy var appCommandRouter = AppCommandRouter(
         gitManager: gitManager,
@@ -306,36 +307,16 @@ final class StatusBarController: NSObject {
         }
         .store(in: &cancellables)
 
-        setupWorkspaceObservation()
         observePresentationRoute()
         observeGitCommandState()
     }
 
-    private func setupWorkspaceObservation() {
-        _ = workspaceObserver
-    }
-
-    private lazy var workspaceObserver = MainWindowToolbarWorkspaceObserver(
-        notificationCenter: .default,
-        onRefresh: { [weak self] in
-            self?.updateMainWindowToolbar()
-        }
-    )
-
-    var workspace: MainMenuWorkspaceState? {
-        workspaceObserver.workspace
-    }
-
-    var isWorkingTreeOpen: Bool {
-        workspaceObserver.isWorkingTreeOpen(route: presentationModel.route)
-    }
-
-    func bindWorkspace(_ workspace: MainMenuWorkspaceState?) {
-        workspaceObserver.bindWorkspace(workspace)
-    }
-
-    func unbindWorkspace(_ workspace: MainMenuWorkspaceState) {
-        workspaceObserver.unbindWorkspace(workspace)
+    /// Mirrors whether the Working Tree side panel is open; the panel owns the
+    /// primary commit action while visible, so the toolbar hides its Commit item.
+    func setWorkingTreePresented(_ isPresented: Bool) {
+        guard isWorkingTreePresented != isPresented else { return }
+        isWorkingTreePresented = isPresented
+        updateMainWindowToolbar()
     }
 
     private func observePresentationRoute() {
@@ -409,10 +390,11 @@ final class StatusBarController: NSObject {
                 aheadCount: gitManager.isAheadOfRemote ? gitManager.commitCount : 0,
                 behindCount: gitManager.isRemoteAhead ? gitManager.behindCount : 0,
                 changeCount: gitManager.stagedFiles.count + gitManager.changedFiles.count,
+                commitFileCount: gitManager.commitFileCount,
                 isBusy: actionCoordinator.isBusy,
                 busyItem: actionCoordinator.isBusy ? toolbarBusyItem(for: operationStatus) : nil,
                 progressAccessibilityLabel: operationStatus?.accessibilityLabel,
-                isWorkingTreeOpen: isWorkingTreeOpen
+                isWorkingTreeOpen: isWorkingTreePresented
             )
         } else {
             repositoryState = nil

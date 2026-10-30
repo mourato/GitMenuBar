@@ -13,7 +13,6 @@ struct WorkingTreeDiffTreeView: View {
     @Binding var directoryExpansionOverrides: [String: Bool]
     let matchedGeometryNamespace: Namespace.ID?
     let matchedGeometryPaths: Set<String>
-    let matchedGeometrySectionID: String
 
     private let treeNodes: [DiffTreeNode]
     private let hasDirectoryNodes: Bool
@@ -31,8 +30,7 @@ struct WorkingTreeDiffTreeView: View {
         allDirectoriesExpanded: Binding<Bool>,
         directoryExpansionOverrides: Binding<[String: Bool]>,
         matchedGeometryNamespace: Namespace.ID? = nil,
-        matchedGeometryPaths: Set<String> = [],
-        matchedGeometrySectionID: String = ""
+        matchedGeometryPaths: Set<String> = []
     ) {
         self.files = files
         self.actionIcon = actionIcon
@@ -46,7 +44,6 @@ struct WorkingTreeDiffTreeView: View {
         _directoryExpansionOverrides = directoryExpansionOverrides
         self.matchedGeometryNamespace = matchedGeometryNamespace
         self.matchedGeometryPaths = matchedGeometryPaths
-        self.matchedGeometrySectionID = matchedGeometrySectionID
 
         treeNodes = DiffTreeBuilder.buildDiffTree(files.map(\.file.diffTreeFileInput))
         hasDirectoryNodes = files.contains { !$0.file.directoryPath.isEmpty }
@@ -68,8 +65,7 @@ struct WorkingTreeDiffTreeView: View {
             onDiscard: onDiscard,
             onReveal: onReveal,
             matchedGeometryNamespace: matchedGeometryNamespace,
-            matchedGeometryPaths: matchedGeometryPaths,
-            matchedGeometrySectionID: matchedGeometrySectionID
+            matchedGeometryPaths: matchedGeometryPaths
         )
 
         VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
@@ -117,14 +113,6 @@ private struct WorkingTreeDiffTreeContext {
     let onReveal: (String) -> Void
     let matchedGeometryNamespace: Namespace.ID?
     let matchedGeometryPaths: Set<String>
-    let matchedGeometrySectionID: String
-
-    func matchedGeometryID(for path: String, usesReducedMotion: Bool) -> String {
-        guard !usesReducedMotion, matchedGeometryPaths.contains(path) else {
-            return "\(matchedGeometrySectionID):\(path)"
-        }
-        return path
-    }
 }
 
 extension WorkingTreeLayoutMetrics {
@@ -281,7 +269,7 @@ struct WorkingTreeDiffTreeNodeView: View {
             }
         }
         .animation(
-            WorkbenchMotion.adaptive(WorkbenchMotion.press, usesReducedMotion: reduceMotion),
+            WorkbenchMotion.adaptive(WorkbenchMotion.disclosure, usesReducedMotion: reduceMotion),
             value: isExpanded
         )
     }
@@ -318,18 +306,11 @@ struct WorkingTreeDiffTreeNodeView: View {
                     } : nil,
                 onReveal: { context.onReveal(path) }
             )
-            if let namespace = context.matchedGeometryNamespace {
-                row
-                    .matchedGeometryEffect(
-                        id: context.matchedGeometryID(for: path, usesReducedMotion: reduceMotion),
-                        in: namespace,
-                        properties: reduceMotion ? [] : .frame
-                    )
-                    .transition(WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion))
-            } else {
-                row
-                    .transition(WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion))
-            }
+            row.modifier(WorkingTreeRowMotion(
+                path: path,
+                namespace: context.matchedGeometryNamespace,
+                sharedPaths: context.matchedGeometryPaths
+            ))
         }
     }
 
@@ -345,5 +326,31 @@ struct WorkingTreeDiffTreeNodeView: View {
             value += "\(stat.deletions) deletions"
         }
         return value.isEmpty ? "No line changes" : value
+    }
+}
+
+/// Inserts and removes a working-tree row with the section transition. A path
+/// that exists in only one section shares geometry across sections, so staging
+/// it moves the row instead of fading one out and another in. Reduce Motion
+/// keeps the plain transition.
+struct WorkingTreeRowMotion: ViewModifier {
+    let path: String
+    let namespace: Namespace.ID?
+    let sharedPaths: Set<String>
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        matchedContent(content)
+            .transition(WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion))
+    }
+
+    @ViewBuilder
+    private func matchedContent(_ content: Content) -> some View {
+        if let namespace, !reduceMotion, sharedPaths.contains(path) {
+            content.matchedGeometryEffect(id: path, in: namespace, properties: .frame)
+        } else {
+            content
+        }
     }
 }

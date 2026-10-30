@@ -28,6 +28,22 @@ File names, counts and staging state match between the captures.
 | --- | --- |
 | ![Before: duplicate toolbar Commit and blue Tree segment](before-working-tree.png) | ![After: toolbar Commit hidden and neutral Tree segment](after-working-tree.png) |
 
+## Review follow-up
+
+Review of this PR changed two things the captures above predate.
+
+- The toolbar count now matches the next commit. With two staged files the
+  title reads `Commit (2)`, the same number as the Working Tree button, rather
+  than `Commit (4)` (staged plus unstaged).
+- The `controlColor` tint made the selected Tree segment lighter than the
+  unselected one, so selection read backwards. The selector now uses a
+  `.secondary` tint. The images below render the three options in an isolated
+  window with the same segmented control, small size and symbols.
+
+| Light | Dark |
+| --- | --- |
+| ![Selector tint options in light appearance](selector-tint-light.png) | ![Selector tint options in dark appearance](selector-tint-dark.png) |
+
 ## Validation limits
 
 The Changes card has an incidental hover background in `after-toolbar.png`.
