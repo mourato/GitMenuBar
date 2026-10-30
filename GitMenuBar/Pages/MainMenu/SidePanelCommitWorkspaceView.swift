@@ -57,6 +57,7 @@ struct SidePanelCommitWorkspaceView: View {
                 automaticRetryAvailable: commitAutomaticRetryAvailable,
                 isFallbackModelAvailable: isCommitFallbackModelAvailable,
                 primaryButtonTitle: commitPrimaryButtonTitle,
+                commitFileCount: commitFileCount,
                 isPrimaryButtonDisabled: isCommitPrimaryButtonDisabled,
                 canShowSplitCommits: canShowSplitCommits,
                 onPrimaryAction: onCommitPrimaryAction,
@@ -171,6 +172,10 @@ struct SidePanelCommitWorkspaceView: View {
 
     private var workingTreeFileCounts: [Int] {
         [gitManager.stagedFiles.count, gitManager.changedFiles.count]
+    }
+
+    private var commitFileCount: Int {
+        gitManager.stagedFiles.isEmpty ? gitManager.changedFiles.count : gitManager.stagedFiles.count
     }
 }
 

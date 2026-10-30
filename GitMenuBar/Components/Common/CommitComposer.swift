@@ -12,6 +12,7 @@ struct CommitComposerSectionView: View {
     let automaticRetryAvailable: Bool
     let isFallbackModelAvailable: Bool
     let primaryButtonTitle: String
+    let commitFileCount: Int
     let isPrimaryButtonDisabled: Bool
     let canShowSplitCommits: Bool
     let onPrimaryAction: () -> Void
@@ -39,33 +40,13 @@ struct CommitComposerSectionView: View {
                 )
             }
 
-            Button(action: onPrimaryAction) {
-                HStack(spacing: 8) {
-                    if isPrimaryActionBusy {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-
-                    if let primaryButtonSystemImage {
-                        Label(primaryButtonTitle, systemImage: primaryButtonSystemImage)
-                            .labelStyle(.titleAndIcon)
-                    } else {
-                        Text(primaryButtonTitle)
-                    }
-
-                    Spacer(minLength: WorkbenchMetrics.compactSpacing)
-
-                    Text("⌘↩")
-                        .font(WorkbenchTypography.captionStrong)
-                        .accessibilityHidden(true)
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .primaryActionLayout(
-                canShowSplitCommits: canShowSplitCommits,
-                onSplitCommits: onSplitCommits,
-                isPrimaryButtonDisabled: isPrimaryButtonDisabled
-            )
+            primaryButtonContent
+                .primaryActionLayout(
+                    canShowSplitCommits: canShowSplitCommits,
+                    onPrimaryAction: onPrimaryAction,
+                    onSplitCommits: onSplitCommits,
+                    isPrimaryButtonDisabled: isPrimaryButtonDisabled
+                )
 
             if let operationStatus {
                 HStack(spacing: 8) {
@@ -134,6 +115,31 @@ struct CommitComposerSectionView: View {
 
     private var retryTaskID: String {
         "\(generationError ?? "")-\(automaticRetryAvailable)"
+    }
+
+    private var primaryButtonContent: some View {
+        HStack(spacing: 8) {
+            if isPrimaryActionBusy {
+                ProgressView()
+                    .controlSize(.small)
+            }
+
+            if let primaryButtonSystemImage {
+                Label(resolvedPrimaryButtonTitle, systemImage: primaryButtonSystemImage)
+                    .labelStyle(.titleAndIcon)
+            } else {
+                Text(resolvedPrimaryButtonTitle)
+            }
+        }
+    }
+
+    private var resolvedPrimaryButtonTitle: String {
+        guard primaryButtonTitle == "Commit", !isPrimaryActionBusy else {
+            return primaryButtonTitle
+        }
+
+        let fileLabel = commitFileCount == 1 ? "file" : "files"
+        return "Commit \(commitFileCount) \(fileLabel)"
     }
 }
 
@@ -209,37 +215,54 @@ private extension View {
     @ViewBuilder
     func primaryActionLayout(
         canShowSplitCommits: Bool,
+        onPrimaryAction: @escaping () -> Void,
         onSplitCommits: @escaping () -> Void,
         isPrimaryButtonDisabled: Bool
     ) -> some View {
         if canShowSplitCommits {
-            HStack(spacing: 0) {
-                self
-                    .frame(maxWidth: .infinity)
-                    .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
-                    .disabled(isPrimaryButtonDisabled)
-                    .keyboardShortcut(.defaultAction)
-
-                Menu {
+            Menu(
+                content: {
                     Button(action: onSplitCommits) {
                         Label("Split with AI", systemImage: "sparkles")
                     }
-                } label: {
-                    Image(systemName: "chevron.down")
-                        .font(.caption.weight(.semibold))
-                        .frame(minWidth: WorkbenchMetrics.iconHitTarget)
+                },
+                label: {
+                    HStack(spacing: 8) {
+                        self
+                        Spacer(minLength: WorkbenchMetrics.compactSpacing)
+                        Text("⌘↩")
+                            .font(WorkbenchTypography.captionStrong)
+                            .accessibilityHidden(true)
+                        Image(systemName: "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .accessibilityHidden(true)
+                    }
+                    .frame(maxWidth: .infinity)
+                },
+                primaryAction: {
+                    guard !isPrimaryButtonDisabled else { return }
+                    onPrimaryAction()
                 }
-                .controlSize(.large)
-                .menuIndicator(.hidden)
-                .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
-                .accessibilityLabel("Split commit actions")
-                .help("Choose a split commit action")
-            }
+            )
+            .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
+            .disabled(isPrimaryButtonDisabled)
+            .keyboardShortcut(.defaultAction)
+            .accessibilityLabel("Commit actions")
+            .help("Commit or split changes")
         } else {
-            frame(maxWidth: .infinity)
-                .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
-                .disabled(isPrimaryButtonDisabled)
-                .keyboardShortcut(.defaultAction)
+            Button(action: onPrimaryAction) {
+                HStack(spacing: 8) {
+                    self
+                    Spacer(minLength: WorkbenchMetrics.compactSpacing)
+                    Text("⌘↩")
+                        .font(WorkbenchTypography.captionStrong)
+                        .accessibilityHidden(true)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .workbenchPrimary(isMuted: isPrimaryButtonDisabled)
+            .disabled(isPrimaryButtonDisabled)
+            .keyboardShortcut(.defaultAction)
         }
     }
 }
@@ -276,6 +299,7 @@ private struct CommitComposerSectionPreviewContainer: View {
             automaticRetryAvailable: false,
             isFallbackModelAvailable: false,
             primaryButtonTitle: "Commit",
+            commitFileCount: 3,
             isPrimaryButtonDisabled: false,
             canShowSplitCommits: canShowSplitCommits,
             onPrimaryAction: {},

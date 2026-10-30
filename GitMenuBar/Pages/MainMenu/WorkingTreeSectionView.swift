@@ -103,6 +103,7 @@ struct WorkingTreeSectionView: View {
                     file: adapter.file,
                     actionIcon: actionIcon,
                     actionHelp: adapter.actions.primaryLabel,
+                    actionAccessibilityLabel: adapter.actions.accessibilityLabel,
                     isSelected: selectedItemID == adapter.id,
                     onSelect: { onSelect(adapter.id) },
                     onAction: { onStageToggle(adapter.file.path) },
