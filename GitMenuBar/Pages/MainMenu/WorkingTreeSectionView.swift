@@ -6,6 +6,9 @@ struct WorkingTreeSectionView: View {
     let files: [WorkingTreeRowAdapter]
     @Binding var isCollapsed: Bool
     @Binding var displayMode: AppPreferences.WorkingTreeDisplayMode
+    let matchedGeometryNamespace: Namespace.ID?
+    let matchedGeometryPaths: Set<String>
+    let matchedGeometrySectionID: String
     let selectedItemID: MainMenuSelectableItem?
     let onSelect: (MainMenuSelectableItem) -> Void
     let onStageToggle: (String) -> Void
@@ -48,7 +51,7 @@ struct WorkingTreeSectionView: View {
                     }
                 } else if displayMode == .flat {
                     flatFilesView
-                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+                        .transition(WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion))
                 } else {
                     WorkingTreeDiffTreeView(
                         files: files,
@@ -60,9 +63,12 @@ struct WorkingTreeSectionView: View {
                         onDiscard: onDiscard,
                         onReveal: onReveal,
                         allDirectoriesExpanded: $allDirectoriesExpanded,
-                        directoryExpansionOverrides: $directoryExpansionOverrides
+                        directoryExpansionOverrides: $directoryExpansionOverrides,
+                        matchedGeometryNamespace: matchedGeometryNamespace,
+                        matchedGeometryPaths: matchedGeometryPaths,
+                        matchedGeometrySectionID: matchedGeometrySectionID
                     )
-                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+                    .transition(WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion))
                 }
             }
         }
@@ -90,8 +96,8 @@ struct WorkingTreeSectionView: View {
 
     private var flatFilesView: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-            ForEach(files) { adapter in
-                WorkingTreeDiffTreeFileRowView(
+            ForEach(files, id: \.visualID) { adapter in
+                let row = WorkingTreeDiffTreeFileRowView(
                     name: adapter.file.fileName,
                     path: adapter.file.path,
                     depth: 0,
@@ -116,8 +122,27 @@ struct WorkingTreeSectionView: View {
                     onReveal: { onReveal(adapter.file.path) },
                     isFlatMode: true
                 )
+                if let namespace = matchedGeometryNamespace {
+                    row
+                        .matchedGeometryEffect(
+                            id: matchedGeometryID(for: adapter.file.path),
+                            in: namespace,
+                            properties: reduceMotion ? [] : .frame
+                        )
+                        .transition(WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion))
+                } else {
+                    row
+                        .transition(WorkbenchMotion.workingTreeSectionTransition(usesReducedMotion: reduceMotion))
+                }
             }
         }
+    }
+
+    private func matchedGeometryID(for path: String) -> String {
+        guard !reduceMotion, matchedGeometryPaths.contains(path) else {
+            return "\(matchedGeometrySectionID):\(path)"
+        }
+        return path
     }
 
     private var showsDirectoryControls: Bool {
@@ -153,6 +178,9 @@ struct WorkingTreeSectionView: View {
         ],
         isCollapsed: .constant(false),
         displayMode: .constant(.tree),
+        matchedGeometryNamespace: nil,
+        matchedGeometryPaths: [],
+        matchedGeometrySectionID: "staged",
         selectedItemID: nil,
         onSelect: { _ in },
         onStageToggle: { _ in },
@@ -175,6 +203,9 @@ struct WorkingTreeSectionView: View {
         files: [],
         isCollapsed: .constant(false),
         displayMode: .constant(.tree),
+        matchedGeometryNamespace: nil,
+        matchedGeometryPaths: [],
+        matchedGeometrySectionID: "staged",
         selectedItemID: nil,
         onSelect: { _ in },
         onStageToggle: { _ in },
@@ -219,6 +250,9 @@ struct WorkingTreeSectionView: View {
         ],
         isCollapsed: .constant(false),
         displayMode: .constant(.tree),
+        matchedGeometryNamespace: nil,
+        matchedGeometryPaths: [],
+        matchedGeometrySectionID: "unstaged",
         selectedItemID: .unstagedFile(path: "GitMenuBar/Services/Git/GitManager.swift"),
         onSelect: { _ in },
         onStageToggle: { _ in },

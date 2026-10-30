@@ -32,17 +32,34 @@ final class MainMenuWorkspaceState {
         selectedMainItemID = itemID
     }
 
-    /// Drops the main selection when it is no longer one of `items`. The side
-    /// panel only closes on an explicit user dismissal, so a panel that showed
-    /// the dropped item falls back to its parent list instead.
+    /// Keeps a selected file attached to its working-tree row when staging
+    /// moves that row between sections. The old semantic ID must disappear
+    /// before its counterpart can replace it, so partial staging cannot mix
+    /// two visible rows for the same path.
     func synchronizeSelectedMainItem(with items: [MainMenuSelectableItem]) {
-        guard let selectedMainItemID, !items.contains(selectedMainItemID) else {
+        guard let previousSelection = selectedMainItemID, !items.contains(previousSelection) else {
             return
         }
 
-        self.selectedMainItemID = nil
-        if selectedSidePanelSelection == MainMenuSidePanelSelection(mainMenuItem: selectedMainItemID) {
-            selectedSidePanelSelection = Self.parentSidePanelSelection(for: selectedMainItemID)
+        if let replacement = Self.counterpart(of: previousSelection), items.contains(replacement) {
+            selectedMainItemID = replacement
+            if selectedSidePanelSelection == MainMenuSidePanelSelection(mainMenuItem: previousSelection) {
+                selectedSidePanelSelection = MainMenuSidePanelSelection(mainMenuItem: replacement)
+            }
+            return
+        }
+
+        selectedMainItemID = nil
+        if selectedSidePanelSelection == MainMenuSidePanelSelection(mainMenuItem: previousSelection) {
+            selectedSidePanelSelection = Self.parentSidePanelSelection(for: previousSelection)
+        }
+    }
+
+    private static func counterpart(of itemID: MainMenuSelectableItem) -> MainMenuSelectableItem? {
+        switch itemID {
+        case let .stagedFile(path): .unstagedFile(path: path)
+        case let .unstagedFile(path): .stagedFile(path: path)
+        case .historyCommit: nil
         }
     }
 

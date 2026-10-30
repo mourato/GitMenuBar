@@ -1,9 +1,18 @@
+import Combine
+import Foundation
+import Observation
+
 enum MainWindowToolbarRepositoryItem: Equatable {
     case branchPicker
     case aheadBehind
     case fetch
     case sync
     case commit
+}
+
+extension Notification.Name {
+    static let mainMenuWorkspaceDidBind = Notification.Name("GitMenuBar.mainMenuWorkspaceDidBind")
+    static let mainMenuWorkspaceDidUnbind = Notification.Name("GitMenuBar.mainMenuWorkspaceDidUnbind")
 }
 
 struct MainWindowToolbarRepositoryState: Equatable {
@@ -26,6 +35,29 @@ struct MainWindowToolbarRepositoryState: Equatable {
     let isBusy: Bool
     let busyItem: MainWindowToolbarRepositoryItem?
     let progressAccessibilityLabel: String?
+    let isWorkingTreeOpen: Bool
+
+    init(
+        repositoryName: String,
+        branchName: String,
+        aheadCount: Int,
+        behindCount: Int,
+        changeCount: Int,
+        isBusy: Bool,
+        busyItem: MainWindowToolbarRepositoryItem?,
+        progressAccessibilityLabel: String?,
+        isWorkingTreeOpen: Bool = false
+    ) {
+        self.repositoryName = repositoryName
+        self.branchName = branchName
+        self.aheadCount = aheadCount
+        self.behindCount = behindCount
+        self.changeCount = changeCount
+        self.isBusy = isBusy
+        self.busyItem = busyItem
+        self.progressAccessibilityLabel = progressAccessibilityLabel
+        self.isWorkingTreeOpen = isWorkingTreeOpen
+    }
 
     var repositoryItems: [MainWindowToolbarRepositoryItem] {
         var items: [MainWindowToolbarRepositoryItem] = [.branchPicker, .aheadBehind, .fetch]
@@ -43,7 +75,8 @@ struct MainWindowToolbarRepositoryState: Equatable {
     }
 
     var showsCommitItem: Bool {
-        changeCount > 0 || busyItem == .commit
+        guard !isWorkingTreeOpen else { return false }
+        return changeCount > 0 || busyItem == .commit
     }
 
     var branchTitle: String {
@@ -106,6 +139,10 @@ struct MainWindowToolbarRepositoryState: Equatable {
         "Commit"
     }
 
+    var commitItemTitle: String {
+        changeCount > 0 ? "Commit (\(changeCount))" : commitTitle
+    }
+
     var commitBadgeCount: Int? {
         changeCount > 0 ? changeCount : nil
     }
@@ -120,5 +157,69 @@ struct MainWindowToolbarRepositoryState: Equatable {
 
     var isCommitEnabled: Bool {
         !isBusy && changeCount > 0
+    }
+}
+
+@MainActor
+final class MainWindowToolbarWorkspaceObserver {
+    private(set) weak var workspace: MainMenuWorkspaceState?
+    private var observationGeneration: Int = 0
+    private var cancellables = Set<AnyCancellable>()
+    private let onRefresh: () -> Void
+
+    init(
+        notificationCenter: NotificationCenter? = nil,
+        onRefresh: @escaping () -> Void
+    ) {
+        self.onRefresh = onRefresh
+        if let notificationCenter {
+            notificationCenter.publisher(for: .mainMenuWorkspaceDidBind)
+                .sink { [weak self] notification in
+                    guard let self, let workspace = notification.object as? MainMenuWorkspaceState else { return }
+                    bindWorkspace(workspace)
+                }
+                .store(in: &cancellables)
+
+            notificationCenter.publisher(for: .mainMenuWorkspaceDidUnbind)
+                .sink { [weak self] notification in
+                    guard let self, let workspace = notification.object as? MainMenuWorkspaceState else { return }
+                    unbindWorkspace(workspace)
+                }
+                .store(in: &cancellables)
+        }
+    }
+
+    func isWorkingTreeOpen(route: MainMenuRoute) -> Bool {
+        route == .main && workspace?.selectedSidePanelSelection == .workingTree
+    }
+
+    func bindWorkspace(_ workspace: MainMenuWorkspaceState?) {
+        guard self.workspace !== workspace else { return }
+        observationGeneration &+= 1
+        self.workspace = workspace
+        onRefresh()
+        if let workspace {
+            observeWorkspaceSelection(for: workspace, generation: observationGeneration)
+        }
+    }
+
+    func unbindWorkspace(_ workspace: MainMenuWorkspaceState) {
+        guard self.workspace === workspace else { return }
+        bindWorkspace(nil)
+    }
+
+    private func observeWorkspaceSelection(for workspace: MainMenuWorkspaceState, generation: Int) {
+        guard self.workspace === workspace, generation == observationGeneration else { return }
+        withObservationTracking {
+            _ = workspace.selectedSidePanelSelection
+        } onChange: { [weak self, weak workspace] in
+            Task { @MainActor [weak self, weak workspace] in
+                guard let self, let workspace, self.workspace === workspace, generation == observationGeneration else {
+                    return
+                }
+                onRefresh()
+                observeWorkspaceSelection(for: workspace, generation: generation)
+            }
+        }
     }
 }

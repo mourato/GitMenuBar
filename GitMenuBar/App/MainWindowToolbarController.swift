@@ -175,7 +175,7 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         let accessibilityLabel = accessibilityLabel(for: repositoryItem, state: state)
         let visibleLabel = visibleLabel(for: repositoryItem, state: state)
         item.label = visibleLabel
-        item.paletteLabel = visibleLabel
+        item.paletteLabel = repositoryItem == .commit ? "Commit" : visibleLabel
         item.title = visibleLabel
         item.toolTip = toolTip(for: repositoryItem, state: state)
         item.image = image(for: repositoryItem, accessibilityLabel: accessibilityLabel)
@@ -232,7 +232,7 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
                 target: target,
                 isEnabled: state.isCommitEnabled
             )
-            setCommitBadge(on: item, count: state.commitBadgeCount)
+            clearBadge(from: item)
             if #available(macOS 26.0, *) {
                 // Primary action: tinted with the system accent color.
                 item.style = .prominent
@@ -321,7 +321,7 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         case .sync:
             state.syncTitle
         case .commit:
-            state.commitTitle
+            state.commitItemTitle
         }
     }
 
@@ -366,12 +366,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
     private func clearBadge(from item: NSToolbarItem) {
         if #available(macOS 26.0, *) {
             item.badge = nil
-        }
-    }
-
-    private func setCommitBadge(on item: NSToolbarItem, count: Int?) {
-        if #available(macOS 26.0, *) {
-            item.badge = count.map { .count($0) }
         }
     }
 

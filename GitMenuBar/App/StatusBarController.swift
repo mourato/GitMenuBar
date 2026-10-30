@@ -306,8 +306,36 @@ final class StatusBarController: NSObject {
         }
         .store(in: &cancellables)
 
+        setupWorkspaceObservation()
         observePresentationRoute()
         observeGitCommandState()
+    }
+
+    private func setupWorkspaceObservation() {
+        _ = workspaceObserver
+    }
+
+    private lazy var workspaceObserver = MainWindowToolbarWorkspaceObserver(
+        notificationCenter: .default,
+        onRefresh: { [weak self] in
+            self?.updateMainWindowToolbar()
+        }
+    )
+
+    var workspace: MainMenuWorkspaceState? {
+        workspaceObserver.workspace
+    }
+
+    var isWorkingTreeOpen: Bool {
+        workspaceObserver.isWorkingTreeOpen(route: presentationModel.route)
+    }
+
+    func bindWorkspace(_ workspace: MainMenuWorkspaceState?) {
+        workspaceObserver.bindWorkspace(workspace)
+    }
+
+    func unbindWorkspace(_ workspace: MainMenuWorkspaceState) {
+        workspaceObserver.unbindWorkspace(workspace)
     }
 
     private func observePresentationRoute() {
@@ -383,7 +411,8 @@ final class StatusBarController: NSObject {
                 changeCount: gitManager.stagedFiles.count + gitManager.changedFiles.count,
                 isBusy: actionCoordinator.isBusy,
                 busyItem: actionCoordinator.isBusy ? toolbarBusyItem(for: operationStatus) : nil,
-                progressAccessibilityLabel: operationStatus?.accessibilityLabel
+                progressAccessibilityLabel: operationStatus?.accessibilityLabel,
+                isWorkingTreeOpen: isWorkingTreeOpen
             )
         } else {
             repositoryState = nil
