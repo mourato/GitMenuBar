@@ -18,24 +18,30 @@ struct WorkingTreeLineDiffView: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text("+\(addedCount)")
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .foregroundStyle(addedCount > 0 ? .green : .secondary)
-                .contentTransition(reduceMotion ? .identity : .numericText())
-                .animation(
-                    WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
-                    value: addedCount
-                )
-            Text("-\(removedCount)")
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .foregroundStyle(removedCount > 0 ? .red : .secondary)
-                .contentTransition(reduceMotion ? .identity : .numericText())
-                .animation(
-                    WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
-                    value: removedCount
-                )
+            if addedCount > 0 {
+                Text("+\(addedCount)")
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .foregroundStyle(.green)
+                    .contentTransition(reduceMotion ? .identity : .numericText())
+                    .animation(
+                        WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
+                        value: addedCount
+                    )
+            }
+            if removedCount > 0 {
+                Text("−\(removedCount)")
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .foregroundStyle(.red)
+                    .contentTransition(reduceMotion ? .identity : .numericText())
+                    .animation(
+                        WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
+                        value: removedCount
+                    )
+            }
         }
         .font(WorkbenchTypography.captionStrong)
         .fixedSize(horizontal: true, vertical: false)
