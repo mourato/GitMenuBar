@@ -87,8 +87,11 @@ struct WorkingTreeSectionHeaderView: View {
                         value: summary.fileCount
                     )
             }
+            .lineLimit(1)
+            .fixedSize()
         }
         .buttonStyle(.plain)
+        .layoutPriority(1)
         .focused($isHeaderFocused)
         .accessibilityLabel("\(title) section, \(summary.fileCount) files")
         .accessibilityHint(isCollapsed ? "Expands the section." : "Collapses the section.")
