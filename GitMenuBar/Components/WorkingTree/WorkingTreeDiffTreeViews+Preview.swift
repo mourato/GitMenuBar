@@ -43,3 +43,22 @@ import SwiftUI
 
     return PreviewContainer()
 }
+
+#Preview("Working Tree Directory Row") {
+    VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+        WorkingTreeDiffTreeDirectoryRowView(
+            name: "Pages/MainMenu",
+            depth: 1,
+            isExpanded: true,
+            stat: nil
+        )
+        WorkingTreeDiffTreeDirectoryRowView(
+            name: "Components",
+            depth: 0,
+            isExpanded: false,
+            stat: nil
+        )
+    }
+    .padding()
+    .frame(width: 380)
+}
