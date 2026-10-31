@@ -39,8 +39,7 @@ struct RepositoryOverviewView: View {
                 )
 
                 if index < metrics.count - 1, density != .compact {
-                    Divider()
-                        .padding(.vertical, WorkbenchMetrics.microSpacing)
+                    HStack(spacing: 0) { Divider().padding(.vertical, WorkbenchMetrics.microSpacing) }
                 }
             }
         }
@@ -329,7 +328,7 @@ private struct RepositoryOverviewMetricRowLayout: Layout {
     ) -> CGSize {
         _ = cache
         let metricIndices = indices(in: subviews)
-        let metricSizes = metricIndices.map { subviews[$0].sizeThatFits(.unspecified) }
+        let metricSizes = metricIndices.map { subviews[$0].sizeThatFits(ProposedViewSize(width: 0, height: nil)) }
         let dividerIndices = density == .compact ? [] : Array(stride(from: 1, to: subviews.count, by: metricStride))
         let dividerWidth = dividerIndices.reduce(CGFloat.zero) { width, index in
             width + subviews[index].sizeThatFits(.unspecified).width
@@ -400,7 +399,7 @@ private struct RepositoryOverviewColumnView: View {
                         cornerRadius: density == .compact ? WorkbenchMetrics.microCornerRadius : WorkbenchMetrics.rowCornerRadius,
                         style: .continuous
                     )
-                    .fill(density == .compact || isHovered ? WorkbenchPalette.hoverFill() : .clear)
+                    .fill(isHovered ? WorkbenchPalette.hoverFill() : .clear)
                 )
                 .contentShape(
                     RoundedRectangle(
@@ -463,7 +462,7 @@ private struct RepositoryOverviewColumnView: View {
                     .font(WorkbenchTypography.caption)
                     .foregroundStyle(qualifierForegroundStyle)
                     .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
+                    .truncationMode(.tail)
             }
         }
     }

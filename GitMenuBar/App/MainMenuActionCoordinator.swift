@@ -156,11 +156,17 @@ final class MainMenuActionCoordinator {
 
     func openGitHubPage(_ destination: MainMenuGitHubDestination) {
         guard let reference = GitHubRemoteURLParser.parse(gitManager.remoteUrl),
-              let url = URL(string: "https://github.com/\(reference.owner)/\(reference.repository)/\(destination.pathComponent)")
+              let host = GitHubRemoteURLParser.host(gitManager.remoteUrl)
         else {
             return
         }
 
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = host
+        components.path = "/\(reference.owner)/\(reference.repository)/\(destination.pathComponent)"
+
+        guard let url = components.url else { return }
         NSWorkspace.shared.open(url)
     }
 
