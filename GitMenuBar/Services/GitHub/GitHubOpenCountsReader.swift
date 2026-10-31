@@ -47,12 +47,7 @@ struct GitHubOpenCountsReader {
         let result = runner.runCommand(
             in: projectPath,
             executable: ghPath,
-            args: [
-                "api", "graphql",
-                "-F", "owner=\(reference.owner)",
-                "-F", "name=\(reference.repository)",
-                "-f", "query=\(Self.query)"
-            ],
+            args: Self.arguments(for: reference, host: GitHubRemoteURLParser.host(remote.output)),
             additionalEnvironment: ["GH_PROMPT_DISABLED": "1", "GH_PAGER": "cat"]
         )
         guard !result.failure,
@@ -63,9 +58,23 @@ struct GitHubOpenCountsReader {
         return parsed
     }
 
+    /// Uses raw `-f` fields so numeric or `@`-prefixed names stay strings, and
+    /// targets the remote's host so GitHub Enterprise remotes are not sent to github.com.
+    static func arguments(for reference: GitHubRemoteReference, host: String?) -> [String] {
+        var args = ["api", "graphql"]
+        if let host, host != "github.com" {
+            args += ["--hostname", host]
+        }
+        return args + [
+            "-f", "owner=\(reference.owner)",
+            "-f", "name=\(reference.repository)",
+            "-f", "query=\(Self.query)"
+        ]
+    }
+
+    /// Accepts counts even when GraphQL also reports non-fatal `errors`.
     static func parse(_ data: Data) -> GitHubOpenCountsReadResult? {
         guard let response = try? JSONDecoder().decode(RawGraphQLResponse.self, from: data),
-              response.errors?.isEmpty ?? true,
               let repository = response.data?.repository,
               repository.pullRequests.totalCount >= 0,
               repository.issues.totalCount >= 0

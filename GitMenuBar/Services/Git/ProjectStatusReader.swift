@@ -226,13 +226,13 @@ struct ProjectStatusReader {
         pullRequestStatus: GitHubPullRequestReadResult,
         countsStatus: GitHubOpenCountsReadResult
     ) -> GitHubProjectStatus {
-        let unavailableReason = pullRequestStatus.unavailableReason ?? countsStatus.unavailableReason
-        let countsAvailable = unavailableReason == nil
-        return GitHubProjectStatus(
+        // Counts come only from the GraphQL read, so a failed PR detail list
+        // does not hide them; the reason describes the counts the overview shows.
+        GitHubProjectStatus(
             pullRequests: pullRequestStatus.pullRequests,
-            openPullRequestCount: countsAvailable ? countsStatus.openPullRequestCount : nil,
-            openIssueCount: countsAvailable ? countsStatus.openIssueCount : nil,
-            unavailableReason: unavailableReason
+            openPullRequestCount: countsStatus.openPullRequestCount,
+            openIssueCount: countsStatus.openIssueCount,
+            unavailableReason: countsStatus.unavailableReason
         )
     }
 
