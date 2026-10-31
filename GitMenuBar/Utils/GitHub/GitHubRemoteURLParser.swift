@@ -2,6 +2,27 @@ import Foundation
 
 enum GitHubRemoteURLParser {
     static func parse(_ remoteURL: String) -> GitHubRemoteReference? {
+        guard let url = gitHubURL(from: remoteURL) else {
+            return nil
+        }
+
+        let pathComponents = url.pathComponents.filter { $0 != "/" }
+        guard pathComponents.count >= 2 else {
+            return nil
+        }
+
+        return GitHubRemoteReference(
+            owner: pathComponents[0],
+            repository: pathComponents[1]
+        )
+    }
+
+    /// Host of a GitHub remote, such as `github.com` or an Enterprise host.
+    static func host(_ remoteURL: String) -> String? {
+        gitHubURL(from: remoteURL)?.host
+    }
+
+    private static func gitHubURL(from remoteURL: String) -> URL? {
         var normalized = remoteURL.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if normalized.hasPrefix("git@github.com:") {
@@ -17,16 +38,7 @@ enum GitHubRemoteURLParser {
         else {
             return nil
         }
-
-        let pathComponents = url.pathComponents.filter { $0 != "/" }
-        guard pathComponents.count >= 2 else {
-            return nil
-        }
-
-        return GitHubRemoteReference(
-            owner: pathComponents[0],
-            repository: pathComponents[1]
-        )
+        return url
     }
 
     static func normalizedWebURL(from remoteURL: String) -> String {

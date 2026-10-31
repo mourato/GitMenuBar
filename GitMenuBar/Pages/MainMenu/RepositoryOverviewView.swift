@@ -3,22 +3,16 @@ import SwiftUI
 struct RepositoryOverviewView: View {
     let overview: RepositoryOverviewSnapshot
     let onSelectSection: (MainMenuSidePanelSelection) -> Void
+    let onOpenGitHubPage: (MainMenuGitHubDestination) -> Void
+    let canOpenGitHubPage: Bool
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-
     var body: some View {
-        HStack(spacing: 0) {
-            changesColumn
-
-            Divider()
-                .padding(.vertical, WorkbenchMetrics.microSpacing)
-
-            branchesColumn
-
-            Divider()
-                .padding(.vertical, WorkbenchMetrics.microSpacing)
-
-            stashesColumn
+        ViewThatFits(in: .horizontal) {
+            metricRow(density: .wide)
+            metricRow(density: .medium)
+            metricRow(density: .compact)
         }
+        .frame(maxWidth: .infinity)
         .padding(WorkbenchMetrics.microSpacing)
         .fixedSize(horizontal: false, vertical: true)
         .background(
@@ -36,453 +30,469 @@ struct RepositoryOverviewView: View {
         .adaptiveMotion()
     }
 
-    // MARK: - Columns
+    private func metricRow(density: RepositoryOverviewMetricDensity) -> some View {
+        RepositoryOverviewMetricRowLayout(density: density) {
+            ForEach(Array(metrics.enumerated()), id: \.element.title) { index, metric in
+                RepositoryOverviewColumnView(
+                    metric: metric,
+                    density: density
+                )
 
-    private var changesColumn: some View {
-        RepositoryOverviewColumnView(
-            title: "Changes",
-            value: changesValue,
-            qualifier: changesQualifier,
-            isLoading: changesIsLoading,
-            isError: false,
-            accessibilityValue: changesAccessibilityValue,
-            action: { onSelectSection(.workingTree) }
-        )
-    }
-
-    private var branchesColumn: some View {
-        RepositoryOverviewColumnView(
-            title: "Branches",
-            value: branchesValue,
-            qualifier: branchesQualifier,
-            isLoading: branchesIsLoading,
-            isError: branchesIsError,
-            accessibilityValue: branchesAccessibilityValue,
-            action: { onSelectSection(.branches) }
-        )
-    }
-
-    private var stashesColumn: some View {
-        RepositoryOverviewColumnView(
-            title: "Stashes",
-            value: stashesValue,
-            qualifier: stashesQualifier,
-            isLoading: stashesIsLoading,
-            isError: stashesIsError,
-            accessibilityValue: stashesAccessibilityValue,
-            action: { onSelectSection(.stashes) }
-        )
-    }
-
-    // MARK: - Changes Computation
-
-    private var changesIsLoading: Bool {
-        overview.isLoading
-    }
-
-    private var changesValue: String {
-        if changesIsLoading {
-            return "—"
+                if index < metrics.count - 1, density != .compact {
+                    HStack(spacing: 0) { Divider().padding(.vertical, WorkbenchMetrics.microSpacing) }
+                }
+            }
         }
-        return "\(overview.totalWorkingTreeCount)"
     }
 
-    private var changesQualifier: String {
-        if changesIsLoading {
-            return "Checking…"
+    private var metrics: [RepositoryOverviewMetric] {
+        let changes = changesPresentation
+        let branches = branchesPresentation
+        let stashes = stashesPresentation
+        return [
+            makeMetric(
+                .changes,
+                presentation: changes,
+                action: { onSelectSection(.workingTree) }
+            ),
+            makeMetric(
+                .branches,
+                presentation: branches,
+                action: { onSelectSection(.branches) }
+            ),
+            makeMetric(
+                .stashes,
+                presentation: stashes,
+                action: { onSelectSection(.stashes) }
+            ),
+            makeGitHubMetric(
+                .pullRequests,
+                state: overview.openPullRequests,
+                action: { onOpenGitHubPage(.pullRequests) }
+            ),
+            makeGitHubMetric(
+                .issues,
+                state: overview.openIssues,
+                action: { onOpenGitHubPage(.issues) }
+            )
+        ]
+    }
+
+    private var changesPresentation: RepositoryOverviewMetricPresentation {
+        guard !overview.isLoading else {
+            return .init(value: "—", qualifier: "Checking…", accessibilityValue: "Checking…", state: .loading, isError: false)
         }
-        if overview.isCleanWorkingTree {
-            return "Clean"
+        guard !overview.isCleanWorkingTree else {
+            return .init(value: "0", qualifier: "Clean", accessibilityValue: "0 changes, Clean", state: .known(0), isError: false)
         }
-        // The value column already shows the total; repeat a count only when kinds are mixed.
         let parts = [
             (overview.stagedCount, "staged"),
             (overview.unstagedCount, "modified"),
             (overview.untrackedCount, "untracked")
         ].filter { $0.0 > 0 }
-        if parts.count == 1 {
-            return parts[0].1
-        }
-        return parts.map { "\($0.0) \($0.1)" }.joined(separator: ", ")
+        let detail = parts.map { "\($0.0) \($0.1)" }
+        let qualifier = parts.count == 1 ? parts[0].1 : detail.joined(separator: ", ")
+        let accessibilityDetail = detail.isEmpty ? "Clean" : detail.joined(separator: ", ")
+        let count = overview.totalWorkingTreeCount
+        return .init(
+            value: "\(count)",
+            qualifier: qualifier,
+            accessibilityValue: "\(count) changes, \(accessibilityDetail)",
+            state: .known(0),
+            isError: false
+        )
     }
 
-    private var changesAccessibilityValue: String {
-        if changesIsLoading {
-            return "Checking…"
-        }
-        if overview.isCleanWorkingTree {
-            return "0 changes, Clean"
-        }
-        var parts: [String] = []
-        if overview.stagedCount > 0 {
-            parts.append("\(overview.stagedCount) staged")
-        }
-        if overview.unstagedCount > 0 {
-            parts.append("\(overview.unstagedCount) modified")
-        }
-        if overview.untrackedCount > 0 {
-            parts.append("\(overview.untrackedCount) untracked")
-        }
-        let detail = parts.isEmpty ? "Clean" : parts.joined(separator: ", ")
-        return "\(overview.totalWorkingTreeCount) changes, \(detail)"
-    }
-
-    // MARK: - Branches Computation
-
-    private var branchesIsLoading: Bool {
-        overview.unmergedBranches.isLoading || overview.unpushedBranches.isLoading || overview.isLoading
-    }
-
-    private var branchesIsError: Bool {
-        if branchesIsLoading {
-            return false
-        }
-        switch (overview.unmergedBranches, overview.unpushedBranches) {
-        case (.unavailable, .unavailable):
-            return true
-        default:
-            return false
-        }
-    }
-
-    /// Unmerged and unpushed branches can overlap, so the value never sums them:
-    /// it leads with unmerged and the qualifier names any unpushed count separately.
-    private var branchesValue: String {
-        if branchesIsLoading || branchesIsError {
-            return "—"
-        }
-        if let unmerged = knownUnmerged, unmerged > 0 {
-            return "\(unmerged)"
-        }
-        if let unpushed = knownUnpushed {
-            return "\(unpushed)"
-        }
-        return knownUnmerged.map { "\($0)" } ?? "—"
-    }
-
-    private var branchesQualifier: String {
-        if branchesIsLoading {
-            return "Checking…"
-        }
-        if branchesIsError {
-            return "Unavailable"
-        }
-        let unmerged = knownUnmerged
-        let unpushed = knownUnpushed
-        if unmerged == nil, unpushed == nil {
-            return "Unavailable"
-        }
-        if let unmerged, unmerged > 0 {
-            if let unpushed, unpushed > 0 {
-                return "unmerged, \(unpushed) unpushed"
-            }
-            return "unmerged"
-        }
-        if let unpushed, unpushed > 0 {
-            return "unpushed"
-        }
-        // "All clear" needs both metrics known; a known zero beside an unavailable one is not clear.
-        return unmerged == nil || unpushed == nil ? "Unavailable" : "All clear"
-    }
-
-    private var branchesAccessibilityValue: String {
-        let summary: String
-        if branchesIsLoading {
-            summary = "Checking…"
-        } else if branchesIsError {
-            summary = "Unavailable"
-        } else if knownUnmerged != nil || knownUnpushed != nil {
-            var parts: [String] = []
-            if let unmerged = knownUnmerged, unmerged > 0 {
-                parts.append("\(unmerged) unmerged \(unmerged == 1 ? "branch" : "branches")")
-            }
-            if let unpushed = knownUnpushed, unpushed > 0 {
-                parts.append("\(unpushed) unpushed \(unpushed == 1 ? "branch" : "branches")")
-            }
-            if !parts.isEmpty {
-                summary = parts.joined(separator: ", ")
-            } else {
-                summary = knownUnmerged == nil || knownUnpushed == nil ? "Unavailable" : "All clear"
-            }
+    private var branchesPresentation: RepositoryOverviewMetricPresentation {
+        let loading = overview.unmergedBranches.isLoading || overview.unpushedBranches.isLoading || overview.isLoading
+        let error = !loading && overview.unmergedBranches == .unavailable && overview.unpushedBranches == .unavailable
+        let unmerged = knownCount(in: overview.unmergedBranches)
+        let unpushed = knownCount(in: overview.unpushedBranches)
+        let value: String = if loading || error {
+            "—"
+        } else if let unmerged, unmerged > 0 {
+            "\(unmerged)"
+        } else if let unpushed {
+            "\(unpushed)"
         } else {
+            unmerged.map(String.init) ?? "—"
+        }
+        let qualifier: String
+        let summary: String
+        if loading {
+            qualifier = "Checking…"
+            summary = "Checking…"
+        } else if error {
+            qualifier = "Unavailable"
             summary = "Unavailable"
+        } else if unmerged == nil, unpushed == nil {
+            qualifier = "Unavailable"
+            summary = "Unavailable"
+        } else if let unmerged, unmerged > 0 {
+            qualifier = unpushed.map { $0 > 0 ? "unmerged, \($0) unpushed" : "unmerged" } ?? "unmerged"
+            summary = ["\(unmerged) unmerged \(unmerged == 1 ? "branch" : "branches")", unpushed.flatMap { $0 > 0 ? "\($0) unpushed \($0 == 1 ? "branch" : "branches")" : nil }].compactMap(\.self).joined(separator: ", ")
+        } else if let unpushed, unpushed > 0 {
+            qualifier = "unpushed"
+            summary = unpushed == 1 ? "1 unpushed branch" : "\(unpushed) unpushed branches"
+        } else {
+            qualifier = unmerged == nil || unpushed == nil ? "Unavailable" : "All clear"
+            summary = qualifier
         }
-        return appendLastChecked(to: summary)
+        return .init(
+            value: value,
+            qualifier: qualifier,
+            accessibilityValue: appendLastChecked(to: summary),
+            state: loading ? .loading : error ? .unavailable : .known(0),
+            isError: error
+        )
     }
 
-    private var knownUnmerged: Int? {
-        if case let .known(count) = overview.unmergedBranches {
+    private var stashesPresentation: RepositoryOverviewMetricPresentation {
+        let loading = overview.stashCount.isLoading || overview.isLoading
+        let error = !loading && overview.stashCount == .unavailable
+        let value: String
+        let qualifier: String
+        let accessibility: String
+        switch overview.stashCount {
+        case let .known(count) where !loading:
+            value = count == 0 ? "None" : "\(count)"
+            qualifier = count == 0 ? "" : "retained"
+            accessibility = count == 0 ? "No stashes" : "\(count) \(count == 1 ? "stash" : "stashes") retained"
+        case .unavailable where error:
+            value = "—"
+            qualifier = "Unavailable"
+            accessibility = "Unavailable"
+        default:
+            value = "—"
+            qualifier = loading ? "Checking…" : "Unavailable"
+            accessibility = qualifier
+        }
+        return .init(
+            value: value,
+            qualifier: qualifier,
+            accessibilityValue: loading ? accessibility : appendLastChecked(to: accessibility),
+            state: loading ? .loading : error ? .unavailable : .known(0),
+            isError: error
+        )
+    }
+
+    private func knownCount(in state: RepositoryMetricState<Int>) -> Int? {
+        if case let .known(count) = state {
             return count
         }
         return nil
     }
 
-    private var knownUnpushed: Int? {
-        if case let .known(count) = overview.unpushedBranches {
-            return count
-        }
-        return nil
+    private func makeMetric(
+        _ definition: RepositoryOverviewMetricDefinition,
+        presentation: RepositoryOverviewMetricPresentation,
+        helpText: String? = nil,
+        action: (() -> Void)?
+    ) -> RepositoryOverviewMetric {
+        RepositoryOverviewMetric(
+            title: definition.title,
+            shortTitle: definition.shortTitle,
+            symbol: definition.symbol,
+            value: presentation.value,
+            qualifier: presentation.qualifier,
+            state: presentation.state,
+            isError: presentation.isError,
+            accessibilityValue: presentation.accessibilityValue,
+            helpText: helpText ?? presentation.accessibilityValue,
+            accessibilityHint: definition.accessibilityHint,
+            action: action
+        )
     }
 
-    // MARK: - Stashes Computation
-
-    private var stashesIsLoading: Bool {
-        overview.stashCount.isLoading || overview.isLoading
-    }
-
-    private var stashesIsError: Bool {
-        if stashesIsLoading {
-            return false
-        }
-        if case .unavailable = overview.stashCount {
-            return true
-        }
-        return false
-    }
-
-    private var stashesValue: String {
-        if stashesIsLoading || stashesIsError {
-            return "—"
-        }
-        switch overview.stashCount {
-        case let .known(count):
-            return count == 0 ? "None" : "\(count)"
-        case .loading, .unavailable:
-            return "—"
-        }
-    }
-
-    private var stashesQualifier: String {
-        if stashesIsLoading {
-            return "Checking…"
-        }
-        if stashesIsError {
-            return "Unavailable"
-        }
-        switch overview.stashCount {
-        case let .known(count):
-            return count == 0 ? "" : "retained"
+    private func makeGitHubMetric(
+        _ definition: RepositoryOverviewMetricDefinition,
+        state: RepositoryMetricState<Int>,
+        action: @escaping () -> Void
+    ) -> RepositoryOverviewMetric {
+        let value: String
+        let qualifier: String
+        let accessibility: String
+        let help: String
+        switch state {
         case .loading:
-            return "Checking…"
-        case .unavailable:
-            return "Unavailable"
-        }
-    }
-
-    private var stashesAccessibilityValue: String {
-        if stashesIsLoading {
-            return "Checking…"
-        }
-        let summary: String = switch overview.stashCount {
+            value = "—"
+            qualifier = "Checking…"
+            accessibility = appendLastChecked(to: "Checking…")
+            help = "Checking…"
         case let .known(count):
-            count == 0 ? "No stashes" : "\(count) \(count == 1 ? "stash" : "stashes") retained"
-        case .loading:
-            "Checking…"
+            let noun = definition.title == "Issues" ? "issue" : "pull request"
+            let countDescription = "\(count) open \(count == 1 ? noun : "\(noun)s")"
+            value = "\(count)"
+            qualifier = count == 0 ? "" : "open"
+            accessibility = appendLastChecked(to: countDescription)
+            help = countDescription
         case .unavailable:
-            "Unavailable"
+            let copy = githubUnavailableCopy
+            value = "—"
+            qualifier = copy.qualifier
+            accessibility = appendLastChecked(to: "Unavailable, \(copy.qualifier)")
+            help = copy.help
         }
-        return appendLastChecked(to: summary)
+        return makeMetric(
+            definition,
+            presentation: .init(
+                value: value,
+                qualifier: qualifier,
+                accessibilityValue: accessibility,
+                state: state,
+                isError: false
+            ),
+            helpText: help,
+            action: canOpenGitHubPage && state != .unavailable ? action : nil
+        )
     }
 
-    // MARK: - Helpers
+    private var githubUnavailableCopy: (qualifier: String, help: String) {
+        switch overview.gitHubUnavailableReason {
+        case .gitHubCLIMissing:
+            ("Install GitHub CLI", "Install GitHub CLI")
+        case .notGitHubRemote:
+            ("Not on GitHub", "Not on GitHub")
+        case .commandFailed:
+            ("GitHub unavailable", "Run gh auth status to check sign-in")
+        case nil:
+            ("Unavailable", "Unavailable")
+        }
+    }
 
     private func appendLastChecked(to text: String) -> String {
-        guard let lastCheckedAt = overview.lastCheckedAt else {
-            return text
-        }
-        return "\(text). Last checked \(Self.timeFormatter.string(from: lastCheckedAt))"
+        overview.lastCheckedAt.map {
+            "\(text). Last checked \(DateFormatter.localizedString(from: $0, dateStyle: .none, timeStyle: .short))"
+        } ?? text
     }
-
-    private static let timeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        formatter.dateStyle = .none
-        return formatter
-    }()
 }
 
-// MARK: - Column View
+private enum RepositoryOverviewMetricDensity: Equatable {
+    case wide
+    case medium
+    case compact
+}
 
-private struct RepositoryOverviewColumnView: View {
+private struct RepositoryOverviewMetricDefinition {
     let title: String
+    let shortTitle: String
+    let symbol: String
+    let accessibilityHint: String
+
+    init(_ title: String, _ shortTitle: String, _ symbol: String, _ accessibilityHint: String) {
+        self.title = title
+        self.shortTitle = shortTitle
+        self.symbol = symbol
+        self.accessibilityHint = accessibilityHint
+    }
+
+    static let changes = Self("Changes", "Changes", "plus.forwardslash.minus", "Opens Changes in the side panel")
+    static let branches = Self("Branches", "Branches", "arrow.triangle.branch", "Opens Branches in the side panel")
+    static let stashes = Self("Stashes", "Stashes", "tray.full", "Opens Stashes in the side panel")
+    static let pullRequests = Self("Pull Requests", "PRs", "arrow.triangle.pull", "Opens pull requests on GitHub")
+    static let issues = Self("Issues", "Issues", "smallcircle.filled.circle", "Opens issues on GitHub")
+}
+
+private struct RepositoryOverviewMetricPresentation {
     let value: String
     let qualifier: String
-    let isLoading: Bool
+    let accessibilityValue: String
+    let state: RepositoryMetricState<Int>
+    let isError: Bool
+}
+
+private struct RepositoryOverviewMetric {
+    let title: String
+    let shortTitle: String
+    let symbol: String
+    let value: String
+    let qualifier: String
+    let state: RepositoryMetricState<Int>
     let isError: Bool
     let accessibilityValue: String
-    let action: () -> Void
+    let helpText: String
+    let accessibilityHint: String
+    let action: (() -> Void)?
+}
 
-    @State private var isHovered = false
+private struct RepositoryOverviewMetricRowLayout: Layout {
+    let density: RepositoryOverviewMetricDensity
+    private var metricStride: Int {
+        density == .compact ? 1 : 2
+    }
 
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-                Text(title)
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout Cache
+    ) -> CGSize {
+        _ = cache
+        let metricIndices = indices(in: subviews)
+        let metricSizes = metricIndices.map { subviews[$0].sizeThatFits(ProposedViewSize(width: 0, height: nil)) }
+        let dividerIndices = density == .compact ? [] : Array(stride(from: 1, to: subviews.count, by: metricStride))
+        let dividerWidth = dividerIndices.reduce(CGFloat.zero) { width, index in
+            width + subviews[index].sizeThatFits(.unspecified).width
+        }
+        let minimumWidth = (metricSizes.map(\.width).max() ?? 0) * CGFloat(metricSizes.count) + dividerWidth
+        return CGSize(width: max(proposal.width ?? minimumWidth, minimumWidth), height: metricSizes.map(\.height).max() ?? 0)
+    }
 
-                HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.microSpacing) {
-                    if isLoading {
-                        ProgressView()
-                            .controlSize(.small)
-                            .accessibilityHidden(true)
-                    } else {
-                        Text(value)
-                            .font(WorkbenchTypography.field)
-                            .foregroundStyle(valueForegroundStyle)
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .layoutPriority(1)
-                    }
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout Cache
+    ) {
+        _ = (proposal, cache)
+        let metricIndices = indices(in: subviews)
+        guard !metricIndices.isEmpty else { return }
+        let dividerIndices = density == .compact ? [] : Array(stride(from: 1, to: subviews.count, by: metricStride))
+        let dividerWidths = dividerIndices.map { subviews[$0].sizeThatFits(.unspecified).width }
+        let dividerWidth = dividerWidths.reduce(CGFloat.zero, +)
+        let metricWidth = max((bounds.width - dividerWidth) / CGFloat(metricIndices.count), 0)
+        var currentX = bounds.minX
+        var dividerIndex = 0
 
-                    if !qualifier.isEmpty {
-                        Text(qualifier)
-                            .font(WorkbenchTypography.caption)
-                            .foregroundStyle(qualifierForegroundStyle)
-                            .lineLimit(1)
-                    }
-                }
-            }
-            .padding(.horizontal, WorkbenchMetrics.compactSpacing)
-            .padding(.vertical, WorkbenchMetrics.compactSpacing)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous)
-                    .fill(isHovered ? WorkbenchPalette.hoverFill() : Color.clear)
+        for index in metricIndices {
+            subviews[index].place(
+                at: CGPoint(x: currentX, y: bounds.minY),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: metricWidth, height: bounds.height)
             )
-            .contentShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
+            currentX += metricWidth
+
+            guard dividerIndex < dividerIndices.count else { continue }
+            let divider = subviews[dividerIndices[dividerIndex]]
+            let width = dividerWidths[dividerIndex]
+            divider.place(
+                at: CGPoint(x: currentX, y: bounds.minY),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: width, height: bounds.height)
+            )
+            currentX += width
+            dividerIndex += 1
+        }
+    }
+
+    private func indices(in subviews: Subviews) -> [Int] {
+        Array(stride(from: 0, to: subviews.count, by: metricStride))
+    }
+}
+
+private struct RepositoryOverviewColumnView: View {
+    let metric: RepositoryOverviewMetric
+    let density: RepositoryOverviewMetricDensity
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isHovered = false
+    var body: some View {
+        Button(action: metric.action ?? {}) {
+            metricContent
+                .padding(.horizontal, WorkbenchMetrics.compactSpacing)
+                .padding(.vertical, density == .compact ? WorkbenchMetrics.microSpacing : WorkbenchMetrics.compactSpacing)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: WorkbenchMetrics.minimumHitTarget,
+                    alignment: density == .compact ? .center : .leading
+                )
+                .background(
+                    RoundedRectangle(
+                        cornerRadius: density == .compact ? WorkbenchMetrics.microCornerRadius : WorkbenchMetrics.rowCornerRadius,
+                        style: .continuous
+                    )
+                    .fill(isHovered ? WorkbenchPalette.hoverFill() : .clear)
+                )
+                .contentShape(
+                    RoundedRectangle(
+                        cornerRadius: density == .compact ? WorkbenchMetrics.microCornerRadius : WorkbenchMetrics.rowCornerRadius,
+                        style: .continuous
+                    )
+                )
         }
         .buttonStyle(.plain)
+        .disabled(metric.action == nil)
         .onHover { hovering in
             isHovered = hovering
         }
-        .help(accessibilityValue)
+        .help(metric.helpText)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(title)
-        .accessibilityValue(accessibilityValue)
-        .accessibilityHint("Opens \(title) in the side panel")
+        .accessibilityLabel(metric.title)
+        .accessibilityValue(metric.accessibilityValue)
+        .accessibilityHint(metric.accessibilityHint)
         .accessibilityAddTraits(.isButton)
     }
 
+    @ViewBuilder
+    private var metricContent: some View {
+        switch density {
+        case .wide:
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                titleText(metric.title)
+                valueRow
+            }
+        case .medium:
+            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                titleText(metric.shortTitle)
+                valueText
+            }
+        case .compact:
+            HStack(spacing: WorkbenchMetrics.chipSpacing) {
+                Image(systemName: metric.symbol)
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                valueText
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    private func titleText(_ title: String) -> some View {
+        Text(title)
+            .font(WorkbenchTypography.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var valueRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.microSpacing) {
+            valueText
+            // Show the qualifier whole or not at all; the tooltip keeps the detail.
+            ViewThatFits(in: .horizontal) {
+                Text(metric.qualifier).font(WorkbenchTypography.caption).foregroundStyle(qualifierForegroundStyle)
+                    .lineLimit(1).fixedSize()
+                Color.clear.frame(width: 0, height: 0)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var valueText: some View {
+        if metric.state == .loading {
+            ProgressView()
+                .controlSize(.small)
+                .accessibilityHidden(true)
+        } else {
+            Text(metric.value)
+                .font(density == .compact ? WorkbenchTypography.captionStrong : WorkbenchTypography.field)
+                .foregroundStyle(valueForegroundStyle)
+                .monospacedDigit()
+                .lineLimit(1)
+                .layoutPriority(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .contentTransition(reduceMotion ? .identity : .numericText())
+                .animation(
+                    WorkbenchMotion.adaptive(WorkbenchMotion.swap, usesReducedMotion: reduceMotion),
+                    value: metric.value
+                )
+        }
+    }
+
     private var valueForegroundStyle: Color {
-        if isError {
-            return .red
-        }
-        if value == "0" || value == "—" {
-            return .secondary
-        }
-        return .primary
+        metric.isError ? .red : metric.value == "0" || metric.value == "—" ? .secondary : .primary
     }
 
     private var qualifierForegroundStyle: Color {
-        if isError {
-            return .red
-        }
-        return .secondary
+        metric.isError ? .red : .secondary
     }
-}
-
-#Preview("Dirty repository") {
-    RepositoryOverviewView(
-        overview: RepositoryOverviewSnapshot(
-            stagedCount: 3,
-            unstagedCount: 5,
-            untrackedCount: 1,
-            addedLineCount: 40,
-            removedLineCount: 12,
-            aheadCount: .known(1),
-            behindCount: .known(0),
-            branchesWithoutUpstream: .known(0),
-            unpushedBranches: .known(2),
-            unmergedBranches: .known(1),
-            stashCount: .known(3),
-            historyCount: 24,
-            currentBranch: "feat/status-strip",
-            isDetachedHead: false,
-            isLoading: false,
-            lastCheckedAt: Date()
-        ),
-        onSelectSection: { _ in }
-    )
-    .frame(width: 380)
-    .padding()
-}
-
-#Preview("Clean repository (Empty state)") {
-    RepositoryOverviewView(
-        overview: RepositoryOverviewSnapshot(
-            stagedCount: 0,
-            unstagedCount: 0,
-            untrackedCount: 0,
-            addedLineCount: 0,
-            removedLineCount: 0,
-            aheadCount: .known(0),
-            behindCount: .known(0),
-            branchesWithoutUpstream: .known(0),
-            unpushedBranches: .known(0),
-            unmergedBranches: .known(0),
-            stashCount: .known(0),
-            historyCount: 12,
-            currentBranch: "main",
-            isDetachedHead: false,
-            isLoading: false,
-            lastCheckedAt: Date()
-        ),
-        onSelectSection: { _ in }
-    )
-    .frame(width: 380)
-    .padding()
-}
-
-#Preview("Loading state") {
-    RepositoryOverviewView(
-        overview: RepositoryOverviewSnapshot(
-            stagedCount: 0,
-            unstagedCount: 0,
-            untrackedCount: 0,
-            addedLineCount: 0,
-            removedLineCount: 0,
-            aheadCount: .loading,
-            behindCount: .loading,
-            branchesWithoutUpstream: .loading,
-            unpushedBranches: .loading,
-            unmergedBranches: .loading,
-            stashCount: .loading,
-            historyCount: 0,
-            currentBranch: "main",
-            isDetachedHead: false,
-            isLoading: true,
-            lastCheckedAt: nil
-        ),
-        onSelectSection: { _ in }
-    )
-    .frame(width: 380)
-    .padding()
-}
-
-#Preview("Error state (Unavailable)") {
-    RepositoryOverviewView(
-        overview: RepositoryOverviewSnapshot(
-            stagedCount: 0,
-            unstagedCount: 0,
-            untrackedCount: 0,
-            addedLineCount: 0,
-            removedLineCount: 0,
-            aheadCount: .unavailable,
-            behindCount: .unavailable,
-            branchesWithoutUpstream: .unavailable,
-            unpushedBranches: .unavailable,
-            unmergedBranches: .unavailable,
-            stashCount: .unavailable,
-            historyCount: 0,
-            currentBranch: nil,
-            isDetachedHead: true,
-            isLoading: false,
-            lastCheckedAt: nil
-        ),
-        onSelectSection: { _ in }
-    )
-    .frame(width: 380)
-    .padding()
 }

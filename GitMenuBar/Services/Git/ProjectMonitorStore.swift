@@ -161,7 +161,7 @@ final class ProjectMonitorStore {
                 unmergedBranchCount: snapshot.unmergedBranchCount,
                 stashCount: snapshot.stashCount,
                 lastActivityAt: snapshot.lastActivityAt,
-                pullRequests: snapshot.pullRequests
+                gitHubStatus: snapshot.gitHubStatus
             )
         ])
     }
@@ -289,9 +289,9 @@ final class ProjectMonitorStore {
         let generation = refreshGeneration
         isRefreshing = true
         let runner = runner
-        // Local reads carry the previous snapshot's pull requests and branch
+        // Local reads carry the previous snapshot's GitHub status and branch
         // health through the mode so file-driven refreshes skip those reads.
-        let lastKnownDataByPath: [String: (pullRequests: [GitHubPullRequestSummary], branchHealth: ProjectStatusReader.BranchHealth)] = Dictionary(uniqueKeysWithValues: projects.map { project in
+        let lastKnownDataByPath: [String: (gitHubStatus: GitHubProjectStatus, branchHealth: ProjectStatusReader.BranchHealth)] = Dictionary(uniqueKeysWithValues: projects.map { project in
             let previous = snapshots[project.path]
             let branchHealth = ProjectStatusReader.BranchHealth(
                 branchesWithoutUpstreamCount: previous?.branchesWithoutUpstreamCount ?? 0,
@@ -300,7 +300,7 @@ final class ProjectMonitorStore {
                 stashCount: previous?.stashCount ?? 0,
                 lastActivityAt: previous?.lastActivityAt
             )
-            return (project.path, (pullRequests: previous?.pullRequests ?? [], branchHealth: branchHealth))
+            return (project.path, (gitHubStatus: previous?.gitHubStatus ?? .empty, branchHealth: branchHealth))
         })
         let trace = GitPerformanceTrace.begin("project.monitor.refresh")
         if remotePaths.isEmpty {
@@ -320,7 +320,7 @@ final class ProjectMonitorStore {
                         .remote
                     } else {
                         .local(
-                            pullRequests: lastKnownData?.pullRequests ?? [],
+                            gitHubStatus: lastKnownData?.gitHubStatus ?? .empty,
                             branchHealth: lastKnownData?.branchHealth ?? .init()
                         )
                     }

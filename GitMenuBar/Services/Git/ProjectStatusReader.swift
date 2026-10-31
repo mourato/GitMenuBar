@@ -89,14 +89,14 @@ enum ProjectStatusPorcelainParser {
 }
 
 enum ProjectStatusReadMode {
-    case local(pullRequests: [GitHubPullRequestSummary], branchHealth: ProjectStatusReader.BranchHealth)
+    case local(gitHubStatus: GitHubProjectStatus, branchHealth: ProjectStatusReader.BranchHealth)
     case remote
 
     /// Values captured from the last known snapshot that a local read carries
-    /// forward instead of re-reading branch health and pull requests.
-    var localRead: (pullRequests: [GitHubPullRequestSummary], branchHealth: ProjectStatusReader.BranchHealth)? {
-        if case let .local(pullRequests, branchHealth) = self {
-            return (pullRequests, branchHealth)
+    /// forward instead of re-reading branch health and GitHub status.
+    var localRead: (gitHubStatus: GitHubProjectStatus, branchHealth: ProjectStatusReader.BranchHealth)? {
+        if case let .local(gitHubStatus, branchHealth) = self {
+            return (gitHubStatus, branchHealth)
         }
         return nil
     }
@@ -187,17 +187,22 @@ struct ProjectStatusReader {
                 unmergedBranchCount: lastKnown?.branchHealth.unmergedBranchCount ?? 0,
                 stashCount: lastKnown?.branchHealth.stashCount ?? 0,
                 lastActivityAt: lastKnown?.branchHealth.lastActivityAt,
-                pullRequests: lastKnown?.pullRequests ?? []
+                gitHubStatus: lastKnown?.gitHubStatus ?? GitHubProjectStatus(
+                    pullRequests: [],
+                    openPullRequestCount: nil,
+                    openIssueCount: nil,
+                    unavailableReason: .commandFailed
+                )
             )
         }
 
         let parsed = ProjectStatusPorcelainParser.parse(status.output)
         // Local reads carry the last known snapshot data through the mode, so
-        // branch health and pull requests are not re-read on file events.
+        // branch health and GitHub status are not re-read on file events.
         let branchHealth = lastKnown?.branchHealth
             ?? readBranchHealth(projectPath: project.path, currentBranch: parsed.branchName)
-        let pullRequests = lastKnown?.pullRequests
-            ?? GitHubPullRequestStatusReader(runner: runner).read(projectPath: project.path)
+        let gitHubStatus = lastKnown?.gitHubStatus
+            ?? readGitHubStatus(projectPath: project.path)
         let lineDiff = includeLineDiff && parsed.hasWorkingTreeChanges
             ? readLineDiff(project: project, untrackedPaths: parsed.untrackedPaths)
             : .zero
@@ -213,8 +218,28 @@ struct ProjectStatusReader {
             unmergedBranchCount: branchHealth.unmergedBranchCount,
             stashCount: branchHealth.stashCount,
             lastActivityAt: branchHealth.lastActivityAt,
-            pullRequests: pullRequests
+            gitHubStatus: gitHubStatus
         )
+    }
+
+    static func combine(
+        pullRequestStatus: GitHubPullRequestReadResult,
+        countsStatus: GitHubOpenCountsReadResult
+    ) -> GitHubProjectStatus {
+        // Counts come only from the GraphQL read, so a failed PR detail list
+        // does not hide them; the reason describes the counts the overview shows.
+        GitHubProjectStatus(
+            pullRequests: pullRequestStatus.pullRequests,
+            openPullRequestCount: countsStatus.openPullRequestCount,
+            openIssueCount: countsStatus.openIssueCount,
+            unavailableReason: countsStatus.unavailableReason
+        )
+    }
+
+    private func readGitHubStatus(projectPath: String) -> GitHubProjectStatus {
+        let pullRequestStatus = GitHubPullRequestStatusReader(runner: runner).read(projectPath: projectPath)
+        let countsStatus = GitHubOpenCountsReader(runner: runner).read(projectPath: projectPath)
+        return Self.combine(pullRequestStatus: pullRequestStatus, countsStatus: countsStatus)
     }
 
     private func readBranchHealth(projectPath: String, currentBranch: String) -> BranchHealth {

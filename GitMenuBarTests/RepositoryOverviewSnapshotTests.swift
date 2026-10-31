@@ -38,12 +38,15 @@ final class RepositoryOverviewSnapshotTests: XCTestCase {
             aheadCount: .known(0), behindCount: .known(0),
             branchesWithoutUpstream: .loading, unpushedBranches: .loading,
             unmergedBranches: .loading, stashCount: .loading,
+            openPullRequests: .loading, openIssues: .loading,
             historyCount: 0, currentBranch: "main",
             isDetachedHead: false, isLoading: true, lastCheckedAt: nil
         )
 
         XCTAssertEqual(overview.branchesWithoutUpstream, .loading)
         XCTAssertEqual(overview.stashCount, .loading)
+        XCTAssertEqual(overview.openPullRequests, .loading)
+        XCTAssertEqual(overview.openIssues, .loading)
         XCTAssertTrue(overview.isLoading)
     }
 
@@ -191,6 +194,57 @@ final class RepositoryOverviewSnapshotTests: XCTestCase {
         XCTAssertEqual(overview.stashCount, .known(4))
     }
 
+    func testGitHubCountsFromMonitorSnapshot() {
+        let snapshot = makeMonitorSnapshot(
+            gitHubStatus: GitHubProjectStatus(
+                pullRequests: [], openPullRequestCount: 5, openIssueCount: 8, unavailableReason: nil
+            )
+        )
+        let overview = RepositoryOverviewSnapshot.build(
+            stagedFiles: [],
+            changedFiles: [],
+            commitCount: 0,
+            aheadOfRemote: false,
+            behindRemote: false,
+            gitBehindCount: 0,
+            commitHistory: [],
+            currentBranch: "main",
+            isDetachedHead: false,
+            monitorSnapshot: snapshot,
+            isLoading: false
+        )
+
+        XCTAssertEqual(overview.openPullRequests, .known(5))
+        XCTAssertEqual(overview.openIssues, .known(8))
+        XCTAssertNil(overview.gitHubUnavailableReason)
+    }
+
+    func testGitHubCountsRemainUnavailableWithReason() {
+        let snapshot = makeMonitorSnapshot(
+            gitHubStatus: GitHubProjectStatus(
+                pullRequests: [], openPullRequestCount: nil, openIssueCount: nil,
+                unavailableReason: .notGitHubRemote
+            )
+        )
+        let overview = RepositoryOverviewSnapshot.build(
+            stagedFiles: [],
+            changedFiles: [],
+            commitCount: 0,
+            aheadOfRemote: false,
+            behindRemote: false,
+            gitBehindCount: 0,
+            commitHistory: [],
+            currentBranch: "main",
+            isDetachedHead: false,
+            monitorSnapshot: snapshot,
+            isLoading: false
+        )
+
+        XCTAssertEqual(overview.openPullRequests, .unavailable)
+        XCTAssertEqual(overview.openIssues, .unavailable)
+        XCTAssertEqual(overview.gitHubUnavailableReason, .notGitHubRemote)
+    }
+
     func testNoMonitorSnapshotWhileLoadingShowsLoading() {
         let overview = RepositoryOverviewSnapshot.build(
             stagedFiles: [],
@@ -227,6 +281,8 @@ final class RepositoryOverviewSnapshotTests: XCTestCase {
 
         XCTAssertEqual(overview.branchesWithoutUpstream, .unavailable)
         XCTAssertEqual(overview.stashCount, .unavailable)
+        XCTAssertEqual(overview.openPullRequests, .unavailable)
+        XCTAssertEqual(overview.openIssues, .unavailable)
     }
 
     // MARK: - History count
@@ -265,7 +321,8 @@ final class RepositoryOverviewSnapshotTests: XCTestCase {
         branchesWithoutUpstreamCount: Int = 0,
         unpushedBranchCount: Int = 0,
         unmergedBranchCount: Int = 0,
-        stashCount: Int = 0
+        stashCount: Int = 0,
+        gitHubStatus: GitHubProjectStatus = .empty
     ) -> ProjectStatusSnapshot {
         ProjectStatusSnapshot(
             project: ProjectReference(path: "/tmp/repo", name: "Repo"),
@@ -285,7 +342,7 @@ final class RepositoryOverviewSnapshotTests: XCTestCase {
             unmergedBranchCount: unmergedBranchCount,
             stashCount: stashCount,
             lastActivityAt: nil,
-            pullRequests: []
+            gitHubStatus: gitHubStatus
         )
     }
 }

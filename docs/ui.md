@@ -57,6 +57,10 @@ they drift, and use an ADR for a durable decision rather than a task log.
 
 The main route remains native toolbar → scroll content (repository
 overview, then history), with optional quota cards secondary to Git work.
+The repository overview always presents five metrics: Changes, Branches,
+Stashes, Pull Requests, and Issues; `ViewThatFits` selects adaptive tiers from
+the card's own width. GitHub-unavailable metrics stay neutral and never use
+error styling.
 [ADR 0020](adr/0020-toolbar-actions-and-history-list.md) moves the branch
 picker and repository actions into the toolbar and removes the branch footer.
 Contextual details open in a trailing **side panel** column beside the

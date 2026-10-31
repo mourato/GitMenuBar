@@ -99,7 +99,9 @@ final class ProjectMonitorStoreTests: XCTestCase {
                 aheadCount: 0, behindCount: 0, hasUpstream: false, lastRefreshedAt: Date(),
                 lastErrorDescription: nil, branchesWithoutUpstreamCount: 1, unpushedBranchCount: 0,
                 unmergedBranchCount: 0, stashCount: 1, lastActivityAt: Date(timeIntervalSince1970: 1000),
-                pullRequests: [pullRequest]
+                gitHubStatus: GitHubProjectStatus(
+                    pullRequests: [pullRequest], openPullRequestCount: 1, openIssueCount: 2, unavailableReason: nil
+                )
             )
         }
         monitor.refresh(path: path)
@@ -108,6 +110,8 @@ final class ProjectMonitorStoreTests: XCTestCase {
         let seeded = monitor.snapshots[path]
         XCTAssertEqual(seeded?.stashCount, 1)
         XCTAssertEqual(seeded?.pullRequests, [pullRequest])
+        XCTAssertEqual(seeded?.openPullRequestCount, 1)
+        XCTAssertEqual(seeded?.openIssueCount, 2)
 
         // Mutate the working tree and remove the stash, so both a fresh
         // working-tree value and a fresh branch-health read would differ.
@@ -125,12 +129,16 @@ final class ProjectMonitorStoreTests: XCTestCase {
         XCTAssertEqual(monitor.snapshots[path]?.stashCount, seeded?.stashCount)
         XCTAssertEqual(monitor.snapshots[path]?.lastActivityAt, seeded?.lastActivityAt)
         XCTAssertEqual(monitor.snapshots[path]?.pullRequests, [pullRequest])
+        XCTAssertEqual(monitor.snapshots[path]?.openPullRequestCount, seeded?.openPullRequestCount)
+        XCTAssertEqual(monitor.snapshots[path]?.openIssueCount, seeded?.openIssueCount)
         XCTAssertNil(monitor.snapshots[path]?.lastErrorDescription)
 
         // A full refresh still re-reads branch health and pull requests.
         monitor.refresh(path: path)
         await waitForObservedCondition { monitor.snapshots[path]?.stashCount == 0 }
         XCTAssertEqual(monitor.snapshots[path]?.pullRequests, [])
+        XCTAssertNil(monitor.snapshots[path]?.openPullRequestCount)
+        XCTAssertNil(monitor.snapshots[path]?.openIssueCount)
         XCTAssertEqual(monitor.snapshots[path]?.unstagedCount, 1)
     }
 
@@ -140,7 +148,7 @@ final class ProjectMonitorStoreTests: XCTestCase {
             stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero,
             aheadCount: 0, behindCount: 0, hasUpstream: true, lastRefreshedAt: Date(),
             lastErrorDescription: nil, branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0,
-            unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil, pullRequests: []
+            unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil, gitHubStatus: .empty
         )
     }
 }

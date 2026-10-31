@@ -30,7 +30,9 @@ struct MainMenuOverviewSection: View {
             if !currentRepoPath.isEmpty {
                 RepositoryOverviewView(
                     overview: overview,
-                    onSelectSection: onSelectSection
+                    onSelectSection: onSelectSection,
+                    onOpenGitHubPage: { actionCoordinator.openGitHubPage($0) },
+                    canOpenGitHubPage: actionCoordinator.canOpenGitHubPage
                 )
 
                 if let history {

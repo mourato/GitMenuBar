@@ -100,6 +100,27 @@ final class ProjectStatusReaderTests: XCTestCase {
         XCTAssertEqual(result[1].statusSummary, "Draft · Changes requested · CI failing")
     }
 
+    func testCapsGitHubPullRequestDetailsAtTwenty() throws {
+        let data = try XCTUnwrap(
+            JSONSerialization.data(withJSONObject: (0 ..< 21).map { number in
+                [
+                    "number": number,
+                    "title": "Pull request \(number)",
+                    "headRefName": "feature/\(number)",
+                    "isDraft": false,
+                    "reviewDecision": NSNull(),
+                    "statusCheckRollup": NSNull(),
+                    "url": "https://github.com/example/project/pull/\(number)"
+                ]
+            })
+        )
+        let result = try XCTUnwrap(GitHubPullRequestStatusReader.parseStatus(data))
+        XCTAssertEqual(result.pullRequests.count, 20)
+        XCTAssertEqual(result.pullRequests.last?.number, 19)
+        XCTAssertEqual(GitHubPullRequestStatusReader.parseStatus(Data("[]".utf8))?.pullRequests, [])
+        XCTAssertNil(GitHubPullRequestStatusReader.parseStatus(Data("malformed".utf8)))
+    }
+
     func testCountsNonEmptyBranchAndStashLines() {
         XCTAssertEqual(ProjectStatusReader.countBranchLines("feature/a\n\nfeature/b\n"), 2)
         XCTAssertEqual(ProjectStatusReader.countBranchLines(""), 0)
@@ -250,10 +271,17 @@ final class ProjectStatusReaderTests: XCTestCase {
         let snapshot = ProjectStatusReader(runner: GitCommandRunner()).read(
             project: ProjectReference(path: root.path),
             includeLineDiff: false,
-            mode: .local(pullRequests: [pullRequest], branchHealth: .init())
+            mode: .local(
+                gitHubStatus: GitHubProjectStatus(
+                    pullRequests: [pullRequest], openPullRequestCount: 1, openIssueCount: 2, unavailableReason: nil
+                ),
+                branchHealth: .init()
+            )
         )
 
         XCTAssertEqual(snapshot.pullRequests, [pullRequest])
+        XCTAssertEqual(snapshot.openPullRequestCount, 1)
+        XCTAssertEqual(snapshot.openIssueCount, 2)
     }
 
     func testLocalModePreservesLastKnownHealthAndSkipsFreshReads() throws {
@@ -288,7 +316,12 @@ final class ProjectStatusReaderTests: XCTestCase {
         let local = reader.read(
             project: ProjectReference(path: root.path),
             includeLineDiff: true,
-            mode: .local(pullRequests: [pullRequest], branchHealth: lastKnown)
+            mode: .local(
+                gitHubStatus: GitHubProjectStatus(
+                    pullRequests: [pullRequest], openPullRequestCount: 1, openIssueCount: 2, unavailableReason: nil
+                ),
+                branchHealth: lastKnown
+            )
         )
 
         // Last known branch health is carried through instead of re-read
@@ -299,6 +332,8 @@ final class ProjectStatusReaderTests: XCTestCase {
         XCTAssertEqual(local.stashCount, 6)
         XCTAssertEqual(local.lastActivityAt, lastActivityAt)
         XCTAssertEqual(local.pullRequests, [pullRequest])
+        XCTAssertEqual(local.openPullRequestCount, 1)
+        XCTAssertEqual(local.openIssueCount, 2)
         XCTAssertNil(local.lastErrorDescription)
         // Status-derived working-tree values and the line diff stay live.
         XCTAssertEqual(local.unstagedCount, 1)
@@ -345,7 +380,12 @@ final class ProjectStatusReaderTests: XCTestCase {
         let snapshot = ProjectStatusReader(runner: GitCommandRunner()).read(
             project: ProjectReference(path: root.path),
             includeLineDiff: false,
-            mode: .local(pullRequests: [pullRequest], branchHealth: lastKnown)
+            mode: .local(
+                gitHubStatus: GitHubProjectStatus(
+                    pullRequests: [pullRequest], openPullRequestCount: 1, openIssueCount: 2, unavailableReason: nil
+                ),
+                branchHealth: lastKnown
+            )
         )
 
         XCTAssertNotNil(snapshot.lastErrorDescription)
@@ -356,6 +396,8 @@ final class ProjectStatusReaderTests: XCTestCase {
         XCTAssertEqual(snapshot.stashCount, 6)
         XCTAssertEqual(snapshot.lastActivityAt, lastActivityAt)
         XCTAssertEqual(snapshot.pullRequests, [pullRequest])
+        XCTAssertEqual(snapshot.openPullRequestCount, 1)
+        XCTAssertEqual(snapshot.openIssueCount, 2)
     }
 
     func testReaderCountsStagedLinesBeforeFirstCommit() throws {
