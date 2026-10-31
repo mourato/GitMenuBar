@@ -48,6 +48,26 @@ enum ProjectAttentionSeverity: Equatable, Hashable, Sendable {
     case unmergedOnly
 }
 
+enum GitHubStatusUnavailableReason: Equatable, Sendable {
+    case gitHubCLIMissing
+    case notGitHubRemote
+    case commandFailed
+}
+
+struct GitHubProjectStatus: Equatable, Sendable {
+    let pullRequests: [GitHubPullRequestSummary]
+    let openPullRequestCount: Int?
+    let openIssueCount: Int?
+    let unavailableReason: GitHubStatusUnavailableReason?
+
+    static let empty = GitHubProjectStatus(
+        pullRequests: [],
+        openPullRequestCount: nil,
+        openIssueCount: nil,
+        unavailableReason: nil
+    )
+}
+
 struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
     let project: ProjectReference
     let branchName: String
@@ -66,12 +86,24 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
     let unmergedBranchCount: Int
     let stashCount: Int
     let lastActivityAt: Date?
-    let pullRequests: [GitHubPullRequestSummary]
+    let gitHubStatus: GitHubProjectStatus
 
     static let staleThreshold: TimeInterval = 14 * 24 * 60 * 60
 
     var id: String {
         project.path
+    }
+
+    var pullRequests: [GitHubPullRequestSummary] {
+        gitHubStatus.pullRequests
+    }
+
+    var openPullRequestCount: Int? {
+        gitHubStatus.openPullRequestCount
+    }
+
+    var openIssueCount: Int? {
+        gitHubStatus.openIssueCount
     }
 
     func hasSameVisibleState(as other: Self) -> Bool {
@@ -91,7 +123,7 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
             && unmergedBranchCount == other.unmergedBranchCount
             && stashCount == other.stashCount
             && lastActivityAt == other.lastActivityAt
-            && pullRequests == other.pullRequests
+            && gitHubStatus == other.gitHubStatus
     }
 
     var isDefaultBranch: Bool {

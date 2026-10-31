@@ -30,11 +30,56 @@ struct RepositoryOverviewSnapshot: Equatable, Sendable {
     let unpushedBranches: RepositoryMetricState<Int>
     let unmergedBranches: RepositoryMetricState<Int>
     let stashCount: RepositoryMetricState<Int>
+    let openPullRequests: RepositoryMetricState<Int>
+    let openIssues: RepositoryMetricState<Int>
+    let gitHubUnavailableReason: GitHubStatusUnavailableReason?
     let historyCount: Int
     let currentBranch: String?
     let isDetachedHead: Bool
     let isLoading: Bool
     let lastCheckedAt: Date?
+
+    init(
+        stagedCount: Int,
+        unstagedCount: Int,
+        untrackedCount: Int,
+        addedLineCount: Int,
+        removedLineCount: Int,
+        aheadCount: RepositoryMetricState<Int>,
+        behindCount: RepositoryMetricState<Int>,
+        branchesWithoutUpstream: RepositoryMetricState<Int>,
+        unpushedBranches: RepositoryMetricState<Int>,
+        unmergedBranches: RepositoryMetricState<Int>,
+        stashCount: RepositoryMetricState<Int>,
+        openPullRequests: RepositoryMetricState<Int> = .unavailable,
+        openIssues: RepositoryMetricState<Int> = .unavailable,
+        gitHubUnavailableReason: GitHubStatusUnavailableReason? = nil,
+        historyCount: Int,
+        currentBranch: String?,
+        isDetachedHead: Bool,
+        isLoading: Bool,
+        lastCheckedAt: Date?
+    ) {
+        self.stagedCount = stagedCount
+        self.unstagedCount = unstagedCount
+        self.untrackedCount = untrackedCount
+        self.addedLineCount = addedLineCount
+        self.removedLineCount = removedLineCount
+        self.aheadCount = aheadCount
+        self.behindCount = behindCount
+        self.branchesWithoutUpstream = branchesWithoutUpstream
+        self.unpushedBranches = unpushedBranches
+        self.unmergedBranches = unmergedBranches
+        self.stashCount = stashCount
+        self.openPullRequests = openPullRequests
+        self.openIssues = openIssues
+        self.gitHubUnavailableReason = gitHubUnavailableReason
+        self.historyCount = historyCount
+        self.currentBranch = currentBranch
+        self.isDetachedHead = isDetachedHead
+        self.isLoading = isLoading
+        self.lastCheckedAt = lastCheckedAt
+    }
 
     var totalWorkingTreeCount: Int {
         stagedCount + unstagedCount + untrackedCount
@@ -82,21 +127,33 @@ struct RepositoryOverviewSnapshot: Equatable, Sendable {
         let unpushedBranches: RepositoryMetricState<Int>
         let unmergedBranches: RepositoryMetricState<Int>
         let stashCount: RepositoryMetricState<Int>
+        let openPullRequests: RepositoryMetricState<Int>
+        let openIssues: RepositoryMetricState<Int>
+        let gitHubUnavailableReason: GitHubStatusUnavailableReason?
         if let snapshot = monitorSnapshot {
             branchesWithoutUpstream = .known(snapshot.branchesWithoutUpstreamCount)
             unpushedBranches = .known(snapshot.unpushedBranchCount)
             unmergedBranches = .known(snapshot.unmergedBranchCount)
             stashCount = .known(snapshot.stashCount)
+            openPullRequests = snapshot.openPullRequestCount.map { .known($0) } ?? .unavailable
+            openIssues = snapshot.openIssueCount.map { .known($0) } ?? .unavailable
+            gitHubUnavailableReason = snapshot.gitHubStatus.unavailableReason
         } else if isLoading {
             branchesWithoutUpstream = .loading
             unpushedBranches = .loading
             unmergedBranches = .loading
             stashCount = .loading
+            openPullRequests = .loading
+            openIssues = .loading
+            gitHubUnavailableReason = nil
         } else {
             branchesWithoutUpstream = .unavailable
             unpushedBranches = .unavailable
             unmergedBranches = .unavailable
             stashCount = .unavailable
+            openPullRequests = .unavailable
+            openIssues = .unavailable
+            gitHubUnavailableReason = nil
         }
 
         return RepositoryOverviewSnapshot(
@@ -111,6 +168,9 @@ struct RepositoryOverviewSnapshot: Equatable, Sendable {
             unpushedBranches: unpushedBranches,
             unmergedBranches: unmergedBranches,
             stashCount: stashCount,
+            openPullRequests: openPullRequests,
+            openIssues: openIssues,
+            gitHubUnavailableReason: gitHubUnavailableReason,
             historyCount: commitHistory.count,
             currentBranch: currentBranch.isEmpty ? nil : currentBranch,
             isDetachedHead: isDetachedHead,
@@ -131,6 +191,9 @@ struct RepositoryOverviewSnapshot: Equatable, Sendable {
         unpushedBranches: .unavailable,
         unmergedBranches: .unavailable,
         stashCount: .unavailable,
+        openPullRequests: .unavailable,
+        openIssues: .unavailable,
+        gitHubUnavailableReason: nil,
         historyCount: 0,
         currentBranch: nil,
         isDetachedHead: false,

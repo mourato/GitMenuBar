@@ -31,7 +31,7 @@ final class ProjectSeverityTests: XCTestCase {
             unmergedBranchCount: unmergedBranchCount,
             stashCount: 0,
             lastActivityAt: Date(),
-            pullRequests: []
+            gitHubStatus: .empty
         )
     }
 

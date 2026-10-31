@@ -1,6 +1,19 @@
 import Foundation
 
+struct GitHubPullRequestReadResult: Equatable, Sendable {
+    let pullRequests: [GitHubPullRequestSummary]
+    let openCount: Int?
+    let unavailableReason: GitHubStatusUnavailableReason?
+
+    static func unavailable(_ reason: GitHubStatusUnavailableReason) -> Self {
+        Self(pullRequests: [], openCount: nil, unavailableReason: reason)
+    }
+}
+
 struct GitHubPullRequestStatusReader {
+    private static let detailLimit = 20
+    private static let countLimit = 1000
+
     private struct RawPullRequest: Decodable {
         let number: Int
         let title: String
@@ -19,32 +32,41 @@ struct GitHubPullRequestStatusReader {
 
     let runner: GitCommandRunner
 
-    func read(projectPath: String) -> [GitHubPullRequestSummary] {
+    func read(projectPath: String) -> GitHubPullRequestReadResult {
         let remote = runner.runGitCommand(in: projectPath, args: ["remote", "get-url", "origin"])
-        guard !remote.failure, GitHubRemoteURLParser.parse(remote.output) != nil,
-              let ghPath = Self.githubCLIPath
-        else {
-            return []
+        guard !remote.failure, GitHubRemoteURLParser.parse(remote.output) != nil else {
+            return .unavailable(.notGitHubRemote)
+        }
+        guard let ghPath = Self.githubCLIPath else {
+            return .unavailable(.gitHubCLIMissing)
         }
 
         let result = runner.runCommand(
             in: projectPath,
             executable: ghPath,
             args: [
-                "pr", "list", "--state", "open", "--limit", "20",
+                "pr", "list", "--state", "open", "--limit", "\(Self.countLimit)",
                 "--json", "number,title,headRefName,isDraft,reviewDecision,statusCheckRollup,url"
             ],
             additionalEnvironment: ["GH_PROMPT_DISABLED": "1", "GH_PAGER": "cat"]
         )
-        guard !result.failure else { return [] }
-        return Self.parse(Data(result.output.utf8))
+        guard !result.failure,
+              let parsed = Self.parseStatus(Data(result.output.utf8))
+        else {
+            return .unavailable(.commandFailed)
+        }
+        return parsed
     }
 
     static func parse(_ data: Data) -> [GitHubPullRequestSummary] {
+        parseStatus(data)?.pullRequests ?? []
+    }
+
+    static func parseStatus(_ data: Data) -> GitHubPullRequestReadResult? {
         guard let rawPullRequests = try? JSONDecoder().decode([RawPullRequest].self, from: data) else {
-            return []
+            return nil
         }
-        return rawPullRequests.map { pullRequest in
+        let pullRequests = rawPullRequests.prefix(Self.detailLimit).map { pullRequest in
             GitHubPullRequestSummary(
                 number: pullRequest.number,
                 title: pullRequest.title,
@@ -55,6 +77,11 @@ struct GitHubPullRequestStatusReader {
                 url: pullRequest.url
             )
         }
+        return GitHubPullRequestReadResult(
+            pullRequests: Array(pullRequests),
+            openCount: rawPullRequests.count,
+            unavailableReason: nil
+        )
     }
 
     private static func reviewState(for value: String?) -> GitHubPullRequestReviewState {
