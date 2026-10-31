@@ -1,29 +1,46 @@
 import Foundation
 
 struct GitHubIssueReadResult: Equatable, Sendable {
-    let openCount: Int?
+    let openPullRequestCount: Int?
+    let openIssueCount: Int?
     let unavailableReason: GitHubStatusUnavailableReason?
 
     static func unavailable(_ reason: GitHubStatusUnavailableReason) -> Self {
-        Self(openCount: nil, unavailableReason: reason)
+        Self(openPullRequestCount: nil, openIssueCount: nil, unavailableReason: reason)
     }
 }
 
 struct GitHubIssueStatusReader {
-    private static let countLimit = 1000
-
-    private struct RawIssue: Decodable {
-        let number: Int
+    private struct RawGraphQLResponse: Decodable {
+        let data: RawGraphQLData?
+        let errors: [RawGraphQLError]?
     }
+
+    private struct RawGraphQLData: Decodable {
+        let repository: RawRepository?
+    }
+
+    private struct RawRepository: Decodable {
+        let pullRequests: RawCount
+        let issues: RawCount
+    }
+
+    private struct RawCount: Decodable {
+        let totalCount: Int
+    }
+
+    private struct RawGraphQLError: Decodable {}
+
+    private static let query = "query($owner:String!,$name:String!){repository(owner:$owner,name:$name){pullRequests(states:OPEN){totalCount} issues(states:OPEN){totalCount}}}"
 
     let runner: GitCommandRunner
 
     func read(projectPath: String) -> GitHubIssueReadResult {
         let remote = runner.runGitCommand(in: projectPath, args: ["remote", "get-url", "origin"])
-        guard !remote.failure, GitHubRemoteURLParser.parse(remote.output) != nil else {
+        guard !remote.failure, let reference = GitHubRemoteURLParser.parse(remote.output) else {
             return .unavailable(.notGitHubRemote)
         }
-        guard let ghPath = Self.githubCLIPath else {
+        guard let ghPath = GitHubPullRequestStatusReader.githubCLIPath else {
             return .unavailable(.gitHubCLIMissing)
         }
 
@@ -31,32 +48,34 @@ struct GitHubIssueStatusReader {
             in: projectPath,
             executable: ghPath,
             args: [
-                "issue", "list", "--state", "open", "--search", "is:issue", "--limit", "\(Self.countLimit)",
-                "--json", "number"
+                "api", "graphql",
+                "-F", "owner=\(reference.owner)",
+                "-F", "name=\(reference.repository)",
+                "-f", "query=\(Self.query)"
             ],
             additionalEnvironment: ["GH_PROMPT_DISABLED": "1", "GH_PAGER": "cat"]
         )
         guard !result.failure,
-              let openCount = Self.parse(Data(result.output.utf8))
+              let parsed = Self.parse(Data(result.output.utf8))
         else {
             return .unavailable(.commandFailed)
         }
-        return GitHubIssueReadResult(openCount: openCount, unavailableReason: nil)
+        return parsed
     }
 
-    static func parse(_ data: Data) -> Int? {
-        guard let issues = try? JSONDecoder().decode([RawIssue].self, from: data) else {
+    static func parse(_ data: Data) -> GitHubIssueReadResult? {
+        guard let response = try? JSONDecoder().decode(RawGraphQLResponse.self, from: data),
+              response.errors?.isEmpty ?? true,
+              let repository = response.data?.repository,
+              repository.pullRequests.totalCount >= 0,
+              repository.issues.totalCount >= 0
+        else {
             return nil
         }
-        return issues.count
-    }
-
-    private static var githubCLIPath: String? {
-        let pathEntries = (ProcessInfo.processInfo.environment["PATH"] ?? "")
-            .split(separator: ":", omittingEmptySubsequences: true)
-            .map { "\($0)/gh" }
-        let candidates = ["/opt/homebrew/bin/gh", "/usr/local/bin/gh", "/usr/bin/gh"] + pathEntries
-        return candidates
-            .first(where: FileManager.default.isExecutableFile(atPath:))
+        return GitHubIssueReadResult(
+            openPullRequestCount: repository.pullRequests.totalCount,
+            openIssueCount: repository.issues.totalCount,
+            unavailableReason: nil
+        )
     }
 }

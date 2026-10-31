@@ -100,7 +100,7 @@ final class ProjectStatusReaderTests: XCTestCase {
         XCTAssertEqual(result[1].statusSummary, "Draft · Changes requested · CI failing")
     }
 
-    func testParsesGitHubPullRequestCountAndCapsDetailsAtTwenty() throws {
+    func testCapsGitHubPullRequestDetailsAtTwenty() throws {
         let data = try XCTUnwrap(
             JSONSerialization.data(withJSONObject: (0 ..< 21).map { number in
                 [
@@ -114,35 +114,41 @@ final class ProjectStatusReaderTests: XCTestCase {
                 ]
             })
         )
-
         let result = try XCTUnwrap(GitHubPullRequestStatusReader.parseStatus(data))
-
-        XCTAssertEqual(result.openCount, 21)
         XCTAssertEqual(result.pullRequests.count, 20)
         XCTAssertEqual(result.pullRequests.last?.number, 19)
-        XCTAssertEqual(GitHubPullRequestStatusReader.parseStatus(Data("[]".utf8))?.openCount, 0)
+        XCTAssertEqual(GitHubPullRequestStatusReader.parseStatus(Data("[]".utf8))?.pullRequests, [])
         XCTAssertNil(GitHubPullRequestStatusReader.parseStatus(Data("malformed".utf8)))
     }
 
-    func testParsesGitHubIssueCountAndRejectsMalformedJSON() {
-        XCTAssertEqual(GitHubIssueStatusReader.parse(Data("[{\"number\": 1}, {\"number\": 2}]".utf8)), 2)
-        XCTAssertEqual(GitHubIssueStatusReader.parse(Data("[]".utf8)), 0)
-        XCTAssertNil(GitHubIssueStatusReader.parse(Data("malformed".utf8)))
+    func testParsesGitHubGraphQLCountsAndRejectsInvalidResponses() throws {
+        let result = try XCTUnwrap(
+            GitHubIssueStatusReader.parse(
+                Data("{\"data\":{\"repository\":{\"pullRequests\":{\"totalCount\":7},\"issues\":{\"totalCount\":11}}}}".utf8)
+            )
+        )
+        XCTAssertEqual(result.openPullRequestCount, 7)
+        XCTAssertEqual(result.openIssueCount, 11)
+        XCTAssertNil(result.unavailableReason)
+        for invalid in [
+            "{\"errors\":[{\"message\":\"rate limit\"}],\"data\":null}",
+            "{\"data\":{\"repository\":null}}",
+            "malformed"
+        ] {
+            XCTAssertNil(GitHubIssueStatusReader.parse(Data(invalid.utf8)))
+        }
     }
 
-    func testCombinesGitHubAvailabilityReasons() {
+    func testCombinesGitHubAvailabilityReasonsAndCounts() {
         let pullRequests = GitHubPullRequestReadResult.unavailable(.notGitHubRemote)
-        let issues = GitHubIssueReadResult(openCount: nil, unavailableReason: .commandFailed)
-
+        let issues = GitHubIssueReadResult(openPullRequestCount: nil, openIssueCount: nil, unavailableReason: .commandFailed)
         XCTAssertEqual(
             ProjectStatusReader.combine(pullRequestStatus: pullRequests, issueStatus: issues).unavailableReason,
             .notGitHubRemote
         )
 
-        let availablePullRequests = GitHubPullRequestReadResult(
-            pullRequests: [], openCount: 0, unavailableReason: nil
-        )
-        let missingCLI = GitHubIssueReadResult(openCount: nil, unavailableReason: .gitHubCLIMissing)
+        let availablePullRequests = GitHubPullRequestReadResult(pullRequests: [], unavailableReason: nil)
+        let missingCLI = GitHubIssueReadResult(openPullRequestCount: nil, openIssueCount: nil, unavailableReason: .gitHubCLIMissing)
         XCTAssertEqual(
             ProjectStatusReader.combine(
                 pullRequestStatus: availablePullRequests,
@@ -150,6 +156,47 @@ final class ProjectStatusReaderTests: XCTestCase {
             ).unavailableReason,
             .gitHubCLIMissing
         )
+        let counts = ProjectStatusReader.combine(
+            pullRequestStatus: GitHubPullRequestReadResult(pullRequests: [], unavailableReason: nil),
+            issueStatus: GitHubIssueReadResult(
+                openPullRequestCount: 7, openIssueCount: 11, unavailableReason: nil
+            )
+        )
+        XCTAssertEqual(counts.openPullRequestCount, 7)
+        XCTAssertEqual(counts.openIssueCount, 11)
+        XCTAssertNil(counts.unavailableReason)
+    }
+
+    func testPartialGitHubFailureKeepsDetailsAndHidesCounts() {
+        let pullRequest = GitHubPullRequestSummary(
+            number: 7,
+            title: "Open pull request",
+            headBranch: "feature/counts",
+            isDraft: false,
+            reviewState: .reviewRequired,
+            checksState: .pending,
+            url: "https://github.com/example/project/pull/7"
+        )
+        let pullRequests = GitHubPullRequestReadResult(pullRequests: [pullRequest], unavailableReason: nil)
+        let failedCounts = GitHubIssueReadResult.unavailable(.commandFailed)
+        let result = ProjectStatusReader.combine(
+            pullRequestStatus: pullRequests,
+            issueStatus: failedCounts
+        )
+        XCTAssertEqual(result.pullRequests, [pullRequest])
+        XCTAssertNil(result.openPullRequestCount)
+        XCTAssertNil(result.openIssueCount)
+        XCTAssertEqual(result.unavailableReason, .commandFailed)
+        let reverseResult = ProjectStatusReader.combine(
+            pullRequestStatus: .unavailable(.commandFailed),
+            issueStatus: GitHubIssueReadResult(
+                openPullRequestCount: 7, openIssueCount: 11, unavailableReason: nil
+            )
+        )
+        XCTAssertEqual(reverseResult.pullRequests, [])
+        XCTAssertNil(reverseResult.openPullRequestCount)
+        XCTAssertNil(reverseResult.openIssueCount)
+        XCTAssertEqual(reverseResult.unavailableReason, .commandFailed)
     }
 
     func testCountsNonEmptyBranchAndStashLines() {

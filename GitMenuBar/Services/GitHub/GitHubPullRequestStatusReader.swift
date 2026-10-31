@@ -2,17 +2,15 @@ import Foundation
 
 struct GitHubPullRequestReadResult: Equatable, Sendable {
     let pullRequests: [GitHubPullRequestSummary]
-    let openCount: Int?
     let unavailableReason: GitHubStatusUnavailableReason?
 
     static func unavailable(_ reason: GitHubStatusUnavailableReason) -> Self {
-        Self(pullRequests: [], openCount: nil, unavailableReason: reason)
+        Self(pullRequests: [], unavailableReason: reason)
     }
 }
 
 struct GitHubPullRequestStatusReader {
     private static let detailLimit = 20
-    private static let countLimit = 1000
 
     private struct RawPullRequest: Decodable {
         let number: Int
@@ -45,7 +43,7 @@ struct GitHubPullRequestStatusReader {
             in: projectPath,
             executable: ghPath,
             args: [
-                "pr", "list", "--state", "open", "--limit", "\(Self.countLimit)",
+                "pr", "list", "--state", "open", "--limit", "\(Self.detailLimit)",
                 "--json", "number,title,headRefName,isDraft,reviewDecision,statusCheckRollup,url"
             ],
             additionalEnvironment: ["GH_PROMPT_DISABLED": "1", "GH_PAGER": "cat"]
@@ -79,7 +77,6 @@ struct GitHubPullRequestStatusReader {
         }
         return GitHubPullRequestReadResult(
             pullRequests: Array(pullRequests),
-            openCount: rawPullRequests.count,
             unavailableReason: nil
         )
     }
@@ -119,7 +116,7 @@ struct GitHubPullRequestStatusReader {
         return .unknown
     }
 
-    private static var githubCLIPath: String? {
+    static var githubCLIPath: String? {
         let pathEntries = (ProcessInfo.processInfo.environment["PATH"] ?? "")
             .split(separator: ":", omittingEmptySubsequences: true)
             .map { "\($0)/gh" }

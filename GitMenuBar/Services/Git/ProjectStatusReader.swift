@@ -226,11 +226,13 @@ struct ProjectStatusReader {
         pullRequestStatus: GitHubPullRequestReadResult,
         issueStatus: GitHubIssueReadResult
     ) -> GitHubProjectStatus {
-        GitHubProjectStatus(
+        let unavailableReason = pullRequestStatus.unavailableReason ?? issueStatus.unavailableReason
+        let countsAvailable = unavailableReason == nil
+        return GitHubProjectStatus(
             pullRequests: pullRequestStatus.pullRequests,
-            openPullRequestCount: pullRequestStatus.openCount,
-            openIssueCount: issueStatus.openCount,
-            unavailableReason: pullRequestStatus.unavailableReason ?? issueStatus.unavailableReason
+            openPullRequestCount: countsAvailable ? issueStatus.openPullRequestCount : nil,
+            openIssueCount: countsAvailable ? issueStatus.openIssueCount : nil,
+            unavailableReason: unavailableReason
         )
     }
 
