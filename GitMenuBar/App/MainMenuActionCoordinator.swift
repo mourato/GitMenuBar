@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 
@@ -60,6 +61,20 @@ enum MainMenuSidePanelActionResult: Equatable {
     case skipped
     case succeeded
     case failed
+}
+
+enum MainMenuGitHubDestination {
+    case pullRequests
+    case issues
+
+    var pathComponent: String {
+        switch self {
+        case .pullRequests:
+            "pulls"
+        case .issues:
+            "issues"
+        }
+    }
 }
 
 enum MainMenuDialogMutationResult: Equatable {
@@ -133,6 +148,20 @@ final class MainMenuActionCoordinator {
 
     var canSync: Bool {
         hasSyncWork && !hasWorkingTreeChanges && !isBusy
+    }
+
+    var canOpenGitHubPage: Bool {
+        GitHubRemoteURLParser.parse(gitManager.remoteUrl) != nil
+    }
+
+    func openGitHubPage(_ destination: MainMenuGitHubDestination) {
+        guard let reference = GitHubRemoteURLParser.parse(gitManager.remoteUrl),
+              let url = URL(string: "https://github.com/\(reference.owner)/\(reference.repository)/\(destination.pathComponent)")
+        else {
+            return
+        }
+
+        NSWorkspace.shared.open(url)
     }
 
     func clearAlert() {
