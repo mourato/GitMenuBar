@@ -457,12 +457,11 @@ private struct RepositoryOverviewColumnView: View {
     private var valueRow: some View {
         HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.microSpacing) {
             valueText
-            if !metric.qualifier.isEmpty {
-                Text(metric.qualifier)
-                    .font(WorkbenchTypography.caption)
-                    .foregroundStyle(qualifierForegroundStyle)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+            // Show the qualifier whole or not at all; the tooltip keeps the detail.
+            ViewThatFits(in: .horizontal) {
+                Text(metric.qualifier).font(WorkbenchTypography.caption).foregroundStyle(qualifierForegroundStyle)
+                    .lineLimit(1).fixedSize()
+                Color.clear.frame(width: 0, height: 0)
             }
         }
     }
