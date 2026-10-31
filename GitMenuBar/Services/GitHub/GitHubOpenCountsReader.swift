@@ -1,6 +1,6 @@
 import Foundation
 
-struct GitHubIssueReadResult: Equatable, Sendable {
+struct GitHubOpenCountsReadResult: Equatable, Sendable {
     let openPullRequestCount: Int?
     let openIssueCount: Int?
     let unavailableReason: GitHubStatusUnavailableReason?
@@ -10,7 +10,7 @@ struct GitHubIssueReadResult: Equatable, Sendable {
     }
 }
 
-struct GitHubIssueStatusReader {
+struct GitHubOpenCountsReader {
     private struct RawGraphQLResponse: Decodable {
         let data: RawGraphQLData?
         let errors: [RawGraphQLError]?
@@ -35,7 +35,7 @@ struct GitHubIssueStatusReader {
 
     let runner: GitCommandRunner
 
-    func read(projectPath: String) -> GitHubIssueReadResult {
+    func read(projectPath: String) -> GitHubOpenCountsReadResult {
         let remote = runner.runGitCommand(in: projectPath, args: ["remote", "get-url", "origin"])
         guard !remote.failure, let reference = GitHubRemoteURLParser.parse(remote.output) else {
             return .unavailable(.notGitHubRemote)
@@ -63,7 +63,7 @@ struct GitHubIssueStatusReader {
         return parsed
     }
 
-    static func parse(_ data: Data) -> GitHubIssueReadResult? {
+    static func parse(_ data: Data) -> GitHubOpenCountsReadResult? {
         guard let response = try? JSONDecoder().decode(RawGraphQLResponse.self, from: data),
               response.errors?.isEmpty ?? true,
               let repository = response.data?.repository,
@@ -72,7 +72,7 @@ struct GitHubIssueStatusReader {
         else {
             return nil
         }
-        return GitHubIssueReadResult(
+        return GitHubOpenCountsReadResult(
             openPullRequestCount: repository.pullRequests.totalCount,
             openIssueCount: repository.issues.totalCount,
             unavailableReason: nil

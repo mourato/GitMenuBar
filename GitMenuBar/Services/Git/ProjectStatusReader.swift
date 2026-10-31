@@ -224,22 +224,22 @@ struct ProjectStatusReader {
 
     static func combine(
         pullRequestStatus: GitHubPullRequestReadResult,
-        issueStatus: GitHubIssueReadResult
+        countsStatus: GitHubOpenCountsReadResult
     ) -> GitHubProjectStatus {
-        let unavailableReason = pullRequestStatus.unavailableReason ?? issueStatus.unavailableReason
+        let unavailableReason = pullRequestStatus.unavailableReason ?? countsStatus.unavailableReason
         let countsAvailable = unavailableReason == nil
         return GitHubProjectStatus(
             pullRequests: pullRequestStatus.pullRequests,
-            openPullRequestCount: countsAvailable ? issueStatus.openPullRequestCount : nil,
-            openIssueCount: countsAvailable ? issueStatus.openIssueCount : nil,
+            openPullRequestCount: countsAvailable ? countsStatus.openPullRequestCount : nil,
+            openIssueCount: countsAvailable ? countsStatus.openIssueCount : nil,
             unavailableReason: unavailableReason
         )
     }
 
     private func readGitHubStatus(projectPath: String) -> GitHubProjectStatus {
         let pullRequestStatus = GitHubPullRequestStatusReader(runner: runner).read(projectPath: projectPath)
-        let issueStatus = GitHubIssueStatusReader(runner: runner).read(projectPath: projectPath)
-        return Self.combine(pullRequestStatus: pullRequestStatus, issueStatus: issueStatus)
+        let countsStatus = GitHubOpenCountsReader(runner: runner).read(projectPath: projectPath)
+        return Self.combine(pullRequestStatus: pullRequestStatus, countsStatus: countsStatus)
     }
 
     private func readBranchHealth(projectPath: String, currentBranch: String) -> BranchHealth {

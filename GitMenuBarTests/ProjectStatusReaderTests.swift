@@ -123,7 +123,7 @@ final class ProjectStatusReaderTests: XCTestCase {
 
     func testParsesGitHubGraphQLCountsAndRejectsInvalidResponses() throws {
         let result = try XCTUnwrap(
-            GitHubIssueStatusReader.parse(
+            GitHubOpenCountsReader.parse(
                 Data("{\"data\":{\"repository\":{\"pullRequests\":{\"totalCount\":7},\"issues\":{\"totalCount\":11}}}}".utf8)
             )
         )
@@ -135,30 +135,30 @@ final class ProjectStatusReaderTests: XCTestCase {
             "{\"data\":{\"repository\":null}}",
             "malformed"
         ] {
-            XCTAssertNil(GitHubIssueStatusReader.parse(Data(invalid.utf8)))
+            XCTAssertNil(GitHubOpenCountsReader.parse(Data(invalid.utf8)))
         }
     }
 
     func testCombinesGitHubAvailabilityReasonsAndCounts() {
         let pullRequests = GitHubPullRequestReadResult.unavailable(.notGitHubRemote)
-        let issues = GitHubIssueReadResult(openPullRequestCount: nil, openIssueCount: nil, unavailableReason: .commandFailed)
+        let issues = GitHubOpenCountsReadResult(openPullRequestCount: nil, openIssueCount: nil, unavailableReason: .commandFailed)
         XCTAssertEqual(
-            ProjectStatusReader.combine(pullRequestStatus: pullRequests, issueStatus: issues).unavailableReason,
+            ProjectStatusReader.combine(pullRequestStatus: pullRequests, countsStatus: issues).unavailableReason,
             .notGitHubRemote
         )
 
         let availablePullRequests = GitHubPullRequestReadResult(pullRequests: [], unavailableReason: nil)
-        let missingCLI = GitHubIssueReadResult(openPullRequestCount: nil, openIssueCount: nil, unavailableReason: .gitHubCLIMissing)
+        let missingCLI = GitHubOpenCountsReadResult(openPullRequestCount: nil, openIssueCount: nil, unavailableReason: .gitHubCLIMissing)
         XCTAssertEqual(
             ProjectStatusReader.combine(
                 pullRequestStatus: availablePullRequests,
-                issueStatus: missingCLI
+                countsStatus: missingCLI
             ).unavailableReason,
             .gitHubCLIMissing
         )
         let counts = ProjectStatusReader.combine(
             pullRequestStatus: GitHubPullRequestReadResult(pullRequests: [], unavailableReason: nil),
-            issueStatus: GitHubIssueReadResult(
+            countsStatus: GitHubOpenCountsReadResult(
                 openPullRequestCount: 7, openIssueCount: 11, unavailableReason: nil
             )
         )
@@ -178,10 +178,10 @@ final class ProjectStatusReaderTests: XCTestCase {
             url: "https://github.com/example/project/pull/7"
         )
         let pullRequests = GitHubPullRequestReadResult(pullRequests: [pullRequest], unavailableReason: nil)
-        let failedCounts = GitHubIssueReadResult.unavailable(.commandFailed)
+        let failedCounts = GitHubOpenCountsReadResult.unavailable(.commandFailed)
         let result = ProjectStatusReader.combine(
             pullRequestStatus: pullRequests,
-            issueStatus: failedCounts
+            countsStatus: failedCounts
         )
         XCTAssertEqual(result.pullRequests, [pullRequest])
         XCTAssertNil(result.openPullRequestCount)
@@ -189,7 +189,7 @@ final class ProjectStatusReaderTests: XCTestCase {
         XCTAssertEqual(result.unavailableReason, .commandFailed)
         let reverseResult = ProjectStatusReader.combine(
             pullRequestStatus: .unavailable(.commandFailed),
-            issueStatus: GitHubIssueReadResult(
+            countsStatus: GitHubOpenCountsReadResult(
                 openPullRequestCount: 7, openIssueCount: 11, unavailableReason: nil
             )
         )
