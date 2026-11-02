@@ -6,6 +6,9 @@ language mode, Swift 6.4 compiler.
 Commands: [Makefile](Makefile) is canonical. Run `make guidance-check` after
 changing plans, routing, or skill metadata.
 
+Run and release: `make install-app` builds the current checkout or worktree
+and launches it. No deploy; a release is a manual `make dmg`.
+
 Project facts for global skills live in this file and in the `docs/agents/` files linked below.
 
 ## Execution Policy
