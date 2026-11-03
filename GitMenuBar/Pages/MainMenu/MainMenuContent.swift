@@ -258,9 +258,6 @@ extension MainMenuView {
             }
         case .branchSelector:
             toggleBranchSelectorPresentation()
-        case .toolbarCommit:
-            guard hasWorkingTreeChanges else { return }
-            workspace.selectedSidePanelSelection = .workingTree
         case .atomicCommits:
             startAtomicCommitFlow()
         }

@@ -7,7 +7,6 @@ enum MainMenuShortcutAction: Equatable {
     case atomicCommits
     case fetch
     case branchSelector
-    case toolbarCommit
 }
 
 @MainActor

@@ -84,17 +84,9 @@ toolbar holds the sidebar toggle, Back, and the repository actions from ADR
 0020. The repository title is a toolbar item, followed by the secondary
 ahead/behind status and a branch chip that opens the branch selector. History
 date headers show the day's commit count. A flexible space
-pushes the actions to the trailing edge: Fetch, Sync (only when ahead or
-behind), and Commit (opens the Working Tree side panel). Commit is the
-primary action and uses the prominent, accent-tinted toolbar style with a
-neutral count (`Commit (N)`) rather than an alarming red notification badge.
-N is the number of files the next commit includes: the staged files, or every
-change when nothing is staged. It always matches the Working Tree commit
-button. While the Working Tree
-side panel is open, the Commit toolbar item is hidden so that the commit
-action remains focused as the single primary action inside the panel; closing
-the panel or opening another contextual panel restores the Commit toolbar item
-according to pending changes or active busy state.
+pushes Fetch and Sync (only when ahead or behind) to the trailing edge. The
+Changes metric opens the Working Tree side panel, where the commit composer
+owns the primary Commit action. The toolbar does not duplicate that action.
 
 The status item remains the single app-shell owner. Left click opens the main
 GitMenuBar window. Right click and Control-click show only `AI Usage Quotas`,

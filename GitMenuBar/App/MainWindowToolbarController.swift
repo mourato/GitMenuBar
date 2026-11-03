@@ -10,7 +10,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
     private static let aheadBehindIdentifier = NSToolbarItem.Identifier("GitMenuBar.aheadBehind")
     private static let fetchIdentifier = NSToolbarItem.Identifier("GitMenuBar.fetch")
     private static let syncIdentifier = NSToolbarItem.Identifier("GitMenuBar.sync")
-    private static let commitIdentifier = NSToolbarItem.Identifier("GitMenuBar.commit")
 
     private weak var target: StatusBarController?
     private weak var window: NSWindow?
@@ -109,8 +108,7 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
             Self.branchPickerIdentifier,
             Self.aheadBehindIdentifier,
             Self.fetchIdentifier,
-            Self.syncIdentifier,
-            Self.commitIdentifier
+            Self.syncIdentifier
         ]
     }
 
@@ -175,7 +173,7 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         let accessibilityLabel = accessibilityLabel(for: repositoryItem, state: state)
         let visibleLabel = visibleLabel(for: repositoryItem, state: state)
         item.label = visibleLabel
-        item.paletteLabel = repositoryItem == .commit ? state.commitTitle : visibleLabel
+        item.paletteLabel = visibleLabel
         item.title = visibleLabel
         item.toolTip = toolTip(for: repositoryItem, state: state)
         item.image = image(for: repositoryItem, accessibilityLabel: accessibilityLabel)
@@ -183,7 +181,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         item.action = nil
         item.view = nil
         item.isBordered = false
-        clearBadge(from: item)
 
         if state.isBusy, state.busyItem == repositoryItem {
             item.toolTip = state.progressAccessibilityLabel ?? item.toolTip
@@ -225,18 +222,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
                 target: target,
                 isEnabled: state.isSyncEnabled
             )
-        case .commit:
-            configureStandardItem(
-                item,
-                action: #selector(StatusBarController.selectWorkingTreeFromToolbar(_:)),
-                target: target,
-                isEnabled: state.isCommitEnabled
-            )
-            clearBadge(from: item)
-            if #available(macOS 26.0, *) {
-                // Primary action: tinted with the system accent color.
-                item.style = .prominent
-            }
         }
     }
 
@@ -320,8 +305,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
             state.fetchTitle
         case .sync:
             state.syncTitle
-        case .commit:
-            state.commitItemTitle
         }
     }
 
@@ -338,8 +321,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
             state.fetchAccessibilityLabel
         case .sync:
             state.syncToolTip
-        case .commit:
-            state.commitAccessibilityLabel
         }
     }
 
@@ -356,17 +337,9 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
             "arrow.triangle.2.circlepath"
         case .sync:
             "arrow.2.circlepath"
-        case .commit:
-            "checkmark"
         }
         guard let imageName else { return nil }
         return NSImage(systemSymbolName: imageName, accessibilityDescription: accessibilityLabel)
-    }
-
-    private func clearBadge(from item: NSToolbarItem) {
-        if #available(macOS 26.0, *) {
-            item.badge = nil
-        }
     }
 
     private func makeProgressView(accessibilityLabel: String) -> NSProgressIndicator {
@@ -392,8 +365,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
             state.fetchAccessibilityLabel
         case .sync:
             state.syncAccessibilityLabel
-        case .commit:
-            state.commitAccessibilityLabel
         }
     }
 
@@ -407,8 +378,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
             fetchIdentifier
         case .sync:
             syncIdentifier
-        case .commit:
-            commitIdentifier
         }
     }
 
@@ -422,8 +391,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
             .fetch
         case Self.syncIdentifier:
             .sync
-        case Self.commitIdentifier:
-            .commit
         default:
             nil
         }

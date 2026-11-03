@@ -155,9 +155,6 @@ final class MainWindowController: NSWindowController {
             sync: syncSheetState,
             onBranchSelectorPresentationChanged: { [weak self] isPresented in
                 self?.mainWindowToolbarController?.setBranchSelectorPopoverPresented(isPresented)
-            },
-            onWorkingTreePresentationChanged: { [weak statusBarController] isPresented in
-                statusBarController?.setWorkingTreePresented(isPresented)
             }
         )
         .environment(statusBarController.gitManager)
