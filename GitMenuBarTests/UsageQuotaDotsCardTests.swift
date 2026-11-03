@@ -29,6 +29,70 @@ final class UsageQuotaDotsCardTests: XCTestCase {
         XCTAssertEqual(level(remaining: 15), .error)
     }
 
+    func testWeeklyZeroRowIsAlwaysErrorLevel() {
+        let row = UsageQuotaDotsCard.RowData(
+            title: "Weekly",
+            countdown: nil,
+            remainingPercent: 0,
+            thresholds: [],
+            kind: .weekly
+        )
+
+        XCTAssertTrue(row.isExhausted)
+        XCTAssertEqual(row.alertLevel, .error)
+    }
+
+    @MainActor
+    func testMenuReadingNamesAnExhaustedWeeklyQuota() throws {
+        let suiteName = "UsageQuotaDotsCardTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        let snapshot = UsageQuotaSnapshot(
+            providerID: .antigravity,
+            displayName: "Antigravity",
+            sessionWindow: nil,
+            weeklyWindow: UsageWindow(
+                remainingPercent: 0,
+                resetAt: nil,
+                label: "Weekly",
+                durationSeconds: 7 * 86400
+            ),
+            isAvailable: true
+        )
+
+        let reading = try XCTUnwrap(
+            UsageQuotaMenuPresentation.value(
+                for: .weekly,
+                snapshot: snapshot,
+                valueStyle: preferences.valueStyle
+            )
+        )
+
+        XCTAssertEqual(reading.value, "Exhausted")
+        XCTAssertEqual(reading.compactValue, "Exhausted")
+    }
+
+    @MainActor
+    func testModelOnlyProviderAppearsInMenuBar() throws {
+        let suiteName = "UsageQuotaDotsCardTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        let snapshot = UsageQuotaSnapshot(
+            providerID: .antigravity,
+            displayName: "Antigravity",
+            sessionWindow: nil,
+            weeklyWindow: nil,
+            modelWindows: [UsageWindow(remainingPercent: 45, resetAt: nil, label: "Gemini")],
+            isAvailable: true
+        )
+
+        let group = try XCTUnwrap(UsageQuotaMenuPresentation.groups(snapshots: [snapshot], preferences: preferences)
+            .first { $0.providerID == .antigravity })
+        XCTAssertEqual(group.fractions, [0.45])
+    }
+
     func testPillText() {
         XCTAssertEqual(
             UsageQuotaDotsCard.pillText(plan: "Pro", intervalChip: "5h", resetCredits: 3),

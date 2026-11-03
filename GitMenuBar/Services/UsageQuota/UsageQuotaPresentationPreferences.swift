@@ -8,6 +8,7 @@ final class UsageQuotaPresentationPreferences {
     enum MeterStyle: String, CaseIterable, Identifiable {
         case text
         case bars
+        case circular
 
         var id: String {
             rawValue
@@ -19,6 +20,8 @@ final class UsageQuotaPresentationPreferences {
                 "Text"
             case .bars:
                 "Bars"
+            case .circular:
+                "Circular"
             }
         }
     }

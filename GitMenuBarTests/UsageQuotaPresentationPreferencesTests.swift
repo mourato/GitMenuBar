@@ -32,6 +32,24 @@ final class UsageQuotaPresentationPreferencesTests: XCTestCase {
         XCTAssertEqual(restored.orderedProviderIDs.first, .cursor)
     }
 
+    func testPersistsCircularMeterStyle() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.meterStyle = .circular
+
+        let restored = UsageQuotaPresentationPreferences(defaults: defaults)
+
+        XCTAssertEqual(restored.meterStyle, .circular)
+    }
+
+    func testUnknownMeterStyleKeepsTextCompatibilityDefault() {
+        defaults.set("future-style", forKey: AppPreferences.Keys.usageQuotaMenuBarStyle)
+
+        XCTAssertEqual(
+            UsageQuotaPresentationPreferences(defaults: defaults).meterStyle,
+            .text
+        )
+    }
+
     func testPersistsMenuBarVisibility() {
         let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
         preferences.menuBarVisibility = .menuOnly

@@ -70,6 +70,12 @@ struct UsageWindow: Codable, Equatable, Sendable {
     }
 }
 
+enum UsageQuotaWindowKind: Hashable, Sendable {
+    case session
+    case weekly
+    case model
+}
+
 /// One redeemable Codex limit reset, with the date it stops being redeemable.
 struct UsageQuotaResetCredit: Codable, Equatable, Identifiable, Sendable {
     let id: String
@@ -268,6 +274,40 @@ enum UsageQuotaPlanNaming {
 }
 
 enum UsageQuotaFormatting {
+    static func isWeeklyExhausted(
+        remainingPercent: Int,
+        kind: UsageQuotaWindowKind
+    ) -> Bool {
+        kind == .weekly && remainingPercent == 0
+    }
+
+    static func displayPercent(remainingPercent: Int, showUsed: Bool) -> Int {
+        showUsed ? 100 - remainingPercent : remainingPercent
+    }
+
+    static func displayValueText(
+        remainingPercent: Int,
+        kind: UsageQuotaWindowKind,
+        showUsed: Bool
+    ) -> String {
+        if isWeeklyExhausted(remainingPercent: remainingPercent, kind: kind) {
+            return "Exhausted"
+        }
+        let percent = displayPercent(remainingPercent: remainingPercent, showUsed: showUsed)
+        return "\(percent)% \(showUsed ? "used" : "left")"
+    }
+
+    static func compactDisplayValueText(
+        remainingPercent: Int,
+        kind: UsageQuotaWindowKind,
+        showUsed: Bool
+    ) -> String {
+        if isWeeklyExhausted(remainingPercent: remainingPercent, kind: kind) {
+            return "Exhausted"
+        }
+        return "\(displayPercent(remainingPercent: remainingPercent, showUsed: showUsed))%"
+    }
+
     static func remainingPercent(fromUsed used: Double) -> Int {
         max(0, min(100, Int((100 - used).rounded())))
     }

@@ -144,7 +144,7 @@ final class AntigravityUsageTests: XCTestCase {
         XCTAssertEqual(snapshot.weeklyWindow?.durationSeconds, 604_800)
     }
 
-    func testAntigravitySnapshotMapsGeminiAndClaudeGptWindows() {
+    func testAntigravitySnapshotKeepsPerModelQuotaOutOfWeeklyWindow() {
         let geminiQuota = AntigravityUsageParsing.ModelQuota(
             label: "Gemini 2.5 Flash",
             modelId: "gemini-2.5-flash",
@@ -163,12 +163,34 @@ final class AntigravityUsageTests: XCTestCase {
         XCTAssertEqual(snapshot.providerID, .antigravity)
         XCTAssertEqual(snapshot.displayName, "Antigravity")
         XCTAssertTrue(snapshot.isAvailable)
-        XCTAssertEqual(snapshot.sessionWindow?.remainingPercent, 70)
-        XCTAssertEqual(snapshot.sessionWindow?.label, "Gemini")
-        XCTAssertEqual(snapshot.sessionWindow?.durationSeconds, 18000)
-        XCTAssertEqual(snapshot.weeklyWindow?.remainingPercent, 45)
-        XCTAssertEqual(snapshot.weeklyWindow?.label, "Claude/GPT")
-        XCTAssertEqual(snapshot.weeklyWindow?.durationSeconds, 604_800)
+        XCTAssertNil(snapshot.sessionWindow)
+        XCTAssertNil(snapshot.weeklyWindow)
+        XCTAssertEqual(snapshot.modelWindows.map(\.label), ["Gemini 2.5 Flash", "Claude 3.7 Sonnet"])
+        XCTAssertEqual(snapshot.modelWindows.map(\.remainingPercent), [70, 45])
+    }
+
+    func testAntigravitySnapshotUsesOnlyExplicitWeeklyBucketForWeeklyWindow() {
+        let modelQuota = AntigravityUsageParsing.ModelQuota(
+            label: "Gemini 2.5 Flash",
+            modelId: "gemini-2.5-flash",
+            remainingFraction: 0,
+            resetAt: nil
+        )
+        let weeklyQuota = AntigravityUsageParsing.ModelQuota(
+            label: "Shared weekly limit",
+            modelId: "shared-limit",
+            remainingFraction: 0,
+            resetAt: nil,
+            window: "weekly"
+        )
+
+        let modelOnlySnapshot = AntigravityUsageParsing.snapshot(from: [modelQuota])
+        XCTAssertNil(modelOnlySnapshot.weeklyWindow)
+        XCTAssertEqual(modelOnlySnapshot.modelWindows.first?.remainingPercent, 0)
+
+        let explicitWeeklySnapshot = AntigravityUsageParsing.snapshot(from: [weeklyQuota])
+        XCTAssertEqual(explicitWeeklySnapshot.weeklyWindow?.remainingPercent, 0)
+        XCTAssertTrue(explicitWeeklySnapshot.modelWindows.isEmpty)
     }
 
     func testAntigravityCSRFTokenExtraction() {

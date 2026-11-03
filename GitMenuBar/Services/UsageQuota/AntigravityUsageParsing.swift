@@ -28,19 +28,24 @@ enum AntigravityUsageParsing {
         let remainingFraction: Double
         let resetAt: Date?
         let isDisabled: Bool
+        /// Existing CLI bucket metadata when the provider reports a window kind.
+        /// Model-config endpoints leave this nil because they only report model quota.
+        let window: String?
 
         init(
             label: String,
             modelId: String,
             remainingFraction: Double,
             resetAt: Date?,
-            isDisabled: Bool = false
+            isDisabled: Bool = false,
+            window: String? = nil
         ) {
             self.label = label
             self.modelId = modelId
             self.remainingFraction = remainingFraction
             self.resetAt = resetAt
             self.isDisabled = isDisabled
+            self.window = window
         }
 
         var percentLeft: Int {
@@ -285,7 +290,8 @@ enum AntigravityUsageParsing {
                     modelId: modelId,
                     remainingFraction: fraction,
                     resetAt: resetDate,
-                    isDisabled: bucket.disabled ?? false
+                    isDisabled: bucket.disabled ?? false,
+                    window: bucket.window
                 ))
             }
         }
@@ -310,7 +316,8 @@ enum AntigravityUsageParsing {
                 modelId: modelId,
                 remainingFraction: fraction,
                 resetAt: resetDate,
-                isDisabled: bucket.disabled ?? false
+                isDisabled: bucket.disabled ?? false,
+                window: bucket.window
             )
         }
     }
@@ -334,16 +341,6 @@ enum AntigravityUsageParsing {
 
     // MARK: - Model Classification
 
-    static func isGeminiModel(modelId: String, label: String) -> Bool {
-        let combined = "\(modelId) \(label)".lowercased()
-        return combined.contains("gemini")
-    }
-
-    static func isClaudeOrGPTModel(modelId: String, label: String) -> Bool {
-        let combined = "\(modelId) \(label)".lowercased()
-        return combined.contains("claude") || combined.contains("gpt") || combined.contains("openai")
-    }
-
     static func isSessionQuota(modelId: String, label: String) -> Bool {
         let combined = "\(modelId) \(label)".lowercased()
         return combined.contains("5h")
@@ -352,9 +349,23 @@ enum AntigravityUsageParsing {
             || combined.contains("session")
     }
 
+    static func isSessionQuota(_ quota: ModelQuota) -> Bool {
+        isSessionQuota(modelId: quota.modelId, label: quota.label)
+            || quota.window?.localizedStandardContains("5h") == true
+            || quota.window?.localizedStandardContains("five") == true
+            || quota.window?.localizedStandardContains("session") == true
+    }
+
     static func isWeeklyQuota(modelId: String, label: String) -> Bool {
         let combined = "\(modelId) \(label)".lowercased()
         return combined.contains("weekly") || combined.contains("7d") || combined.contains("7-day")
+    }
+
+    static func isWeeklyQuota(_ quota: ModelQuota) -> Bool {
+        isWeeklyQuota(modelId: quota.modelId, label: quota.label)
+            || quota.window?.localizedStandardContains("weekly") == true
+            || quota.window?.localizedStandardContains("7d") == true
+            || quota.window?.localizedStandardContains("7-day") == true
     }
 
     static func snapshot(
@@ -366,63 +377,60 @@ enum AntigravityUsageParsing {
         }
 
         let usableQuotas = quotas.filter { !$0.isDisabled }
-        let sessionQuotas = usableQuotas.filter { isSessionQuota(modelId: $0.modelId, label: $0.label) }
-        let weeklyQuotas = usableQuotas.filter { isWeeklyQuota(modelId: $0.modelId, label: $0.label) }
+        let sessionQuotas = usableQuotas.filter(isSessionQuota)
+        let weeklyQuotas = usableQuotas.filter(isWeeklyQuota)
 
-        let geminiQuotas = usableQuotas.filter { isGeminiModel(modelId: $0.modelId, label: $0.label) }
-        let claudeGptQuotas = usableQuotas.filter { isClaudeOrGPTModel(modelId: $0.modelId, label: $0.label) }
+        // Antigravity's model-config endpoints report per-model remaining quota,
+        // not a weekly window. Keep those readings model-scoped unless the
+        // provider explicitly identifies a five-hour or weekly bucket.
+        var modelQuotas: [ModelQuota] = []
+        var modelIndexes: [String: Int] = [:]
+        for quota in usableQuotas where !isSessionQuota(quota) && !isWeeklyQuota(quota) {
+            let key = quota.modelId.lowercased()
+            if let index = modelIndexes[key] {
+                if quota.remainingFraction < modelQuotas[index].remainingFraction {
+                    modelQuotas[index] = quota
+                }
+            } else {
+                modelIndexes[key] = modelQuotas.count
+                modelQuotas.append(quota)
+            }
+        }
+
+        let modelWindows = modelQuotas.map {
+            UsageWindow(
+                remainingPercent: $0.percentLeft,
+                resetAt: $0.resetAt,
+                label: $0.label.isEmpty ? $0.modelId : $0.label
+            )
+        }
 
         let sessionMin = sessionQuotas.min(by: { $0.remainingFraction < $1.remainingFraction })
         let weeklyMin = weeklyQuotas.min(by: { $0.remainingFraction < $1.remainingFraction })
-        let geminiMin = geminiQuotas.min(by: { $0.remainingFraction < $1.remainingFraction })
-        let claudeGptMin = claudeGptQuotas.min(by: { $0.remainingFraction < $1.remainingFraction })
 
-        let hasExplicitWindows = !sessionQuotas.isEmpty || !weeklyQuotas.isEmpty
-
-        let sessionWindow: UsageWindow? = if hasExplicitWindows, let sessionMin {
+        let sessionWindow: UsageWindow? = if let sessionMin {
             UsageWindow(
                 remainingPercent: sessionMin.percentLeft,
                 resetAt: sessionMin.resetAt,
                 label: sessionMin.label.isEmpty ? "Session" : sessionMin.label,
                 durationSeconds: 18000
             )
-        } else if let geminiMin {
-            UsageWindow(
-                remainingPercent: geminiMin.percentLeft,
-                resetAt: geminiMin.resetAt,
-                label: "Gemini",
-                durationSeconds: 18000 // 5 hours
-            )
-        } else if let first = quotas.first, claudeGptMin == nil {
-            UsageWindow(
-                remainingPercent: first.percentLeft,
-                resetAt: first.resetAt,
-                label: first.label.isEmpty ? "Antigravity" : first.label,
-                durationSeconds: 18000
-            )
         } else {
             nil
         }
 
-        let weeklyWindow: UsageWindow? = if hasExplicitWindows, let weeklyMin {
+        let weeklyWindow: UsageWindow? = if let weeklyMin {
             UsageWindow(
                 remainingPercent: weeklyMin.percentLeft,
                 resetAt: weeklyMin.resetAt,
                 label: weeklyMin.label.isEmpty ? "Weekly" : weeklyMin.label,
                 durationSeconds: 604_800
             )
-        } else if let claudeGptMin {
-            UsageWindow(
-                remainingPercent: claudeGptMin.percentLeft,
-                resetAt: claudeGptMin.resetAt,
-                label: "Claude/GPT",
-                durationSeconds: 604_800 // 7 days
-            )
         } else {
             nil
         }
 
-        guard sessionWindow != nil || weeklyWindow != nil else {
+        guard sessionWindow != nil || weeklyWindow != nil || !modelWindows.isEmpty else {
             return .unavailable(providerID: .antigravity, statusNote: "no model quotas found")
         }
 
@@ -431,6 +439,7 @@ enum AntigravityUsageParsing {
             displayName: UsageProviderID.antigravity.displayName,
             sessionWindow: sessionWindow,
             weeklyWindow: weeklyWindow,
+            modelWindows: modelWindows,
             creditValueText: nil,
             isAvailable: true,
             fetchedAt: now

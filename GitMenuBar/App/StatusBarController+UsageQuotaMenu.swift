@@ -10,7 +10,7 @@ extension StatusBarController {
             snapshots: usageQuotaStore.visibleSnapshots,
             preferences: usageQuotaPresentationPreferences
         )
-        let style = usageQuotaPresentationPreferences.meterStyle == .bars && groups.flatMap(\.fractions).isEmpty
+        let style = groups.flatMap(\.fractions).isEmpty
             ? .text
             : usageQuotaPresentationPreferences.meterStyle
         let showsUsageInStatusItem = usageQuotaStore.showAIUsageQuotas

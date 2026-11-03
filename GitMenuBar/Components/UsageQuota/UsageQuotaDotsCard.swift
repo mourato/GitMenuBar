@@ -10,9 +10,34 @@ struct UsageQuotaDotsCard: View {
         let remainingPercent: Int
         /// Consumed-percent warning thresholds for this row's window (session or weekly).
         let thresholds: [Int]
+        let kind: UsageQuotaWindowKind
+
+        init(
+            title: String,
+            countdown: String?,
+            remainingPercent: Int,
+            thresholds: [Int],
+            kind: UsageQuotaWindowKind = .model
+        ) {
+            self.title = title
+            self.countdown = countdown
+            self.remainingPercent = remainingPercent
+            self.thresholds = thresholds
+            self.kind = kind
+        }
+
+        var isExhausted: Bool {
+            UsageQuotaFormatting.isWeeklyExhausted(
+                remainingPercent: remainingPercent,
+                kind: kind
+            )
+        }
 
         var alertLevel: UsageQuotaAlertLevel {
-            UsageQuotaFormatting.alertLevel(remainingPercent: remainingPercent, thresholds: thresholds)
+            if isExhausted {
+                return .error
+            }
+            return UsageQuotaFormatting.alertLevel(remainingPercent: remainingPercent, thresholds: thresholds)
         }
     }
 
@@ -135,9 +160,9 @@ private struct UsageQuotaDotsRow: View {
             .accessibilityHidden(true)
 
             (Text(percentNumber)
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: row.isExhausted ? 14 : 20, weight: .semibold))
                 .foregroundStyle(percentColor)
-                + Text(" \(percentSuffix)")
+                + Text(percentSuffix.isEmpty ? "" : " \(percentSuffix)")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary))
                 .monospacedDigit()
@@ -145,7 +170,11 @@ private struct UsageQuotaDotsRow: View {
                 .frame(width: 84, alignment: .trailing)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(row.title) \(displayPercent) percent \(percentSuffix)")
+        .accessibilityLabel(
+            row.isExhausted
+                ? "\(row.title) quota exhausted"
+                : "\(row.title) \(displayPercent) percent \(percentSuffix)"
+        )
     }
 
     private var countdownSuffix: String {
@@ -153,15 +182,22 @@ private struct UsageQuotaDotsRow: View {
     }
 
     private var displayPercent: Int {
-        showUsed ? 100 - row.remainingPercent : row.remainingPercent
+        UsageQuotaFormatting.displayPercent(
+            remainingPercent: row.remainingPercent,
+            showUsed: showUsed
+        )
     }
 
     private var percentNumber: String {
-        "\(displayPercent)%"
+        UsageQuotaFormatting.compactDisplayValueText(
+            remainingPercent: row.remainingPercent,
+            kind: row.kind,
+            showUsed: showUsed
+        )
     }
 
     private var percentSuffix: String {
-        showUsed ? "used" : "left"
+        row.isExhausted ? "" : (showUsed ? "used" : "left")
     }
 
     private var filled: Int {

@@ -34,4 +34,58 @@ final class UsageQuotaFormattingTests: XCTestCase {
         XCTAssertEqual(UsageQuotaFormatting.alertLevel(remainingPercent: 40, thresholds: [60]), .warning)
         XCTAssertEqual(UsageQuotaFormatting.alertLevel(remainingPercent: 0, thresholds: [60]), .warning)
     }
+
+    func testWeeklyExhaustionRequiresWeeklyWindowKind() {
+        XCTAssertTrue(
+            UsageQuotaFormatting.isWeeklyExhausted(
+                remainingPercent: 0,
+                kind: .weekly
+            )
+        )
+        XCTAssertFalse(
+            UsageQuotaFormatting.isWeeklyExhausted(
+                remainingPercent: 0,
+                kind: .session
+            )
+        )
+        XCTAssertFalse(
+            UsageQuotaFormatting.isWeeklyExhausted(
+                remainingPercent: 0,
+                kind: .model
+            )
+        )
+        XCTAssertFalse(
+            UsageQuotaFormatting.isWeeklyExhausted(
+                remainingPercent: 1,
+                kind: .weekly
+            )
+        )
+    }
+
+    func testWeeklyExhaustionUsesUnambiguousTextForBothValueStyles() {
+        XCTAssertEqual(
+            UsageQuotaFormatting.displayValueText(
+                remainingPercent: 0,
+                kind: .weekly,
+                showUsed: false
+            ),
+            "Exhausted"
+        )
+        XCTAssertEqual(
+            UsageQuotaFormatting.displayValueText(
+                remainingPercent: 0,
+                kind: .weekly,
+                showUsed: true
+            ),
+            "Exhausted"
+        )
+        XCTAssertEqual(
+            UsageQuotaFormatting.displayValueText(
+                remainingPercent: 0,
+                kind: .model,
+                showUsed: false
+            ),
+            "0% left"
+        )
+    }
 }

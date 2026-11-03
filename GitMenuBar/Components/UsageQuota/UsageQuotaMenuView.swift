@@ -82,7 +82,8 @@ struct UsageQuotaMenuView: View {
                 title: UsageQuotaPace.rowTitle(isSessionWindow: true, window: sessionWindow),
                 countdown: UsageQuotaDotsCard.bareCountdown(until: sessionWindow.resetAt),
                 remainingPercent: sessionWindow.remainingPercent,
-                thresholds: preferences.sessionWarningThresholds
+                thresholds: preferences.sessionWarningThresholds,
+                kind: .session
             ))
         }
         if let weeklyWindow = snapshot.weeklyWindow {
@@ -90,7 +91,8 @@ struct UsageQuotaMenuView: View {
                 title: UsageQuotaPace.rowTitle(isSessionWindow: false, window: weeklyWindow),
                 countdown: UsageQuotaDotsCard.bareCountdown(until: weeklyWindow.resetAt),
                 remainingPercent: weeklyWindow.remainingPercent,
-                thresholds: preferences.weeklyWarningThresholds
+                thresholds: preferences.weeklyWarningThresholds,
+                kind: .weekly
             ))
         }
         for window in snapshot.modelWindows {
@@ -98,7 +100,8 @@ struct UsageQuotaMenuView: View {
                 title: window.label,
                 countdown: UsageQuotaDotsCard.bareCountdown(until: window.resetAt),
                 remainingPercent: window.remainingPercent,
-                thresholds: preferences.weeklyWarningThresholds
+                thresholds: preferences.weeklyWarningThresholds,
+                kind: .model
             ))
         }
         return rows
@@ -147,9 +150,13 @@ enum UsageQuotaMenuPresentation {
                     fractions.append(fraction)
                 }
             }
-            if !values.isEmpty {
+            if !values.isEmpty || (!preferences.selectedMetrics(for: providerID).isEmpty && !snapshot.modelWindows.isEmpty) {
                 for modelWindow in snapshot.modelWindows.prefix(2) {
-                    let reading = reading(for: modelWindow, valueStyle: preferences.valueStyle)
+                    let reading = reading(
+                        for: modelWindow,
+                        kind: .model,
+                        valueStyle: preferences.valueStyle
+                    )
                     values.append("\(modelWindow.label) \(reading.compactValue)")
                     if let fraction = reading.fraction {
                         fractions.append(fraction)
@@ -168,10 +175,10 @@ enum UsageQuotaMenuPresentation {
         switch metric {
         case .session:
             guard let window = snapshot.sessionWindow else { return nil }
-            return reading(for: window, valueStyle: valueStyle)
+            return reading(for: window, kind: .session, valueStyle: valueStyle)
         case .weekly:
             guard let window = snapshot.weeklyWindow else { return nil }
-            return reading(for: window, valueStyle: valueStyle)
+            return reading(for: window, kind: .weekly, valueStyle: valueStyle)
         case .credits:
             if let resetCreditsAvailable = snapshot.resetCreditsAvailable {
                 let label = resetCreditsAvailable == 1 ? "1 reset" : "\(resetCreditsAvailable) resets"
@@ -184,15 +191,27 @@ enum UsageQuotaMenuPresentation {
 
     fileprivate static func reading(
         for window: UsageWindow,
+        kind: UsageQuotaWindowKind,
         valueStyle: UsageQuotaPresentationPreferences.ValueStyle
     ) -> UsageQuotaMenuReading {
-        let percent = valueStyle == .left ? window.remainingPercent : 100 - window.remainingPercent
-        let suffix = valueStyle == .left ? "left" : "used"
+        let showUsed = valueStyle == .used
+        let percent = UsageQuotaFormatting.displayPercent(
+            remainingPercent: window.remainingPercent,
+            showUsed: showUsed
+        )
         let fraction = Double(percent) / 100
         return UsageQuotaMenuReading(
             label: window.label,
-            value: "\(percent)% \(suffix)",
-            compactValue: "\(percent)%",
+            value: UsageQuotaFormatting.displayValueText(
+                remainingPercent: window.remainingPercent,
+                kind: kind,
+                showUsed: showUsed
+            ),
+            compactValue: UsageQuotaFormatting.compactDisplayValueText(
+                remainingPercent: window.remainingPercent,
+                kind: kind,
+                showUsed: showUsed
+            ),
             fraction: fraction
         )
     }
@@ -270,6 +289,21 @@ struct UsageQuotaMenuBarStrip: View {
                 }
             }
             .frame(width: 18, height: 18)
+        case .circular:
+            HStack(spacing: 11) {
+                ForEach(groups) { group in
+                    HStack(spacing: 4) {
+                        ProviderIconView(providerID: group.providerID, tint: tint)
+                            .frame(width: 16, height: 16)
+                        ForEach(Array(group.fractions.prefix(2).enumerated()), id: \.offset) { _, fraction in
+                            UsageQuotaCircularProgress(fraction: fraction, tint: tint)
+                                .frame(width: 14, height: 14)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                }
+            }
+            .fixedSize()
         }
     }
 }
@@ -286,6 +320,10 @@ private enum UsageQuotaMenuInk {
 
 #Preview("Usage Quota Menu") {
     UsageQuotaMenuPreviewHarness()
+}
+
+#Preview("Usage Quota Menu – Circular") {
+    UsageQuotaMenuPreviewHarness(meterStyle: .circular)
 }
 
 #Preview("Usage Quota Menu – Claude Models") {
@@ -326,7 +364,10 @@ private struct UsageQuotaMenuPreviewHarness: View {
     @State private var store: UsageQuotaStore
     @State private var preferences: UsageQuotaPresentationPreferences
 
-    init(snapshot: UsageQuotaSnapshot? = nil) {
+    init(
+        snapshot: UsageQuotaSnapshot? = nil,
+        meterStyle: UsageQuotaPresentationPreferences.MeterStyle = .text
+    ) {
         let snapshot = snapshot ?? UsageQuotaSnapshot(
             providerID: .codex,
             displayName: "Codex",
@@ -348,7 +389,10 @@ private struct UsageQuotaMenuPreviewHarness: View {
         let store = UsageQuotaStore(providers: [UsageQuotaPreviewProvider(snapshot: snapshot)])
         store.showAIUsageQuotas = true
         _store = State(wrappedValue: store)
-        _preferences = State(wrappedValue: UsageQuotaPresentationPreferences())
+        let defaults = UserDefaults(suiteName: "UsageQuotaMenuPreview") ?? UserDefaults()
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.meterStyle = meterStyle
+        _preferences = State(wrappedValue: preferences)
     }
 
     var body: some View {

@@ -36,12 +36,25 @@ struct UsageQuotaStripView: View {
     private func accessibilityValue(for snapshots: [UsageQuotaSnapshot]) -> String {
         // Mirrors UsageQuotaSummaryView: primary window, else the tightest model window.
         snapshots.compactMap { snapshot in
-            let window = snapshot.primaryDisplayWindow
+            let exhaustedWeekly = snapshot.weeklyWindow.flatMap { $0.remainingPercent == 0 ? $0 : nil }
+            let window = exhaustedWeekly ?? snapshot.primaryDisplayWindow
                 ?? snapshot.modelWindows.min { $0.remainingPercent < $1.remainingPercent }
+            let kind: UsageQuotaWindowKind = if exhaustedWeekly != nil {
+                .weekly
+            } else if snapshot.sessionWindow != nil {
+                .session
+            } else if snapshot.weeklyWindow != nil {
+                .weekly
+            } else {
+                .model
+            }
             return window.map {
-                preferences.valueStyle == .left
-                    ? "\(snapshot.displayName) \($0.remainingPercent) percent left"
-                    : "\(snapshot.displayName) \(100 - $0.remainingPercent) percent used"
+                let value = UsageQuotaFormatting.displayValueText(
+                    remainingPercent: $0.remainingPercent,
+                    kind: kind,
+                    showUsed: preferences.valueStyle == .used
+                )
+                return "\(snapshot.displayName) \(kind == .weekly && $0.remainingPercent == 0 ? "weekly quota exhausted" : value)"
             }
         }
         .joined(separator: ", ")
@@ -108,7 +121,8 @@ private struct UsageQuotaDetailsPopover: View {
                 title: UsageQuotaPace.rowTitle(isSessionWindow: isSessionWindow, window: window),
                 countdown: UsageQuotaDotsCard.bareCountdown(until: window.resetAt),
                 remainingPercent: window.remainingPercent,
-                thresholds: isSessionWindow ? preferences.sessionWarningThresholds : preferences.weeklyWarningThresholds
+                thresholds: isSessionWindow ? preferences.sessionWarningThresholds : preferences.weeklyWarningThresholds,
+                kind: isSessionWindow ? .session : .weekly
             ))
         }
         if let weekly = secondaryWeeklyWindow(for: snapshot) {
@@ -116,7 +130,8 @@ private struct UsageQuotaDetailsPopover: View {
                 title: "Weekly",
                 countdown: UsageQuotaDotsCard.bareCountdown(until: weekly.resetAt),
                 remainingPercent: weekly.remainingPercent,
-                thresholds: preferences.weeklyWarningThresholds
+                thresholds: preferences.weeklyWarningThresholds,
+                kind: .weekly
             ))
         }
         for window in snapshot.modelWindows {
@@ -124,7 +139,8 @@ private struct UsageQuotaDetailsPopover: View {
                 title: window.label,
                 countdown: UsageQuotaDotsCard.bareCountdown(until: window.resetAt),
                 remainingPercent: window.remainingPercent,
-                thresholds: preferences.weeklyWarningThresholds
+                thresholds: preferences.weeklyWarningThresholds,
+                kind: .model
             ))
         }
         return rows
