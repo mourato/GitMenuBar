@@ -55,7 +55,7 @@ the window cannot fit three columns.
 
 ## References
 
-- [`docs/ui.md`](../ui.md)
+- [`DESIGN.md`](../../DESIGN.md)
 - [`ADR 0012`](0012-always-open-inspector.md)
 - [`ADR 0013`](0013-hsplitview-inspector-fallback.md)
 

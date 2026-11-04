@@ -24,5 +24,5 @@ duplicating the visible-state affordance.
 
 - Plans 031–032 own titlebar embedding and shell wiring in `StatusBarController` / Settings window setup.
 - Command-palette scrim must cover the full window (including under the titlebar), outside content `windowPadding`.
-- `.interface-design/system.md` depth strategy includes the window shell; quota strip may grow into Mimir-style cards (Plan 033) without status-item glyphs.
+- `DESIGN.md` depth strategy includes the window shell; quota strip may grow into Mimir-style cards (Plan 033) without status-item glyphs.
 - The main window continues to use a titled `NSWindow` as the system owner of traffic lights, native title, and toolbar chrome. The workbench keeps its window-level material shell without adding a second hand-drawn titlebar surface.

@@ -44,4 +44,4 @@ worktree state. Project Cleanup keeps its previous safe-only behavior.
 - `GitMenuBar/Pages/MainMenu/SidePanelBranchManagementView.swift`
 - `GitMenuBar/Services/Git/GitCleanupRepository.swift`
 - `GitMenuBar/Models/WorktreeCleanupModels.swift`
-- [`docs/ui.md`](../ui.md)
+- [`DESIGN.md`](../../DESIGN.md)

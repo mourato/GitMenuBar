@@ -16,7 +16,7 @@ decoration that looked like data.
 
 - The unified toolbar owns the repository-level actions: the branch picker,
   the ahead/behind indicator, Fetch, Sync, and Commit. This replaces the rule
-  in `docs/ui.md` that the toolbar keeps only route-specific controls.
+  in `DESIGN.md` that the toolbar keeps only route-specific controls.
 - Commit shows the change count and opens the existing Working Tree side panel.
   The commit composer stays in the side panel.
 - Sync appears only when the branch is ahead or behind. Fetch is always

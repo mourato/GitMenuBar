@@ -21,6 +21,8 @@ Every implementation plan must contain an `## Execution profile` section.
 |---|---|
 | Implementation, validation, or delivery | [Project workflow facts](docs/agents/project-workflow.md) |
 | Review or retro | [Coding standards](CODING_STANDARDS.md), then the [project review profile](.agents/review-profiles/thermo-gitmenubar.md) |
+| Product facts, users, or scope | [PRODUCT.md](PRODUCT.md) |
+| Changing UI, tokens, states, or interaction | [DESIGN.md](DESIGN.md) (Swift `Workbench*` types own token values) |
 | Changing animation or motion | [docs/agents/motion.md](docs/agents/motion.md) |
 | Choosing or studying a reference app | [docs/agents/reference-apps.md](docs/agents/reference-apps.md) |
 | Toolchain or concurrency questions | [ADR 0007](docs/adr/0007-swift-6-4-agent-baseline.md) |

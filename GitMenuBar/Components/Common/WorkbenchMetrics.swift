@@ -40,7 +40,7 @@ enum WorkbenchMetrics {
     static let largeCornerRadius: CGFloat = 14
     static let overlayCornerRadius: CGFloat = 16
     static let iconHitTarget: CGFloat = 28
-    /// Minimum interactive height for text chips, toggles, and buttons (ui.md hit targets).
+    /// Minimum interactive height for text chips, toggles, and buttons (DESIGN.md hit areas).
     static let minimumHitTarget: CGFloat = 32
     static let quotaMeterWidth: CGFloat = 20
     static let quotaMeterHeight: CGFloat = 6

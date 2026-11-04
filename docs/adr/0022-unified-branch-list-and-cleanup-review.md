@@ -55,7 +55,7 @@ actions hard to scan.
 - Counts on section headers beside filter chip counts: the same number shows
   twice.
 - A disabled Review button when nothing is ready: hidden instead, per
-  `docs/ui.md`.
+  `DESIGN.md`.
 - A configurable stale threshold: fixed at 10 days until a user need appears.
 
 ## Affected surfaces
@@ -69,4 +69,4 @@ actions hard to scan.
 - `GitMenuBar/Models/BranchListModel.swift`
 - `GitMenuBar/Models/WorktreeCleanupModels.swift`
 - `GitMenuBar/Components/Common/WorkbenchMetrics.swift`
-- `docs/ui.md`
+- `DESIGN.md`

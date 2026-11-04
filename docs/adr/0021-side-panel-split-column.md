@@ -46,4 +46,4 @@ commit are visible together, so selection works as list-to-detail navigation.
 - `GitMenuBar/Components/Common/WorkbenchMetrics.swift`
 - `GitMenuBar/Pages/MainMenu/MainMenuShellView.swift`
 - `GitMenuBar/Components/History/*`
-- `docs/ui.md`
+- `DESIGN.md`

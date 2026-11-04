@@ -72,12 +72,12 @@ Revisit this decision if the deployment target no longer supports the native
 inspector, the compact threshold cannot preserve one selection during resize,
 the detail surface needs independent navigation state, or user research shows
 that contextual selection is insufficient for the repository workflows. Any
-replacement must preserve one presentation owner and update `docs/ui.md` plus
+replacement must preserve one presentation owner and update `DESIGN.md` plus
 this ADR's historical status.
 
 ## References
 
-- [`docs/ui.md`](../ui.md)
+- [`DESIGN.md`](../../DESIGN.md)
 - [`ADR 0002`](0002-window-shell-material-and-titlebar-chrome.md)
 - [`ADR 0009`](0009-path-bound-git-operations.md)
 

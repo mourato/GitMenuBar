@@ -1,6 +1,6 @@
 # Design references
 
-Static mockups that show intent. They are not pixel specs: `docs/ui.md` and the
+Static mockups that show intent. They are not pixel specs: `DESIGN.md` and the
 Workbench tokens win when they differ.
 
 - `commit-inspector-2026-10-29.png`: commit details as a split side panel.

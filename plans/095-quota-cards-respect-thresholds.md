@@ -2,7 +2,7 @@
 
 > **Executor instructions**: Read this brief, `AGENTS.md`,
 > [project workflow facts](../docs/agents/project-workflow.md),
-> [UI contract](../docs/ui.md) (especially "Visual hierarchy rules"), and
+> [UI contract](../DESIGN.md) (especially "Colors" and "Do's and Don'ts"), and
 > [ADR 0020](../docs/adr/0020-toolbar-actions-and-history-list.md) before
 > editing. Work in a dedicated worktree. Use Workbench tokens only; no raw
 > sizes, colors, or opacities in views. On a STOP condition, stop and report;

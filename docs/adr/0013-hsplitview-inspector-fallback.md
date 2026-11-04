@@ -51,7 +51,7 @@ split-view delegate or another non-layout feedback seam.
 ## References
 
 - [Apple Developer Forums: macOS inspector constraint crash](https://developer.apple.com/forums/thread/801818)
-- [`docs/ui.md`](../ui.md)
+- [`DESIGN.md`](../../DESIGN.md)
 - [`ADR 0012`](0012-always-open-inspector.md)
 
 ## Affected surfaces

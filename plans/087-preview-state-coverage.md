@@ -2,7 +2,7 @@
 
 > **Executor instructions**: Read this brief, `AGENTS.md`,
 > [project workflow facts](../docs/agents/project-workflow.md),
-> [architecture guide](../docs/ARCHITECTURE.md), and [UI contract](../docs/ui.md)
+> [architecture guide](../docs/ARCHITECTURE.md), and [UI contract](../DESIGN.md)
 > before editing. Work in a dedicated worktree. Follow the steps in order and
 > run each verification command. On a STOP condition, stop and report; do not
 > widen scope. Leave merge and push to the operator.

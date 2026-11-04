@@ -43,7 +43,7 @@ sources.
 - The main workbench is two inline surfaces until a contextual selection opens
   the side panel.
 - Narrow and wide windows share one presentation owner.
-- Durable UI contract lives in `docs/ui.md`; ADRs 0010–0014 are superseded.
+- Durable UI contract lives in `DESIGN.md`; ADRs 0010–0014 are superseded.
 - Product and code vocabulary use Side Panel rather than Inspector.
 
 ## Rejected or deferred
@@ -64,7 +64,7 @@ transient dismissals. Close is labeled for VoiceOver (“Close details”).
 
 ## References
 
-- [`docs/ui.md`](../ui.md)
+- [`DESIGN.md`](../../DESIGN.md)
 - Plan 081 (`plans/archive/081-contextual-side-panel.md`)
 - VoiceInk catalog entry in `.agents/overlays/reference-apps.md`
 
@@ -76,4 +76,4 @@ transient dismissals. Close is labeled for VoiceOver (“Close details”).
 - `GitMenuBar/Pages/MainMenu/*SidePanel*`
 - `GitMenuBar/App/StatusBarController.swift`
 - `GitMenuBar/App/MainMenuPresentationModel.swift`
-- `docs/ui.md`
+- `DESIGN.md`

@@ -22,7 +22,7 @@ private enum ChangedFilesSummaryPreviewData {
             lineDiff: LineDiffStats(added: 7, removed: 1)
         ),
         CommitFileChange(
-            path: "docs/ui.md",
+            path: "DESIGN.md",
             lineDiff: LineDiffStats(added: 4, removed: 0)
         )
     ]
@@ -54,7 +54,7 @@ private enum ChangedFilesSummaryPreviewData {
         CommitFileChange(path: "GitMenuBarTests/CommitDetailPresentationTests.swift", lineDiff: LineDiffStats(added: 9, removed: 0)),
         CommitFileChange(path: "docs/agents/project-workflow.md", lineDiff: LineDiffStats(added: 6, removed: 1)),
         CommitFileChange(path: "docs/adr/0021-side-panel-split-column.md", lineDiff: LineDiffStats(added: 12, removed: 0)),
-        CommitFileChange(path: "docs/ui.md", lineDiff: LineDiffStats(added: 3, removed: 3)),
+        CommitFileChange(path: "DESIGN.md", lineDiff: LineDiffStats(added: 3, removed: 3)),
         CommitFileChange(path: "Makefile", lineDiff: LineDiffStats(added: 1, removed: 0)),
         CommitFileChange(path: "README.md", lineDiff: LineDiffStats(added: 2, removed: 5)),
         CommitFileChange(path: "Resources/Assets.xcassets/AppIcon.appiconset/Contents.json", lineDiff: LineDiffStats(added: 1, removed: 1))

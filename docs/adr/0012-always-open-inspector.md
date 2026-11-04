@@ -57,7 +57,7 @@ offering an action that cannot close the always-open surface.
 
 ## References
 
-- [`docs/ui.md`](../ui.md)
+- [`DESIGN.md`](../../DESIGN.md)
 - [`ADR 0010`](0010-contextual-workbench-inspector.md)
 - [`ADR 0011`](0011-commit-workspace-in-inspector.md)
 

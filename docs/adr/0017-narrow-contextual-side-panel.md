@@ -36,4 +36,4 @@ shrinks because it is derived from that token.
 - `GitMenuBar/Components/Common/WorkbenchMetrics.swift`
 - `GitMenuBar/Components/Common/SidePanel.swift`
 - `GitMenuBar/Pages/MainMenu/*SidePanel*`
-- `docs/ui.md`
+- `DESIGN.md`

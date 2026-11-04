@@ -37,7 +37,7 @@ selectable items).
   whitespace/rewrite dialogs keep a single owner.
 - Opening a commit from workspace history drills into the existing commit
   surface; Back returns to the standalone history surface, not the workspace.
-- `docs/ui.md` composition now describes the center as toolbar → overview →
+- `DESIGN.md` composition now describes the center as toolbar → overview →
   footer with the workspace in the inspector.
 
 ## Rejected or deferred
@@ -59,7 +59,7 @@ behavior follow the existing workbench policies.
 
 ## References
 
-- [`docs/ui.md`](../ui.md)
+- [`DESIGN.md`](../../DESIGN.md)
 - [`ADR 0010`](0010-contextual-workbench-inspector.md)
 
 ## Affected surfaces
@@ -70,4 +70,4 @@ behavior follow the existing workbench policies.
 - `GitMenuBar/Pages/MainMenu/MainMenuContent.swift`
 - `GitMenuBar/Pages/MainMenu/MainMenuActions.swift`
 - `GitMenuBar/Pages/MainMenu/MainMenuComputed.swift`
-- `docs/ui.md`
+- `DESIGN.md`
