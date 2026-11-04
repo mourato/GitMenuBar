@@ -97,8 +97,10 @@ branch list and cleanup review).
   The toolbar keeps only route-specific controls and does not duplicate the
   Commit action.
 - List alignment: section headers, the remote hidden-by-filter caption, and
-  nested disclosure labels use `WorkbenchMetrics.rowContentInset`. Row
-  horizontal padding uses the same token.
+  nested disclosure labels use `WorkbenchMetrics.rowContentInset`. List row
+  content aligns to the same token. Button rows (`workbenchRow`,
+  `workbenchDestructiveRow`) keep the padding defined in
+  `WorkbenchButtonStyles`.
 - Settings uses the native grouped `Form` hierarchy, one scroll owner per
   pane, and no nested workbench panel plates.
 
