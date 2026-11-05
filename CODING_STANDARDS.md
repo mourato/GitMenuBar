@@ -4,6 +4,18 @@ Read during review (Standards axis) and retro. Extends the global standards at
 `${AGENT_CONFIG_HOME:-$HOME/.agents}/core/standards/CODING_STANDARDS.md` and the
 `swift-conventions` skill; project rules only.
 
+## Review focus
+
+- Failure here: a Git action that changes the wrong repository, branch, or
+  worktree, or reports success before Git confirms it.
+- Failure here: a status item, popover, or window that stops responding or
+  leaves an orphaned controller.
+- Skip: `GitMenuBar/Assets.xcassets/` content changes.
+- Needs a person: `GitMenuBar/Services/Git/` (commit, push, discard, and
+  branch cleanup) and `GitMenuBar/Services/Credentials/`.
+- The [thermo review profile](.agents/review-profiles/thermo-gitmenubar.md)
+  still applies; this section does not repeat it.
+
 ## Ownership
 
 - Git services, menu-bar controllers, SwiftUI views, and AppKit adapters stay
