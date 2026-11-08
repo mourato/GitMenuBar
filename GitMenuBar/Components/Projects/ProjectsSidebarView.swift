@@ -33,14 +33,10 @@ struct ProjectsSidebarView: View {
             // Navigation stays neutral while the focused content owns the accent selection.
             .environment(\.controlActiveState, .inactive)
             .scrollContentBackground(.hidden)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                VStack(spacing: 0) {
-                    Divider()
-                        .padding(.horizontal, WorkbenchMetrics.windowPadding)
+            Divider()
+                .padding(.horizontal, WorkbenchMetrics.windowPadding)
 
-                    sidebarBottomActions
-                }
-            }
+            sidebarBottomActions
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .alert("Rename Project", isPresented: Binding(
