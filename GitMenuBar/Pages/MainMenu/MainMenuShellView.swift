@@ -52,9 +52,6 @@ struct MainMenuShellView<Detail: View, SidePanel: View>: View {
             )
         } detail: {
             detail
-                .padding(.leading, WorkbenchMetrics.windowPadding)
-                .padding(.trailing, WorkbenchMetrics.windowPadding)
-                .padding(.bottom, WorkbenchMetrics.windowPadding)
                 .frame(
                     minWidth: WorkbenchMetrics.centralMinimumWidth,
                     maxWidth: .infinity,

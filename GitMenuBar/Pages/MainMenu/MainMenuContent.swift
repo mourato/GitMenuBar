@@ -25,6 +25,7 @@ extension MainMenuView {
             mainRouteContent
         case .projectCleanup:
             ProjectCleanupPage()
+                .padding([.horizontal, .bottom], WorkbenchMetrics.windowPadding)
         }
     }
 
@@ -42,6 +43,7 @@ extension MainMenuView {
                     history: sidePanelHistory
                 )
             }
+            .contentMargins([.horizontal, .bottom], WorkbenchMetrics.windowPadding, for: .scrollContent)
             .scrollDisabled(palette.isPresented)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .layoutPriority(1)

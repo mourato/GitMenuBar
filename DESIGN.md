@@ -73,7 +73,9 @@ branch list and cleanup review).
   `sectionSpacing`, `groupSpacing`, `panelPadding`, and `windowPadding`. Micro
   values must be named metrics (`microSpacing`, `chipSpacing`).
 - Main route: native toolbar, then scroll content (repository overview, then
-  commit history), with optional quota cards secondary to Git work.
+  commit history), with optional quota cards secondary to Git work. The main
+  scroll viewport reaches the detail column edges; `windowPadding` belongs to
+  its scroll content, so native toolbar effects and scrolling reach the edges.
 - The repository overview always presents five metrics: Changes, Branches,
   Stashes, Pull Requests, and Issues. `ViewThatFits` selects adaptive tiers
   from the card's own width.
@@ -170,7 +172,9 @@ corner style.
 - Status-item quota strip: the user chooses whether the status item always
   shows up to two selected quota figures per provider or keeps them only in
   the quota submenu. The submenu keeps the provider cards and the refresh
-  action in both modes.
+  action in both modes. Providers with an exhausted weekly reading are hidden
+  from the strip until a refreshed reading has remaining weekly quota. Providers
+  without a weekly reading keep their selected figures.
 
 ## Do's and Don'ts
 

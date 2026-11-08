@@ -48,6 +48,7 @@ full Git control available while making the consequences visible.
 - **Remote sync**: Push and pull changes, choose merge or rebase when syncing, or pull changes into a new branch.
 - **History and recovery**: Browse grouped commit history, inspect changed files, edit commit messages, and reset to a selected commit when needed.
 - **GitHub integration**: Authenticate with GitHub to create repositories, change visibility, delete repositories, and work with remote operations without leaving the app.
+- **AI usage quotas**: Monitor provider usage in the menu bar. Providers with an exhausted weekly quota stay hidden there until a refreshed reading shows available quota; their cards remain in the quota submenu.
 - **Command palette**: Search and run project, Git, branch, history, and settings actions from the keyboard.
 
 <p align="center">

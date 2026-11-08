@@ -140,7 +140,9 @@ enum UsageQuotaMenuPresentation {
     ) -> [UsageQuotaMenuBarGroup] {
         let snapshotsByProvider = Dictionary(uniqueKeysWithValues: snapshots.map { ($0.providerID, $0) })
         return preferences.orderedProviderIDs.compactMap { providerID in
-            guard let snapshot = snapshotsByProvider[providerID] else { return nil }
+            guard let snapshot = snapshotsByProvider[providerID],
+                  snapshot.weeklyWindow?.remainingPercent != 0
+            else { return nil }
             var values: [String] = []
             var fractions: [Double] = []
             for metric in preferences.selectedMetrics(for: providerID) {
