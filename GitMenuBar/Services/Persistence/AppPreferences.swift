@@ -29,6 +29,7 @@ enum AppPreferences {
         static let showOpenRouterUsageQuota = "showOpenRouterUsageQuota"
         static let showGeminiUsageQuota = "showGeminiUsageQuota"
         static let showAntigravityUsageQuota = "showAntigravityUsageQuota"
+        static let showOpenCodeGoUsageQuota = "showOpenCodeGoUsageQuota"
         static let usageQuotaMenuBarStyle = "usageQuotaMenuBarStyle"
         static let usageQuotaValueStyle = "usageQuotaValueStyle"
         static let usageQuotaMenuBarVisibility = "usageQuotaMenuBarVisibility"

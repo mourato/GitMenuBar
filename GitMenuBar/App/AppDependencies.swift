@@ -46,7 +46,8 @@ final class AppDependencies {
             CursorUsageProvider(),
             OpenRouterUsageProvider(keyStore: aiKeychainStore),
             GeminiUsageProvider(),
-            AntigravityUsageProvider()
+            AntigravityUsageProvider(),
+            OpenCodeGoUsageProvider(keyStore: aiKeychainStore)
         ])
         repositorySelectionCoordinator = RepositorySelectionCoordinator(
             gitManager: gitManager,

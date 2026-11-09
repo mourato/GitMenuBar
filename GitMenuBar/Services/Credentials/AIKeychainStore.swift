@@ -140,7 +140,7 @@ final class AIKeychainStore: AIAPIKeyStore, @unchecked Sendable {
         }
         var values: [AIProviderCredentialID: String] = [:]
         for (key, value) in payload.values {
-            guard key.hasPrefix("custom:") || ["openrouter", "google", "openai", "anthropic"].contains(key) else {
+            guard key.hasPrefix("custom:") || ["openrouter", "opencodego", "google", "openai", "anthropic"].contains(key) else {
                 throw AIKeychainStoreError.invalidPayload
             }
             values[AIProviderCredentialID(rawValue: key)] = value

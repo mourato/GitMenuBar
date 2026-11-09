@@ -17,6 +17,7 @@ struct UsageQuotaSnapshotStore {
         guard snapshot.isAvailable,
               snapshot.sessionWindow != nil
               || snapshot.weeklyWindow != nil
+              || snapshot.tertiaryMonthlyWindow != nil
               || !snapshot.modelWindows.isEmpty
               || snapshot.creditValueText != nil,
               let data = try? JSONEncoder().encode(snapshot) else { return }

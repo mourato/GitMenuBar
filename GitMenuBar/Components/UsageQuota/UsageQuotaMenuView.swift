@@ -95,6 +95,15 @@ struct UsageQuotaMenuView: View {
                 kind: .weekly
             ))
         }
+        if let monthlyWindow = snapshot.tertiaryMonthlyWindow {
+            rows.append(UsageQuotaDotsCard.RowData(
+                title: monthlyWindow.label,
+                countdown: UsageQuotaDotsCard.bareCountdown(until: monthlyWindow.resetAt),
+                remainingPercent: monthlyWindow.remainingPercent,
+                thresholds: preferences.weeklyWarningThresholds,
+                kind: .model
+            ))
+        }
         for window in snapshot.modelWindows {
             rows.append(UsageQuotaDotsCard.RowData(
                 title: window.label,
@@ -181,6 +190,9 @@ enum UsageQuotaMenuPresentation {
         case .weekly:
             guard let window = snapshot.weeklyWindow else { return nil }
             return reading(for: window, kind: .weekly, valueStyle: valueStyle)
+        case .monthly:
+            guard let window = snapshot.tertiaryMonthlyWindow else { return nil }
+            return reading(for: window, kind: .model, valueStyle: valueStyle)
         case .credits:
             if let resetCreditsAvailable = snapshot.resetCreditsAvailable {
                 let label = resetCreditsAvailable == 1 ? "1 reset" : "\(resetCreditsAvailable) resets"

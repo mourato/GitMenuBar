@@ -8,6 +8,7 @@ enum UsageProviderID: String, Codable, CaseIterable, Hashable, Identifiable, Sen
     case openrouter
     case gemini
     case antigravity
+    case opencodeGo
 
     var id: String {
         rawValue
@@ -27,6 +28,8 @@ enum UsageProviderID: String, Codable, CaseIterable, Hashable, Identifiable, Sen
             "Gemini"
         case .antigravity:
             "Antigravity"
+        case .opencodeGo:
+            "OpenCode Go"
         }
     }
 
@@ -41,6 +44,8 @@ enum UsageProviderID: String, Codable, CaseIterable, Hashable, Identifiable, Sen
             Color(red: 0.31, green: 0.53, blue: 0.97)
         case .antigravity:
             Color(red: 0.26, green: 0.52, blue: 0.96)
+        case .opencodeGo:
+            Color(red: 59 / 255, green: 130 / 255, blue: 246 / 255)
         case .cursor, .openrouter:
             Color(nsColor: .labelColor)
         }
@@ -87,6 +92,8 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
     let displayName: String
     let sessionWindow: UsageWindow?
     let weeklyWindow: UsageWindow?
+    /// Monthly quota window (OpenCode Go). Nil when the provider does not report it.
+    let tertiaryMonthlyWindow: UsageWindow?
     let modelWindows: [UsageWindow]
     let creditValueText: String?
     /// Codex limit-reset credits still available (from `wham/rate-limit-reset-credits`).
@@ -114,6 +121,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         displayName: String,
         sessionWindow: UsageWindow?,
         weeklyWindow: UsageWindow?,
+        tertiaryMonthlyWindow: UsageWindow? = nil,
         modelWindows: [UsageWindow] = [],
         creditValueText: String? = nil,
         resetCreditsAvailable: Int? = nil,
@@ -128,6 +136,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         self.displayName = displayName
         self.sessionWindow = sessionWindow
         self.weeklyWindow = weeklyWindow
+        self.tertiaryMonthlyWindow = tertiaryMonthlyWindow
         self.modelWindows = modelWindows
         self.creditValueText = creditValueText
         self.resetCreditsAvailable = resetCreditsAvailable.flatMap { $0 > 0 ? $0 : nil }
@@ -144,6 +153,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         case displayName
         case sessionWindow
         case weeklyWindow
+        case tertiaryMonthlyWindow
         case modelWindows
         case creditValueText
         case resetCreditsAvailable
@@ -161,6 +171,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         displayName = try container.decode(String.self, forKey: .displayName)
         sessionWindow = try container.decodeIfPresent(UsageWindow.self, forKey: .sessionWindow)
         weeklyWindow = try container.decodeIfPresent(UsageWindow.self, forKey: .weeklyWindow)
+        tertiaryMonthlyWindow = try container.decodeIfPresent(UsageWindow.self, forKey: .tertiaryMonthlyWindow)
         modelWindows = try container.decodeIfPresent([UsageWindow].self, forKey: .modelWindows) ?? []
         creditValueText = try container.decodeIfPresent(String.self, forKey: .creditValueText)
         resetCreditsAvailable = try container.decodeIfPresent(Int.self, forKey: .resetCreditsAvailable)
@@ -192,6 +203,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
             displayName: displayName,
             sessionWindow: sessionWindow,
             weeklyWindow: weeklyWindow,
+            tertiaryMonthlyWindow: tertiaryMonthlyWindow,
             modelWindows: modelWindows,
             creditValueText: creditValueText,
             resetCreditsAvailable: resetCreditsAvailable,
@@ -210,6 +222,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
             displayName: displayName,
             sessionWindow: sessionWindow,
             weeklyWindow: weeklyWindow,
+            tertiaryMonthlyWindow: tertiaryMonthlyWindow,
             modelWindows: modelWindows,
             creditValueText: creditValueText,
             resetCreditsAvailable: inventory.availableCount,
@@ -228,6 +241,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
             displayName: displayName,
             sessionWindow: sessionWindow,
             weeklyWindow: weeklyWindow,
+            tertiaryMonthlyWindow: tertiaryMonthlyWindow,
             modelWindows: modelWindows,
             creditValueText: creditValueText,
             resetCreditsAvailable: resetCreditsAvailable,

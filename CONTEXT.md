@@ -15,7 +15,7 @@ It remains distinct from the AI usage quotas and AI Commit Generation surfaces.
 **AI usage quotas**:
 The monitored AI quota surface in Settings → AI → Quotas and the native
 menu-bar quota menu, distinct from AI Commit Generation. Each **Usage Provider**
-(Claude Code, Codex, Cursor, OpenRouter, Gemini, or Antigravity) publishes one
+(Claude Code, Codex, Cursor, OpenRouter, Gemini, Antigravity, or OpenCode Go) publishes one
 **Snapshot**: the last successful non-secret quota reading. The menu-bar item
 can show up to two selected metrics per provider and keeps provider order and
 display style in local preferences.

@@ -58,6 +58,10 @@ final class UsageQuotaStore {
         didSet { updatePreference(AppPreferences.Keys.showAntigravityUsageQuota, value: showAntigravityUsageQuota, oldValue: oldValue) }
     }
 
+    var showOpenCodeGoUsageQuota: Bool {
+        didSet { updatePreference(AppPreferences.Keys.showOpenCodeGoUsageQuota, value: showOpenCodeGoUsageQuota, oldValue: oldValue) }
+    }
+
     /// Resolves the pricing source for a cost scan. Injectable so tests never
     /// touch the network; production fetches and caches the models.dev catalog.
     typealias PricingLoader = @Sendable () async -> UsageQuotaModelsDevStore.PricingSource
@@ -127,12 +131,9 @@ final class UsageQuotaStore {
         defaults: UserDefaults = .standard,
         snapshotStore: UsageQuotaSnapshotStore = UsageQuotaSnapshotStore(),
         providers: [any UsageQuotaProviding] = [
-            ClaudeCodeUsageProvider(),
-            CodexUsageProvider(),
-            CursorUsageProvider(),
-            OpenRouterUsageProvider(),
-            GeminiUsageProvider(),
-            AntigravityUsageProvider()
+            ClaudeCodeUsageProvider(), CodexUsageProvider(),
+            CursorUsageProvider(), OpenRouterUsageProvider(),
+            GeminiUsageProvider(), AntigravityUsageProvider(), OpenCodeGoUsageProvider()
         ],
         codexProvider: CodexUsageProvider = CodexUsageProvider(),
         now: @escaping () -> Date = Date.init,
@@ -153,6 +154,7 @@ final class UsageQuotaStore {
         showOpenRouterUsageQuota = defaults.object(forKey: AppPreferences.Keys.showOpenRouterUsageQuota) as? Bool ?? true
         showGeminiUsageQuota = defaults.object(forKey: AppPreferences.Keys.showGeminiUsageQuota) as? Bool ?? true
         showAntigravityUsageQuota = defaults.object(forKey: AppPreferences.Keys.showAntigravityUsageQuota) as? Bool ?? true
+        showOpenCodeGoUsageQuota = defaults.object(forKey: AppPreferences.Keys.showOpenCodeGoUsageQuota) as? Bool ?? true
         handlePreferenceChange(loadCachedOnly: true)
     }
 
@@ -318,6 +320,7 @@ final class UsageQuotaStore {
         case .openrouter: showOpenRouterUsageQuota
         case .gemini: showGeminiUsageQuota
         case .antigravity: showAntigravityUsageQuota
+        case .opencodeGo: showOpenCodeGoUsageQuota
         }
     }
 
@@ -329,6 +332,7 @@ final class UsageQuotaStore {
         case .openrouter: showOpenRouterUsageQuota = isEnabled
         case .gemini: showGeminiUsageQuota = isEnabled
         case .antigravity: showAntigravityUsageQuota = isEnabled
+        case .opencodeGo: showOpenCodeGoUsageQuota = isEnabled
         }
     }
 

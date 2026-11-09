@@ -114,7 +114,9 @@ struct UsageQuotaSettingsSection: View {
             "Quota snapshots stay on this Mac. GitMenuBar uses credentials already stored by each provider "
                 + "and refreshes them in place when needed. It never creates a separate OAuth token store. "
                 + "OpenRouter quota uses the provider credential configured in AI settings. Claude Code "
-                + "uses its existing login to request the account quota when available."
+                + "uses its existing login to request the account quota when available. OpenCode Go "
+                + "prefers the stored API key or OPENCODE_API_KEY and falls back to a local estimate "
+                + "that is not account quota."
         )
         .font(WorkbenchTypography.caption)
         .foregroundStyle(.secondary)
@@ -222,7 +224,8 @@ struct UsageQuotaSettingsSection: View {
             CursorUsageProvider(),
             OpenRouterUsageProvider(keyStore: credentialStore),
             GeminiUsageProvider(),
-            AntigravityUsageProvider()
+            AntigravityUsageProvider(),
+            OpenCodeGoUsageProvider(keyStore: credentialStore)
         ]
 
         Form {

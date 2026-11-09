@@ -30,7 +30,7 @@ struct UsageQuotaStripView: View {
     }
 
     private func eligibleSnapshots(_ snapshots: [UsageQuotaSnapshot]) -> [UsageQuotaSnapshot] {
-        snapshots.filter { $0.primaryDisplayWindow != nil || !$0.modelWindows.isEmpty }
+        snapshots.filter { $0.primaryDisplayWindow != nil || $0.tertiaryMonthlyWindow != nil || !$0.modelWindows.isEmpty }
     }
 
     private func accessibilityValue(for snapshots: [UsageQuotaSnapshot]) -> String {
@@ -132,6 +132,15 @@ private struct UsageQuotaDetailsPopover: View {
                 remainingPercent: weekly.remainingPercent,
                 thresholds: preferences.weeklyWarningThresholds,
                 kind: .weekly
+            ))
+        }
+        if let monthly = snapshot.tertiaryMonthlyWindow {
+            rows.append(UsageQuotaDotsCard.RowData(
+                title: monthly.label,
+                countdown: UsageQuotaDotsCard.bareCountdown(until: monthly.resetAt),
+                remainingPercent: monthly.remainingPercent,
+                thresholds: preferences.weeklyWarningThresholds,
+                kind: .model
             ))
         }
         for window in snapshot.modelWindows {

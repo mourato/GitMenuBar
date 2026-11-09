@@ -14,7 +14,7 @@ struct UsageQuotaSummaryView: View {
 
     private var eligibleSnapshots: [UsageQuotaSnapshot] {
         snapshots.compactMap { snapshot in
-            guard snapshot.primaryDisplayWindow != nil || !snapshot.modelWindows.isEmpty else { return nil }
+            guard snapshot.primaryDisplayWindow != nil || snapshot.tertiaryMonthlyWindow != nil || !snapshot.modelWindows.isEmpty else { return nil }
             return snapshot
         }.prefix(3).map(\.self)
     }
@@ -84,6 +84,9 @@ private struct UsageQuotaSummaryItem: View {
         }
         if let weekly = snapshot.weeklyWindow {
             return (weekly, .weekly)
+        }
+        if let monthly = snapshot.tertiaryMonthlyWindow {
+            return (monthly, .model)
         }
         guard let model = snapshot.modelWindows.min(by: { $0.remainingPercent < $1.remainingPercent }) else {
             return nil
@@ -198,6 +201,8 @@ private enum ProviderIconRenderer {
             "ProviderIcon-gemini"
         case .antigravity:
             "ProviderIcon-antigravity"
+        case .opencodeGo:
+            "ProviderIcon-opencodego"
         }
 
         return SVGIconLoader.image(resourceName: resourceName)

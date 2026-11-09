@@ -65,6 +65,7 @@ final class UsageQuotaPresentationPreferences {
     enum Metric: String, CaseIterable, Identifiable {
         case session
         case weekly
+        case monthly
         case credits
 
         var id: String {
@@ -77,6 +78,8 @@ final class UsageQuotaPresentationPreferences {
                 "Session"
             case .weekly:
                 "Weekly"
+            case .monthly:
+                "Monthly"
             case .credits:
                 "Credits"
             }

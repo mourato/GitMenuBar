@@ -40,6 +40,7 @@ struct AIProviderCredentialID: Codable, Equatable, Hashable, Sendable, CustomStr
     }
 
     static let openrouter = Self(rawValue: "openrouter")
+    static let opencodego = Self(rawValue: "opencodego")
     static let google = Self(rawValue: "google")
     static let openai = Self(rawValue: "openai")
     static let anthropic = Self(rawValue: "anthropic")
