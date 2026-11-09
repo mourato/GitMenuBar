@@ -169,6 +169,7 @@ final class StatusBarController: NSObject {
             _ = usageQuotaStore.showOpenRouterUsageQuota
             _ = usageQuotaStore.showGeminiUsageQuota
             _ = usageQuotaStore.showAntigravityUsageQuota
+            _ = usageQuotaStore.showOpenCodeGoUsageQuota
             _ = usageQuotaPresentationPreferences.valueStyle
             _ = usageQuotaPresentationPreferences.meterStyle
             _ = usageQuotaPresentationPreferences.menuBarVisibility

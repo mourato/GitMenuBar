@@ -24,11 +24,11 @@ enum OpenCodeGoLocalUsage {
     ) -> UsageQuotaSnapshot? {
         guard let databaseURL = databaseURL(homeDirectory: homeDirectory, environment: environment),
               FileManager.default.fileExists(atPath: databaseURL.path),
-              let bounds = monthAnchorBounds(databaseURL: databaseURL, now: now)
+              let month = monthAnchorBounds(databaseURL: databaseURL, now: now)
         else {
             return nil
         }
-        return aggregate(databaseURL: databaseURL, now: now, anchorMs: bounds.anchorMs, month: bounds.month)
+        return aggregate(databaseURL: databaseURL, now: now, month: month)
     }
 
     // MARK: - Paths (mirrors CodexBar's XDG_DATA_HOME / OPENCODE_DB lookup)
@@ -48,16 +48,11 @@ enum OpenCodeGoLocalUsage {
 
     // MARK: - SQLite
 
-    private struct MonthBounds {
-        let anchorMs: Int64?
-        let month: (startMs: Int64, endMs: Int64)
-    }
-
-    private static func monthAnchorBounds(databaseURL: URL, now: Date) -> MonthBounds? {
+    private static func monthAnchorBounds(databaseURL: URL, now: Date) -> (startMs: Int64, endMs: Int64)? {
         guard let anchorMs = minCreatedMs(databaseURL: databaseURL) else {
             return nil
         }
-        return MonthBounds(anchorMs: anchorMs, month: monthBounds(now: now, anchorMs: anchorMs))
+        return monthBounds(now: now, anchorMs: anchorMs)
     }
 
     private static func minCreatedMs(databaseURL: URL) -> Int64? {
@@ -69,7 +64,7 @@ enum OpenCodeGoLocalUsage {
                 hasV2: tables.contains("session_message")
             )
             guard let union else { return nil }
-            let sql = "WITH all_usage AS (\(union)) SELECT MIN(createdMs) FROM all_usage WHERE createdMs > 0 AND cost >= 0"
+            let sql = "WITH all_usage AS (\(union)) SELECT MIN(createdMs) FROM all_usage WHERE createdMs > 0 AND cost >= 0 AND cost = cost"
             return try scalarInt64(db: db, sql: sql)
         }
     }
@@ -77,7 +72,6 @@ enum OpenCodeGoLocalUsage {
     private static func aggregate(
         databaseURL: URL,
         now: Date,
-        anchorMs: Int64?,
         month: (startMs: Int64, endMs: Int64)
     ) -> UsageQuotaSnapshot? {
         let nowMs = Int64(now.timeIntervalSince1970 * 1000)
@@ -153,7 +147,6 @@ enum OpenCodeGoLocalUsage {
             label: "30d",
             durationSeconds: 30 * 86400
         )
-        _ = anchorMs
         return UsageQuotaSnapshot(
             providerID: .opencodeGo,
             displayName: UsageProviderID.opencodeGo.displayName,
