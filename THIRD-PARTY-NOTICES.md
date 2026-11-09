@@ -21,6 +21,10 @@ OpenRouter credits parsing, the Claude Code, Codex, Cursor, and OpenRouter provi
 Cursor plan labels, the API-equivalent token pricing tables, and the models.dev
 pricing catalog (fetch, cache, and model-ID resolution)
 are adapted from [CodexBar](https://github.com/steipete/CodexBar).
+The OpenCode Go usage-API parsing, local-history predicates and fixed
+$12/$30/$60 estimate windows in `OpenCodeGoUsageParsing.swift` and
+`OpenCodeGoLocalUsage.swift`, and the OpenCode Go provider icon
+are also adapted from CodexBar.
 
 Copyright (c) 2026 Peter Steinberger
 
