@@ -142,9 +142,17 @@ final class UsageQuotaPresentationPreferences {
 
     private let defaults: UserDefaults
     private var metricsByProvider: [UsageProviderID: [Metric]]
+    private let keyStore: any AIAPIKeyStore // justified: shared Keychain reader backing the quota key presence cache
 
-    init(defaults: UserDefaults = .standard) {
+    /// Last-4 suffixes of stored quota API keys, by provider. Absent means no stored key.
+    private(set) var quotaKeySuffixes: [UsageProviderID: String] = [:]
+
+    init(
+        defaults: UserDefaults = .standard,
+        keyStore: any AIAPIKeyStore = AIKeychainStore() // justified: shared Keychain reader backing the quota key presence cache
+    ) {
         self.defaults = defaults
+        self.keyStore = keyStore
         meterStyle = defaults.string(forKey: AppPreferences.Keys.usageQuotaMenuBarStyle)
             .flatMap(MeterStyle.init(rawValue:)) ?? .text
         valueStyle = defaults.string(forKey: AppPreferences.Keys.usageQuotaValueStyle)
@@ -167,6 +175,21 @@ final class UsageQuotaPresentationPreferences {
         workdayTickAppearance = defaults.string(forKey: AppPreferences.Keys.usageQuotaWorkdayTickAppearance)
             .flatMap(WorkdayTickAppearance.init(rawValue:)) ?? .subtle
         showsPace = defaults.object(forKey: AppPreferences.Keys.usageQuotaShowsPace) as? Bool ?? true
+        refreshQuotaKeyPresence()
+    }
+
+    /// Re-reads stored quota API keys into `quotaKeySuffixes`. Call after any
+    /// keychain mutation this object does not perform itself.
+    func refreshQuotaKeyPresence() {
+        var suffixes: [UsageProviderID: String] = [:]
+        for providerID in UsageProviderID.allCases {
+            guard let credentialID = providerID.quotaCredentialID,
+                  let stored = try? keyStore.apiKey(for: credentialID),
+                  !stored.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else { continue }
+            suffixes[providerID] = stored.count > 4 ? String(stored.suffix(4)) : "••••"
+        }
+        quotaKeySuffixes = suffixes
     }
 
     var orderedProviderIDs: [UsageProviderID] {

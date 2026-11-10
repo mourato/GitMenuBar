@@ -4,20 +4,44 @@ import XCTest
 /// Contract for the quota settings status pill: the same snapshot rules that
 /// drive the menu-bar strip must drive the per-provider status text.
 final class QuotaProviderStatusTests: XCTestCase {
-    private func window() -> UsageWindow {
-        UsageWindow(remainingPercent: 62, resetAt: nil, label: "5h")
+    private func window(remainingPercent: Int = 62) -> UsageWindow {
+        UsageWindow(remainingPercent: remainingPercent, resetAt: nil, label: "5h")
     }
 
-    func testDisabledProviderIsHidden() {
-        XCTAssertEqual(
-            QuotaProviderStatus.resolve(isEnabled: false, snapshot: nil, isKeyProvider: false, hasStoredKey: false),
-            .hidden
+    private func resolve(
+        isEnabled: Bool,
+        snapshot: UsageQuotaSnapshot?,
+        isKeyProvider: Bool = false,
+        hasStoredKey: Bool = false,
+        selectedMetrics: [UsageQuotaPresentationPreferences.Metric] = [.session, .weekly]
+    ) -> QuotaProviderStatus {
+        QuotaProviderStatus.resolve(
+            isEnabled: isEnabled,
+            snapshot: snapshot,
+            isKeyProvider: isKeyProvider,
+            hasStoredKey: hasStoredKey,
+            selectedMetrics: selectedMetrics
         )
     }
 
+    func testDisabledProviderIsHidden() {
+        XCTAssertEqual(resolve(isEnabled: false, snapshot: nil), .hidden)
+    }
+
     func testEnabledProviderWithoutSnapshotIsChecking() {
+        XCTAssertEqual(resolve(isEnabled: true, snapshot: nil), .checking)
+    }
+
+    func testNilSnapshotKeyProviderWithoutKeyNeedsKey() {
         XCTAssertEqual(
-            QuotaProviderStatus.resolve(isEnabled: true, snapshot: nil, isKeyProvider: false, hasStoredKey: false),
+            resolve(isEnabled: true, snapshot: nil, isKeyProvider: true, hasStoredKey: false),
+            .needsKey
+        )
+    }
+
+    func testNilSnapshotKeyProviderWithKeyIsChecking() {
+        XCTAssertEqual(
+            resolve(isEnabled: true, snapshot: nil, isKeyProvider: true, hasStoredKey: true),
             .checking
         )
     }
@@ -30,10 +54,7 @@ final class QuotaProviderStatusTests: XCTestCase {
             weeklyWindow: nil,
             isAvailable: true
         )
-        XCTAssertEqual(
-            QuotaProviderStatus.resolve(isEnabled: true, snapshot: snapshot, isKeyProvider: false, hasStoredKey: false),
-            .inStrip
-        )
+        XCTAssertEqual(resolve(isEnabled: true, snapshot: snapshot), .inStrip)
     }
 
     func testAvailableSnapshotWithOnlyModelWindowsIsInStrip() {
@@ -45,10 +66,7 @@ final class QuotaProviderStatusTests: XCTestCase {
             modelWindows: [window()],
             isAvailable: true
         )
-        XCTAssertEqual(
-            QuotaProviderStatus.resolve(isEnabled: true, snapshot: snapshot, isKeyProvider: false, hasStoredKey: false),
-            .inStrip
-        )
+        XCTAssertEqual(resolve(isEnabled: true, snapshot: snapshot), .inStrip)
     }
 
     func testAvailableSnapshotWithoutWindowsIsNoData() {
@@ -59,8 +77,30 @@ final class QuotaProviderStatusTests: XCTestCase {
             weeklyWindow: nil,
             isAvailable: true
         )
+        XCTAssertEqual(resolve(isEnabled: true, snapshot: snapshot), .noData)
+    }
+
+    func testExhaustedWeeklyWindowIsNoData() {
+        let snapshot = UsageQuotaSnapshot(
+            providerID: .codex,
+            displayName: "Codex",
+            sessionWindow: window(),
+            weeklyWindow: window(remainingPercent: 0),
+            isAvailable: true
+        )
+        XCTAssertEqual(resolve(isEnabled: true, snapshot: snapshot), .noData)
+    }
+
+    func testUncoveredSelectedMetricIsNoData() {
+        let snapshot = UsageQuotaSnapshot(
+            providerID: .codex,
+            displayName: "Codex",
+            sessionWindow: window(),
+            weeklyWindow: nil,
+            isAvailable: true
+        )
         XCTAssertEqual(
-            QuotaProviderStatus.resolve(isEnabled: true, snapshot: snapshot, isKeyProvider: false, hasStoredKey: false),
+            resolve(isEnabled: true, snapshot: snapshot, selectedMetrics: [.monthly]),
             .noData
         )
     }
@@ -68,7 +108,7 @@ final class QuotaProviderStatusTests: XCTestCase {
     func testUnavailableKeyProviderWithoutKeyNeedsKey() {
         let snapshot = UsageQuotaSnapshot.unavailable(providerID: .opencodeGo, statusNote: "sign in to OpenCode Go")
         XCTAssertEqual(
-            QuotaProviderStatus.resolve(isEnabled: true, snapshot: snapshot, isKeyProvider: true, hasStoredKey: false),
+            resolve(isEnabled: true, snapshot: snapshot, isKeyProvider: true, hasStoredKey: false),
             .needsKey
         )
     }
@@ -76,7 +116,7 @@ final class QuotaProviderStatusTests: XCTestCase {
     func testUnavailableKeyProviderWithKeyIsUnavailable() {
         let snapshot = UsageQuotaSnapshot.unavailable(providerID: .openrouter, statusNote: "token expired")
         XCTAssertEqual(
-            QuotaProviderStatus.resolve(isEnabled: true, snapshot: snapshot, isKeyProvider: true, hasStoredKey: true),
+            resolve(isEnabled: true, snapshot: snapshot, isKeyProvider: true, hasStoredKey: true),
             .unavailable
         )
     }
@@ -84,7 +124,7 @@ final class QuotaProviderStatusTests: XCTestCase {
     func testUnavailableStandardProviderIsUnavailable() {
         let snapshot = UsageQuotaSnapshot.unavailable(providerID: .cursor, statusNote: "sign in")
         XCTAssertEqual(
-            QuotaProviderStatus.resolve(isEnabled: true, snapshot: snapshot, isKeyProvider: false, hasStoredKey: false),
+            resolve(isEnabled: true, snapshot: snapshot),
             .unavailable
         )
     }

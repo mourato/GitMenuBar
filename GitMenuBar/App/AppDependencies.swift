@@ -18,7 +18,7 @@ final class AppDependencies {
     let shortcutActionBridge = MainMenuShortcutActionBridge()
     let presentationModel = MainMenuPresentationModel()
     let usageQuotaStore: UsageQuotaStore
-    let usageQuotaPresentationPreferences = UsageQuotaPresentationPreferences()
+    let usageQuotaPresentationPreferences: UsageQuotaPresentationPreferences
     let projectMonitor = ProjectMonitorStore()
     let repositorySelectionCoordinator: RepositorySelectionCoordinator
 
@@ -40,6 +40,7 @@ final class AppDependencies {
             _ = chatGPTSubscription.refresh()
         }
 
+        usageQuotaPresentationPreferences = UsageQuotaPresentationPreferences(keyStore: aiKeychainStore)
         usageQuotaStore = UsageQuotaStore(providers: [
             ClaudeCodeUsageProvider(),
             CodexUsageProvider(),

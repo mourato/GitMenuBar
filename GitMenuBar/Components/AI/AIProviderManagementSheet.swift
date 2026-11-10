@@ -26,6 +26,7 @@ struct AIProviderManagementSheet: View {
 
     @Environment(AIProviderStore.self) private var aiProviderStore
     @Environment(AICommitCoordinator.self) private var aiCommitCoordinator
+    @Environment(UsageQuotaPresentationPreferences.self) private var quotaPreferences
     @Environment(\.dismiss) private var dismiss
 
     @State private var editorPresentation: EditorPresentation?
@@ -118,6 +119,7 @@ struct AIProviderManagementSheet: View {
 
         switch aiCommitCoordinator.saveAPIKey(apiKey, for: provider.id) {
         case .success:
+            quotaPreferences.refreshQuotaKeyPresence()
             return .success(())
         case let .failure(error):
             if let previousProvider {
@@ -148,7 +150,7 @@ struct AIProviderManagementSheet: View {
         if !hasRemainingReference {
             switch aiCommitCoordinator.deleteAPIKey(for: provider.id) {
             case .success:
-                break
+                quotaPreferences.refreshQuotaKeyPresence()
             case .failure:
                 errorMessage = "Could not delete provider. Check Keychain access and try again."
                 return
@@ -187,6 +189,7 @@ struct AIProviderManagementSheet: View {
         AIProviderManagementSheet()
             .environment(providerStore)
             .environment(coordinator)
+            .environment(UsageQuotaPresentationPreferences(keyStore: InMemoryAIAPIKeyStore()))
     }
 
     #Preview("AI Provider Management with providers") {
@@ -201,6 +204,7 @@ struct AIProviderManagementSheet: View {
         AIProviderManagementSheet()
             .environment(providerStore)
             .environment(coordinator)
+            .environment(UsageQuotaPresentationPreferences(keyStore: InMemoryAIAPIKeyStore()))
     }
 
 #endif

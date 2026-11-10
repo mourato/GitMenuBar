@@ -3,9 +3,9 @@ import SwiftUI
 /// Header row for one quota provider: icon, name, strip status, toggle, disclosure.
 struct QuotaProviderRowView: View {
     @Environment(UsageQuotaStore.self) private var usageQuotaStore
+    @Environment(UsageQuotaPresentationPreferences.self) private var preferences
 
     let providerID: UsageProviderID
-    var keyStore: any AIAPIKeyStore = AIKeychainStore() // justified: injectable Keychain seam (real store vs in-memory previews)
 
     @State private var isExpanded = false
 
@@ -39,7 +39,7 @@ struct QuotaProviderRowView: View {
             }
 
             if isExpanded {
-                QuotaProviderDetailView(providerID: providerID, keyStore: keyStore)
+                QuotaProviderDetailView(providerID: providerID)
             }
         }
         .opacity(usageQuotaStore.isProviderEnabled(providerID) ? 1 : 0.55)
@@ -48,20 +48,13 @@ struct QuotaProviderRowView: View {
 
     private var currentStatus: QuotaProviderStatus {
         let snapshot = usageQuotaStore.snapshots.first { $0.providerID == providerID }
-        let credentialID = providerID.quotaCredentialID
         return QuotaProviderStatus.resolve(
             isEnabled: usageQuotaStore.isProviderEnabled(providerID),
             snapshot: snapshot,
-            isKeyProvider: credentialID != nil,
-            hasStoredKey: hasStoredKey(credentialID: credentialID)
+            isKeyProvider: providerID.quotaCredentialID != nil,
+            hasStoredKey: preferences.quotaKeySuffixes[providerID] != nil,
+            selectedMetrics: preferences.selectedMetrics(for: providerID)
         )
-    }
-
-    private func hasStoredKey(credentialID: AIProviderCredentialID?) -> Bool {
-        guard let credentialID,
-              let stored = try? keyStore.apiKey(for: credentialID)
-        else { return false }
-        return !stored.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
 
@@ -72,7 +65,7 @@ struct QuotaProviderRowView: View {
         }
         .formStyle(.grouped)
         .environment(UsageQuotaStore(providers: []))
-        .environment(UsageQuotaPresentationPreferences())
+        .environment(UsageQuotaPresentationPreferences(keyStore: InMemoryAIAPIKeyStore()))
         .frame(width: 560)
     }
 #endif

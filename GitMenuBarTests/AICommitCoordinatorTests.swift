@@ -173,6 +173,123 @@ final class AICommitCoordinatorTests: XCTestCase {
         )
     }
 
+    private func makeOpenRouterProvider(hasStoredAPIKey: Bool) -> AIProviderConfig {
+        AIProviderConfig(
+            name: "OpenRouter",
+            type: .openAI,
+            endpointURL: "https://openrouter.ai/api/v1",
+            selectedModel: "anthropic/claude",
+            availableModels: ["anthropic/claude"],
+            hasStoredAPIKey: hasStoredAPIKey
+        )
+    }
+
+    func testSaveQuotaAPIKeySyncsMatchingAIProviderPresence() {
+        let providerStore = makeProviderStore()
+        let provider = makeOpenRouterProvider(hasStoredAPIKey: false)
+        providerStore.upsertProvider(provider)
+
+        let apiKeyStore = SpyAIAPIKeyStore()
+        let coordinator = makeCoordinator(
+            providerStore: providerStore,
+            apiKeyStore: apiKeyStore
+        )
+
+        let result = coordinator.saveQuotaAPIKey("quota-key", for: .openrouter)
+
+        guard case .success = result else {
+            return XCTFail("Expected saveQuotaAPIKey to succeed")
+        }
+        XCTAssertEqual(try? apiKeyStore.apiKey(for: .openrouter), "quota-key")
+        XCTAssertEqual(providerStore.defaultProvider?.hasStoredAPIKey, true)
+    }
+
+    func testDeleteQuotaAPIKeyClearsMatchingAIProviderPresence() {
+        let providerStore = makeProviderStore()
+        let provider = makeOpenRouterProvider(hasStoredAPIKey: true)
+        providerStore.upsertProvider(provider)
+
+        let apiKeyStore = SpyAIAPIKeyStore(storage: [.openrouter: "quota-key"])
+        let coordinator = makeCoordinator(
+            providerStore: providerStore,
+            apiKeyStore: apiKeyStore
+        )
+
+        let result = coordinator.deleteQuotaAPIKey(for: .openrouter)
+
+        guard case .success = result else {
+            return XCTFail("Expected deleteQuotaAPIKey to succeed")
+        }
+        XCTAssertNil(try? apiKeyStore.apiKey(for: .openrouter))
+        XCTAssertEqual(providerStore.defaultProvider?.hasStoredAPIKey, false)
+    }
+
+    func testSaveQuotaAPIKeyRejectsBlankKey() {
+        let providerStore = makeProviderStore()
+        let apiKeyStore = SpyAIAPIKeyStore()
+        let coordinator = makeCoordinator(
+            providerStore: providerStore,
+            apiKeyStore: apiKeyStore
+        )
+
+        let result = coordinator.saveQuotaAPIKey("  ", for: .opencodego)
+
+        guard case let .failure(error as AIError) = result else {
+            return XCTFail("Expected saveQuotaAPIKey to fail with AIError")
+        }
+        XCTAssertEqual(error, .apiKeyMissing)
+    }
+
+    func testSaveQuotaAPIKeyLeavesNonMatchingAIProviderUntouched() {
+        let providerStore = makeProviderStore()
+        providerStore.upsertProvider(makeOpenRouterProvider(hasStoredAPIKey: false))
+        let openAIProvider = makeProvider(hasStoredAPIKey: false)
+        providerStore.upsertProvider(openAIProvider)
+
+        let apiKeyStore = SpyAIAPIKeyStore()
+        let coordinator = makeCoordinator(
+            providerStore: providerStore,
+            apiKeyStore: apiKeyStore
+        )
+
+        let result = coordinator.saveQuotaAPIKey("quota-key", for: .openrouter)
+
+        guard case .success = result else {
+            return XCTFail("Expected saveQuotaAPIKey to succeed")
+        }
+        XCTAssertEqual(
+            providerStore.providers.first { $0.name == "OpenRouter" }?.hasStoredAPIKey,
+            true
+        )
+        XCTAssertEqual(
+            providerStore.providers.first { $0.id == openAIProvider.id }?.hasStoredAPIKey,
+            false
+        )
+    }
+
+    func testAIProviderSaveFollowedByPresenceRefreshShowsKey() {
+        let providerStore = makeProviderStore()
+        let provider = makeOpenRouterProvider(hasStoredAPIKey: false)
+        providerStore.upsertProvider(provider)
+
+        let apiKeyStore = SpyAIAPIKeyStore()
+        let coordinator = makeCoordinator(
+            providerStore: providerStore,
+            apiKeyStore: apiKeyStore
+        )
+        let suiteName = "QuotaPresenceWiringTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults, keyStore: apiKeyStore)
+        preferences.refreshQuotaKeyPresence()
+        XCTAssertNil(preferences.quotaKeySuffixes[.openrouter])
+
+        _ = coordinator.saveAPIKey("wiring-key-5678", for: provider.id)
+        preferences.refreshQuotaKeyPresence()
+
+        XCTAssertEqual(preferences.quotaKeySuffixes[.openrouter], "5678")
+        UserDefaults.standard.removePersistentDomain(forName: suiteName)
+    }
+
     private nonisolated static func requestBodyData(from request: URLRequest) -> Data {
         if let body = request.httpBody {
             return body

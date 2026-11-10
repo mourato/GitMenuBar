@@ -14,14 +14,18 @@ enum QuotaProviderStatus: Equatable {
         isEnabled: Bool,
         snapshot: UsageQuotaSnapshot?,
         isKeyProvider: Bool,
-        hasStoredKey: Bool
+        hasStoredKey: Bool,
+        selectedMetrics: [UsageQuotaPresentationPreferences.Metric]
     ) -> QuotaProviderStatus {
         guard isEnabled else { return .hidden }
-        guard let snapshot else { return .checking }
+        guard let snapshot else {
+            return (isKeyProvider && !hasStoredKey) ? .needsKey : .checking
+        }
         if snapshot.isAvailable {
-            let isEligible = snapshot.primaryDisplayWindow != nil
-                || snapshot.tertiaryMonthlyWindow != nil
-                || !snapshot.modelWindows.isEmpty
+            let isEligible = UsageQuotaMenuPresentation.isEligible(
+                snapshot: snapshot,
+                selectedMetrics: selectedMetrics
+            )
             return isEligible ? .inStrip : .noData
         }
         if isKeyProvider, !hasStoredKey {

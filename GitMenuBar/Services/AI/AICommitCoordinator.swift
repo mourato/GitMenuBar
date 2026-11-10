@@ -224,6 +224,40 @@ final class AICommitCoordinator {
         }
     }
 
+    /// Quota-section lifecycle for fixed credentials shared with AI providers
+    /// (OpenRouter). Writes the Keychain item and syncs the stored-key flag on
+    /// every AI provider that resolves to the same credential, so generation
+    /// readiness follows the saved key.
+    @discardableResult
+    func saveQuotaAPIKey(_ apiKey: String, for credentialID: AIProviderCredentialID) -> Result<Void, Error> {
+        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .failure(AIError.apiKeyMissing) }
+        do {
+            try keychainStore.saveAPIKey(trimmed, for: credentialID)
+            syncStoredAPIKeyPresence(true, for: credentialID)
+            return .success(())
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    @discardableResult
+    func deleteQuotaAPIKey(for credentialID: AIProviderCredentialID) -> Result<Void, Error> {
+        do {
+            try keychainStore.deleteAPIKey(for: credentialID)
+            syncStoredAPIKeyPresence(false, for: credentialID)
+            return .success(())
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    private func syncStoredAPIKeyPresence(_ hasStoredAPIKey: Bool, for credentialID: AIProviderCredentialID) {
+        for provider in providerStore.providers where AIProviderCredentialID(provider: provider) == credentialID {
+            providerStore.updateStoredAPIKeyPresence(hasStoredAPIKey, for: provider.id)
+        }
+    }
+
     var isReadyForGeneration: Bool {
         if providerStore.preferences.defaultUsesChatGPT {
             guard providerStore.preferences.chatGPTEnabled,

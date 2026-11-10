@@ -8,14 +8,13 @@ struct QuotaProviderDetailView: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     let providerID: UsageProviderID
-    var keyStore: any AIAPIKeyStore = AIKeychainStore() // justified: injectable Keychain seam (real store vs in-memory previews)
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
             if providerID.quotaCredentialID != nil {
                 VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
                     blockCaption("API key")
-                    QuotaAPIKeyEditorView(providerID: providerID, keyStore: keyStore)
+                    QuotaAPIKeyEditorView(providerID: providerID)
                 }
             }
 
@@ -69,12 +68,23 @@ struct QuotaProviderDetailView: View {
 
 #if DEBUG
     #Preview("Quota Provider Detail") {
-        Form {
+        let keyStore = InMemoryAIAPIKeyStore(storage: [.opencodego: "test-key-1234"])
+        let coordinator = AICommitCoordinator(
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            keychainStore: keyStore,
+            messageService: AICommitMessageService(),
+            gitManager: GitManager(repositoryPathOverride: "/tmp")
+        )
+        let preferences = UsageQuotaPresentationPreferences(keyStore: keyStore)
+        preferences.refreshQuotaKeyPresence()
+
+        return Form {
             QuotaProviderDetailView(providerID: .opencodeGo)
         }
         .formStyle(.grouped)
         .environment(UsageQuotaStore(providers: []))
-        .environment(UsageQuotaPresentationPreferences())
+        .environment(preferences)
+        .environment(coordinator)
         .frame(width: 560)
     }
 #endif

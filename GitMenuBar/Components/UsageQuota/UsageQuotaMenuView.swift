@@ -149,19 +149,20 @@ enum UsageQuotaMenuPresentation {
     ) -> [UsageQuotaMenuBarGroup] {
         let snapshotsByProvider = Dictionary(uniqueKeysWithValues: snapshots.map { ($0.providerID, $0) })
         return preferences.orderedProviderIDs.compactMap { providerID in
+            let selectedMetrics = preferences.selectedMetrics(for: providerID)
             guard let snapshot = snapshotsByProvider[providerID],
-                  snapshot.weeklyWindow?.remainingPercent != 0
+                  isEligible(snapshot: snapshot, selectedMetrics: selectedMetrics)
             else { return nil }
             var values: [String] = []
             var fractions: [Double] = []
-            for metric in preferences.selectedMetrics(for: providerID) {
+            for metric in selectedMetrics {
                 guard let reading = value(for: metric, snapshot: snapshot, valueStyle: preferences.valueStyle) else { continue }
                 values.append(reading.compactValue)
                 if let fraction = reading.fraction {
                     fractions.append(fraction)
                 }
             }
-            if !values.isEmpty || (!preferences.selectedMetrics(for: providerID).isEmpty && !snapshot.modelWindows.isEmpty) {
+            if !values.isEmpty || (!selectedMetrics.isEmpty && !snapshot.modelWindows.isEmpty) {
                 for modelWindow in snapshot.modelWindows.prefix(2) {
                     let reading = reading(
                         for: modelWindow,
@@ -176,6 +177,20 @@ enum UsageQuotaMenuPresentation {
             }
             return values.isEmpty ? nil : UsageQuotaMenuBarGroup(providerID: providerID, values: values, fractions: fractions)
         }
+    }
+
+    /// Strip eligibility shared with the settings status pill: an exhausted
+    /// weekly window hides the provider, otherwise at least one selected
+    /// figure must resolve (model windows alone qualify when metrics exist).
+    static func isEligible(
+        snapshot: UsageQuotaSnapshot,
+        selectedMetrics: [UsageQuotaPresentationPreferences.Metric]
+    ) -> Bool {
+        guard snapshot.weeklyWindow?.remainingPercent != 0 else { return false }
+        if selectedMetrics.contains(where: { value(for: $0, snapshot: snapshot, valueStyle: .left) != nil }) {
+            return true
+        }
+        return !selectedMetrics.isEmpty && !snapshot.modelWindows.isEmpty
     }
 
     static func value(
