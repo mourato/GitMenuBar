@@ -32,6 +32,20 @@ final class UsageQuotaPresentationPreferencesTests: XCTestCase {
         XCTAssertEqual(restored.orderedProviderIDs.first, .cursor)
     }
 
+    func testMoveProviderFromOffsetsToDestinationMatchesOnMove() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        let initial = preferences.orderedProviderIDs
+        XCTAssertEqual(initial.count, UsageProviderID.allCases.count)
+
+        preferences.moveProvider(from: IndexSet(integer: 0), to: initial.count)
+
+        let expected = Array(initial.dropFirst()) + [initial[0]]
+        XCTAssertEqual(preferences.orderedProviderIDs, expected)
+
+        let restored = UsageQuotaPresentationPreferences(defaults: defaults)
+        XCTAssertEqual(restored.orderedProviderIDs, expected)
+    }
+
     func testPersistsCircularMeterStyle() {
         let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
         preferences.meterStyle = .circular

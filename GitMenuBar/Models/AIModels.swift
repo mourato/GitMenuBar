@@ -77,6 +77,25 @@ struct AIProviderCredentialID: Codable, Equatable, Hashable, Sendable, CustomStr
             self = Self(rawValue: "custom:\(provider.id.uuidString.lowercased())")
         }
     }
+
+    /// Fixed Keychain credential for quota providers that authenticate with a
+    /// stored API key. Returns nil for providers that use OAuth or local logins.
+    init?(quotaProvider providerID: UsageProviderID) {
+        switch providerID {
+        case .opencodeGo:
+            self = .opencodego
+        case .openrouter:
+            self = .openrouter
+        case .claudeCode, .codex, .cursor, .gemini, .antigravity:
+            return nil
+        }
+    }
+}
+
+extension UsageProviderID {
+    var quotaCredentialID: AIProviderCredentialID? {
+        AIProviderCredentialID(quotaProvider: self)
+    }
 }
 
 enum DiffScope: String, CaseIterable, Codable, Identifiable {

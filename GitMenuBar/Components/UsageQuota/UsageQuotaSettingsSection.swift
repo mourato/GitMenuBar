@@ -5,6 +5,7 @@ struct UsageQuotaSettingsSection: View {
     @Environment(UsageQuotaPresentationPreferences.self) private var preferences
     @State private var sessionWarningsText = ""
     @State private var weeklyWarningsText = ""
+    @State private var showingOrderSheet = false
 
     var body: some View {
         Toggle(
@@ -105,17 +106,33 @@ struct UsageQuotaSettingsSection: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
 
-        ForEach(Array(preferences.orderedProviderIDs.enumerated()), id: \.element) { index, providerID in
-            providerRow(providerID, index: index)
+        ForEach(preferences.orderedProviderIDs) { providerID in
+            QuotaProviderRowView(providerID: providerID)
         }
         .onAppear(perform: seedWarningFields)
+
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+            Text("Strip order")
+            Spacer(minLength: 0)
+            Text(orderSummary)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Button("Reorder") {
+                showingOrderSheet = true
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Reorder providers in the menu-bar strip")
+        }
+        .sheet(isPresented: $showingOrderSheet) {
+            QuotaStripOrderSheetView()
+        }
 
         Text(
             "Quota snapshots stay on this Mac. GitMenuBar uses credentials already stored by each provider "
                 + "and refreshes them in place when needed. It never creates a separate OAuth token store. "
-                + "OpenRouter quota uses the provider credential configured in AI settings. Claude Code "
-                + "uses its existing login to request the account quota when available. OpenCode Go "
-                + "prefers the stored API key or OPENCODE_API_KEY and falls back to a local estimate "
+                + "OpenRouter and OpenCode Go quotas use the API keys saved in this section. Claude Code "
+                + "uses its existing login to request the account quota when available. Without a saved key, OpenCode Go "
+                + "falls back to OPENCODE_API_KEY from the environment and then to a local estimate "
                 + "that is not account quota."
         )
         .font(WorkbenchTypography.caption)
@@ -130,73 +147,10 @@ struct UsageQuotaSettingsSection: View {
         .disabled(!usageQuotaStore.showAIUsageQuotas)
     }
 
-    private func providerRow(_ providerID: UsageProviderID, index: Int) -> some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-            HStack(spacing: WorkbenchMetrics.compactSpacing) {
-                ProviderIconView(providerID: providerID)
-                Text(providerID.displayName)
-                Spacer(minLength: 0)
-                Button {
-                    preferences.moveProvider(providerID, by: -1)
-                } label: {
-                    Image(systemName: "chevron.up")
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Move \(providerID.displayName) up")
-                .disabled(index == 0)
-
-                Button {
-                    preferences.moveProvider(providerID, by: 1)
-                } label: {
-                    Image(systemName: "chevron.down")
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Move \(providerID.displayName) down")
-                .disabled(index == preferences.orderedProviderIDs.count - 1)
-
-                Toggle(
-                    "Show \(providerID.displayName)",
-                    isOn: Binding(
-                        get: { usageQuotaStore.isProviderEnabled(providerID) },
-                        set: { usageQuotaStore.setProviderEnabled($0, for: providerID) }
-                    )
-                )
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.small)
-            }
-
-            Menu {
-                ForEach(UsageQuotaPresentationPreferences.Metric.allCases) { metric in
-                    Button {
-                        preferences.toggleMetric(metric, for: providerID)
-                    } label: {
-                        Label(
-                            metric.title,
-                            systemImage: preferences.selectedMetrics(for: providerID).contains(metric)
-                                ? "checkmark"
-                                : ""
-                        )
-                    }
-                }
-            } label: {
-                HStack {
-                    Text("Menu bar")
-                    Spacer()
-                    Text(selectedMetricsLabel(for: providerID))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .menuStyle(.borderlessButton)
-            .disabled(!usageQuotaStore.showAIUsageQuotas || !usageQuotaStore.isProviderEnabled(providerID))
-        }
-        .opacity(usageQuotaStore.isProviderEnabled(providerID) ? 1 : 0.55)
-        .disabled(!usageQuotaStore.showAIUsageQuotas)
-    }
-
-    private func selectedMetricsLabel(for providerID: UsageProviderID) -> String {
-        let metrics = preferences.selectedMetrics(for: providerID)
-        return metrics.isEmpty ? "Mark only" : metrics.map(\.title).joined(separator: ", ")
+    private var orderSummary: String {
+        let names = preferences.orderedProviderIDs.map(\.displayName)
+        guard names.count > 3 else { return names.joined(separator: ", ") }
+        return names.prefix(3).joined(separator: ", ") + " and \(names.count - 3) more"
     }
 
     private func seedWarningFields() {
