@@ -38,9 +38,10 @@ Related decisions: [ADR 0001](docs/adr/0001-workbench-depth-and-token-naming.md)
 [ADR 0006](docs/adr/0006-workbench-scroll-edge-dissolve-and-thin-scrollbar.md),
 [ADR 0017](docs/adr/0017-narrow-contextual-side-panel.md) (supersedes ADRs
 0010–0015), [ADR 0021](docs/adr/0021-side-panel-split-column.md) (split column;
-supersedes the overlay parts of 0017), and
+supersedes the overlay parts of 0017),
 [ADR 0022](docs/adr/0022-unified-branch-list-and-cleanup-review.md) (unified
-branch list and cleanup review).
+branch list and cleanup review), and
+[ADR 0023](docs/adr/0023-issue-label-mutations.md) (issue label edits).
 
 ## Colors
 
@@ -154,6 +155,11 @@ corner style.
 - Cleanup review banner: one summary line (`N ready to clean`, `M blocked`)
   and one Review action. Review opens the shared cleanup sheet with Ready and
   Blocked sections and a checked subset of ready units.
+- Issues side panel: rows open the issue on GitHub and show its label chips.
+  A trailing tag menu lists every repository label with the applied ones
+  checked. The menu appears only when the account can change labels; a lock
+  caption explains read-only access. One change runs at a time, with progress
+  on the affected row and a retry action after a failure.
 - Side Panel Branches
   ([ADR 0022](docs/adr/0022-unified-branch-list-and-cleanup-review.md)): one
   unified local branch list; each branch appears once, and its linked worktree

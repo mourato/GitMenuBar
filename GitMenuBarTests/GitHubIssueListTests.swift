@@ -29,7 +29,8 @@ final class GitHubIssueListServiceTests: XCTestCase {
         XCTAssertEqual(issue.title, "Issue 7")
         XCTAssertEqual(issue.state, .open)
         XCTAssertEqual(issue.authorLogin, "octocat")
-        XCTAssertEqual(issue.labels, [GitHubIssueLabel(name: "bug", colorHex: "d73a4a")])
+        XCTAssertEqual(issue.nodeID, "I_7")
+        XCTAssertEqual(issue.labels, [GitHubIssueLabel(name: "bug", colorHex: "d73a4a", nodeID: "L_1")])
         XCTAssertEqual(issue.url.absoluteString, "https://github.com/mourato/GitMenuBar/issues/7")
         XCTAssertEqual(issue.createdAt, ISO8601DateFormatter().date(from: "2026-01-02T03:04:05Z"))
         XCTAssertEqual(page.nextCursor, "c1")
@@ -87,10 +88,10 @@ final class GitHubIssueListServiceTests: XCTestCase {
     static func pageJSON(numbers: [Int], hasNextPage: Bool, cursor: String?) -> Data {
         let nodes = numbers.map { number in
             """
-            {"number":\(number),"title":"Issue \(number)","state":"OPEN",\
+            {"id":"I_\(number)","number":\(number),"title":"Issue \(number)","state":"OPEN",\
             "url":"https://github.com/mourato/GitMenuBar/issues/\(number)",\
             "createdAt":"2026-01-02T03:04:05Z","updatedAt":"2026-01-03T03:04:05Z",\
-            "author":{"login":"octocat"},"labels":{"nodes":[{"name":"bug","color":"d73a4a"}]}}
+            "author":{"login":"octocat"},"labels":{"nodes":[{"id":"L_1","name":"bug","color":"d73a4a"}]}}
             """
         }
         let cursorJSON = cursor.map { "\"\($0)\"" } ?? "null"

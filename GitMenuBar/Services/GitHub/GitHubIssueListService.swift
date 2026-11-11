@@ -9,6 +9,14 @@ struct GitHubIssueLabel: Hashable, Sendable {
     let name: String
     /// Six-digit hex color without `#`, as GitHub returns it.
     let colorHex: String
+    /// GraphQL node ID used by the labelable mutations.
+    let nodeID: String
+
+    init(name: String, colorHex: String, nodeID: String = "") {
+        self.name = name
+        self.colorHex = colorHex
+        self.nodeID = nodeID
+    }
 }
 
 struct GitHubIssue: Identifiable, Equatable, Sendable {
@@ -21,9 +29,49 @@ struct GitHubIssue: Identifiable, Equatable, Sendable {
     let updatedAt: Date
     let labels: [GitHubIssueLabel]
     let url: URL
+    /// GraphQL node ID used by the labelable mutations.
+    let nodeID: String
 
     var id: Int {
         number
+    }
+
+    init(
+        number: Int,
+        title: String,
+        state: GitHubIssueState,
+        authorLogin: String?,
+        createdAt: Date,
+        updatedAt: Date,
+        labels: [GitHubIssueLabel],
+        url: URL,
+        nodeID: String = ""
+    ) {
+        self.number = number
+        self.title = title
+        self.state = state
+        self.authorLogin = authorLogin
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.labels = labels
+        self.url = url
+        self.nodeID = nodeID
+    }
+
+    /// Keeps every field but `labels`, so a confirmed mutation updates only
+    /// what GitHub changed.
+    func replacingLabels(_ labels: [GitHubIssueLabel]) -> GitHubIssue {
+        GitHubIssue(
+            number: number,
+            title: title,
+            state: state,
+            authorLogin: authorLogin,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            labels: labels,
+            url: url,
+            nodeID: nodeID
+        )
     }
 }
 
@@ -47,14 +95,14 @@ struct GitHubIssueListService: Sendable {
     typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
 
     static let pageSize = 50
-    static let labelLimit = 20
+    static let labelLimit = 100
 
     static let query = """
     query($owner:String!,$name:String!,$states:[IssueState!],$after:String){\
     repository(owner:$owner,name:$name){\
     issues(first:\(pageSize),after:$after,states:$states,orderBy:{field:CREATED_AT,direction:DESC}){\
     pageInfo{hasNextPage endCursor} \
-    nodes{number title state url createdAt updatedAt author{login} labels(first:\(labelLimit)){nodes{name color}}}}}}
+    nodes{id number title state url createdAt updatedAt author{login} labels(first:\(labelLimit)){nodes{id name color}}}}}}
     """
 
     private static let endpoint = URL(string: "https://api.github.com/graphql")!
@@ -151,8 +199,11 @@ struct GitHubIssueListService: Sendable {
                 authorLogin: node.author?.login,
                 createdAt: node.createdAt,
                 updatedAt: node.updatedAt,
-                labels: node.labels?.nodes.map { GitHubIssueLabel(name: $0.name, colorHex: $0.color) } ?? [],
-                url: url
+                labels: node.labels?.nodes.map {
+                    GitHubIssueLabel(name: $0.name, colorHex: $0.color, nodeID: $0.id ?? "")
+                } ?? [],
+                url: url,
+                nodeID: node.id ?? ""
             )
         }
         let pageInfo = connection.pageInfo
@@ -206,6 +257,7 @@ struct GitHubIssueListService: Sendable {
     }
 
     private struct RawIssue: Decodable {
+        let id: String?
         let number: Int
         let title: String
         let state: String
@@ -225,6 +277,7 @@ struct GitHubIssueListService: Sendable {
     }
 
     private struct RawLabel: Decodable {
+        let id: String?
         let name: String
         let color: String
     }

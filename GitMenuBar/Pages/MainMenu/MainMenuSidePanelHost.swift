@@ -47,7 +47,10 @@ struct MainMenuSidePanelHost: View {
                 projectName: projectName,
                 remoteURL: remoteURL,
                 isAuthenticated: githubAuthManager.isAuthenticated,
-                model: IssueListModel(service: GitHubIssueListService(authManager: githubAuthManager)),
+                model: IssueListModel(
+                    service: GitHubIssueListService(authManager: githubAuthManager),
+                    labelService: GitHubIssueLabelService(authManager: githubAuthManager)
+                ),
                 onClose: onClose
             )
         case .workingTree:

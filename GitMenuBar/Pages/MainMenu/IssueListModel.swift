@@ -1,9 +1,10 @@
 import Foundation
 import Observation
 
-/// Presentation state for the Issues side panel. Network reads go through the
-/// injected page fetcher; every response is checked against the request
-/// generation, so a late reply for an earlier project or filter never shows.
+/// Presentation state for the Issues side panel. Network reads and label
+/// writes go through injected actions; every response is checked against the
+/// request generation, so a late reply for an earlier project or filter never
+/// shows or overwrites the list.
 @MainActor
 @Observable
 final class IssueListModel {
@@ -13,11 +14,41 @@ final class IssueListModel {
         String?
     ) async throws(GitHubIssueListError) -> GitHubIssuePage
 
+    typealias LabelFetcher = @Sendable (
+        GitHubRemoteReference
+    ) async throws(GitHubIssueLabelError) -> GitHubIssueLabelSnapshot
+
+    typealias LabelMutator = @Sendable (
+        _ issueID: String,
+        _ labelID: String,
+        _ adding: Bool
+    ) async throws(GitHubIssueLabelError) -> [GitHubIssueLabel]
+
+    /// Label reads and writes for one issue, kept separate from the page
+    /// fetcher so list-only callers do not need label networking.
+    struct IssueLabelActions: Sendable {
+        let fetchLabels: LabelFetcher
+        let mutateLabel: LabelMutator
+    }
+
     enum Phase: Equatable {
         case idle
         case loading
         case loaded
         case failed(GitHubIssueListError)
+    }
+
+    enum LabelsPhase: Equatable {
+        case idle
+        case loading
+        case loaded
+        case failed(GitHubIssueLabelError)
+    }
+
+    struct LabelChange: Equatable {
+        let issueNumber: Int
+        let labelName: String
+        let isAdding: Bool
     }
 
     private(set) var phase: Phase = .idle
@@ -27,37 +58,92 @@ final class IssueListModel {
     private(set) var isLoadingMore = false
     private(set) var loadMoreFailed = false
 
+    private(set) var labelsPhase: LabelsPhase = .idle
+    private(set) var availableLabels: [GitHubIssueLabel] = []
+    private(set) var canEditLabels = false
+    private(set) var pendingLabelChange: LabelChange?
+    private(set) var labelError: GitHubIssueLabelError?
+
     var canLoadMore: Bool {
         phase == .loaded && nextCursor != nil
     }
 
     @ObservationIgnored private var nextCursor: String?
     @ObservationIgnored private var generation = 0
+    @ObservationIgnored private var labelGeneration = 0
+    @ObservationIgnored private var lastFailedLabelChange: LabelChange?
     @ObservationIgnored private let fetchPage: PageFetcher
+    @ObservationIgnored private let labelActions: IssueLabelActions?
 
-    init(fetchPage: @escaping PageFetcher) {
+    init(fetchPage: @escaping PageFetcher, labels: IssueLabelActions? = nil) {
         self.fetchPage = fetchPage
+        labelActions = labels
     }
 
-    convenience init(service: GitHubIssueListService) {
-        self.init { repository, state, cursor throws(GitHubIssueListError) in
-            try await service.fetchPage(repository: repository, state: state, after: cursor)
-        }
+    convenience init(service: GitHubIssueListService, labelService: GitHubIssueLabelService) {
+        self.init(
+            fetchPage: { repository, state, cursor throws(GitHubIssueListError) in
+                try await service.fetchPage(repository: repository, state: state, after: cursor)
+            },
+            labels: IssueLabelActions(
+                fetchLabels: { repository throws(GitHubIssueLabelError) in
+                    try await labelService.fetchSnapshot(repository: repository)
+                },
+                mutateLabel: { issueID, labelID, adding throws(GitHubIssueLabelError) in
+                    if adding {
+                        try await labelService.addLabel(issueID: issueID, labelID: labelID)
+                    } else {
+                        try await labelService.removeLabel(issueID: issueID, labelID: labelID)
+                    }
+                }
+            )
+        )
     }
 
-    /// Points the list at a remote and filter, then loads the first page.
+    /// Points the list at a remote and filter, then loads the first page and
+    /// the repository's labels. Switching repositories discards both.
     func load(remoteURL: String, state: GitHubIssueState) async {
         stateFilter = state
         guard let reference = GitHubRemoteURLParser.parse(remoteURL),
               GitHubRemoteURLParser.host(remoteURL) == "github.com"
         else {
             generation += 1
+            labelGeneration += 1
             repository = nil
+            resetLabels()
             reset(to: .failed(.unsupportedRepository))
             return
         }
-        repository = reference
+        if repository != reference {
+            repository = reference
+            labelGeneration += 1
+            resetLabels()
+        } else {
+            // A page reload starts a new list context; old retry feedback no
+            // longer points at a row the user can see.
+            labelError = nil
+            lastFailedLabelChange = nil
+            // A failed label list (for example before sign-in) tries again
+            // when the panel reloads instead of staying stale.
+            if case .failed = labelsPhase {
+                labelsPhase = .idle
+            }
+        }
+        // Labels load independently of page reloads: a cancelled panel task
+        // must not leave a half-loaded picker, and the label generation guard
+        // drops a reply that belongs to an earlier repository.
+        let labelsLoaded = Task { await loadLabelsIfNeeded() }
         await reload()
+        await labelsLoaded.value
+    }
+
+    /// Reloads issues and labels, so permission changes on GitHub show up.
+    func refresh() async {
+        labelError = nil
+        lastFailedLabelChange = nil
+        async let labels: Void = reloadLabels()
+        await reload()
+        await labels
     }
 
     /// Reloads the first page for the current repository and filter.
@@ -95,6 +181,114 @@ final class IssueListModel {
             guard requestGeneration == generation else { return }
             loadMoreFailed = true
         }
+    }
+
+    // MARK: - Labels
+
+    /// Retries the repository label list, for example after a connection error.
+    func reloadLabels() async {
+        guard labelActions != nil, labelsPhase != .loading else { return }
+        await loadLabels()
+    }
+
+    /// Adds or removes one label on one issue. Only a GitHub-confirmed reply
+    /// updates the list, and one change runs at a time so a second tap cannot
+    /// duplicate the request.
+    func setLabel(_ label: GitHubIssueLabel, on issue: GitHubIssue, adding: Bool) async {
+        guard labelsPhase == .loaded, canEditLabels, pendingLabelChange == nil else { return }
+        guard !issue.nodeID.isEmpty, !label.nodeID.isEmpty else {
+            labelError = .requestFailed
+            return
+        }
+        let hasLabel = issue.labels.contains { $0.name == label.name }
+        guard hasLabel != adding else { return }
+        let change = LabelChange(issueNumber: issue.number, labelName: label.name, isAdding: adding)
+        await performLabelChange(change, issueID: issue.nodeID, labelID: label.nodeID)
+    }
+
+    /// Repeats the last failed change without touching other labels.
+    /// Without a change to repeat, it reloads the list and labels instead,
+    /// so Try Again never does nothing.
+    func retryLastLabelChange() async {
+        guard canEditLabels, labelError != nil else { return }
+        guard let change = lastFailedLabelChange,
+              let issue = issues.first(where: { $0.number == change.issueNumber }),
+              let label = availableLabels.first(where: { $0.name == change.labelName })
+        else {
+            await refresh()
+            return
+        }
+        lastFailedLabelChange = nil
+        await performLabelChange(change, issueID: issue.nodeID, labelID: label.nodeID)
+    }
+
+    private func loadLabelsIfNeeded() async {
+        guard labelsPhase == .idle else { return }
+        await loadLabels()
+    }
+
+    private func loadLabels() async {
+        guard let labelActions, let repository else { return }
+        labelGeneration += 1
+        let requestGeneration = labelGeneration
+        labelsPhase = .loading
+        labelError = nil
+        do {
+            let snapshot = try await labelActions.fetchLabels(repository)
+            guard requestGeneration == labelGeneration else { return }
+            availableLabels = snapshot.labels
+            canEditLabels = snapshot.canWrite
+            labelsPhase = .loaded
+        } catch {
+            guard requestGeneration == labelGeneration else { return }
+            availableLabels = []
+            canEditLabels = false
+            labelsPhase = .failed(error)
+        }
+    }
+
+    private func performLabelChange(
+        _ change: LabelChange,
+        issueID: String,
+        labelID: String
+    ) async {
+        guard let labelActions, pendingLabelChange == nil else { return }
+        pendingLabelChange = change
+        labelError = nil
+        lastFailedLabelChange = nil
+        let requestGeneration = generation
+        defer {
+            // A repository switch may have cleared this and started another
+            // change; only clear the state this call still owns.
+            if pendingLabelChange == change {
+                pendingLabelChange = nil
+            }
+        }
+        do {
+            let labels = try await labelActions.mutateLabel(issueID, labelID, change.isAdding)
+            guard requestGeneration == generation,
+                  let index = issues.firstIndex(where: { $0.number == change.issueNumber })
+            else {
+                return
+            }
+            issues[index] = issues[index].replacingLabels(labels)
+        } catch {
+            guard requestGeneration == generation else { return }
+            labelError = error
+            lastFailedLabelChange = change
+            if error == .forbidden {
+                canEditLabels = false
+            }
+        }
+    }
+
+    private func resetLabels() {
+        availableLabels = []
+        labelsPhase = .idle
+        canEditLabels = false
+        labelError = nil
+        pendingLabelChange = nil
+        lastFailedLabelChange = nil
     }
 
     private func reset(to phase: Phase) {

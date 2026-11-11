@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Side panel that lists the selected project's GitHub issues, open by
-/// default with a switch to closed ones. Rows open the issue on GitHub.
+/// default with a switch to closed ones. Rows open the issue on GitHub; each
+/// row's tag menu applies or removes repository labels.
 struct IssuesSidePanelView: View {
     let projectName: String
     let remoteURL: String
@@ -36,6 +37,7 @@ struct IssuesSidePanelView: View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
             SidePanelHeaderView(projectName: projectName, title: "Issues", onClose: onClose)
             controls
+            labelStatus
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
@@ -66,7 +68,7 @@ struct IssuesSidePanelView: View {
                 Spacer(minLength: 0)
 
                 Button("Refresh Issues", systemImage: "arrow.clockwise") {
-                    Task { await model.reload() }
+                    Task { await model.refresh() }
                 }
                 .labelStyle(.iconOnly)
                 .workbenchIcon()
@@ -96,18 +98,57 @@ struct IssuesSidePanelView: View {
         }
     }
 
+    @ViewBuilder
+    private var labelStatus: some View {
+        if model.phase == .loaded {
+            if let error = model.labelError {
+                IssueLabelStatusView(
+                    text: IssueLabelMessages.mutation(error),
+                    systemImage: "exclamationmark.triangle",
+                    retry: model.canEditLabels ? { Task { await model.retryLastLabelChange() } } : nil
+                )
+            } else if case let .failed(error) = model.labelsPhase {
+                IssueLabelStatusView(
+                    text: IssueLabelMessages.list(error),
+                    systemImage: "exclamationmark.triangle",
+                    retry: { Task { await model.reloadLabels() } }
+                )
+            } else if model.labelsPhase == .loaded, !model.canEditLabels {
+                IssueLabelStatusView(
+                    text: "Labels are read-only in this repository. Your GitHub account can view them but not change them.",
+                    systemImage: "lock",
+                    retry: nil
+                )
+            }
+        }
+    }
+
     private var issueList: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
                 ForEach(model.issues) { issue in
-                    Button {
-                        openURL(issue.url)
-                    } label: {
-                        IssueRowView(issue: issue)
+                    HStack(alignment: .top, spacing: WorkbenchMetrics.microSpacing) {
+                        Button {
+                            openURL(issue.url)
+                        } label: {
+                            IssueRowView(issue: issue)
+                        }
+                        .workbenchRow()
+                        .help("Open issue #\(issue.number) on GitHub")
+                        .accessibilityHint("Opens on GitHub")
+
+                        IssueLabelMenu(
+                            issue: issue,
+                            labels: model.availableLabels,
+                            canEdit: model.canEditLabels && model.labelsPhase == .loaded,
+                            isPending: model.pendingLabelChange?.issueNumber == issue.number,
+                            isEnabled: model.pendingLabelChange == nil,
+                            onSet: { label, adding in
+                                Task { await model.setLabel(label, on: issue, adding: adding) }
+                            }
+                        )
+                        .padding(.top, WorkbenchMetrics.microSpacing)
                     }
-                    .workbenchRow()
-                    .help("Open issue #\(issue.number) on GitHub")
-                    .accessibilityHint("Opens on GitHub")
                 }
                 loadMoreFooter
             }
@@ -352,40 +393,61 @@ private struct IssueLabelFlowLayout: Layout {
 }
 
 #Preview("Issues Side Panel") {
-    let now = Date()
-    let issues = [
-        GitHubIssue(
-            number: 42,
-            title: "Consultar a lista de issues do projeto dentro do app sem sair do fluxo de trabalho atual",
-            state: .open,
-            authorLogin: "mourato",
-            createdAt: now.addingTimeInterval(-86400 * 3),
-            updatedAt: now.addingTimeInterval(-3600),
-            labels: [
-                GitHubIssueLabel(name: "enhancement", colorHex: "a2eeef"),
-                GitHubIssueLabel(name: "bug", colorHex: "d73a4a"),
-                GitHubIssueLabel(name: "good first issue", colorHex: "7057ff")
-            ],
-            url: URL(string: "https://github.com/mourato/GitMenuBar/issues/42")!
-        ),
-        GitHubIssue(
-            number: 41,
-            title: "Badges in the sidebar",
-            state: .open,
-            authorLogin: nil,
-            createdAt: now.addingTimeInterval(-86400 * 10),
-            updatedAt: now.addingTimeInterval(-86400 * 2),
-            labels: [],
-            url: URL(string: "https://github.com/mourato/GitMenuBar/issues/41")!
+    IssuesSidePanelPreview(writeAccess: true)
+}
+
+#Preview("Issues Side Panel Read Only") {
+    IssuesSidePanelPreview(writeAccess: false)
+}
+
+private struct IssuesSidePanelPreview: View {
+    let writeAccess: Bool
+
+    var body: some View {
+        let now = Date()
+        let labels = [
+            GitHubIssueLabel(name: "enhancement", colorHex: "a2eeef", nodeID: "L_enh"),
+            GitHubIssueLabel(name: "bug", colorHex: "d73a4a", nodeID: "L_bug"),
+            GitHubIssueLabel(name: "good first issue", colorHex: "7057ff", nodeID: "L_first")
+        ]
+        let issues = [
+            GitHubIssue(
+                number: 42,
+                title: "Consultar a lista de issues do projeto dentro do app sem sair do fluxo de trabalho atual",
+                state: .open,
+                authorLogin: "mourato",
+                createdAt: now.addingTimeInterval(-86400 * 3),
+                updatedAt: now.addingTimeInterval(-3600),
+                labels: Array(labels.prefix(2)),
+                url: URL(string: "https://github.com/mourato/GitMenuBar/issues/42")!,
+                nodeID: "I_42"
+            ),
+            GitHubIssue(
+                number: 41,
+                title: "Badges in the sidebar",
+                state: .open,
+                authorLogin: nil,
+                createdAt: now.addingTimeInterval(-86400 * 10),
+                updatedAt: now.addingTimeInterval(-86400 * 2),
+                labels: [],
+                url: URL(string: "https://github.com/mourato/GitMenuBar/issues/41")!,
+                nodeID: "I_41"
+            )
+        ]
+        IssuesSidePanelView(
+            projectName: "GitMenuBar",
+            remoteURL: "https://github.com/mourato/GitMenuBar.git",
+            isAuthenticated: true,
+            model: IssueListModel(
+                fetchPage: { _, _, _ in GitHubIssuePage(issues: issues, nextCursor: "next") },
+                labels: IssueListModel.IssueLabelActions(
+                    fetchLabels: { _ in GitHubIssueLabelSnapshot(labels: labels, canWrite: writeAccess) },
+                    mutateLabel: { _, _, _ in labels }
+                )
+            ),
+            onClose: {}
         )
-    ]
-    IssuesSidePanelView(
-        projectName: "GitMenuBar",
-        remoteURL: "https://github.com/mourato/GitMenuBar.git",
-        isAuthenticated: true,
-        model: IssueListModel { _, _, _ in GitHubIssuePage(issues: issues, nextCursor: "next") },
-        onClose: {}
-    )
-    .frame(width: WorkbenchMetrics.sidePanelWidth, height: 520)
-    .padding()
+        .frame(width: WorkbenchMetrics.sidePanelWidth, height: 520)
+        .padding()
+    }
 }
