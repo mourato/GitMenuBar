@@ -76,7 +76,10 @@ final class ProjectOpenCountBadgeTests: XCTestCase {
 
     func testFourDigitTotalsStayCompact() {
         let badge = GitHubOpenCountBadge.known(1284)
-        XCTAssertLessThanOrEqual(badge.text.count, 4)
+        // Compact notation follows the user's locale (1.3K, 1,3 mil), so
+        // compare with the same formatter instead of a fixed length.
+        XCTAssertEqual(badge.text, 1284.formatted(.number.notation(.compactName)))
+        XCTAssertNotEqual(badge.text, "1284")
         XCTAssertEqual(badge.accessibilityDescription(singularNoun: "issue"), "1284 open issues")
     }
 

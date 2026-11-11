@@ -144,8 +144,11 @@ corner style.
   open issues and open pull requests, whether or not it is selected. Counts
   come from the repository totals in the monitor snapshot, never from the
   20-item pull-request detail list, and never change a project's health
-  classification or group. A known zero shows `0`; an unread or failed count
-  shows a neutral `—`, and non-GitHub remotes show no badge. The row summary
+  classification or group. A known zero shows `0`; large totals use the
+  locale's compact notation (`1.3K`). An unread or failed count, or the last
+  totals of a row whose refresh failed, shows a neutral `—`; non-GitHub
+  remotes show no badge. When the row is too narrow, both badges hide before
+  the project name is squeezed; VoiceOver still reads the totals. The row summary
   keeps only the current branch's own pull-request status, so no count appears
   twice.
 - Cleanup review banner: one summary line (`N ready to clean`, `M blocked`)
