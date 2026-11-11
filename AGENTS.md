@@ -9,6 +9,10 @@ changing plans, routing, or skill metadata.
 Run and release: `make install-app` builds the current checkout or worktree
 and launches it. No deploy; a release is a manual `make dmg`.
 
+GitHub: issues, PRs, and labels live on the fork `mourato/GitMenuBar`
+(`origin`). `upstream` (`saihgupr/GitMenuBar`) is read-only reference; never
+read its issues as ours or publish to it. Pass `-R mourato/GitMenuBar` to `gh`.
+
 Project facts for global skills live in this file and in the `docs/agents/` files linked below.
 
 ## Execution Policy
