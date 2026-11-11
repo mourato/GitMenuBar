@@ -62,6 +62,7 @@ extension MainMenuView {
                 MainMenuSidePanelHost(
                     selection: selection,
                     projectName: snapshotModel.renderSnapshot.currentProjectName,
+                    remoteURL: gitManager.remoteUrl,
                     overview: snapshotModel.renderSnapshot.overview,
                     history: sidePanelHistory,
                     commitMessage: $workspace.commentText,

@@ -73,7 +73,8 @@ struct RepositoryOverviewView: View {
             makeGitHubMetric(
                 .issues,
                 state: overview.openIssues,
-                action: { onOpenGitHubPage(.issues) }
+                requiresKnownCount: false,
+                action: { onSelectSection(.issues) }
             )
         ]
     }
@@ -207,6 +208,7 @@ struct RepositoryOverviewView: View {
     private func makeGitHubMetric(
         _ definition: RepositoryOverviewMetricDefinition,
         state: RepositoryMetricState<Int>,
+        requiresKnownCount: Bool = true,
         action: @escaping () -> Void
     ) -> RepositoryOverviewMetric {
         let value: String
@@ -243,7 +245,7 @@ struct RepositoryOverviewView: View {
                 isError: false
             ),
             helpText: help,
-            action: canOpenGitHubPage && state != .unavailable ? action : nil
+            action: canOpenGitHubPage && (!requiresKnownCount || state != .unavailable) ? action : nil
         )
     }
 
@@ -290,7 +292,7 @@ private struct RepositoryOverviewMetricDefinition {
     static let branches = Self("Branches", "Branches", "arrow.triangle.branch", "Opens Branches in the side panel")
     static let stashes = Self("Stashes", "Stashes", "tray.full", "Opens Stashes in the side panel")
     static let pullRequests = Self("Pull Requests", "PRs", "arrow.triangle.pull", "Opens pull requests on GitHub")
-    static let issues = Self("Issues", "Issues", "smallcircle.filled.circle", "Opens issues on GitHub")
+    static let issues = Self("Issues", "Issues", "smallcircle.filled.circle", "Opens Issues in the side panel")
 }
 
 private struct RepositoryOverviewMetricPresentation {

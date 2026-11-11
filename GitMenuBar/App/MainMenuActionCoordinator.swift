@@ -65,14 +65,11 @@ enum MainMenuSidePanelActionResult: Equatable {
 
 enum MainMenuGitHubDestination {
     case pullRequests
-    case issues
 
     var pathComponent: String {
         switch self {
         case .pullRequests:
             "pulls"
-        case .issues:
-            "issues"
         }
     }
 }

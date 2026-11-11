@@ -93,7 +93,7 @@ struct SidePanelDetailView: View {
             branchesSection
         case .stashes, .stash:
             stashesSection
-        case .workingTree, .history, .commit:
+        case .workingTree, .history, .commit, .issues:
             // Routed to a dedicated surface by the parent; no content here.
             EmptyView()
         }
