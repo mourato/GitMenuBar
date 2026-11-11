@@ -54,6 +54,39 @@ enum GitHubStatusUnavailableReason: Equatable, Sendable {
     case commandFailed
 }
 
+/// One GitHub open total as a sidebar badge can state it. A known zero stays a
+/// zero; a total nobody read yet never prints as one.
+enum GitHubOpenCountBadge: Equatable, Sendable {
+    case known(Int)
+    case pending
+    case unavailable
+
+    /// Visible badge text. Unknown totals keep a neutral dash.
+    var text: String {
+        switch self {
+        case let .known(count): count.formatted(.number.notation(.compactName))
+        case .pending, .unavailable: "—"
+        }
+    }
+
+    /// One phrase per total so VoiceOver announces issues and pull requests
+    /// separately instead of as a combined count.
+    func accessibilityDescription(singularNoun: String) -> String {
+        switch self {
+        case let .known(count):
+            "\(count) open \(count == 1 ? singularNoun : "\(singularNoun)s")"
+        case .pending:
+            "\(Self.sentenceStart(singularNoun)) count loading"
+        case .unavailable:
+            "\(Self.sentenceStart(singularNoun)) count unavailable"
+        }
+    }
+
+    private static func sentenceStart(_ noun: String) -> String {
+        noun.prefix(1).uppercased() + noun.dropFirst()
+    }
+}
+
 struct GitHubProjectStatus: Equatable, Sendable {
     let pullRequests: [GitHubPullRequestSummary]
     let openPullRequestCount: Int?
@@ -66,6 +99,24 @@ struct GitHubProjectStatus: Equatable, Sendable {
         openIssueCount: nil,
         unavailableReason: nil
     )
+
+    /// Non-GitHub remotes show no badge: there is no open total to compare.
+    /// Totals come only from the counts read, never from the limited PR list.
+    var openIssueBadge: GitHubOpenCountBadge? {
+        badge(for: openIssueCount)
+    }
+
+    var openPullRequestBadge: GitHubOpenCountBadge? {
+        badge(for: openPullRequestCount)
+    }
+
+    private func badge(for count: Int?) -> GitHubOpenCountBadge? {
+        guard unavailableReason != .notGitHubRemote else { return nil }
+        guard let count else {
+            return unavailableReason == nil ? .pending : .unavailable
+        }
+        return .known(count)
+    }
 }
 
 struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
@@ -104,6 +155,21 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
 
     var openIssueCount: Int? {
         gitHubStatus.openIssueCount
+    }
+
+    /// Sidebar badge state for the repository's open totals.
+    /// A failed refresh keeps the last GitHub status, so its totals are not
+    /// current and show as unavailable instead of as fresh readings.
+    var openIssueBadge: GitHubOpenCountBadge? {
+        lastErrorDescription == nil
+            ? gitHubStatus.openIssueBadge
+            : gitHubStatus.openIssueBadge.map { _ in .unavailable }
+    }
+
+    var openPullRequestBadge: GitHubOpenCountBadge? {
+        lastErrorDescription == nil
+            ? gitHubStatus.openPullRequestBadge
+            : gitHubStatus.openPullRequestBadge.map { _ in .unavailable }
     }
 
     func hasSameVisibleState(as other: Self) -> Bool {

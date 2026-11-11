@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ProjectsSidebarView: View {
     @Environment(ProjectMonitorStore.self) private var monitor
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @AppStorage(AppPreferences.Keys.showAgentActivity) private var showAgentActivity = true
     @AppStorage(AppPreferences.Keys.isCleanProjectsGroupCollapsed) private var isCleanGroupCollapsed = false
     @State private var renameProject: ProjectReference?
@@ -203,6 +202,16 @@ struct ProjectsSidebarView: View {
                 if snapshot.hasWorkingTreeChanges {
                     changeCountBadge(for: snapshot)
                 }
+
+                // The project name keeps priority: at narrow widths the open
+                // totals drop out (VoiceOver still reads them) instead of clipping.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: WorkbenchMetrics.microSpacing) {
+                        openCountBadges(for: snapshot)
+                    }
+                    .fixedSize()
+                    Color.clear.frame(width: 0, height: 0)
+                }
             }
         }
         .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
@@ -237,19 +246,34 @@ struct ProjectsSidebarView: View {
     private func changeCountBadge(for snapshot: ProjectStatusSnapshot) -> some View {
         let count = snapshot.stagedCount + snapshot.unstagedCount + snapshot.untrackedCount
         return Text("\(count)")
-            .font(WorkbenchTypography.caption)
-            .monospacedDigit()
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, WorkbenchMetrics.chipSpacing)
-            .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
-            .background(
-                Capsule()
-                    .fill(WorkbenchPalette.hoverFill())
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast), lineWidth: 1)
-            )
+            .sidebarCountChip()
+    }
+
+    /// Open GitHub totals stay separate from local changes: one badge each,
+    /// drawn from the monitor snapshot so rendering never reads the network.
+    @ViewBuilder
+    private func openCountBadges(for snapshot: ProjectStatusSnapshot) -> some View {
+        if let issues = snapshot.openIssueBadge {
+            openCountBadge(issues, symbol: "smallcircle.filled.circle", singularNoun: "issue")
+        }
+        if let pullRequests = snapshot.openPullRequestBadge {
+            openCountBadge(pullRequests, symbol: "arrow.triangle.pull", singularNoun: "pull request")
+        }
+    }
+
+    private func openCountBadge(
+        _ badge: GitHubOpenCountBadge,
+        symbol: String,
+        singularNoun: String
+    ) -> some View {
+        HStack(spacing: WorkbenchMetrics.microSpacing) {
+            Image(systemName: symbol)
+                .accessibilityHidden(true)
+            Text(badge.text)
+        }
+        .sidebarCountChip()
+        .fixedSize()
+        .help(badge.accessibilityDescription(singularNoun: singularNoun))
     }
 
     private var cleanGroupExpanded: Binding<Bool> {
@@ -319,8 +343,14 @@ struct ProjectsSidebarView: View {
                 "\(snapshot.unmergedBranchCount) branch\(snapshot.unmergedBranchCount == 1 ? "" : "es") not merged"
             )
         }
-        if let pullRequestSummary = pullRequestSummary(for: snapshot) {
+        if let pullRequestSummary = currentPullRequestSummary(for: snapshot) {
             parts.append(pullRequestSummary)
+        }
+        if let issues = snapshot.openIssueBadge {
+            parts.append(issues.accessibilityDescription(singularNoun: "issue"))
+        }
+        if let pullRequests = snapshot.openPullRequestBadge {
+            parts.append(pullRequests.accessibilityDescription(singularNoun: "pull request"))
         }
         if let error = snapshot.lastErrorDescription {
             parts.append(error)
@@ -328,13 +358,13 @@ struct ProjectsSidebarView: View {
         return parts.joined(separator: ", ")
     }
 
-    private func pullRequestSummary(for snapshot: ProjectStatusSnapshot) -> String? {
-        if let pullRequest = snapshot.pullRequests.first(where: { $0.headBranch == snapshot.branchName }) {
-            return "PR #\(pullRequest.number) \(pullRequest.statusSummary)"
+    /// Review state of the current branch's own pull request. Repository totals
+    /// live in the badges, so this never restates them from the limited list.
+    private func currentPullRequestSummary(for snapshot: ProjectStatusSnapshot) -> String? {
+        guard let pullRequest = snapshot.pullRequests.first(where: { $0.headBranch == snapshot.branchName }) else {
+            return nil
         }
-        guard !snapshot.pullRequests.isEmpty else { return nil }
-        let count = snapshot.pullRequests.count
-        return "\(count) open pull request\(count == 1 ? "" : "s")"
+        return "PR #\(pullRequest.number) \(pullRequest.statusSummary)"
     }
 
     private func branchSummary(for snapshot: ProjectStatusSnapshot) -> String? {
@@ -372,7 +402,7 @@ struct ProjectsSidebarView: View {
         if snapshot.unmergedBranchCount > 0 {
             parts.append("\(snapshot.unmergedBranchCount) branch\(snapshot.unmergedBranchCount == 1 ? "" : "es") not merged")
         }
-        if let pullRequestSummary = pullRequestSummary(for: snapshot) {
+        if let pullRequestSummary = currentPullRequestSummary(for: snapshot) {
             parts.append(pullRequestSummary)
         }
         if snapshot.isStale {
@@ -382,6 +412,35 @@ struct ProjectsSidebarView: View {
             return snapshot.hasWorkingTreeChanges ? "Uncommitted changes" : "Up to date"
         }
         return parts.joined(separator: " ")
+    }
+}
+
+/// Shared capsule for the counts in a project row, so local changes and open
+/// GitHub totals stay one calm visual family.
+private struct SidebarCountChipStyle: ViewModifier {
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    func body(content: Content) -> some View {
+        content
+            .font(WorkbenchTypography.caption)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, WorkbenchMetrics.chipSpacing)
+            .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
+            .background(
+                Capsule()
+                    .fill(WorkbenchPalette.hoverFill())
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast), lineWidth: 1)
+            )
+    }
+}
+
+private extension View {
+    func sidebarCountChip() -> some View {
+        modifier(SidebarCountChipStyle())
     }
 }
 

@@ -140,6 +140,14 @@ corner style.
   scaling, pointer, or scrollbar behavior to them.
 - Filter chips: single selection. The selected chip is accent-tinted and
   carries the only count for its filter.
+- Projects sidebar rows: every GitHub project shows two trailing count badges,
+  open issues and open pull requests, whether or not it is selected. Counts
+  come from the repository totals in the monitor snapshot, never from the
+  20-item pull-request detail list, and never change a project's health
+  classification or group. A known zero shows `0`; an unread or failed count
+  shows a neutral `—`, and non-GitHub remotes show no badge. The row summary
+  keeps only the current branch's own pull-request status, so no count appears
+  twice.
 - Cleanup review banner: one summary line (`N ready to clean`, `M blocked`)
   and one Review action. Review opens the shared cleanup sheet with Ready and
   Blocked sections and a checked subset of ready units.
