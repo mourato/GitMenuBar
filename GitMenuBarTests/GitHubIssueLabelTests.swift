@@ -27,6 +27,7 @@ final class GitHubIssueLabelServiceTests: XCTestCase {
 
         XCTAssertTrue(query.contains("viewerPermission"))
         XCTAssertTrue(query.contains("labels(first:"))
+        XCTAssertTrue(query.contains("{id viewerPermission"), "Creation needs the repository node ID")
         XCTAssertFalse(query.contains("pullRequests"))
         XCTAssertEqual(variables["owner"] as? String, "mourato")
         XCTAssertEqual(variables["name"] as? String, "GitMenuBar")
@@ -74,6 +75,7 @@ final class GitHubIssueLabelServiceTests: XCTestCase {
             )
             XCTAssertTrue(parsed.canWrite, permission)
             XCTAssertEqual(parsed.labels, [GitHubIssueLabel(name: "bug", colorHex: "d73a4a", nodeID: "L_1")])
+            XCTAssertEqual(parsed.repositoryID, "R_1")
             XCTAssertNil(parsed.nextCursor)
         }
 
@@ -185,6 +187,110 @@ final class GitHubIssueLabelServiceTests: XCTestCase {
         }
     }
 
+    // MARK: - Label creation
+
+    func testCreateLabelRequestNamesTheRepositoryAndEveryField() throws {
+        let request = GitHubIssueLabelService.createRequest(
+            repositoryID: "R_1",
+            name: "needs triage",
+            color: "d73a4a",
+            description: "Waits for triage",
+            token: "t"
+        )
+        XCTAssertEqual(request.url, endpoint, "The token may only go to api.github.com")
+        let json = try Self.bodyJSON(request)
+        let query = try XCTUnwrap(json["query"] as? String)
+        let variables = try XCTUnwrap(json["variables"] as? [String: Any])
+
+        XCTAssertTrue(query.contains("createLabel(input:"))
+        XCTAssertTrue(query.contains("input:{repositoryId:$repositoryId,name:$name,color:$color,description:$description}"))
+        XCTAssertFalse(query.contains("updateIssue"))
+        XCTAssertFalse(query.contains("deleteLabel"))
+        XCTAssertFalse(query.contains("updateLabel"))
+        XCTAssertEqual(variables["repositoryId"] as? String, "R_1")
+        XCTAssertEqual(variables["name"] as? String, "needs triage")
+        XCTAssertEqual(variables["color"] as? String, "d73a4a")
+        XCTAssertEqual(variables["description"] as? String, "Waits for triage")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer t")
+        XCTAssertEqual(request.httpMethod, "POST")
+    }
+
+    func testCreateLabelOmitsAnEmptyDescription() throws {
+        let request = GitHubIssueLabelService.createRequest(
+            repositoryID: "R_1",
+            name: "needs triage",
+            color: "d73a4a",
+            description: nil,
+            token: "t"
+        )
+        let variables = try XCTUnwrap(try Self.bodyJSON(request)["variables"] as? [String: Any])
+
+        XCTAssertNil(variables["description"])
+    }
+
+    func testCreateLabelReturnsTheConfirmedLabel() throws {
+        let data = Data(#"{"data":{"createLabel":{"label":{"id":"L_9","name":"needs triage","color":"d73a4a"}}}}"#.utf8)
+
+        let label = try GitHubIssueLabelService.parseCreatedLabel(data, statusCode: 200)
+
+        XCTAssertEqual(label, GitHubIssueLabel(name: "needs triage", colorHex: "d73a4a", nodeID: "L_9"))
+    }
+
+    func testCreateLabelMapsActionableFailures() {
+        let taken = Data(#"{"data":{"createLabel":null},"errors":[{"type":"UNPROCESSABLE","message":"Name has already been taken"}]}"#.utf8)
+        XCTAssertThrowsError(try GitHubIssueLabelService.parseCreatedLabel(taken, statusCode: 200)) {
+            XCTAssertEqual($0 as? GitHubIssueLabelError, .labelNameTaken)
+        }
+
+        let invalid = Data(#"{"data":{"createLabel":null},"errors":[{"type":"UNPROCESSABLE","message":"Name is invalid"}]}"#.utf8)
+        XCTAssertThrowsError(try GitHubIssueLabelService.parseCreatedLabel(invalid, statusCode: 200)) {
+            XCTAssertEqual($0 as? GitHubIssueLabelError, .invalidLabel)
+        }
+
+        let forbidden = Data(#"{"data":{"createLabel":null},"errors":[{"type":"FORBIDDEN","message":"denied"}]}"#.utf8)
+        XCTAssertThrowsError(try GitHubIssueLabelService.parseCreatedLabel(forbidden, statusCode: 200)) {
+            XCTAssertEqual($0 as? GitHubIssueLabelError, .forbidden)
+        }
+
+        XCTAssertThrowsError(try GitHubIssueLabelService.parseCreatedLabel(Data(), statusCode: 403)) {
+            XCTAssertEqual($0 as? GitHubIssueLabelError, .forbidden)
+        }
+
+        let unknown = Data(#"{"data":{"createLabel":null},"errors":[{"type":"INTERNAL","message":"boom"}]}"#.utf8)
+        XCTAssertThrowsError(try GitHubIssueLabelService.parseCreatedLabel(unknown, statusCode: 200)) {
+            XCTAssertEqual($0 as? GitHubIssueLabelError, .requestFailed)
+        }
+
+        let missingPayload = Data(#"{"data":{"createLabel":null}}"#.utf8)
+        XCTAssertThrowsError(try GitHubIssueLabelService.parseCreatedLabel(missingPayload, statusCode: 200)) {
+            XCTAssertEqual($0 as? GitHubIssueLabelError, .requestFailed)
+        }
+    }
+
+    func testCreateLabelRequiresTokenAndRepositoryWithoutNetwork() async {
+        let noToken = GitHubIssueLabelService(tokenProvider: { nil }, transport: { _ in
+            XCTFail("No request expected without a token")
+            throw URLError(.cancelled)
+        })
+        do {
+            _ = try await noToken.createLabel(repositoryID: "R_1", name: "x", color: "d73a4a", description: nil)
+            XCTFail("Expected failure")
+        } catch {
+            XCTAssertEqual(error, .notAuthenticated)
+        }
+
+        let noRepository = GitHubIssueLabelService(tokenProvider: { "t" }, transport: { _ in
+            XCTFail("No request expected without a repository ID")
+            throw URLError(.cancelled)
+        })
+        do {
+            _ = try await noRepository.createLabel(repositoryID: "", name: "x", color: "d73a4a", description: nil)
+            XCTFail("Expected failure")
+        } catch {
+            XCTAssertEqual(error, .requestFailed)
+        }
+    }
+
     // MARK: - Fixtures
 
     private static func bodyJSON(_ request: URLRequest) throws -> [String: Any] {
@@ -211,7 +317,7 @@ final class GitHubIssueLabelServiceTests: XCTestCase {
         let nodes = labels.map { #"{"id":"\#($0.id)","name":"\#($0.name)","color":"\#($0.color)"}"# }
         let cursorJSON = cursor.map { "\"\($0)\"" } ?? "null"
         let json = """
-        {"data":{"repository":{"viewerPermission":"\(permission)",\
+        {"data":{"repository":{"id":"R_1","viewerPermission":"\(permission)",\
         "labels":{"pageInfo":{"hasNextPage":\(hasNextPage),"endCursor":\(cursorJSON)},\
         "nodes":[\(nodes.joined(separator: ","))]}}}}
         """

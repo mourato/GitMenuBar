@@ -24,11 +24,31 @@ final class IssueListModel {
         _ adding: Bool
     ) async throws(GitHubIssueLabelError) -> [GitHubIssueLabel]
 
+    typealias LabelCreator = @Sendable (
+        _ repositoryID: String,
+        _ name: String,
+        _ color: String,
+        _ description: String?
+    ) async throws(GitHubIssueLabelError) -> GitHubIssueLabel
+
     /// Label reads and writes for one issue, kept separate from the page
-    /// fetcher so list-only callers do not need label networking.
+    /// fetcher so list-only callers do not need label networking. `createLabel`
+    /// is optional so fixtures and list-only callers keep working without a
+    /// creator; production always supplies one.
     struct IssueLabelActions: Sendable {
         let fetchLabels: LabelFetcher
         let mutateLabel: LabelMutator
+        let createLabel: LabelCreator?
+
+        init(
+            fetchLabels: @escaping LabelFetcher,
+            mutateLabel: @escaping LabelMutator,
+            createLabel: LabelCreator? = nil
+        ) {
+            self.fetchLabels = fetchLabels
+            self.mutateLabel = mutateLabel
+            self.createLabel = createLabel
+        }
     }
 
     enum Phase: Equatable {
@@ -63,14 +83,24 @@ final class IssueListModel {
     private(set) var canEditLabels = false
     private(set) var pendingLabelChange: LabelChange?
     private(set) var labelError: GitHubIssueLabelError?
+    private(set) var isCreatingLabel = false
+    private(set) var labelCreationError: IssueLabelCreationError?
 
     var canLoadMore: Bool {
         phase == .loaded && nextCursor != nil
     }
 
+    /// The create action exists only after the label list confirms both write
+    /// access and a repository to create in.
+    var canCreateLabels: Bool {
+        canEditLabels && labelsPhase == .loaded && labelActions?.createLabel != nil
+    }
+
     @ObservationIgnored private var nextCursor: String?
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var labelGeneration = 0
+    @ObservationIgnored private var labelRepositoryID = ""
+    @ObservationIgnored private var labelCreationToken = 0
     @ObservationIgnored private var lastFailedLabelChange: LabelChange?
     @ObservationIgnored private let fetchPage: PageFetcher
     @ObservationIgnored private let labelActions: IssueLabelActions?
@@ -95,6 +125,14 @@ final class IssueListModel {
                     } else {
                         try await labelService.removeLabel(issueID: issueID, labelID: labelID)
                     }
+                },
+                createLabel: { repositoryID, name, color, description throws(GitHubIssueLabelError) in
+                    try await labelService.createLabel(
+                        repositoryID: repositoryID,
+                        name: name,
+                        color: color,
+                        description: description
+                    )
                 }
             )
         )
@@ -222,6 +260,68 @@ final class IssueListModel {
         await performLabelChange(change, issueID: issue.nodeID, labelID: label.nodeID)
     }
 
+    /// Creates one repository label. Required fields and a duplicate name stop
+    /// before any request; only a GitHub-confirmed reply adds the label to the
+    /// picker. Creating never applies the label to an issue: applying stays the
+    /// separate toggle action. Returns true only after that confirmation.
+    func createLabel(name: String, color: String, description: String) async -> Bool {
+        labelCreationError = nil
+        guard canCreateLabels,
+              pendingLabelChange == nil,
+              !isCreatingLabel,
+              let createLabel = labelActions?.createLabel,
+              let repository
+        else {
+            return false
+        }
+        let draft: IssueLabelDraft
+        do {
+            draft = try IssueLabelDraft.make(
+                name: name,
+                color: color,
+                description: description,
+                existingNames: availableLabels.map(\.name)
+            )
+        } catch {
+            labelCreationError = .validation(error)
+            return false
+        }
+        guard !labelRepositoryID.isEmpty else {
+            labelCreationError = .repository(.requestFailed)
+            return false
+        }
+        labelCreationToken += 1
+        let requestToken = labelCreationToken
+        isCreatingLabel = true
+        defer {
+            // A repository switch clears this flag and may start another
+            // creation; only clear the state this call still owns.
+            if requestToken == labelCreationToken {
+                isCreatingLabel = false
+            }
+        }
+        do {
+            let label = try await createLabel(labelRepositoryID, draft.name, draft.color, draft.description)
+            guard repository == self.repository else { return false }
+            if !availableLabels.contains(where: { $0.name.caseInsensitiveCompare(label.name) == .orderedSame }) {
+                availableLabels.append(label)
+            }
+            return true
+        } catch {
+            guard repository == self.repository else { return false }
+            labelCreationError = .repository(error)
+            if error == .forbidden {
+                canEditLabels = false
+            }
+            return false
+        }
+    }
+
+    /// Dismisses creation feedback without touching GitHub.
+    func clearLabelCreationError() {
+        labelCreationError = nil
+    }
+
     private func loadLabelsIfNeeded() async {
         guard labelsPhase == .idle else { return }
         await loadLabels()
@@ -238,11 +338,13 @@ final class IssueListModel {
             guard requestGeneration == labelGeneration else { return }
             availableLabels = snapshot.labels
             canEditLabels = snapshot.canWrite
+            labelRepositoryID = snapshot.repositoryID
             labelsPhase = .loaded
         } catch {
             guard requestGeneration == labelGeneration else { return }
             availableLabels = []
             canEditLabels = false
+            labelRepositoryID = ""
             labelsPhase = .failed(error)
         }
     }
@@ -289,6 +391,10 @@ final class IssueListModel {
         labelError = nil
         pendingLabelChange = nil
         lastFailedLabelChange = nil
+        labelRepositoryID = ""
+        labelCreationToken += 1
+        isCreatingLabel = false
+        labelCreationError = nil
     }
 
     private func reset(to phase: Phase) {

@@ -11,6 +11,7 @@ struct IssuesSidePanelView: View {
 
     @State private var model: IssueListModel
     @State private var stateFilter: GitHubIssueState = .open
+    @State private var showsLabelCreation = false
     @Environment(\.openURL) private var openURL
 
     init(
@@ -44,6 +45,31 @@ struct IssuesSidePanelView: View {
         .task(id: LoadKey(remoteURL: remoteURL, state: stateFilter, isAuthenticated: isAuthenticated)) {
             await model.load(remoteURL: remoteURL, state: stateFilter)
         }
+        .sheet(isPresented: $showsLabelCreation) {
+            IssueLabelCreationSheet(
+                repositoryName: repositoryDisplayName,
+                isSaving: model.isCreatingLabel,
+                errorMessage: model.labelCreationError.map(IssueLabelMessages.creation),
+                onCancel: {
+                    showsLabelCreation = false
+                    model.clearLabelCreationError()
+                },
+                onCreate: { name, color, description in
+                    Task {
+                        if await model.createLabel(name: name, color: color, description: description) {
+                            showsLabelCreation = false
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    /// Names the repository the new label belongs to, even before its remote
+    /// resolves.
+    private var repositoryDisplayName: String {
+        guard let repository = model.repository else { return projectName }
+        return "\(repository.owner)/\(repository.repository)"
     }
 
     private var controls: some View {
@@ -141,10 +167,15 @@ struct IssuesSidePanelView: View {
                             issue: issue,
                             labels: model.availableLabels,
                             canEdit: model.canEditLabels && model.labelsPhase == .loaded,
+                            canCreate: model.canCreateLabels,
                             isPending: model.pendingLabelChange?.issueNumber == issue.number,
                             isEnabled: model.pendingLabelChange == nil,
                             onSet: { label, adding in
                                 Task { await model.setLabel(label, on: issue, adding: adding) }
+                            },
+                            onCreate: {
+                                model.clearLabelCreationError()
+                                showsLabelCreation = true
                             }
                         )
                         .padding(.top, WorkbenchMetrics.microSpacing)
@@ -441,8 +472,13 @@ private struct IssuesSidePanelPreview: View {
             model: IssueListModel(
                 fetchPage: { _, _, _ in GitHubIssuePage(issues: issues, nextCursor: "next") },
                 labels: IssueListModel.IssueLabelActions(
-                    fetchLabels: { _ in GitHubIssueLabelSnapshot(labels: labels, canWrite: writeAccess) },
-                    mutateLabel: { _, _, _ in labels }
+                    fetchLabels: { _ in
+                        GitHubIssueLabelSnapshot(labels: labels, canWrite: writeAccess, repositoryID: "R_1")
+                    },
+                    mutateLabel: { _, _, _ in labels },
+                    createLabel: { _, name, color, _ in
+                        GitHubIssueLabel(name: name, colorHex: color, nodeID: "L_new")
+                    }
                 )
             ),
             onClose: {}

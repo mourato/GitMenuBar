@@ -6,12 +6,25 @@ import Foundation
 struct GitHubIssueLabelSnapshot: Equatable, Sendable {
     let labels: [GitHubIssueLabel]
     let canWrite: Bool
+    /// Node ID of the repository, required to create a label. Empty when the
+    /// reply did not carry it; creation then fails instead of guessing.
+    let repositoryID: String
+
+    init(labels: [GitHubIssueLabel], canWrite: Bool, repositoryID: String = "") {
+        self.labels = labels
+        self.canWrite = canWrite
+        self.repositoryID = repositoryID
+    }
 }
 
 enum GitHubIssueLabelError: Error, Equatable, Sendable {
     case notAuthenticated
     case repositoryNotFound
     case forbidden
+    /// GitHub already has a label with the requested name.
+    case labelNameTaken
+    /// GitHub rejected the label details, for example an overlong name.
+    case invalidLabel
     case requestFailed
 }
 
@@ -20,6 +33,8 @@ enum GitHubIssueLabelError: Error, Equatable, Sendable {
 struct GitHubIssueLabelPage: Equatable, Sendable {
     let labels: [GitHubIssueLabel]
     let canWrite: Bool
+    /// Repository node ID used by `createLabel`.
+    let repositoryID: String
     /// Cursor for the next page; nil when this is the last page.
     let nextCursor: String?
 }
@@ -39,8 +54,14 @@ struct GitHubIssueLabelService: Sendable {
 
     static let labelsQuery = """
     query($owner:String!,$name:String!,$after:String){\
-    repository(owner:$owner,name:$name){viewerPermission \
+    repository(owner:$owner,name:$name){id viewerPermission \
     labels(first:\(labelPageSize),after:$after){pageInfo{hasNextPage endCursor} nodes{id name color}}}}
+    """
+
+    static let createMutation = """
+    mutation($repositoryId:ID!,$name:String!,$color:String!,$description:String){\
+    createLabel(input:{repositoryId:$repositoryId,name:$name,color:$color,description:$description}){\
+    label{id name color}}}
     """
 
     static let addMutation = """
@@ -82,6 +103,7 @@ struct GitHubIssueLabelService: Sendable {
         var labels: [GitHubIssueLabel] = []
         var seenNames: Set<String> = []
         var canWrite = false
+        var repositoryID = ""
         var cursor: String?
         var isFirstPage = true
         repeat {
@@ -90,6 +112,7 @@ struct GitHubIssueLabelService: Sendable {
             let page = try Self.parseLabels(data, statusCode: statusCode(of: response))
             if isFirstPage {
                 canWrite = page.canWrite
+                repositoryID = page.repositoryID
                 isFirstPage = false
             }
             for label in page.labels where seenNames.insert(label.name).inserted {
@@ -100,7 +123,7 @@ struct GitHubIssueLabelService: Sendable {
             }
             cursor = page.nextCursor
         } while true
-        return GitHubIssueLabelSnapshot(labels: labels, canWrite: canWrite)
+        return GitHubIssueLabelSnapshot(labels: labels, canWrite: canWrite, repositoryID: repositoryID)
     }
 
     /// Adds the chosen label and returns the issue's labels as GitHub confirms
@@ -121,6 +144,31 @@ struct GitHubIssueLabelService: Sendable {
         let request = Self.removeRequest(issueID: issueID, labelID: labelID, token: token)
         let (data, response) = try await send(request)
         return try Self.parseMutation(data, statusCode: statusCode(of: response), adding: false)
+    }
+
+    /// Creates one repository label and returns it as GitHub confirms it. The
+    /// caller adds it to the picker; creating never applies it to an issue.
+    func createLabel(
+        repositoryID: String,
+        name: String,
+        color: String,
+        description: String?
+    ) async throws(GitHubIssueLabelError) -> GitHubIssueLabel {
+        guard let token = await tokenProvider() else {
+            throw .notAuthenticated
+        }
+        guard !repositoryID.isEmpty else {
+            throw .requestFailed
+        }
+        let request = Self.createRequest(
+            repositoryID: repositoryID,
+            name: name,
+            color: color,
+            description: description,
+            token: token
+        )
+        let (data, response) = try await send(request)
+        return try Self.parseCreatedLabel(data, statusCode: statusCode(of: response))
     }
 
     private func send(_ request: URLRequest) async throws(GitHubIssueLabelError) -> (Data, URLResponse) {
@@ -165,6 +213,25 @@ struct GitHubIssueLabelService: Sendable {
         )
     }
 
+    static func createRequest(
+        repositoryID: String,
+        name: String,
+        color: String,
+        description: String?,
+        token: String
+    ) -> URLRequest {
+        request(
+            query: createMutation,
+            variables: CreateLabelVariables(
+                repositoryId: repositoryID,
+                name: name,
+                color: color,
+                description: description
+            ),
+            token: token
+        )
+    }
+
     private static func request(
         query: String,
         variables: some Encodable,
@@ -202,8 +269,27 @@ struct GitHubIssueLabelService: Sendable {
         return GitHubIssueLabelPage(
             labels: repository.labels.nodes.map { GitHubIssueLabel(name: $0.name, colorHex: $0.color, nodeID: $0.id) },
             canWrite: writablePermissions.contains(repository.viewerPermission ?? ""),
+            repositoryID: repository.id ?? "",
             nextCursor: pageInfo.hasNextPage ? pageInfo.endCursor : nil
         )
+    }
+
+    static func parseCreatedLabel(
+        _ data: Data,
+        statusCode: Int
+    ) throws(GitHubIssueLabelError) -> GitHubIssueLabel {
+        try checkStatus(statusCode)
+        let decoder = JSONDecoder()
+        guard let response = try? decoder.decode(CreateLabelResponse.self, from: data) else {
+            throw .requestFailed
+        }
+        if let error = createError(response.errors) {
+            throw error
+        }
+        guard let label = response.data?.createLabel?.label else {
+            throw .requestFailed
+        }
+        return GitHubIssueLabel(name: label.name, colorHex: label.color, nodeID: label.id)
     }
 
     static func parseMutation(
@@ -240,6 +326,41 @@ struct GitHubIssueLabelService: Sendable {
         if errors.contains(where: { $0.type == "NOT_FOUND" }) {
             return .repositoryNotFound
         }
+        if let permission = permissionError(errors) {
+            return permission
+        }
+        return .requestFailed
+    }
+
+    /// Creation failures need their own mapping: a taken name and invalid
+    /// details are user-fixable, so they stay distinct from a failed request.
+    private static func createError(_ errors: [RawError]?) -> GitHubIssueLabelError? {
+        guard let errors, !errors.isEmpty else { return nil }
+        if errors.contains(where: { $0.type == "NOT_FOUND" }) {
+            return .repositoryNotFound
+        }
+        if let permission = permissionError(errors) {
+            return permission
+        }
+        let takenName = errors.contains { error in
+            let message = error.message ?? ""
+            return message.range(of: "already been taken", options: .caseInsensitive) != nil
+                || message.range(of: "already exists", options: .caseInsensitive) != nil
+                || message.range(of: "must be unique", options: .caseInsensitive) != nil
+        }
+        if takenName {
+            return .labelNameTaken
+        }
+        let invalid = errors.contains { error in
+            if error.type == "UNPROCESSABLE" {
+                return true
+            }
+            return error.message?.range(of: "invalid", options: .caseInsensitive) != nil
+        }
+        return invalid ? .invalidLabel : .requestFailed
+    }
+
+    private static func permissionError(_ errors: [RawError]) -> GitHubIssueLabelError? {
         let forbidden = errors.contains { error in
             let message = error.message ?? ""
             let mentionsPermission = message.range(of: "permission", options: .caseInsensitive) != nil
@@ -248,7 +369,7 @@ struct GitHubIssueLabelService: Sendable {
                 || error.type == "INSUFFICIENT_SCOPES"
                 || mentionsPermission
         }
-        return forbidden ? .forbidden : .requestFailed
+        return forbidden ? .forbidden : nil
     }
 
     // MARK: - Request bodies
@@ -269,6 +390,13 @@ struct GitHubIssueLabelService: Sendable {
         let labelIds: [String]
     }
 
+    private struct CreateLabelVariables: Encodable {
+        let repositoryId: String
+        let name: String
+        let color: String
+        let description: String?
+    }
+
     // MARK: - Response bodies
 
     private struct LabelsResponse: Decodable {
@@ -281,6 +409,7 @@ struct GitHubIssueLabelService: Sendable {
     }
 
     private struct RawRepository: Decodable {
+        let id: String?
         let viewerPermission: String?
         let labels: RawLabelConnection
     }
@@ -321,6 +450,19 @@ struct GitHubIssueLabelService: Sendable {
 
     private struct RawIssuedLabelConnection: Decodable {
         let nodes: [RawLabel]
+    }
+
+    private struct CreateLabelResponse: Decodable {
+        let data: CreateLabelData?
+        let errors: [RawError]?
+    }
+
+    private struct CreateLabelData: Decodable {
+        let createLabel: CreateLabelPayload?
+    }
+
+    private struct CreateLabelPayload: Decodable {
+        let label: RawLabel?
     }
 
     private struct RawError: Decodable {

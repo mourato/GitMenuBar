@@ -2,6 +2,8 @@
 
 Status: Accepted
 Date: 2026-11-11
+Note: creating repository labels is added by
+[ADR 0024](0024-issue-label-creation.md); the mutation rules below stand.
 
 ## Context
 

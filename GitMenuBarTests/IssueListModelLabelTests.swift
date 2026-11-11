@@ -252,12 +252,24 @@ final class IssueListModelLabelTests: XCTestCase {
 
     func testTryAgainWithoutARepeatableChangeRefreshesInstead() async {
         let bug = Self.label("bug", id: "L_bug")
-        let model = Self.model(
-            issues: [Self.issue(1, nodeID: "", labels: [])],
-            available: [bug],
-            mutate: { _, _, _ in [] }
+        let pageCalls = Counter()
+        let labelCalls = Counter()
+        let model = IssueListModel(
+            fetchPage: { _, _, _ in
+                _ = await pageCalls.increment()
+                return GitHubIssuePage(issues: [Self.issue(1, nodeID: "", labels: [])], nextCursor: nil)
+            },
+            labels: IssueListModel.IssueLabelActions(
+                fetchLabels: { _ in
+                    _ = await labelCalls.increment()
+                    return GitHubIssueLabelSnapshot(labels: [bug], canWrite: true, repositoryID: "R_1")
+                },
+                mutateLabel: { _, _, _ in [] }
+            )
         )
         await model.load(remoteURL: remoteA, state: .open)
+        let pagesBeforeRetry = await pageCalls.value
+        let labelsBeforeRetry = await labelCalls.value
 
         await model.setLabel(bug, on: model.issues[0], adding: true)
         XCTAssertEqual(model.labelError, .requestFailed)
@@ -267,6 +279,10 @@ final class IssueListModelLabelTests: XCTestCase {
         XCTAssertNil(model.labelError)
         XCTAssertEqual(model.phase, .loaded)
         XCTAssertEqual(model.labelsPhase, .loaded)
+        let pagesAfterRetry = await pageCalls.value
+        let labelsAfterRetry = await labelCalls.value
+        XCTAssertEqual(pagesAfterRetry, pagesBeforeRetry + 1, "Try Again must reload the issue page")
+        XCTAssertEqual(labelsAfterRetry, labelsBeforeRetry + 1, "Try Again must reload the label list")
     }
 
     // MARK: - Helpers
@@ -354,7 +370,7 @@ private actor AsyncGate {
 }
 
 private actor Counter {
-    private var value = 0
+    private(set) var value = 0
 
     func increment() -> Int {
         value += 1

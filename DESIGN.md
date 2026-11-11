@@ -40,8 +40,9 @@ Related decisions: [ADR 0001](docs/adr/0001-workbench-depth-and-token-naming.md)
 0010–0015), [ADR 0021](docs/adr/0021-side-panel-split-column.md) (split column;
 supersedes the overlay parts of 0017),
 [ADR 0022](docs/adr/0022-unified-branch-list-and-cleanup-review.md) (unified
-branch list and cleanup review), and
-[ADR 0023](docs/adr/0023-issue-label-mutations.md) (issue label edits).
+branch list and cleanup review),
+[ADR 0023](docs/adr/0023-issue-label-mutations.md) (issue label edits), and
+[ADR 0024](docs/adr/0024-issue-label-creation.md) (repository label creation).
 
 ## Colors
 
@@ -159,7 +160,10 @@ corner style.
   A trailing tag menu lists every repository label with the applied ones
   checked. The menu appears only when the account can change labels; a lock
   caption explains read-only access. One change runs at a time, with progress
-  on the affected row and a retry action after a failure.
+  on the affected row and a retry action after a failure. The menu ends with
+  `New Label in Repository`, which opens a sheet with name, color, and optional
+  description. The sheet names the repository and states that creating a label
+  does not apply it to the issue; applying stays the existing toggle action.
 - Side Panel Branches
   ([ADR 0022](docs/adr/0022-unified-branch-list-and-cleanup-review.md)): one
   unified local branch list; each branch appears once, and its linked worktree
