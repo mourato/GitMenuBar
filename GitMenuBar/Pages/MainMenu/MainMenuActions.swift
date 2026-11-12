@@ -147,6 +147,13 @@ extension MainMenuView {
         repoOptions.showProjectSelector = false
         dismissTransientPresentations()
         presentationModel.showMain()
+        // With auto-fetch on, the selected repository's behind state would
+        // otherwise stay stale until the next background tick, hiding Sync.
+        if AppPreferences.isAutoFetchEnabled, !actionCoordinator.isBusy {
+            Task {
+                _ = await actionCoordinator.refreshRemoteStatus()
+            }
+        }
         let refreshGeneration = presentationModel.startRefresh()
         gitManager.refreshSelectedRepository(
             includeReflogHistory: false,

@@ -553,7 +553,8 @@ extension MainMenuView {
                 canShowBranchManagement: !currentRepoPath.isEmpty,
                 currentBranch: gitManager.currentBranch,
                 defaultBranchName: gitManager.defaultBranchName,
-                monitoredProjects: Array(projectMonitor.snapshots.values)
+                monitoredProjects: Array(projectMonitor.snapshots.values),
+                canSyncAll: projectMonitor.snapshots.values.contains(where: ProjectMonitorStore.isSafeToFastForward)
             )
         )
     }
