@@ -5,128 +5,212 @@ struct UsageQuotaSettingsSection: View {
     @Environment(UsageQuotaPresentationPreferences.self) private var preferences
     @State private var sessionWarningsText = ""
     @State private var weeklyWarningsText = ""
-    @State private var showingOrderSheet = false
+    @State private var showingPrivacyPopover = false
+    @FocusState private var focusedWarningField: WarningField?
 
     var body: some View {
-        Toggle(
-            "Show AI usage quotas",
-            isOn: Binding(
-                get: { usageQuotaStore.showAIUsageQuotas },
-                set: { usageQuotaStore.showAIUsageQuotas = $0 }
+        Section {
+            Toggle(
+                "Show AI usage quotas",
+                isOn: Binding(
+                    get: { usageQuotaStore.showAIUsageQuotas },
+                    set: { usageQuotaStore.showAIUsageQuotas = $0 }
+                )
             )
-        )
-        .toggleStyle(.switch)
+            .toggleStyle(.switch)
 
-        Picker(
-            "Status item",
-            selection: Binding(
-                get: { preferences.menuBarVisibility },
-                set: { preferences.menuBarVisibility = $0 }
-            )
-        ) {
-            ForEach(UsageQuotaPresentationPreferences.MenuBarVisibility.allCases) { visibility in
-                Text(visibility.title).tag(visibility)
+            if usageQuotaStore.showAIUsageQuotas {
+                HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                    Text("Preview")
+                    Spacer(minLength: 0)
+                    previewContent
+                }
             }
-        }
-        .pickerStyle(.segmented)
-        .disabled(!usageQuotaStore.showAIUsageQuotas)
-
-        Picker(
-            "Figures",
-            selection: Binding(
-                get: { preferences.meterStyle },
-                set: { preferences.meterStyle = $0 }
+        } header: {
+            SettingsFormSectionHeader(
+                title: "Quotas",
+                icon: "gauge.with.dots.needle.33percent"
             )
-        ) {
-            ForEach(UsageQuotaPresentationPreferences.MeterStyle.allCases) { style in
-                Text(style.title).tag(style)
-            }
-        }
-        .pickerStyle(.segmented)
-        .disabled(!usageQuotaStore.showAIUsageQuotas)
-
-        Picker(
-            "Count",
-            selection: Binding(
-                get: { preferences.valueStyle },
-                set: { preferences.valueStyle = $0 }
-            )
-        ) {
-            ForEach(UsageQuotaPresentationPreferences.ValueStyle.allCases) { style in
-                Text(style.title).tag(style)
-            }
-        }
-        .pickerStyle(.segmented)
-        .disabled(!usageQuotaStore.showAIUsageQuotas)
-
-        Toggle(
-            "Show pace markers",
-            isOn: Binding(
-                get: { preferences.showsPace },
-                set: { preferences.showsPace = $0 }
-            )
-        )
-        .toggleStyle(.switch)
-        .disabled(!usageQuotaStore.showAIUsageQuotas)
-
-        Stepper(
-            "Workdays per week: \(preferences.workdaysPerWeek)",
-            value: Binding(
-                get: { preferences.workdaysPerWeek },
-                set: { preferences.workdaysPerWeek = $0 }
-            ),
-            in: 1 ... 7
-        )
-        .disabled(!usageQuotaStore.showAIUsageQuotas)
-
-        Picker(
-            "Workday ticks",
-            selection: Binding(
-                get: { preferences.workdayTickAppearance },
-                set: { preferences.workdayTickAppearance = $0 }
-            )
-        ) {
-            ForEach(UsageQuotaPresentationPreferences.WorkdayTickAppearance.allCases) { appearance in
-                Text(appearance.title).tag(appearance)
-            }
-        }
-        .pickerStyle(.segmented)
-        .disabled(!usageQuotaStore.showAIUsageQuotas)
-
-        TextField("Session warnings", text: $sessionWarningsText)
-            .onSubmit(commitSessionWarnings)
-            .disabled(!usageQuotaStore.showAIUsageQuotas)
-
-        TextField("Weekly warnings", text: $weeklyWarningsText)
-            .onSubmit(commitWeeklyWarnings)
-            .disabled(!usageQuotaStore.showAIUsageQuotas)
-
-        Text("Warning markers draw at consumed percents, for example 50, 80. Press Return to apply.")
-            .font(WorkbenchTypography.caption)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-
-        ForEach(preferences.orderedProviderIDs) { providerID in
-            QuotaProviderRowView(providerID: providerID)
         }
         .onAppear(perform: seedWarningFields)
 
-        HStack(spacing: WorkbenchMetrics.compactSpacing) {
-            Text("Strip order")
-            Spacer(minLength: 0)
-            Text(orderSummary)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Button("Reorder") {
-                showingOrderSheet = true
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel("Reorder providers in the menu-bar strip")
-        }
-        .sheet(isPresented: $showingOrderSheet) {
-            QuotaStripOrderSheetView()
-        }
+        if usageQuotaStore.showAIUsageQuotas {
+            Section {
+                Toggle(
+                    isOn: Binding(
+                        get: { preferences.menuBarVisibility == .always },
+                        set: { preferences.menuBarVisibility = $0 ? .always : .menuOnly }
+                    )
+                ) {
+                    Text("Show in menu bar")
+                    Text("When off, quotas appear only inside the menu.")
+                }
+                .toggleStyle(.switch)
 
+                Picker(
+                    "Style",
+                    selection: Binding(
+                        get: { preferences.meterStyle },
+                        set: { preferences.meterStyle = $0 }
+                    )
+                ) {
+                    ForEach(UsageQuotaPresentationPreferences.MeterStyle.allCases) { style in
+                        Text(style.title).tag(style)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .disabled(preferences.menuBarVisibility != .always)
+
+                Picker(
+                    "Show",
+                    selection: Binding(
+                        get: { preferences.valueStyle },
+                        set: { preferences.valueStyle = $0 }
+                    )
+                ) {
+                    ForEach(UsageQuotaPresentationPreferences.ValueStyle.allCases) { style in
+                        Text(style.title).tag(style)
+                    }
+                }
+                .pickerStyle(.menu)
+                .disabled(preferences.menuBarVisibility != .always)
+            } header: {
+                Text("Menu bar")
+            }
+
+            Section {
+                ForEach(preferences.orderedProviderIDs) { providerID in
+                    QuotaProviderRowView(providerID: providerID)
+                }
+            } header: {
+                VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
+                    Text("Providers")
+                    Text("Drag to set menu bar order")
+                        .font(WorkbenchTypography.caption)
+                        .foregroundStyle(.secondary)
+                        .textCase(nil)
+                }
+            }
+
+            Section {
+                Toggle(
+                    isOn: Binding(
+                        get: { preferences.showsPace },
+                        set: { preferences.showsPace = $0 }
+                    )
+                ) {
+                    Text("Show pace marker")
+                    Text("Marks where usage should be at this point in the period.")
+                }
+                .toggleStyle(.switch)
+
+                Picker(
+                    "Workdays per week",
+                    selection: Binding(
+                        get: { preferences.workdaysPerWeek },
+                        set: { preferences.workdaysPerWeek = $0 }
+                    )
+                ) {
+                    ForEach(1 ... 7, id: \.self) { count in
+                        Text("\(count)").tag(count)
+                    }
+                }
+                .pickerStyle(.menu)
+                .padding(.leading, WorkbenchMetrics.rowContentInset)
+                .disabled(!preferences.showsPace)
+
+                Toggle(
+                    "Show workday ticks",
+                    isOn: Binding(
+                        get: { preferences.workdayTickAppearance == .subtle },
+                        set: { preferences.workdayTickAppearance = $0 ? .subtle : .hidden }
+                    )
+                )
+                .toggleStyle(.switch)
+                .padding(.leading, WorkbenchMetrics.rowContentInset)
+                .disabled(!preferences.showsPace)
+
+                TextField(text: $sessionWarningsText) {
+                    Text("Warn during session at")
+                    Text("Percent used, separated by commas.")
+                }
+                .textFieldStyle(.roundedBorder)
+                .multilineTextAlignment(.trailing)
+                .focused($focusedWarningField, equals: .session)
+                .onSubmit(commitSessionWarnings)
+
+                TextField("Warn during week at", text: $weeklyWarningsText)
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.trailing)
+                    .focused($focusedWarningField, equals: .weekly)
+                    .onSubmit(commitWeeklyWarnings)
+            } header: {
+                Text("Pace and warnings")
+            } footer: {
+                HStack(spacing: WorkbenchMetrics.compactSpacing) {
+                    if let updatedAt = lastUpdatedAt {
+                        Text("Updated \(updatedAt, format: .relative(presentation: .named))")
+                    }
+                    Button("Refresh now") {
+                        usageQuotaStore.refresh(reason: .manual)
+                    }
+                    .buttonStyle(.borderless)
+                    Spacer(minLength: 0)
+                    Button {
+                        showingPrivacyPopover = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Quota privacy")
+                    .popover(isPresented: $showingPrivacyPopover) {
+                        privacyText
+                            .font(WorkbenchTypography.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(WorkbenchMetrics.panelPadding)
+                            .frame(maxWidth: WorkbenchMetrics.sidePanelWidth)
+                    }
+                }
+                .font(WorkbenchTypography.detail)
+            }
+            .onChange(of: focusedWarningField) {
+                commitSessionWarnings()
+                commitWeeklyWarnings()
+            }
+        }
+    }
+
+    private enum WarningField: Hashable {
+        case session
+        case weekly
+    }
+
+    private var previewGroups: [UsageQuotaMenuBarGroup] {
+        UsageQuotaMenuPresentation.groups(
+            snapshots: usageQuotaStore.visibleSnapshots,
+            preferences: preferences
+        )
+    }
+
+    @ViewBuilder
+    private var previewContent: some View {
+        if preferences.menuBarVisibility == .menuOnly {
+            Text("Shown only inside the menu")
+                .foregroundStyle(.secondary)
+        } else if previewGroups.isEmpty {
+            Text("No quota data yet")
+                .foregroundStyle(.secondary)
+        } else {
+            UsageQuotaMenuBarStrip(groups: previewGroups, style: preferences.meterStyle)
+        }
+    }
+
+    private var lastUpdatedAt: Date? {
+        usageQuotaStore.visibleSnapshots.map(\.fetchedAt).max()
+    }
+
+    private var privacyText: Text {
         Text(
             "Quota snapshots stay on this Mac. GitMenuBar uses credentials already stored by each provider "
                 + "and refreshes them in place when needed. It never creates a separate OAuth token store. "
@@ -135,22 +219,6 @@ struct UsageQuotaSettingsSection: View {
                 + "falls back to OPENCODE_API_KEY from the environment and then to a local estimate "
                 + "that is not account quota."
         )
-        .font(WorkbenchTypography.caption)
-        .foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
-
-        Button("Refresh now") {
-            usageQuotaStore.refresh(reason: .manual)
-        }
-        .buttonStyle(.borderless)
-        .font(WorkbenchTypography.detail)
-        .disabled(!usageQuotaStore.showAIUsageQuotas)
-    }
-
-    private var orderSummary: String {
-        let names = preferences.orderedProviderIDs.map(\.displayName)
-        guard names.count > 3 else { return names.joined(separator: ", ") }
-        return names.prefix(3).joined(separator: ", ") + " and \(names.count - 3) more"
     }
 
     private func seedWarningFields() {
@@ -183,14 +251,7 @@ struct UsageQuotaSettingsSection: View {
         ]
 
         Form {
-            Section {
-                UsageQuotaSettingsSection()
-            } header: {
-                SettingsFormSectionHeader(
-                    title: "Quotas",
-                    icon: "gauge.with.dots.needle.33percent"
-                )
-            }
+            UsageQuotaSettingsSection()
         }
         .formStyle(.grouped)
         .environment(UsageQuotaStore(providers: providers))

@@ -128,4 +128,13 @@ final class QuotaProviderStatusTests: XCTestCase {
             .unavailable
         )
     }
+
+    func testShowsPillOnlyForExceptionStates() {
+        XCTAssertFalse(QuotaProviderStatus.hidden.showsPill)
+        XCTAssertFalse(QuotaProviderStatus.inStrip.showsPill)
+        XCTAssertTrue(QuotaProviderStatus.checking.showsPill)
+        XCTAssertTrue(QuotaProviderStatus.noData.showsPill)
+        XCTAssertTrue(QuotaProviderStatus.needsKey.showsPill)
+        XCTAssertTrue(QuotaProviderStatus.unavailable.showsPill)
+    }
 }

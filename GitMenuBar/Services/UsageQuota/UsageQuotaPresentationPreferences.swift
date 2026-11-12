@@ -37,7 +37,7 @@ final class UsageQuotaPresentationPreferences {
         var title: String {
             switch self {
             case .left:
-                "Left"
+                "Remaining"
             case .used:
                 "Used"
             }
@@ -214,16 +214,26 @@ final class UsageQuotaPresentationPreferences {
         saveMetrics()
     }
 
-    func toggleMetric(_ metric: Metric, for providerID: UsageProviderID) {
-        var selected = selectedMetrics(for: providerID)
-        if let index = selected.firstIndex(of: metric) {
-            selected.remove(at: index)
-        } else if selected.count < 2 {
-            selected.append(metric)
-        } else {
-            selected[1] = metric
+    func setPrimaryMetric(_ metric: Metric, for providerID: UsageProviderID) {
+        let selected = selectedMetrics(for: providerID)
+        guard metric != selected.first else { return }
+        let currentSecondary = selected.count > 1 ? selected[1] : nil
+        var next = [metric]
+        if let currentSecondary, currentSecondary != metric {
+            next.append(currentSecondary)
         }
-        setSelectedMetrics(selected, for: providerID)
+        setSelectedMetrics(next, for: providerID)
+    }
+
+    func setSecondaryMetric(_ metric: Metric?, for providerID: UsageProviderID) {
+        let selected = selectedMetrics(for: providerID)
+        let currentPrimary = selected.first ?? .session
+        if let metric {
+            guard metric != currentPrimary else { return }
+            setSelectedMetrics([currentPrimary, metric], for: providerID)
+        } else {
+            setSelectedMetrics([currentPrimary], for: providerID)
+        }
     }
 
     func moveProvider(from offsets: IndexSet, to destination: Int) {
@@ -231,6 +241,17 @@ final class UsageQuotaPresentationPreferences {
         order.move(fromOffsets: offsets, toOffset: destination)
         guard order != orderedProviderIDs else { return }
         providerOrder = order
+    }
+
+    /// Drop `providerID` onto `target`'s slot: below it when dragged down,
+    /// above it when dragged up.
+    func moveProvider(_ providerID: UsageProviderID, to target: UsageProviderID) {
+        let order = orderedProviderIDs
+        guard let from = order.firstIndex(of: providerID),
+              let to = order.firstIndex(of: target),
+              from != to
+        else { return }
+        moveProvider(from: IndexSet(integer: from), to: from < to ? to + 1 : to)
     }
 
     func moveProvider(_ providerID: UsageProviderID, by offset: Int) {

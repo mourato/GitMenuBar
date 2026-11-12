@@ -27,6 +27,7 @@ Active local execution briefs only. Completed and withdrawn plans live in
 | [093](093-quota-meter-respects-preferences.md) | Make the sidebar quota summary respect quota preferences | P2 | READY |
 | [094](094-typography-and-finish.md) | Typography and spacing finish for the main window | P3 | READY |
 | [095](095-quota-cards-respect-thresholds.md) | Make quota cards respect configured warning thresholds | P2 | READY |
+| [096](096-quota-settings-restructure.md) | Restructure the Quotas settings group into sections | P2 | IMPLEMENTED |
 
 ## Archive notes
 

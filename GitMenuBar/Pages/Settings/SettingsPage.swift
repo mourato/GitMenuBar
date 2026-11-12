@@ -201,14 +201,7 @@ struct AISettingsPaneView: View {
                 Text("The fallback provider and model are used when retrying after the selected model fails.")
             }
 
-            Section {
-                UsageQuotaSettingsSection()
-            } header: {
-                SettingsFormSectionHeader(
-                    title: "Quotas",
-                    icon: "gauge.with.dots.needle.33percent"
-                )
-            }
+            UsageQuotaSettingsSection()
         }
         .preferredColorScheme(SettingsAppearance.preferredColorScheme(for: appearanceMode))
     }

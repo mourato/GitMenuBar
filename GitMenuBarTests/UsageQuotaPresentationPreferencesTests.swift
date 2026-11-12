@@ -32,6 +32,17 @@ final class UsageQuotaPresentationPreferencesTests: XCTestCase {
         XCTAssertEqual(restored.orderedProviderIDs.first, .cursor)
     }
 
+    func testMoveProviderOntoTargetTakesTargetSlot() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        let initial = preferences.orderedProviderIDs
+
+        preferences.moveProvider(initial[0], to: initial[2])
+        XCTAssertEqual(Array(preferences.orderedProviderIDs.prefix(3)), [initial[1], initial[2], initial[0]])
+
+        preferences.moveProvider(initial[0], to: initial[1])
+        XCTAssertEqual(Array(preferences.orderedProviderIDs.prefix(3)), [initial[0], initial[1], initial[2]])
+    }
+
     func testMoveProviderFromOffsetsToDestinationMatchesOnMove() {
         let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
         let initial = preferences.orderedProviderIDs
@@ -82,13 +93,50 @@ final class UsageQuotaPresentationPreferencesTests: XCTestCase {
         XCTAssertEqual(restored.selectedMetrics(for: .codex), [.credits, .weekly])
     }
 
-    func testTogglingThirdMetricReplacesSecondMetric() {
+    func testSettingPrimaryMetricKeepsDifferentSecondaryMetric() {
         let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
         preferences.setSelectedMetrics([.session, .weekly], for: .codex)
 
-        preferences.toggleMetric(.credits, for: .codex)
+        preferences.setPrimaryMetric(.credits, for: .codex)
 
-        XCTAssertEqual(preferences.selectedMetrics(for: .codex), [.session, .credits])
+        XCTAssertEqual(preferences.selectedMetrics(for: .codex), [.credits, .weekly])
+    }
+
+    func testSettingPrimaryMetricEqualToSecondaryDropsSecondary() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.setSelectedMetrics([.session, .weekly], for: .codex)
+
+        preferences.setPrimaryMetric(.weekly, for: .codex)
+
+        XCTAssertEqual(preferences.selectedMetrics(for: .codex), [.weekly])
+    }
+
+    func testSettingSecondaryMetricToNilLeavesOneMetric() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.setSelectedMetrics([.session, .weekly], for: .codex)
+
+        preferences.setSecondaryMetric(nil, for: .codex)
+
+        XCTAssertEqual(preferences.selectedMetrics(for: .codex), [.session])
+    }
+
+    func testSettingSecondaryMetricEqualToPrimaryIsIgnored() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.setSelectedMetrics([.session, .weekly], for: .codex)
+
+        preferences.setSecondaryMetric(.session, for: .codex)
+
+        XCTAssertEqual(preferences.selectedMetrics(for: .codex), [.session, .weekly])
+    }
+
+    func testPrimaryAndSecondaryMetricsPersist() {
+        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
+        preferences.setPrimaryMetric(.credits, for: .codex)
+        preferences.setSecondaryMetric(.monthly, for: .codex)
+
+        let restored = UsageQuotaPresentationPreferences(defaults: defaults)
+
+        XCTAssertEqual(restored.selectedMetrics(for: .codex), [.credits, .monthly])
     }
 
     func testBarMarkerDefaults() {

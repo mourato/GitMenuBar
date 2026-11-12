@@ -1,16 +1,28 @@
 import SwiftUI
 
-/// Expanded options for one quota provider, grouped under caption headers:
-/// API key (key providers only), menu-bar figures, and strip position.
+/// Expanded options for one quota provider: API key (key providers only)
+/// and the two menu-bar metric menus. The first menu picks the primary
+/// metric; the second picks an optional additional metric.
 struct QuotaProviderDetailView: View {
     @Environment(UsageQuotaStore.self) private var usageQuotaStore
     @Environment(UsageQuotaPresentationPreferences.self) private var preferences
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     let providerID: UsageProviderID
 
+    private var selectedMetrics: [UsageQuotaPresentationPreferences.Metric] {
+        preferences.selectedMetrics(for: providerID)
+    }
+
+    private var primaryMetric: UsageQuotaPresentationPreferences.Metric {
+        selectedMetrics.first ?? .session
+    }
+
+    private var secondaryMetric: UsageQuotaPresentationPreferences.Metric? {
+        selectedMetrics.count > 1 ? selectedMetrics[1] : nil
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
             if providerID.quotaCredentialID != nil {
                 VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
                     blockCaption("API key")
@@ -18,45 +30,35 @@ struct QuotaProviderDetailView: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-                blockCaption("Menu bar")
-                metricChips
-            }
-        }
-        .padding(.top, WorkbenchMetrics.microSpacing)
-    }
-
-    private var metricChips: some View {
-        HStack(spacing: WorkbenchMetrics.microSpacing) {
-            ForEach(UsageQuotaPresentationPreferences.Metric.allCases) { metric in
-                let selected = preferences.selectedMetrics(for: providerID).contains(metric)
-                Button {
-                    preferences.toggleMetric(metric, for: providerID)
-                } label: {
-                    HStack(spacing: WorkbenchMetrics.microSpacing) {
-                        if selected {
-                            Image(systemName: "checkmark")
-                                .accessibilityHidden(true)
-                        }
-                        Text(metric.title)
-                    }
-                    .font(WorkbenchTypography.caption)
-                    .padding(.horizontal, WorkbenchMetrics.compactSpacing)
-                    .frame(minHeight: WorkbenchMetrics.minimumHitTarget)
-                    .background(
-                        selected
-                            ? WorkbenchPalette.accentFill(contrast: colorSchemeContrast)
-                            : WorkbenchPalette.hoverFill(),
-                        in: Capsule()
-                    )
-                    .foregroundStyle(selected ? .primary : .secondary)
+            Picker(
+                "Menu bar shows",
+                selection: Binding(
+                    get: { primaryMetric },
+                    set: { preferences.setPrimaryMetric($0, for: providerID) }
+                )
+            ) {
+                ForEach(UsageQuotaPresentationPreferences.Metric.allCases) { metric in
+                    Text(metric.title).tag(metric)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(metric.title) figure")
-                .accessibilityValue(selected ? "Shown" : "Hidden")
             }
+            .pickerStyle(.menu)
+
+            Picker(
+                "Second metric",
+                selection: Binding<UsageQuotaPresentationPreferences.Metric?>(
+                    get: { secondaryMetric },
+                    set: { preferences.setSecondaryMetric($0, for: providerID) }
+                )
+            ) {
+                Text("None").tag(UsageQuotaPresentationPreferences.Metric?.none)
+                ForEach(UsageQuotaPresentationPreferences.Metric.allCases.filter { $0 != primaryMetric }) { metric in
+                    Text(metric.title).tag(UsageQuotaPresentationPreferences.Metric?.some(metric))
+                }
+            }
+            .pickerStyle(.menu)
         }
-        .disabled(!usageQuotaStore.showAIUsageQuotas || !usageQuotaStore.isProviderEnabled(providerID))
+        .padding(.bottom, WorkbenchMetrics.microSpacing)
+        .disabled(!usageQuotaStore.isProviderEnabled(providerID))
     }
 
     private func blockCaption(_ text: String) -> Text {

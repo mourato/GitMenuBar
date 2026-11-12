@@ -17,6 +17,15 @@ struct QuotaStatusPillView: View {
 }
 
 extension QuotaProviderStatus {
+    var showsPill: Bool {
+        switch self {
+        case .hidden, .inStrip:
+            false
+        case .checking, .noData, .needsKey, .unavailable:
+            true
+        }
+    }
+
     var title: String {
         switch self {
         case .hidden:
