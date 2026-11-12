@@ -173,46 +173,43 @@ struct ProjectsSidebarView: View {
             Circle()
                 .fill(dotColor(for: snapshot))
                 .frame(width: 7, height: 7)
+                .fixedSize()
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(snapshot.project.name)
                     .lineLimit(1)
+                    .truncationMode(.tail)
                 Text(statusSummary(for: snapshot))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .truncationMode(.tail)
             }
-            .layoutPriority(1)
-
-            Spacer(minLength: 0)
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(0)
 
             HStack(spacing: WorkbenchMetrics.microSpacing) {
                 if showAgentActivity, !(monitor.agentActivities[snapshot.project.path] ?? []).isEmpty {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: WorkbenchMetrics.microSpacing) {
-                            ForEach(monitor.agentActivities[snapshot.project.path] ?? []) { activity in
-                                AgentBadgeIconView(activity: activity)
-                            }
+                    HStack(spacing: WorkbenchMetrics.microSpacing) {
+                        ForEach(monitor.agentActivities[snapshot.project.path] ?? []) { activity in
+                            AgentBadgeIconView(activity: activity)
                         }
-                        .fixedSize()
-                        Color.clear.frame(width: 0, height: 0)
                     }
+                    .fixedSize(horizontal: true, vertical: false)
                 }
 
                 if snapshot.hasWorkingTreeChanges {
                     changeCountBadge(for: snapshot)
                 }
 
-                // The project name keeps priority: at narrow widths the open
-                // totals drop out (VoiceOver still reads them) instead of clipping.
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: WorkbenchMetrics.microSpacing) {
-                        openCountBadges(for: snapshot)
-                    }
-                    .fixedSize()
-                    Color.clear.frame(width: 0, height: 0)
+                // Badges always stay visible: long status text truncates instead.
+                HStack(spacing: WorkbenchMetrics.microSpacing) {
+                    openCountBadges(for: snapshot)
                 }
+                .fixedSize(horizontal: true, vertical: false)
             }
+            .layoutPriority(1)
+            .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
         .contentShape(Rectangle())

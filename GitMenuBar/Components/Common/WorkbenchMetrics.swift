@@ -44,7 +44,7 @@ enum WorkbenchMetrics {
     static let minimumHitTarget: CGFloat = 32
     static let quotaMeterWidth: CGFloat = 20
     static let quotaMeterHeight: CGFloat = 6
-    static let projectsMinimumWidth: CGFloat = 220
+    static let projectsMinimumWidth: CGFloat = 256
     static let projectsMaximumWidth: CGFloat = 360
     static let centralMinimumWidth: CGFloat = 360
     /// Fixed trailing side-panel column width (contextual details).
