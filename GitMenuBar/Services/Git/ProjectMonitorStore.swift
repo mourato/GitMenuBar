@@ -46,7 +46,13 @@ final class ProjectMonitorStore {
         self.runner = runner
         self.agentDetector = agentDetector
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refreshAll() }
+            Task { @MainActor in
+                if AppPreferences.isAutoFetchEnabled {
+                    self?.fetchAll()
+                } else {
+                    self?.refreshAll()
+                }
+            }
         }
     }
 

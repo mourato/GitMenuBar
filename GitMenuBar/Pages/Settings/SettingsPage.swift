@@ -123,6 +123,7 @@ struct GitSettingsPaneView: View {
     @AppStorage(AppPreferences.Keys.hideCommitMessageField) private var hideCommitMessageField = false
     @AppStorage(AppPreferences.Keys.commitButtonAction)
     private var commitButtonAction = AppPreferences.CommitButtonAction.defaultAction.rawValue
+    @AppStorage(AppPreferences.Keys.autoFetchEnabled) private var autoFetchEnabled = true
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
 
     let gitManager: GitManager
@@ -157,6 +158,17 @@ struct GitSettingsPaneView: View {
                 Text(
                     "Choose whether the main button commits changes locally or also pushes them to the remote. "
                         + "When the message field is hidden, GitMenuBar uses automatic commit messages when available."
+                )
+            }
+
+            Section {
+                Toggle("Automatically fetch remote updates", isOn: $autoFetchEnabled)
+                    .toggleStyle(.switch)
+            } header: {
+                SettingsFormSectionHeader(title: "Remote", icon: "arrow.2.circlepath")
+            } footer: {
+                Text(
+                    "When enabled, GitMenuBar fetches in the background and the Fetch button stays hidden."
                 )
             }
 

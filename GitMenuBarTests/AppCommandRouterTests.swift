@@ -3,10 +3,11 @@ import XCTest
 
 @MainActor
 final class AppCommandRouterTests: XCTestCase {
-    func testSyncInvocationPresentsCoordinatorSyncOptionsWhenRemoteIsAhead() async throws {
+    func testSyncInvocationPresentsCoordinatorSyncOptionsWhenDiverged() async throws {
         let defaults = try makeIsolatedTestDefaults(name: #function)
         let gitManager = GitManager(repositoryPathOverride: "")
         gitManager.isRemoteAhead = true
+        gitManager.isAheadOfRemote = true
         let aiCoordinator = AICommitCoordinator(
             providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
             keychainStore: InMemoryAIAPIKeyStore(),
@@ -42,6 +43,27 @@ final class AppCommandRouterTests: XCTestCase {
 
         XCTAssertTrue(coordinator.showSyncOptions)
         XCTAssertNil(coordinator.alert)
+        XCTAssertFalse(coordinator.isExecutingPrimaryAction)
+    }
+
+    func testSyncInvocationSkipsOptionsWhenBehindOnly() async throws {
+        let gitManager = GitManager(repositoryPathOverride: "")
+        gitManager.isRemoteAhead = true
+        gitManager.isAheadOfRemote = false
+        let aiCoordinator = AICommitCoordinator(
+            providerStore: AIProviderStore(dataStore: InMemoryAIProviderStoreDataStore()),
+            keychainStore: InMemoryAIAPIKeyStore(),
+            messageService: AICommitMessageService(),
+            gitManager: gitManager
+        )
+        let coordinator = MainMenuActionCoordinator(gitManager: gitManager, aiCommitCoordinator: aiCoordinator)
+
+        let result = await coordinator.performSync()
+
+        // Behind-only fast-forwards without asking between merge, rebase, and a new branch.
+        // The empty test repository cannot pull, so the direct attempt fails cleanly.
+        XCTAssertEqual(result, .failed)
+        XCTAssertFalse(coordinator.showSyncOptions)
         XCTAssertFalse(coordinator.isExecutingPrimaryAction)
     }
 }

@@ -47,6 +47,8 @@ final class StatusBarController: NSObject {
     )
     var contextMenu: NSMenu?
     private var cancellables = Set<AnyCancellable>()
+    private var autoFetchTimer: Timer?
+    private var lastAutoFetchEnabled = AppPreferences.isAutoFetchEnabled
     var baseStatusImage: NSImage?
     private var remoteExistenceByPath: [String: RemoteExistenceState] = [:]
     private var shortcutQueue = MainWindowShortcutQueue()
@@ -304,11 +306,47 @@ final class StatusBarController: NSObject {
         .sink { [weak self] in
             self?.refreshAppCommands()
             self?.updateMainWindowToolbar()
+            self?.fetchImmediatelyIfAutoFetchJustEnabled()
         }
         .store(in: &cancellables)
 
         observePresentationRoute()
         observeGitCommandState()
+        startAutoFetchTimer()
+    }
+
+    /// Keeps the selected repository's behind state fresh while automatic
+    /// fetch is on, so hiding the manual Fetch button never leaves Sync stale.
+    private func startAutoFetchTimer() {
+        autoFetchTimer?.invalidate()
+        autoFetchTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self,
+                      AppPreferences.isAutoFetchEnabled,
+                      presentationModel.route == .main,
+                      let path = currentRepositoryPath(), !path.isEmpty,
+                      !actionCoordinator.isBusy
+                else { return }
+                _ = await actionCoordinator.refreshRemoteStatus()
+            }
+        }
+    }
+
+    /// One immediate fetch when the toggle flips on, so the effect is visible
+    /// without waiting for the next background tick.
+    private func fetchImmediatelyIfAutoFetchJustEnabled() {
+        let enabled = AppPreferences.isAutoFetchEnabled
+        defer { lastAutoFetchEnabled = enabled }
+        guard enabled, !lastAutoFetchEnabled else { return }
+        projectMonitor.fetchAll()
+        Task { @MainActor [weak self] in
+            guard let self,
+                  presentationModel.route == .main,
+                  let path = currentRepositoryPath(), !path.isEmpty,
+                  !actionCoordinator.isBusy
+            else { return }
+            _ = await actionCoordinator.refreshRemoteStatus()
+        }
     }
 
     private func observePresentationRoute() {
@@ -384,7 +422,8 @@ final class StatusBarController: NSObject {
                 changeCount: gitManager.stagedFiles.count + gitManager.changedFiles.count,
                 isBusy: actionCoordinator.isBusy,
                 busyItem: actionCoordinator.isBusy ? toolbarBusyItem(for: operationStatus) : nil,
-                progressAccessibilityLabel: operationStatus?.accessibilityLabel
+                progressAccessibilityLabel: operationStatus?.accessibilityLabel,
+                autoFetchEnabled: AppPreferences.isAutoFetchEnabled
             )
         } else {
             repositoryState = nil

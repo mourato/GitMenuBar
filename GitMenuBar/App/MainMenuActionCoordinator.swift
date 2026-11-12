@@ -315,6 +315,28 @@ final class MainMenuActionCoordinator {
             publishOperationStatus(.pushing)
 
             if gitManager.isRemoteAhead {
+                // Behind-only with a clean tree fast-forwards either way, so
+                // choosing between merge, rebase, and a new branch only helps
+                // when local commits and remote commits diverged.
+                if !gitManager.isAheadOfRemote {
+                    let pullResult = await pullFromRemote(rebase: false)
+                    guard case .success = pullResult else {
+                        if case let .failure(error) = pullResult {
+                            publishAlert(title: "Sync Failed", message: error.localizedDescription)
+                        }
+                        return .failed
+                    }
+                    let pushResult = await pushToRemote()
+                    guard case .success = pushResult else {
+                        if case let .failure(error) = pushResult {
+                            publishAlert(title: "Push Failed", message: error.localizedDescription)
+                        }
+                        return .failed
+                    }
+                    await refreshRepository()
+                    await refreshRemoteStatus()
+                    return .synced
+                }
                 showSyncOptions = true
                 return .requiresOptions
             }

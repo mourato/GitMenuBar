@@ -41,6 +41,13 @@ enum AppPreferences {
         static let usageQuotaWorkdayTickAppearance = "usageQuotaWorkdayTickAppearance"
         static let usageQuotaShowsPace = "usageQuotaShowsPace"
         static let workingTreeDisplayMode = "workingTreeDisplayMode"
+        static let autoFetchEnabled = "autoFetchEnabled"
+    }
+
+    /// Automatic background fetch. Defaults to true so the sidebar and sync
+    /// state stay fresh without a manual Fetch; a missing value means enabled.
+    static var isAutoFetchEnabled: Bool {
+        UserDefaults.standard.object(forKey: Keys.autoFetchEnabled) as? Bool ?? true
     }
 
     enum WorkingTreeDisplayMode: String, CaseIterable, Identifiable, Codable {
