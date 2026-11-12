@@ -142,6 +142,74 @@ final class ProjectMonitorStoreTests: XCTestCase {
         XCTAssertEqual(monitor.snapshots[path]?.unstagedCount, 1)
     }
 
+    @MainActor
+    func testIsSafeToFastForwardAcceptsOnlyCleanBehindOnly() {
+        func syncSnapshot(
+            behind: Int, ahead: Int = 0,
+            staged: Int = 0, unstaged: Int = 0, untracked: Int = 0,
+            detached: Bool = false, upstream: Bool = true,
+            branch: String = "main", error: String? = nil
+        ) -> ProjectStatusSnapshot {
+            ProjectStatusSnapshot(
+                project: ProjectReference(path: "/tmp/sync-all"), branchName: branch,
+                isDetachedHead: detached,
+                stagedCount: staged, unstagedCount: unstaged, untrackedCount: untracked,
+                lineDiff: .zero, aheadCount: ahead, behindCount: behind, hasUpstream: upstream,
+                lastRefreshedAt: Date(), lastErrorDescription: error,
+                branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0,
+                unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil, gitHubStatus: .empty
+            )
+        }
+
+        XCTAssertTrue(ProjectMonitorStore.isSafeToFastForward(syncSnapshot(behind: 2)))
+        XCTAssertFalse(ProjectMonitorStore.isSafeToFastForward(syncSnapshot(behind: 0)))
+        XCTAssertFalse(ProjectMonitorStore.isSafeToFastForward(syncSnapshot(behind: 2, ahead: 1)))
+        XCTAssertFalse(ProjectMonitorStore.isSafeToFastForward(syncSnapshot(behind: 2, staged: 1)))
+        XCTAssertFalse(ProjectMonitorStore.isSafeToFastForward(syncSnapshot(behind: 2, unstaged: 1)))
+        XCTAssertFalse(ProjectMonitorStore.isSafeToFastForward(syncSnapshot(behind: 2, untracked: 1)))
+        XCTAssertFalse(ProjectMonitorStore.isSafeToFastForward(syncSnapshot(behind: 2, detached: true)))
+        XCTAssertFalse(ProjectMonitorStore.isSafeToFastForward(syncSnapshot(behind: 2, upstream: false)))
+        XCTAssertFalse(ProjectMonitorStore.isSafeToFastForward(syncSnapshot(behind: 2, branch: "")))
+        XCTAssertFalse(ProjectMonitorStore.isSafeToFastForward(syncSnapshot(behind: 2, error: "Folder unavailable")))
+    }
+
+    @MainActor
+    func testSyncAllSafePullsOnlyEligibleProjects() async throws {
+        let defaults = try makeIsolatedTestDefaults(name: #function)
+        let projects = MonitoredProjectsStore(defaults: defaults, key: "projects", seededKey: "seeded")
+        let eligiblePath = RecentProjectsStore.normalize("/tmp/sync-all-eligible")
+        let divergedPath = RecentProjectsStore.normalize("/tmp/sync-all-diverged")
+        projects.add(eligiblePath)
+        projects.add(divergedPath)
+        let monitor = ProjectMonitorStore(projectStore: projects)
+        monitor.fetchOperation = { project, _ in
+            let isEligible = project.path == eligiblePath
+            return ProjectStatusSnapshot(
+                project: project, branchName: "main", isDetachedHead: false,
+                stagedCount: 0, unstagedCount: 0, untrackedCount: 0, lineDiff: .zero,
+                aheadCount: isEligible ? 0 : 1, behindCount: isEligible ? 2 : 1,
+                hasUpstream: true, lastRefreshedAt: Date(),
+                lastErrorDescription: nil, branchesWithoutUpstreamCount: 0, unpushedBranchCount: 0,
+                unmergedBranchCount: 0, stashCount: 0, lastActivityAt: nil, gitHubStatus: .empty
+            )
+        }
+        var pulled: [String] = []
+        monitor.syncPullOperation = { project, _ in
+            pulled.append(project.path)
+            return (output: "", failure: false)
+        }
+        monitor.refreshOperation = { project, _ in Self.snapshot(path: project.path) }
+
+        let result = await monitor.syncAllSafe()
+
+        XCTAssertEqual(pulled, [eligiblePath])
+        XCTAssertEqual(result.updatedNames, [ProjectReference(path: eligiblePath).name])
+        XCTAssertEqual(result.skippedNames, [ProjectReference(path: divergedPath).name])
+        XCTAssertTrue(result.failedNames.isEmpty)
+        XCTAssertEqual(monitor.snapshots[eligiblePath]?.behindCount, 0)
+        XCTAssertEqual(monitor.snapshots[divergedPath]?.behindCount, 1)
+    }
+
     private static func snapshot(path: String) -> ProjectStatusSnapshot {
         ProjectStatusSnapshot(
             project: ProjectReference(path: path), branchName: "main", isDetachedHead: false,

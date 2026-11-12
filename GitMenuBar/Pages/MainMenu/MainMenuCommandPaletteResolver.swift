@@ -10,6 +10,7 @@ enum MainMenuCommandPaletteResolver {
         items.append(item(commandID: .addProject, kind: .addProject, section: .actions, isEnabled: true))
         items.append(item(commandID: .refreshAllProjects, kind: .refreshAllProjects, section: .actions, isEnabled: true))
         items.append(item(commandID: .fetchAllProjects, kind: .fetchAllProjects, section: .actions, isEnabled: true))
+        items.append(item(commandID: .syncAllProjects, kind: .syncAllProjects, section: .actions, isEnabled: context.canSyncAll))
 
         if context.actionState.showsCommit {
             items.append(item(commandID: .commit, kind: .commit, section: .actions, isEnabled: context.actionState.canCommit))

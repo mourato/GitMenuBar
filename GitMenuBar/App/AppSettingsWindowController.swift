@@ -28,7 +28,8 @@ final class AppSettingsWindowController {
         usageQuotaStore: UsageQuotaStore,
         usageQuotaPresentationPreferences: UsageQuotaPresentationPreferences,
         shortcutManager: GlobalShortcutManager,
-        onSetAutoHideSuspended: @escaping (Bool) -> Void
+        onSetAutoHideSuspended: @escaping (Bool) -> Void,
+        onFetchNow: @escaping () -> Void
     ) {
         let generalPane = Settings.Pane(
             identifier: .gitMenuBarGeneral,
@@ -49,7 +50,8 @@ final class AppSettingsWindowController {
                 GitSettingsPaneView(
                     gitManager: gitManager,
                     githubAuthManager: githubAuthManager,
-                    onSetAutoHideSuspended: onSetAutoHideSuspended
+                    onSetAutoHideSuspended: onSetAutoHideSuspended,
+                    onFetchNow: onFetchNow
                 )
                 .environment(githubAuthManager)
             }

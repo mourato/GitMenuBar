@@ -15,7 +15,7 @@ final class ProjectMonitorStore {
     private(set) var agentActivities: [String: [AgentProjectActivity]] = [:]
 
     private let projectStore: MonitoredProjectsStore
-    private let runner: GitCommandRunner
+    let runner: GitCommandRunner
     private let agentDetector: AgentActivityDetector
     @ObservationIgnored private nonisolated(unsafe) var refreshTimer: Timer?
     @ObservationIgnored private nonisolated(unsafe) var agentTimer: Timer?
@@ -35,6 +35,7 @@ final class ProjectMonitorStore {
     #if DEBUG
         @ObservationIgnored var fetchOperation: ((ProjectReference, GitCommandRunner) -> ProjectStatusSnapshot)?
         @ObservationIgnored var refreshOperation: ((ProjectReference, GitCommandRunner) -> ProjectStatusSnapshot)?
+        @ObservationIgnored var syncPullOperation: ((ProjectReference, GitCommandRunner) -> (output: String, failure: Bool))?
     #endif
 
     init(
@@ -375,7 +376,7 @@ final class ProjectMonitorStore {
         publishSnapshots([snapshot])
     }
 
-    private func publishSnapshots(_ updates: some Sequence<ProjectStatusSnapshot>) {
+    func publishSnapshots(_ updates: some Sequence<ProjectStatusSnapshot>) {
         let monitoredPaths = Set(projectStore.monitoredProjects().map(\.path))
         var nextSnapshots = snapshots
         var didChange = false

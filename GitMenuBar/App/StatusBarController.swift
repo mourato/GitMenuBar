@@ -91,7 +91,8 @@ final class StatusBarController: NSObject {
         aiCommitCoordinator: aiCommitCoordinator,
         onSetAutoHideSuspended: { [weak self] suspended in
             self?.mainWindowController.setAutoHideSuspended(suspended)
-        }
+        },
+        onFetchNow: { [weak self] in self?.fetchAllNow() }
     )
 
     init(githubAuthManager: GitHubAuthManager, appCommandCenter: AppCommandCenter) {
@@ -332,12 +333,8 @@ final class StatusBarController: NSObject {
         }
     }
 
-    /// One immediate fetch when the toggle flips on, so the effect is visible
-    /// without waiting for the next background tick.
-    private func fetchImmediatelyIfAutoFetchJustEnabled() {
-        let enabled = AppPreferences.isAutoFetchEnabled
-        defer { lastAutoFetchEnabled = enabled }
-        guard enabled, !lastAutoFetchEnabled else { return }
+    /// Fetches every monitored project plus the selected repository, on demand.
+    func fetchAllNow() {
         projectMonitor.fetchAll()
         Task { @MainActor [weak self] in
             guard let self,
@@ -347,6 +344,15 @@ final class StatusBarController: NSObject {
             else { return }
             _ = await actionCoordinator.refreshRemoteStatus()
         }
+    }
+
+    /// One immediate fetch when the toggle flips on, so the effect is visible
+    /// without waiting for the next background tick.
+    private func fetchImmediatelyIfAutoFetchJustEnabled() {
+        let enabled = AppPreferences.isAutoFetchEnabled
+        defer { lastAutoFetchEnabled = enabled }
+        guard enabled, !lastAutoFetchEnabled else { return }
+        fetchAllNow()
     }
 
     private func observePresentationRoute() {
@@ -725,7 +731,8 @@ final class StatusBarController: NSObject {
                 canShowBranchManagement: !(currentRepositoryPath()?.isEmpty ?? true),
                 currentBranch: gitManager.currentBranch,
                 defaultBranchName: gitManager.defaultBranchName,
-                monitoredProjects: Array(projectMonitor.snapshots.values)
+                monitoredProjects: Array(projectMonitor.snapshots.values),
+                canSyncAll: projectMonitor.snapshots.values.contains(where: ProjectMonitorStore.isSafeToFastForward)
             )
         )
 

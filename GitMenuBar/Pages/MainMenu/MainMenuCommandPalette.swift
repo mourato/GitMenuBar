@@ -37,6 +37,7 @@ enum MainMenuCommandPaletteKind: Hashable {
     case addProject
     case refreshAllProjects
     case fetchAllProjects
+    case syncAllProjects
     case restartApp
     case quitApp
 
@@ -69,6 +70,7 @@ enum MainMenuCommandPaletteKind: Hashable {
         case .addProject: "project.add"
         case .refreshAllProjects: "project.refreshAll"
         case .fetchAllProjects: "project.fetchAll"
+        case .syncAllProjects: "project.syncAll"
         case .restartApp:
             "app.restart"
         case .quitApp:

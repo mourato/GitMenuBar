@@ -24,13 +24,15 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
                 isAheadOfRemote: false,
                 canShowBranchManagement: false,
                 currentBranch: "main",
-                defaultBranchName: "main"
+                defaultBranchName: "main",
+                monitoredProjects: [],
+                canSyncAll: true
             )
         )
 
         XCTAssertEqual(
             items.filter { $0.section == .actions }.map(\.title),
-            ["Add Project", "Refresh All Projects", "Fetch All Projects", "Commit", "Commit & Push", "Sync Changes"]
+            ["Add Project", "Refresh All Projects", "Fetch All Projects", "Sync All Projects", "Commit", "Commit & Push", "Sync Changes"]
         )
 
         let commitItem = items.first(where: { $0.kind == .commit })
@@ -38,6 +40,42 @@ final class MainMenuCommandPaletteResolverTests: XCTestCase {
 
         let syncItem = items.first(where: { $0.kind == .sync })
         XCTAssertEqual(syncItem?.isEnabled, true)
+
+        let syncAllItem = items.first(where: { $0.kind == .syncAllProjects })
+        XCTAssertEqual(syncAllItem?.isEnabled, true)
+    }
+
+    func testResolveItemsDisablesSyncAllWhenNothingIsBehind() {
+        let actionState = StatusBarContextMenuActionState.resolve(
+            hasCommitWork: false,
+            hasSyncWork: false,
+            canAutoCommit: false,
+            canSync: false
+        )
+
+        let items = MainMenuCommandPaletteResolver.resolveItems(
+            context: AppCommandContext(
+                actionState: actionState,
+                syncActionTitle: "Sync Changes",
+                currentRepoPath: "",
+                remoteUrl: "",
+                recentProjects: [],
+                isGitHubAuthenticated: false,
+                hasWorkingTreeChanges: false,
+                canDoAtomicCommits: false,
+                isBehindRemote: false,
+                isAheadOfRemote: false,
+                canShowBranchManagement: false,
+                currentBranch: "main",
+                defaultBranchName: "main",
+                monitoredProjects: [],
+                canSyncAll: false
+            )
+        )
+
+        let syncAllItem = items.first(where: { $0.kind == .syncAllProjects })
+        XCTAssertNotNil(syncAllItem)
+        XCTAssertEqual(syncAllItem?.isEnabled, false)
     }
 
     func testResolveItemsExcludesCurrentRepoAndLimitsRecentProjectsToFive() {

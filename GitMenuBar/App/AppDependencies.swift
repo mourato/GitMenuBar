@@ -102,7 +102,8 @@ final class AppDependencies {
 
     func makeSettingsWindowController(
         aiCommitCoordinator: AICommitCoordinator,
-        onSetAutoHideSuspended: @escaping (Bool) -> Void
+        onSetAutoHideSuspended: @escaping (Bool) -> Void,
+        onFetchNow: @escaping () -> Void
     ) -> AppSettingsWindowController {
         AppSettingsWindowController(
             gitManager: gitManager,
@@ -114,7 +115,8 @@ final class AppDependencies {
             usageQuotaStore: usageQuotaStore,
             usageQuotaPresentationPreferences: usageQuotaPresentationPreferences,
             shortcutManager: shortcutManager,
-            onSetAutoHideSuspended: onSetAutoHideSuspended
+            onSetAutoHideSuspended: onSetAutoHideSuspended,
+            onFetchNow: onFetchNow
         )
     }
 }

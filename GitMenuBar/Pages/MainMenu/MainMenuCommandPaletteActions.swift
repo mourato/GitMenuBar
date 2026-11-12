@@ -31,6 +31,8 @@ extension MainMenuView {
             projectMonitor.refreshAll()
         case .fetchAllProjects:
             projectMonitor.fetchAll()
+        case .syncAllProjects:
+            syncAllProjects()
         case .restartApp:
             repoConfirm.showRestartConfirmation = true
         case .quitApp:
@@ -66,6 +68,46 @@ extension MainMenuView {
         default:
             break
         }
+    }
+
+    private func syncAllProjects() {
+        Task {
+            let result = await projectMonitor.syncAllSafe()
+            if !actionCoordinator.isBusy {
+                await actionCoordinator.refreshRepository()
+                await actionCoordinator.refreshRemoteStatus()
+            }
+            if !result.failedNames.isEmpty {
+                actionCoordinator.publishAlert(
+                    title: "Sync all finished with failures",
+                    message: syncAllSummary(for: result)
+                )
+            } else if result.didAnything {
+                actionCoordinator.publishSuccess(
+                    title: "Sync all complete",
+                    message: syncAllSummary(for: result)
+                )
+            } else {
+                actionCoordinator.publishSuccess(
+                    title: "Everything up to date",
+                    message: "No monitored project is behind its remote."
+                )
+            }
+        }
+    }
+
+    private func syncAllSummary(for result: SyncAllResult) -> String {
+        var parts: [String] = []
+        if !result.updatedNames.isEmpty {
+            parts.append("\(result.updatedNames.count) updated (\(result.updatedNames.joined(separator: ", ")))")
+        }
+        if !result.skippedNames.isEmpty {
+            parts.append("\(result.skippedNames.count) need you (\(result.skippedNames.joined(separator: ", ")))")
+        }
+        if !result.failedNames.isEmpty {
+            parts.append("\(result.failedNames.count) failed (\(result.failedNames.joined(separator: ", ")))")
+        }
+        return parts.joined(separator: ". ")
     }
 
     private func executeWorkflowCommand(_ kind: MainMenuCommandPaletteKind) {

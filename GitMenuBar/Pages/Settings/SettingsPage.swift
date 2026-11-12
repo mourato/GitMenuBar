@@ -129,6 +129,7 @@ struct GitSettingsPaneView: View {
     let gitManager: GitManager
     let githubAuthManager: GitHubAuthManager
     let onSetAutoHideSuspended: (Bool) -> Void
+    let onFetchNow: () -> Void
 
     var body: some View {
         SettingsFormPage {
@@ -164,6 +165,7 @@ struct GitSettingsPaneView: View {
             Section {
                 Toggle("Automatically fetch remote updates", isOn: $autoFetchEnabled)
                     .toggleStyle(.switch)
+                Button("Fetch now", action: onFetchNow)
             } header: {
                 SettingsFormSectionHeader(title: "Remote", icon: "arrow.2.circlepath")
             } footer: {
@@ -256,7 +258,8 @@ private enum SettingsAppearance {
         return GitSettingsPaneView(
             gitManager: gitManager,
             githubAuthManager: githubAuthManager,
-            onSetAutoHideSuspended: { _ in }
+            onSetAutoHideSuspended: { _ in },
+            onFetchNow: {}
         )
         .environment(githubAuthManager)
     }
