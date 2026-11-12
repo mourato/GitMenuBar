@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Header row for one quota provider: icon, name, strip status, toggle, disclosure.
 struct QuotaProviderRowView: View {
@@ -14,26 +15,17 @@ struct QuotaProviderRowView: View {
     var body: some View {
         let order = preferences.orderedProviderIDs
         let index = order.firstIndex(of: providerID)
-        if let index, index > 0, index < order.count - 1 {
-            row
-                .accessibilityAction(named: Text("Move \(providerID.displayName) up")) {
+        row.accessibilityActions {
+            if let index, index > 0 {
+                Button("Move \(providerID.displayName) up") {
                     preferences.moveProvider(providerID, by: -1)
                 }
-                .accessibilityAction(named: Text("Move \(providerID.displayName) down")) {
+            }
+            if let index, index < order.count - 1 {
+                Button("Move \(providerID.displayName) down") {
                     preferences.moveProvider(providerID, by: 1)
                 }
-        } else if let index, index > 0 {
-            row
-                .accessibilityAction(named: Text("Move \(providerID.displayName) up")) {
-                    preferences.moveProvider(providerID, by: -1)
-                }
-        } else if index != nil {
-            row
-                .accessibilityAction(named: Text("Move \(providerID.displayName) down")) {
-                    preferences.moveProvider(providerID, by: 1)
-                }
-        } else {
-            row
+            }
         }
     }
 
@@ -81,8 +73,8 @@ struct QuotaProviderRowView: View {
         .opacity(usageQuotaStore.isProviderEnabled(providerID) ? 1 : 0.55)
         .contentShape(Rectangle())
         .background(isDropTarget ? WorkbenchPalette.selectedFill() : .clear, in: .rect(cornerRadius: WorkbenchMetrics.microCornerRadius))
-        .dropDestination(for: String.self) { items, _ in
-            guard let dragged = items.first.flatMap(UsageProviderID.init(rawValue:)),
+        .dropDestination(for: UsageProviderID.self) { items, _ in
+            guard let dragged = items.first,
                   dragged != providerID
             else { return false }
             preferences.moveProvider(dragged, to: providerID)
@@ -99,7 +91,7 @@ struct QuotaProviderRowView: View {
         dragHandleGlyph
             .contentShape(Rectangle())
             .pointerStyle(.grabIdle)
-            .draggable(providerID.rawValue) {
+            .draggable(providerID) {
                 HStack(spacing: WorkbenchMetrics.compactSpacing) {
                     ProviderIconView(providerID: providerID)
                     Text(providerID.displayName)
@@ -131,6 +123,18 @@ struct QuotaProviderRowView: View {
             hasStoredKey: preferences.quotaKeySuffixes[providerID] != nil,
             selectedMetrics: preferences.selectedMetrics(for: providerID)
         )
+    }
+}
+
+/// App-private drag payload, so only provider rows accept a dragged provider.
+/// Text fields ignore it, unlike a plain-string payload.
+extension UTType {
+    static let quotaProvider = UTType(exportedAs: "com.mourato.GitMenuBar.quota-provider")
+}
+
+extension UsageProviderID: Transferable {
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: .quotaProvider)
     }
 }
 
