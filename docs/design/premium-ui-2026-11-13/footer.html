@@ -1,0 +1,57 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sidebar footer · critical window</title><style>:root{--foreground:#1d1d1f;--muted-foreground:#66666b;--muted:#e5e5e8;--background:#fff;--shadow-xs:0 1px 3px #0002}*{box-sizing:border-box}body{margin:0;padding:24px;background:#fff;font:13px -apple-system,BlinkMacSystemFont,sans-serif;color:#1d1d1f}h1{font-size:16px;margin:0 0 8px}.intro{font-size:12px;color:#66666b;margin:0 0 20px;max-width:800px}</style><h1>Sidebar footer · critical window</h1><p class="intro">Claude: Weekly 22% replaces Session 76%. The tooltip names the displayed window.</p><style>
+.wrap{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-size:12px;color:var(--muted-foreground);margin:0 0 8px}
+.cap b{color:var(--foreground)}
+.sb{width:272px;background:#ececec;border-radius:14px;padding:16px 10px 10px;color:#1d1d1f;font:13px -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;box-sizing:border-box}
+.hd{display:flex;justify-content:space-between;align-items:center;padding:0 8px 10px;font-size:15px;font-weight:700}
+.hd span{color:#555;font-weight:400;letter-spacing:6px}
+.sec{display:flex;justify-content:space-between;padding:4px 8px;font-size:11px;font-weight:600;color:#8a8a8e;letter-spacing:.4px}
+.row{display:grid;grid-template-columns:8px 1fr 14px 40px 32px;align-items:center;gap:8px;padding:6px 8px;border-radius:8px}
+.row.sel{background:#dcdce0;color:#1d1d1f}
+.dot{width:7px;height:7px;border-radius:50%;background:#b9b9bd}
+.dot.o{background:#f0820f}
+.sel .dot{background:#fff;opacity:.85}
+.nm{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{font-size:11px;color:#77777c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sel .sub{color:rgba(255,255,255,.8)}
+.ag{color:#d97757;font-size:12px;text-align:center}
+.sel .ag{color:#fff}
+.bd{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;color:#3a3a3c}
+.bd svg{width:12px;height:12px;flex:none}
+.is svg{color:#1a7f37}.pr svg{color:#8250df}
+.sel .bd,.sel .bd svg{color:#fff}
+.B .bd{padding:2px 6px;border-radius:999px;margin-left:-6px}
+.B .is{background:rgba(26,127,55,.13);color:#17692f}
+.B .pr{background:rgba(130,80,223,.13);color:#6a3fc4}
+.B .sel .bd{background:rgba(255,255,255,.22);color:#fff}
+.B .row{grid-template-columns:8px 1fr 14px 46px 38px}
+.ft{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #d6d6d9;margin-top:60px;padding:10px 8px 2px;color:#77777c}
+.q{display:flex;gap:10px}
+.qi{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;color:#3a3a3c}
+.mb{position:relative;width:22px;height:4px;border-radius:2px;background:#d2d2d6}
+.mb i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#5c5c61}
+.mb b{position:absolute;top:-2px;width:1.5px;height:8px;background:#1d1d1f;border-radius:1px}
+.w{color:#d9730a}.w .mb i{background:#f0820f}
+</style>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="is" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="1.8" fill="currentColor"/></symbol>
+<symbol id="pr" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="4" cy="3.5" r="1.7"/><circle cx="4" cy="12.5" r="1.7"/><circle cx="12" cy="12.5" r="1.7"/><path d="M4 5.2v5.6M12 10.8V6.5a2 2 0 0 0-2-2H8.2M9.8 2.6 8 4.5l1.8 1.9"/></symbol>
+</defs></svg>
+<div class="wrap">
+  <div><p class="cap"><b>A · Ícone com cor</b> (recomendado)</p><div class="sb A" id="A"></div></div>
+  <div><p class="cap"><b>B · Cápsula com cor</b> (alternativa)</p><div class="sb B" id="B"></div></div>
+</div>
+<script>
+const P=[["sample-app","1 unmerged branch",9,2,0,1],["notes","1 unmerged branch",3,1],["budget","18 unmerged branches",6,2],["website","2 commits to push",0,2],["tools","8 unmerged branches",6,1,1],["git-client","3 unmerged branches",4,0],["api-service","2 unmerged branches",6,0],["design-kit","1 unmerged branch",0,2],["reader","4 unmerged branches",24,2,1]];
+const b=(k,n)=>n?`<span class="bd ${k}"><svg><use href="#${k}"/></svg>${n}</span>`:"<span></span>";
+const html=`<div class="hd">Projects<span>+ ⋯</span></div><div class="sec"><span>NEEDS ATTENTION</span><span>9</span></div>`+
+P.map(p=>`<div class="row${p[5]?" sel":""}"><span class="dot"></span><div style="min-width:0"><div class="nm">${p[0]}</div><div class="sub">${p[1]}</div></div><span class="ag">${p[4]?"✳":""}</span>${b("is",p[2])}${b("pr",p[3])}</div>`).join("")+
+`<div class="sec" style="margin-top:14px"><span>CLEAN</span><span>1</span></div>
+<div class="ft"><span>⚙</span><div class="q">
+<span class="qi"><span style="color:#2f6fed">▲</span><span class="mb"><i style="width:100%"></i></span>100</span>
+<span class="qi w"><span style="color:#d97757">✳</span><span class="mb"><i style="width:22%"></i><b style="left:64%"></b></span>22</span>
+<span class="qi"><span style="color:#6b5cf6">֎</span><span class="mb"><i style="width:56%"></i><b style="left:9%"></b></span>56</span>
+</div></div>`;
+A.innerHTML=html;B.innerHTML=html;
+</script>
+<style>.sel .bd{color:#3a3a3c}.sel .is svg{color:#1a7f37}.sel .pr svg{color:#8250df}.sel .sub{color:#66666b}.sel .dot{background:#8a8a8e}</style><style>.wrap>div:nth-child(2),.sb>.hd,.sb>.sec,.sb>.row,.cap{display:none}.ft{margin-top:0}.sb{width:340px}.qi:after{content:"%"}.q{gap:18px}</style><style>.intro{width:100%;white-space:normal;overflow-wrap:anywhere}</style></html>

@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Repository overview</title><style>:root{--foreground:#1d1d1f;--muted-foreground:#66666b;--muted:#e5e5e8;--background:#fff;--shadow-xs:0 1px 3px #0002}*{box-sizing:border-box}body{margin:0;padding:24px;background:#fff;font:13px -apple-system,BlinkMacSystemFont,sans-serif;color:#1d1d1f}h1{font-size:16px;margin:0 0 8px}.intro{font-size:12px;color:#66666b;margin:0 0 20px;max-width:800px}</style><h1>Repository overview</h1><p class="intro">Local Git, then GitHub. Empty values are quiet. Issues is the active side panel.</p><style>
+.ov{background:#f4f4f5;border-radius:14px;padding:16px;font:13px -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;color:#1d1d1f}
+.strip{display:flex;background:#fbfbfc;border:1px solid #dddde0;border-radius:12px;padding:4px}
+.grp{display:flex;flex:3}
+.grp.gh{flex:2;border-left:1px solid #d2d2d6;margin-left:6px;padding-left:6px}
+.c{flex:1;padding:8px 12px;border-radius:8px;cursor:pointer;position:relative;min-width:0}
+.c:hover{background:rgba(0,0,0,.05)}
+.c.on{background:rgba(47,111,237,.1)}
+.c:hover::after,.c.on::after{content:"›";position:absolute;right:10px;top:8px;color:#8a8a8e;font-size:14px}
+.l{display:flex;align-items:center;gap:5px;font-size:11px;color:#77777c;white-space:nowrap}
+.l svg{width:11px;height:11px}
+.v{margin-top:3px;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.v small{font-size:12px;font-weight:400;color:#77777c;margin-left:3px}
+.v.z{font-size:13px;font-weight:400;color:#8a8a8e;line-height:22px}
+.note{font-size:11px;color:#8a8a8e;margin:10px 4px 0}
+</style>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="is" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="1.8" fill="currentColor"/></symbol>
+<symbol id="pr" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="4" cy="3.5" r="1.7"/><circle cx="4" cy="12.5" r="1.7"/><circle cx="12" cy="12.5" r="1.7"/><path d="M4 5.2v5.6M12 10.8V6.5a2 2 0 0 0-2-2H8.2M9.8 2.6 8 4.5l1.8 1.9"/></symbol>
+</defs></svg>
+<div class="ov">
+  <div class="strip">
+    <div class="grp">
+      <div class="c"><div class="l">Changes</div><div class="v z">Clean</div></div>
+      <div class="c"><div class="l">Branches</div><div class="v">1<small>unmerged</small></div></div>
+      <div class="c"><div class="l">Stashes</div><div class="v z">None</div></div>
+    </div>
+    <div class="grp gh">
+      <div class="c on"><div class="l"><svg style="color:#1a7f37"><use href="#is"/></svg>Issues</div><div class="v">9<small>open</small></div></div>
+      <div class="c"><div class="l"><svg style="color:#8250df"><use href="#pr"/></svg>Pull Requests</div><div class="v">2<small>open</small></div></div>
+    </div>
+  </div>
+  <p class="note">Passe o mouse nas células. “Issues” mostra o estado ativo (painel lateral aberto).</p>
+</div>
+<style>.ov{width:880px}.note{display:none}.c.on{background:#e8e8eb}</style><style>.intro{width:100%;white-space:normal;overflow-wrap:anywhere}</style></html>
