@@ -202,7 +202,7 @@ struct ProjectsSidebarView: View {
                     changeCountBadge(for: snapshot)
                 }
 
-                // Badges always stay visible: long status text truncates instead.
+                // Positive GitHub totals stay visible: long status text truncates instead.
                 HStack(spacing: WorkbenchMetrics.microSpacing) {
                     openCountBadges(for: snapshot)
                 }

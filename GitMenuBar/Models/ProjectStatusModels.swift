@@ -54,8 +54,8 @@ enum GitHubStatusUnavailableReason: Equatable, Sendable {
     case commandFailed
 }
 
-/// One GitHub open total as a sidebar badge can state it. A known zero stays a
-/// zero; a total nobody read yet never prints as one.
+/// One GitHub open total as a sidebar badge can state it. Known positive totals
+/// render as badges; a known zero is intentionally omitted.
 enum GitHubOpenCountBadge: Equatable, Sendable {
     case known(Int)
     case pending
@@ -101,7 +101,8 @@ struct GitHubProjectStatus: Equatable, Sendable {
     )
 
     /// Non-GitHub remotes show no badge: there is no open total to compare.
-    /// Totals come only from the counts read, never from the limited PR list.
+    /// Known zero totals also show no badge. Totals come only from the counts
+    /// read, never from the limited PR list.
     var openIssueBadge: GitHubOpenCountBadge? {
         badge(for: openIssueCount)
     }
@@ -115,6 +116,7 @@ struct GitHubProjectStatus: Equatable, Sendable {
         guard let count else {
             return unavailableReason == nil ? .pending : .unavailable
         }
+        guard count > 0 else { return nil }
         return .known(count)
     }
 }

@@ -4,21 +4,14 @@ import XCTest
 final class ProjectOpenCountBadgeTests: XCTestCase {
     // MARK: - Known zero vs loading vs unavailable
 
-    func testKnownZeroIsDistinctFromPendingAndUnavailable() {
+    func testKnownZeroHidesBadgesWhileUnknownStatesRemainVisible() {
         let zero = makeSnapshot(
             gitHubStatus: GitHubProjectStatus(
                 pullRequests: [], openPullRequestCount: 0, openIssueCount: 0, unavailableReason: nil
             )
         )
-        XCTAssertEqual(zero.openIssueBadge, .known(0))
-        XCTAssertEqual(zero.openPullRequestBadge, .known(0))
-        XCTAssertEqual(zero.openIssueBadge?.text, "0")
-        XCTAssertEqual(zero.openPullRequestBadge?.text, "0")
-        XCTAssertEqual(zero.openIssueBadge?.accessibilityDescription(singularNoun: "issue"), "0 open issues")
-        XCTAssertEqual(
-            zero.openPullRequestBadge?.accessibilityDescription(singularNoun: "pull request"),
-            "0 open pull requests"
-        )
+        XCTAssertNil(zero.openIssueBadge)
+        XCTAssertNil(zero.openPullRequestBadge)
 
         let unread = makeSnapshot(gitHubStatus: .empty)
         XCTAssertEqual(unread.openIssueBadge, .pending)
@@ -179,7 +172,7 @@ final class ProjectOpenCountBadgeTests: XCTestCase {
         }
         monitor.refresh(path: path)
         await waitForObservedCondition { monitor.snapshots[path] != nil }
-        XCTAssertEqual(monitor.snapshots[path]?.openIssueBadge, .known(0))
+        XCTAssertNil(monitor.snapshots[path]?.openIssueBadge)
         XCTAssertEqual(monitor.snapshots[path]?.openPullRequestBadge, .known(3))
 
         // A later cycle with a failed GitHub read replaces the totals with
