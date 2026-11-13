@@ -34,6 +34,10 @@ Read during review (Standards axis) and retro. Extends the global standards at
 - Main-window previews use `MainMenuPreviewHarness(showsTransparentTitlebar: true)`;
   component previews do not simulate window chrome.
 - A pull request that adds a UI file without preview coverage is incomplete.
+- Interface icons come only from the Lucide catalog (`LucideIconName` +
+  `LucideIconView` / `Label(lucide:)` / `NSImage(lucide:)`); new `systemName:` /
+  `systemImage:` / `systemSymbolName:` uses outside the wrapper fail lint.
+  Catalog policy: [docs/lucide-icons.md](docs/lucide-icons.md).
 
 ## Accessibility
 

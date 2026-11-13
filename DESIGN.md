@@ -41,8 +41,9 @@ Related decisions: [ADR 0001](docs/adr/0001-workbench-depth-and-token-naming.md)
 supersedes the overlay parts of 0017),
 [ADR 0022](docs/adr/0022-unified-branch-list-and-cleanup-review.md) (unified
 branch list and cleanup review),
-[ADR 0023](docs/adr/0023-issue-label-mutations.md) (issue label edits), and
-[ADR 0024](docs/adr/0024-issue-label-creation.md) (repository label creation).
+[ADR 0023](docs/adr/0023-issue-label-mutations.md) (issue label edits),
+[ADR 0024](docs/adr/0024-issue-label-creation.md) (repository label creation),
+and [ADR 0025](docs/adr/0025-lucide-interface-icon-pack.md) (Lucide icon pack).
 
 ## Colors
 
@@ -214,6 +215,19 @@ corner style.
   action in both modes. Providers with an exhausted weekly reading are hidden
   from the strip until a refreshed reading has remaining weekly quota. Providers
   without a weekly reading keep their selected figures.
+
+## Icons
+
+- Every interface icon comes from the Lucide catalog
+  ([ADR 0025](docs/adr/0025-lucide-interface-icon-pack.md),
+  [docs/lucide-icons.md](docs/lucide-icons.md)): a `LucideIconName` case
+  rendered through `LucideIconView`, `Label(lucide:)`, or `NSImage(lucide:)`.
+  Never name an SF Symbol or a Lucide file at a call site.
+- Lucide is outline-only; semantic color comes from the context
+  (`WorkbenchPalette`, `.accentColor`), never from the icon.
+- Out of the catalog by policy: `ProviderIcon-*` brand logos, `@pierre/trees`
+  file-type artwork (`FileTypeIcon.swift`), `MenuBarIcon` / `AppIcon`, and the
+  `M`/`D`/`U` letters in `GitModels.swift` (text, not icons).
 
 ## Do's and Don'ts
 

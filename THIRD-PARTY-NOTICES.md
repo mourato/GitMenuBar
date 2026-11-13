@@ -32,6 +32,18 @@ MIT License. The full license text is available at
 <https://opensource.org/license/mit> and in the reference repository's
 [`LICENSE`](https://github.com/steipete/CodexBar/blob/main/LICENSE).
 
+## Lucide
+
+Interface icons are vendored from [`lucide-static@1.72.0`](https://www.npmjs.com/package/lucide-static)
+in `GitMenuBar/Resources/LucideIcons/` (see `LucideIcons-NOTICE.md` there and
+[`docs/lucide-icons.md`](docs/lucide-icons.md)).
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+ISC License. The full license text is available at
+<https://opensource.org/license/isc> and in the upstream repository's
+[`LICENSE`](https://github.com/lucide-icons/lucide/blob/main/LICENSE).
+
 ## @pierre/trees
 
 The curated file-type SVG path subset is documented in
