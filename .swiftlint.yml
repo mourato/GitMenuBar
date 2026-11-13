@@ -111,5 +111,74 @@ custom_rules:
     regex: 'GeometryReader|UIScreen\.main\.bounds'
     message: "Prefer containerRelativeFrame(), visualEffect() or Layout over GeometryReader"
     severity: error
+  # Lucide catalog gate (mourato/GitMenuBar#23). New interface icons must go
+  # through LucideIconName + LucideIconView / Label(lucide:) / NSImage(lucide:).
+  # `make lint` also runs this rule via scripts/lint.sh (--only-rules), since
+  # the shared skill config is third-party and stays unchanged.
+  lucide_no_system_image:
+    name: "Icons: Lucide catalog over SF Symbols"
+    regex: 'system(Name|Image|SymbolName)\s*:'
+    message: "Use LucideIconName with LucideIconView / Label(lucide:) / NSImage(lucide:) instead of SF Symbols (see docs/lucide-icons.md)"
+    severity: error
+    excluded:
+      # The single sanctioned fallback inside the wrapper.
+      - GitMenuBar/Components/Common/LucideIconView.swift
+      # Legacy SF Symbol call sites, grandfathered. Migrate them in #24-#26;
+      # do NOT add new files here — new uses fail the lint.
+      - GitMenuBar/App/AppSettingsWindowController.swift
+      - GitMenuBar/App/MainWindowToolbarController.swift
+      - GitMenuBar/App/StatusItemBadgeRenderer.swift
+      - GitMenuBar/Components/AI/AIProviderEditorSheet.swift
+      - GitMenuBar/Components/AI/AIProviderManagementSheet.swift
+      - GitMenuBar/Components/AI/AtomicCommitReviewSheet.swift
+      - GitMenuBar/Components/Branches/BottomBranchSelector.swift
+      - GitMenuBar/Components/Branches/BranchFilterChipsView.swift
+      - GitMenuBar/Components/Branches/BranchManagementRowView.swift
+      - GitMenuBar/Components/Branches/BranchRow.swift
+      - GitMenuBar/Components/Branches/BranchSelectorPopover.swift
+      - GitMenuBar/Components/Branches/CleanupConfirmationView.swift
+      - GitMenuBar/Components/Branches/CleanupStatusBadgeView.swift
+      - GitMenuBar/Components/Branches/NewBranchButton.swift
+      - GitMenuBar/Components/Branches/WorktreeManagementRowView.swift
+      - GitMenuBar/Components/Common/CommitComposer.swift
+      - GitMenuBar/Components/Common/GitHubConnectionSection.swift
+      - GitMenuBar/Components/Common/InlinePageHeader.swift
+      - GitMenuBar/Components/Common/InlineStatusBannerView.swift
+      - GitMenuBar/Components/Common/RepositoryOptionsPopoverView.swift
+      - GitMenuBar/Components/Common/RepositoryVisibilityToggle.swift
+      - GitMenuBar/Components/Common/ShortcutRecorderControl.swift
+      - GitMenuBar/Components/Common/WorkbenchButtonStyles.swift
+      - GitMenuBar/Components/Common/WorkbenchSectionHeaderChrome.swift
+      - GitMenuBar/Components/History/ChangedFilesDiffTreeViews.swift
+      - GitMenuBar/Components/History/CommitDetailPageView.swift
+      - GitMenuBar/Components/History/FileTypeIcon.swift
+      - GitMenuBar/Components/History/HistoryTimelineSectionView.swift
+      - GitMenuBar/Components/Projects/AgentBadgeIconView.swift
+      - GitMenuBar/Components/Projects/ProjectCleanupCandidatesView.swift
+      - GitMenuBar/Components/Projects/ProjectCleanupPage.swift
+      - GitMenuBar/Components/Projects/ProjectCleanupProjectRowView.swift
+      - GitMenuBar/Components/Projects/ProjectCleanupResultsView.swift
+      - GitMenuBar/Components/Projects/ProjectSelectorPopover.swift
+      - GitMenuBar/Components/Projects/ProjectSidebarRowView.swift
+      - GitMenuBar/Components/Projects/ProjectsSidebarView.swift
+      - GitMenuBar/Components/Settings/SettingsFormSectionHeader.swift
+      - GitMenuBar/Components/UsageQuota/QuotaAPIKeyEditorView.swift
+      - GitMenuBar/Components/UsageQuota/QuotaProviderRowView.swift
+      - GitMenuBar/Components/UsageQuota/QuotaStaleInfoPanel.swift
+      - GitMenuBar/Components/UsageQuota/UsageQuotaSettingsSection.swift
+      - GitMenuBar/Components/UsageQuota/UsageQuotaSummaryView.swift
+      - GitMenuBar/Components/WorkingTree/WorkingTreeCleanStateView.swift
+      - GitMenuBar/Components/WorkingTree/WorkingTreeDiffTreeViews.swift
+      - GitMenuBar/Components/WorkingTree/WorkingTreeFileRow.swift
+      - GitMenuBar/Components/WorkingTree/WorkingTreeSectionHeaderView.swift
+      - GitMenuBar/Pages/CreateRepository/CreateRepositoryPage.swift
+      - GitMenuBar/Pages/CreateRepository/CreateRepositoryView.swift
+      - GitMenuBar/Pages/MainMenu/IssueLabelControls.swift
+      - GitMenuBar/Pages/MainMenu/IssuesSidePanelView.swift
+      - GitMenuBar/Pages/MainMenu/MainMenuOverviewSection.swift
+      - GitMenuBar/Pages/MainMenu/RepositoryOverviewView.swift
+      - GitMenuBar/Pages/MainMenu/SidePanelBranchManagementView.swift
+      - GitMenuBar/Pages/MainMenu/SidePanelDetailView.swift
+      - GitMenuBar/Pages/MainMenu/SidePanelHeaderView.swift
 
 reporter: "xcode"

@@ -43,4 +43,7 @@ swiftformat --lint --config "${STYLE_CONFIG_DIR}/.swiftformat" "${TARGETS[@]}"
 echo "Running SwiftLint..."
 swiftlint lint --strict --config "${STYLE_CONFIG_DIR}/.swiftlint.yml" "${TARGETS[@]}"
 
+echo "Running SwiftLint project rules..."
+swiftlint lint --strict --config .swiftlint.yml --only-rule lucide_no_system_image "${TARGETS[@]}"
+
 echo "Lint checks passed"
