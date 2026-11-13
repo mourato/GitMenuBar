@@ -43,10 +43,12 @@ extension StatusBarController {
         submenu.autoenablesItems = false
 
         let quotaItem = NSMenuItem()
-        let hostedView = NSHostingView(
-            rootView: UsageQuotaMenuView()
-                .environment(usageQuotaStore)
-                .environment(usageQuotaPresentationPreferences)
+        let hostedView = UsageQuotaMenuHostingView(
+            rootView: AnyView(
+                UsageQuotaMenuView()
+                    .environment(usageQuotaStore)
+                    .environment(usageQuotaPresentationPreferences)
+            )
         )
         hostedView.frame = NSRect(origin: .zero, size: hostedView.fittingSize)
         quotaItem.view = hostedView
@@ -190,5 +192,17 @@ extension StatusBarController {
 private extension UsageQuotaMenuBarGroup {
     var spokenLabel: String {
         "\(providerID.displayName): \(values.joined(separator: ", "))"
+    }
+}
+
+/// A menu-item host that follows its SwiftUI content size. A quota refresh can
+/// change the cards while the menu is open; a frozen frame would clip the new
+/// content or draw it over the menu items below.
+final class UsageQuotaMenuHostingView: NSHostingView<AnyView> {
+    override func layout() {
+        super.layout()
+        let target = fittingSize
+        guard abs(target.width - frame.width) > 0.5 || abs(target.height - frame.height) > 0.5 else { return }
+        frame = NSRect(origin: frame.origin, size: target)
     }
 }

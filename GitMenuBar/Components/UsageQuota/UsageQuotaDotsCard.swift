@@ -59,41 +59,8 @@ struct UsageQuotaDotsCard: View {
     let showUsed: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                ProviderIconView(providerID: providerID)
-                    .frame(width: 15, height: 15)
-
-                Text(displayName)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.secondary)
-
-                if let pillText {
-                    Text(pillText)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 2)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(Color.primary.opacity(0.08))
-                        )
-                        .accessibilityHidden(true)
-                }
-
-                switch staleStyle {
-                case .none:
-                    EmptyView()
-                case .text:
-                    Text("Outdated")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
-                case let .button(snapshot):
-                    StaleQuotaInfoButton(snapshot: snapshot)
-                }
-
-                Spacer(minLength: 8)
-            }
+        VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+            header
 
             if let footnote {
                 Text(footnote)
@@ -105,6 +72,90 @@ struct UsageQuotaDotsCard: View {
                 UsageQuotaDotsRow(row: row, showUsed: showUsed)
             }
         }
+    }
+
+    /// One icon, one name, at most one plan chip, and the stale marker. The
+    /// name keeps its width; the chip wraps before the name loses legibility.
+    private var header: some View {
+        HStack(alignment: .center, spacing: WorkbenchMetrics.chipSpacing) {
+            ProviderIconView(providerID: providerID)
+                .frame(width: 15, height: 15)
+
+            Text(displayName)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .layoutPriority(2)
+                .accessibilityHidden(true)
+
+            if let pillText {
+                Text(pillText)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.primary.opacity(0.08))
+                    )
+                    .layoutPriority(1)
+                    .accessibilityHidden(true)
+            }
+
+            switch staleStyle {
+            case .none:
+                EmptyView()
+            case .text:
+                Text("Outdated")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .layoutPriority(1)
+                    .accessibilityHidden(true)
+            case let .button(snapshot):
+                StaleQuotaInfoButton(snapshot: snapshot)
+                    .layoutPriority(1)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: hasStaleInfoButton ? .contain : .ignore)
+        .accessibilityLabel(
+            Self.headerAccessibilityText(
+                displayName: displayName,
+                pillText: pillText,
+                isStale: isStale
+            )
+        )
+    }
+
+    private var hasStaleInfoButton: Bool {
+        if case .button = staleStyle {
+            return true
+        }
+        return false
+    }
+
+    private var isStale: Bool {
+        if case .none = staleStyle {
+            return false
+        }
+        return true
+    }
+
+    /// VoiceOver hears provider, plan, resets, and stale state once, instead of
+    /// relying on the visually hidden chip.
+    static func headerAccessibilityText(displayName: String, pillText: String?, isStale: Bool) -> String {
+        var parts = [displayName]
+        if let pillText {
+            parts.append(pillText.replacingOccurrences(of: " · ", with: ", "))
+        }
+        if isStale {
+            parts.append("Outdated")
+        }
+        return parts.joined(separator: ", ")
     }
 
     /// Compact reset countdown (e.g. `3h 30m`), nil when the reset is unknown or past.
@@ -290,4 +341,56 @@ struct UsageQuotaCostDotsCard: View {
     }
     .padding()
     .frame(width: 340)
+}
+
+#Preview("Usage Quota Header Widths") {
+    HStack(alignment: .top, spacing: WorkbenchMetrics.groupSpacing) {
+        headerPreviewColumn(title: "Menu 320", width: UsageQuotaMenuView.width)
+        headerPreviewColumn(title: "Popover 340", width: 340)
+    }
+    .padding()
+}
+
+private func headerPreviewColumn(title: String, width: CGFloat) -> some View {
+    VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
+        Text(title)
+            .font(WorkbenchTypography.caption)
+            .foregroundStyle(.secondary)
+
+        UsageQuotaDotsCard(
+            providerID: .codex,
+            displayName: "Codex",
+            pillText: UsageQuotaDotsCard.pillText(plan: "Plus", intervalChip: "5h", resetCredits: 1),
+            staleStyle: .none,
+            rows: [],
+            footnote: nil,
+            showUsed: false
+        )
+        .padding(12)
+        .frame(width: width)
+
+        UsageQuotaDotsCard(
+            providerID: .codex,
+            displayName: "Codex",
+            pillText: UsageQuotaDotsCard.pillText(plan: nil, intervalChip: "5h", resetCredits: 1),
+            staleStyle: .text,
+            rows: [],
+            footnote: nil,
+            showUsed: false
+        )
+        .padding(12)
+        .frame(width: width)
+
+        UsageQuotaDotsCard(
+            providerID: .codex,
+            displayName: "Codex",
+            pillText: UsageQuotaDotsCard.pillText(plan: "Business Team Annual", intervalChip: "5h", resetCredits: 12),
+            staleStyle: .text,
+            rows: [],
+            footnote: nil,
+            showUsed: false
+        )
+        .padding(12)
+        .frame(width: width)
+    }
 }

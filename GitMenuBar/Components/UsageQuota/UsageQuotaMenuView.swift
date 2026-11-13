@@ -72,7 +72,6 @@ struct UsageQuotaMenuView: View {
         )
         .opacity(snapshot.isStale ? 0.72 : 1)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(snapshot.displayName)
     }
 
     private func dotsRows(for snapshot: UsageQuotaSnapshot) -> [UsageQuotaDotsCard.RowData] {

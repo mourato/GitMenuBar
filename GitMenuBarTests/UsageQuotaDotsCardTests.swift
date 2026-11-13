@@ -148,6 +148,60 @@ final class UsageQuotaDotsCardTests: XCTestCase {
         XCTAssertNil(UsageQuotaDotsCard.pillText(plan: nil, intervalChip: nil, resetCredits: 0))
     }
 
+    func testHeaderAccessibilityTextAnnouncesProviderPlanAndResetsOnce() {
+        XCTAssertEqual(
+            UsageQuotaDotsCard.headerAccessibilityText(
+                displayName: "Codex",
+                pillText: UsageQuotaDotsCard.pillText(plan: "Plus", intervalChip: "5h", resetCredits: 1),
+                isStale: false
+            ),
+            "Codex, Plus, 1 reset"
+        )
+        XCTAssertEqual(
+            UsageQuotaDotsCard.headerAccessibilityText(
+                displayName: "Codex",
+                pillText: UsageQuotaDotsCard.pillText(plan: "Plus", intervalChip: "5h", resetCredits: 3),
+                isStale: true
+            ),
+            "Codex, Plus, 3 resets, Outdated"
+        )
+    }
+
+    func testHeaderAccessibilityTextOmitsMissingParts() {
+        XCTAssertEqual(
+            UsageQuotaDotsCard.headerAccessibilityText(
+                displayName: "Codex",
+                pillText: UsageQuotaDotsCard.pillText(plan: nil, intervalChip: nil, resetCredits: 1),
+                isStale: false
+            ),
+            "Codex, 1 reset"
+        )
+        XCTAssertEqual(
+            UsageQuotaDotsCard.headerAccessibilityText(
+                displayName: "Codex",
+                pillText: UsageQuotaDotsCard.pillText(plan: "Plus", intervalChip: "5h", resetCredits: nil),
+                isStale: false
+            ),
+            "Codex, Plus"
+        )
+        XCTAssertEqual(
+            UsageQuotaDotsCard.headerAccessibilityText(
+                displayName: "Codex",
+                pillText: nil,
+                isStale: false
+            ),
+            "Codex"
+        )
+        XCTAssertEqual(
+            UsageQuotaDotsCard.headerAccessibilityText(
+                displayName: "Codex",
+                pillText: nil,
+                isStale: true
+            ),
+            "Codex, Outdated"
+        )
+    }
+
     func testBareCountdown() {
         let now = Date()
         XCTAssertEqual(

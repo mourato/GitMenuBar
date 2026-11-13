@@ -202,6 +202,12 @@ corner style.
   style, warning thresholds). Color appears only past a configured threshold.
   Meter size comes from `WorkbenchMetrics.quotaMeterWidth` and
   `WorkbenchMetrics.quotaMeterHeight`.
+- A quota card header shows one provider icon, one provider name, at most one
+  plan/reset chip, and at most one stale marker. The provider name is the
+  header's primary text (semibold, primary color) and keeps its width; the chip
+  wraps before the name loses legibility. VoiceOver reads provider, plan, and
+  resets once from the header; the stale state stays reachable through that
+  header and, when the card has one, through a single stale control.
 - Status-item quota strip: the user chooses whether the status item always
   shows up to two selected quota figures per provider or keeps them only in
   the quota submenu. The submenu keeps the provider cards and the refresh
