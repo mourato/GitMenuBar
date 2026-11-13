@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import SwiftUI
 
@@ -46,6 +47,10 @@ enum WorkbenchMetrics {
     static let quotaMeterHeight: CGFloat = 6
     static let projectsMinimumWidth: CGFloat = 256
     static let projectsMaximumWidth: CGFloat = 360
+    /// Preferred width for a project row's name and status column. Trailing
+    /// GitHub totals are only shown when this width still fits; at supported
+    /// sidebar widths the no-totals fallback leaves even more room.
+    static let projectsRowTextMinimumWidth: CGFloat = 110
     static let centralMinimumWidth: CGFloat = 360
     /// Fixed trailing side-panel column width (contextual details).
     static let sidePanelWidth: CGFloat = 360
@@ -73,6 +78,12 @@ enum WorkbenchTypography {
 
     static var body: Font {
         .body
+    }
+
+    /// Project names in the Projects sidebar: native body size with enough
+    /// weight to lead the secondary status line.
+    static var projectName: Font {
+        .body.weight(.semibold)
     }
 
     static var detail: Font {
@@ -117,6 +128,23 @@ enum WorkbenchPalette {
 
     static func neutralBorder(contrast: ColorSchemeContrast) -> Color {
         Color.secondary.opacity(contrast == .increased ? 0.45 : 0.2)
+    }
+
+    /// GitHub issue markers keep one semantic green across the workbench.
+    static func issueMarker() -> Color {
+        .green
+    }
+
+    /// GitHub pull-request markers keep one semantic purple across the workbench.
+    static func pullRequestMarker() -> Color {
+        Color(nsColor: pullRequestMarkerColor)
+    }
+
+    private static let pullRequestMarkerColor = NSColor(name: "WorkbenchPullRequestMarker") { appearance in
+        let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        return isDark
+            ? NSColor(srgbRed: 0xAB / 255.0, green: 0x7D / 255.0, blue: 0xF8 / 255.0, alpha: 1)
+            : NSColor(srgbRed: 0x82 / 255.0, green: 0x50 / 255.0, blue: 0xDF / 255.0, alpha: 1)
     }
 
     static func warningFill(contrast: ColorSchemeContrast) -> Color {

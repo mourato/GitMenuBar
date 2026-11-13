@@ -59,14 +59,17 @@ branch list and cleanup review),
 - Sidebar status dots use severity: red for diverged or behind, orange for
   uncommitted changes, `.secondary` for unmerged branches only. Untracked files
   alone are not a warning.
+- GitHub open-total markers use `WorkbenchPalette.issueMarker()` (green) for
+  issues and `WorkbenchPalette.pullRequestMarker()` (purple) for pull requests.
+  Color stays on the marker; the number beside it stays neutral.
 - The status-item strip uses template or semantic AppKit label color so it
   follows the menu bar's appearance.
 
 ## Typography
 
 - Text roles come from `WorkbenchTypography` (`windowTitle`, `sectionLabel`,
-  `body`, `detail`, `caption`, `captionStrong`, `field`), built on native
-  text styles. `WorkbenchTypography.tracking(for:)` owns tracking per style.
+  `body`, `projectName`, `detail`, `caption`, `captionStrong`, `field`), built
+  on native text styles. `WorkbenchTypography.tracking(for:)` owns tracking per style.
 - Short commit hashes use the monospaced caption.
 
 ## Layout
@@ -142,17 +145,26 @@ corner style.
   scaling, pointer, or scrollbar behavior to them.
 - Filter chips: single selection. The selected chip is accent-tinted and
   carries the only count for its filter.
-- Projects sidebar rows: every GitHub project can show trailing count badges,
-  open issues and open pull requests, whether or not it is selected. Counts
-  come from the repository totals in the monitor snapshot, never from the
-  20-item pull-request detail list, and never change a project's health
-  classification or group. Known positive totals show a badge; a known zero
-  hides that badge. Large totals use the locale's compact notation (`1.3K`).
-  An unread or failed count, or the last totals of a row whose refresh failed,
-  shows a neutral `—`; non-GitHub remotes show no badge. When the row is too
-  narrow, visible badges hide before the project name is squeezed; VoiceOver
-  still reads available totals. The row summary keeps only the current
-  branch's own pull-request status, so no count appears twice.
+- Projects sidebar rows: every GitHub project can show trailing Issue and Pull
+  Request totals in aligned Issues → Pull Requests columns, whether or not it
+  is selected. Each column reserves the widest total it shows; a column with no
+  totals disappears. A pull request alone keeps its own column. Counts come from the
+  repository totals in the monitor snapshot, never from the 20-item
+  pull-request detail list, and never change a project's health classification
+  or group. Known positive totals show a marker and number; a known zero hides
+  that total. Large totals use the locale's compact notation (`1.3K`). An
+  unread or failed count, or the last totals of a row whose refresh failed,
+  shows a neutral `—`; non-GitHub remotes show no totals. Color stays on the
+  marker (`WorkbenchPalette.issueMarker()`, `pullRequestMarker()`) and the
+  number stays neutral. The project name uses the native body text style at
+  semibold; the status stays a secondary caption. When the row is too narrow,
+  the totals hide before the name column drops below
+  `WorkbenchMetrics.projectsRowTextMinimumWidth` at supported sidebar widths;
+  VoiceOver still reads available totals. The row summary states the current
+  branch's own pull-request status, a foreign pull request when the current
+  branch has none, `1 unmerged branch`/`N unmerged branches`, and unpushed
+  branches beyond the current branch; a Needs Attention row always states at
+  least one reason, so it never reads "Up to date".
 - Cleanup review banner: one summary line (`N ready to clean`, `M blocked`)
   and one Review action. Review opens the shared cleanup sheet with Ready and
   Blocked sections and a checked subset of ready units.

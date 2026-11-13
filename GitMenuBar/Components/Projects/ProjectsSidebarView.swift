@@ -169,48 +169,12 @@ struct ProjectsSidebarView: View {
     }
 
     private func projectRow(_ snapshot: ProjectStatusSnapshot) -> some View {
-        HStack(spacing: WorkbenchMetrics.compactSpacing) {
-            Circle()
-                .fill(dotColor(for: snapshot))
-                .frame(width: 7, height: 7)
-                .fixedSize()
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(snapshot.project.name)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Text(statusSummary(for: snapshot))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-            .layoutPriority(0)
-
-            HStack(spacing: WorkbenchMetrics.microSpacing) {
-                if showAgentActivity, !(monitor.agentActivities[snapshot.project.path] ?? []).isEmpty {
-                    HStack(spacing: WorkbenchMetrics.microSpacing) {
-                        ForEach(monitor.agentActivities[snapshot.project.path] ?? []) { activity in
-                            AgentBadgeIconView(activity: activity)
-                        }
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
-                }
-
-                if snapshot.hasWorkingTreeChanges {
-                    changeCountBadge(for: snapshot)
-                }
-
-                // Positive GitHub totals stay visible: long status text truncates instead.
-                HStack(spacing: WorkbenchMetrics.microSpacing) {
-                    openCountBadges(for: snapshot)
-                }
-                .fixedSize(horizontal: true, vertical: false)
-            }
-            .layoutPriority(1)
-            .fixedSize(horizontal: true, vertical: false)
-        }
+        ProjectSidebarRowView(
+            snapshot: snapshot,
+            agentActivities: monitor.agentActivities[snapshot.project.path] ?? [],
+            showsAgentActivity: showAgentActivity,
+            countColumns: countColumns
+        )
         .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
         .contentShape(Rectangle())
         .contextMenu {
@@ -222,55 +186,6 @@ struct ProjectsSidebarView: View {
             Button("Stop Monitoring") { onStopMonitoring(snapshot.project.path) }
             Button("Remove Project", role: .destructive) { onRemove(snapshot.project.path) }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel(for: snapshot))
-    }
-
-    private func dotColor(for snapshot: ProjectStatusSnapshot) -> Color {
-        guard snapshot.classification != .clean else {
-            return .green
-        }
-        switch snapshot.severity {
-        case .divergedOrBehind:
-            return .red
-        case .uncommittedChanges:
-            return .orange
-        case .unmergedOnly, .none:
-            return .secondary
-        }
-    }
-
-    private func changeCountBadge(for snapshot: ProjectStatusSnapshot) -> some View {
-        let count = snapshot.stagedCount + snapshot.unstagedCount + snapshot.untrackedCount
-        return Text("\(count)")
-            .sidebarCountChip()
-    }
-
-    /// Open GitHub totals stay separate from local changes: one badge each,
-    /// drawn from the monitor snapshot so rendering never reads the network.
-    @ViewBuilder
-    private func openCountBadges(for snapshot: ProjectStatusSnapshot) -> some View {
-        if let issues = snapshot.openIssueBadge {
-            openCountBadge(issues, symbol: "smallcircle.filled.circle", singularNoun: "issue")
-        }
-        if let pullRequests = snapshot.openPullRequestBadge {
-            openCountBadge(pullRequests, symbol: "arrow.triangle.pull", singularNoun: "pull request")
-        }
-    }
-
-    private func openCountBadge(
-        _ badge: GitHubOpenCountBadge,
-        symbol: String,
-        singularNoun: String
-    ) -> some View {
-        HStack(spacing: WorkbenchMetrics.microSpacing) {
-            Image(systemName: symbol)
-                .accessibilityHidden(true)
-            Text(badge.text)
-        }
-        .sidebarCountChip()
-        .fixedSize()
-        .help(badge.accessibilityDescription(singularNoun: singularNoun))
     }
 
     private var cleanGroupExpanded: Binding<Bool> {
@@ -282,6 +197,13 @@ struct ProjectsSidebarView: View {
 
     private var normalizedCurrentPath: String {
         RecentProjectsStore.normalize(currentPath)
+    }
+
+    private var countColumns: ProjectSidebarCountColumns {
+        let visible = groupedProjects.flatMap { title, snapshots in
+            title == "Clean" && isCleanGroupCollapsed ? [] : snapshots
+        }
+        return .guides(for: visible)
     }
 
     private var groupedProjects: [(String, [ProjectStatusSnapshot])] {
@@ -316,128 +238,6 @@ struct ProjectsSidebarView: View {
 
     private func projectNameSort(_ lhs: ProjectStatusSnapshot, _ rhs: ProjectStatusSnapshot) -> Bool {
         lhs.project.name.localizedCaseInsensitiveCompare(rhs.project.name) == .orderedAscending
-    }
-
-    private func accessibilityLabel(for snapshot: ProjectStatusSnapshot) -> String {
-        var parts = [snapshot.project.name, statusSummary(for: snapshot)]
-        if showAgentActivity, !(monitor.agentActivities[snapshot.project.path] ?? []).isEmpty {
-            let agentDescriptions = (monitor.agentActivities[snapshot.project.path] ?? []).map(\.accessibilityDescription).joined(separator: ", ")
-            parts.append(agentDescriptions)
-        }
-        if snapshot.hasWorkingTreeChanges {
-            parts.append(
-                "\(snapshot.stagedCount) staged, \(snapshot.unstagedCount) unstaged, "
-                    + "\(snapshot.untrackedCount) untracked"
-            )
-        }
-        if snapshot.unpushedBranchCount > 0 {
-            parts.append(
-                "\(snapshot.unpushedBranchCount) branch\(snapshot.unpushedBranchCount == 1 ? "" : "es") with unpushed commits"
-            )
-        }
-        if snapshot.unmergedBranchCount > 0 {
-            parts.append(
-                "\(snapshot.unmergedBranchCount) branch\(snapshot.unmergedBranchCount == 1 ? "" : "es") not merged"
-            )
-        }
-        if let pullRequestSummary = currentPullRequestSummary(for: snapshot) {
-            parts.append(pullRequestSummary)
-        }
-        if let issues = snapshot.openIssueBadge {
-            parts.append(issues.accessibilityDescription(singularNoun: "issue"))
-        }
-        if let pullRequests = snapshot.openPullRequestBadge {
-            parts.append(pullRequests.accessibilityDescription(singularNoun: "pull request"))
-        }
-        if let error = snapshot.lastErrorDescription {
-            parts.append(error)
-        }
-        return parts.joined(separator: ", ")
-    }
-
-    /// Review state of the current branch's own pull request. Repository totals
-    /// live in the badges, so this never restates them from the limited list.
-    private func currentPullRequestSummary(for snapshot: ProjectStatusSnapshot) -> String? {
-        guard let pullRequest = snapshot.pullRequests.first(where: { $0.headBranch == snapshot.branchName }) else {
-            return nil
-        }
-        return "PR #\(pullRequest.number) \(pullRequest.statusSummary)"
-    }
-
-    private func branchSummary(for snapshot: ProjectStatusSnapshot) -> String? {
-        if snapshot.isDetachedHead {
-            return "Detached"
-        }
-        if snapshot.branchName.isEmpty {
-            return "Unknown branch"
-        }
-        return snapshot.isDefaultBranch ? nil : snapshot.branchName
-    }
-
-    private func upstreamSummary(for snapshot: ProjectStatusSnapshot) -> [String] {
-        guard snapshot.hasUpstream else { return [] }
-        var parts: [String] = []
-        if snapshot.aheadCount > 0 {
-            parts.append("\(snapshot.aheadCount) commit\(snapshot.aheadCount == 1 ? "" : "s") to push")
-        }
-        if snapshot.behindCount > 0 {
-            parts.append("\(snapshot.behindCount) commit\(snapshot.behindCount == 1 ? "" : "s") behind")
-        }
-        return parts
-    }
-
-    private func statusSummary(for snapshot: ProjectStatusSnapshot) -> String {
-        if snapshot.lastErrorDescription != nil {
-            return "Unavailable"
-        }
-
-        var parts: [String] = []
-        if let branch = branchSummary(for: snapshot) {
-            parts.append(branch)
-        }
-        parts.append(contentsOf: upstreamSummary(for: snapshot))
-        if snapshot.unmergedBranchCount > 0 {
-            parts.append("\(snapshot.unmergedBranchCount) branch\(snapshot.unmergedBranchCount == 1 ? "" : "es") not merged")
-        }
-        if let pullRequestSummary = currentPullRequestSummary(for: snapshot) {
-            parts.append(pullRequestSummary)
-        }
-        if snapshot.isStale {
-            parts.append("Stale work")
-        }
-        if parts.isEmpty {
-            return snapshot.hasWorkingTreeChanges ? "Uncommitted changes" : "Up to date"
-        }
-        return parts.joined(separator: " ")
-    }
-}
-
-/// Shared capsule for the counts in a project row, so local changes and open
-/// GitHub totals stay one calm visual family.
-private struct SidebarCountChipStyle: ViewModifier {
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-
-    func body(content: Content) -> some View {
-        content
-            .font(WorkbenchTypography.caption)
-            .monospacedDigit()
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, WorkbenchMetrics.chipSpacing)
-            .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
-            .background(
-                Capsule()
-                    .fill(WorkbenchPalette.hoverFill())
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast), lineWidth: 1)
-            )
-    }
-}
-
-private extension View {
-    func sidebarCountChip() -> some View {
-        modifier(SidebarCountChipStyle())
     }
 }
 

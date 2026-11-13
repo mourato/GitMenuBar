@@ -297,4 +297,98 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         }
         return result
     }
+
+    /// One line under the project name. Every Needs Attention row states at
+    /// least one reason for its group, so a project never reads "Up to date"
+    /// while it sits under Needs Attention.
+    var statusSummary: String {
+        if lastErrorDescription != nil {
+            return "Unavailable"
+        }
+
+        var parts: [String] = []
+        if let branchSummary {
+            parts.append(branchSummary)
+        }
+        parts.append(contentsOf: upstreamSummary)
+        if let unpushedBranchSummary {
+            parts.append(unpushedBranchSummary)
+        }
+        if let unmergedBranchSummary {
+            parts.append(unmergedBranchSummary)
+        }
+        if let currentPullRequestSummary {
+            parts.append(currentPullRequestSummary)
+        } else if let otherPullRequestSummary {
+            parts.append(otherPullRequestSummary)
+        }
+        if isStale {
+            parts.append("Stale work")
+        }
+        if !parts.isEmpty {
+            return parts.joined(separator: " ")
+        }
+        if hasWorkingTreeChanges {
+            return "Uncommitted changes"
+        }
+        return "Up to date"
+    }
+
+    /// Detached and unknown states stay explicit; the default branch name is
+    /// omitted because it carries no information.
+    var branchSummary: String? {
+        if isDetachedHead {
+            return "Detached"
+        }
+        if branchName.isEmpty {
+            return "Unknown branch"
+        }
+        return isDefaultBranch ? nil : branchName
+    }
+
+    /// Ahead and behind stay explicit even if the snapshot has no upstream
+    /// flag, so a Needs Attention row cannot fall through to "Up to date".
+    var upstreamSummary: [String] {
+        var parts: [String] = []
+        if aheadCount > 0 {
+            parts.append("\(aheadCount) commit\(aheadCount == 1 ? "" : "s") to push")
+        }
+        if behindCount > 0 {
+            parts.append("\(behindCount) commit\(behindCount == 1 ? "" : "s") behind")
+        }
+        return parts
+    }
+
+    /// Branches with unpushed commits beyond the current branch. The current
+    /// branch's own commits are already stated as commits to push.
+    var unpushedBranchSummary: String? {
+        let otherUnpushed = unpushedBranchCount - (aheadCount > 0 ? 1 : 0)
+        guard otherUnpushed > 0 else { return nil }
+        return "\(otherUnpushed) branch\(otherUnpushed == 1 ? "" : "es") with unpushed commits"
+    }
+
+    var unmergedBranchSummary: String? {
+        guard unmergedBranchCount > 0 else { return nil }
+        return "\(unmergedBranchCount) unmerged branch\(unmergedBranchCount == 1 ? "" : "es")"
+    }
+
+    /// Review state of the current branch's own pull request. Repository totals
+    /// live in the badges, so this never restates them from the limited list.
+    var currentPullRequestSummary: String? {
+        guard let pullRequest = pullRequests.first(where: { $0.headBranch == branchName }) else {
+            return nil
+        }
+        return Self.pullRequestSummary(pullRequest)
+    }
+
+    /// One pull request when the current branch has none. Repository totals stay
+    /// in the badges, so this states a reason instead of repeating a count.
+    private var otherPullRequestSummary: String? {
+        let pullRequest = pullRequests.first(where: \.needsAction) ?? pullRequests.first
+        return pullRequest.map(Self.pullRequestSummary)
+    }
+
+    private static func pullRequestSummary(_ pullRequest: GitHubPullRequestSummary) -> String {
+        "PR #\(pullRequest.number) \(pullRequest.statusSummary)"
+    }
 }
