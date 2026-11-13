@@ -152,7 +152,7 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         item.toolTip = "Return to the main repository view"
         item.action = #selector(StatusBarController.goBackFromToolbar(_:))
         item.target = target
-        item.image = NSImage(systemSymbolName: "chevron.backward", accessibilityDescription: "Back")
+        item.image = Self.lucideImage(.chevronLeft, accessibilityDescription: "Back")
         return item
     }
 
@@ -249,7 +249,7 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         )
         chip.bezelStyle = .accessoryBarAction
         chip.controlSize = .small
-        chip.image = NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: nil)
+        chip.image = NSImage(lucide: .gitBranch)
         chip.imagePosition = .imageLeading
         chip.toolTip = accessibilityLabel
         chip.setAccessibilityLabel(accessibilityLabel)
@@ -328,18 +328,29 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         for item: MainWindowToolbarRepositoryItem,
         accessibilityLabel: String
     ) -> NSImage? {
-        let imageName: String? = switch item {
+        let name: LucideIconName? = switch item {
         case .branchPicker:
-            "chevron.down"
+            .chevronDown
         case .aheadBehind:
             nil
         case .fetch:
-            "arrow.triangle.2.circlepath"
+            .circleArrowDown
         case .sync:
-            "arrow.2.circlepath"
+            .refreshCw
         }
-        guard let imageName else { return nil }
-        return NSImage(systemSymbolName: imageName, accessibilityDescription: accessibilityLabel)
+        guard let name else { return nil }
+        return Self.lucideImage(name, accessibilityDescription: accessibilityLabel)
+    }
+
+    /// Catalog image for a toolbar item, keeping the VoiceOver description
+    /// the SF Symbol initializer used to take as a parameter.
+    private static func lucideImage(
+        _ name: LucideIconName,
+        accessibilityDescription: String
+    ) -> NSImage? {
+        guard let image = NSImage(lucide: name) else { return nil }
+        image.accessibilityDescription = accessibilityDescription
+        return image
     }
 
     private func makeProgressView(accessibilityLabel: String) -> NSProgressIndicator {

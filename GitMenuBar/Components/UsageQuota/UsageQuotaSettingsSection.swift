@@ -29,7 +29,7 @@ struct UsageQuotaSettingsSection: View {
         } header: {
             SettingsFormSectionHeader(
                 title: "Quotas",
-                icon: "gauge.with.dots.needle.33percent"
+                icon: .gauge
             )
         }
         .onAppear(perform: seedWarningFields)
@@ -159,7 +159,7 @@ struct UsageQuotaSettingsSection: View {
                     Button {
                         showingPrivacyPopover = true
                     } label: {
-                        Image(systemName: "info.circle")
+                        LucideIconView(name: .info)
                     }
                     .buttonStyle(.borderless)
                     .accessibilityLabel("Quota privacy")

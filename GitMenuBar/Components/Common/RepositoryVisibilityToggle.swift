@@ -7,13 +7,13 @@ struct RepositoryVisibilityToggle: View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
             SettingsFormSectionHeader(
                 title: "Visibility",
-                icon: isPrivate ? "lock" : "globe"
+                icon: isPrivate ? .lock : .globe
             )
 
             Picker("Visibility", selection: $isPrivate) {
-                Label("Public", systemImage: "globe")
+                Label(lucide: .globe, "Public")
                     .tag(false)
-                Label("Private", systemImage: "lock")
+                Label(lucide: .lock, "Private")
                     .tag(true)
             }
             .pickerStyle(.segmented)

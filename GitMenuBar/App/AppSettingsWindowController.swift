@@ -15,6 +15,17 @@ final class AppSettingsWindowController {
         static let minimumContentSize = NSSize(width: 560, height: 440)
     }
 
+    /// Catalog icon for a Settings pane, keeping the VoiceOver description
+    /// the SF Symbol initializer used to take as a parameter.
+    private static func toolbarIcon(
+        _ name: LucideIconName,
+        accessibilityDescription: String
+    ) -> NSImage? {
+        guard let image = NSImage(lucide: name) else { return nil }
+        image.accessibilityDescription = accessibilityDescription
+        return image
+    }
+
     private let windowController: SettingsWindowController
     private var cancellables = Set<AnyCancellable>()
 
@@ -34,7 +45,7 @@ final class AppSettingsWindowController {
         let generalPane = Settings.Pane(
             identifier: .gitMenuBarGeneral,
             title: "General",
-            toolbarIcon: NSImage(systemSymbolName: "gearshape", accessibilityDescription: "General settings")
+            toolbarIcon: Self.toolbarIcon(.settings, accessibilityDescription: "General settings")
                 ?? NSImage(named: NSImage.preferencesGeneralName)
                 ?? NSImage(),
             contentView: {
@@ -44,7 +55,7 @@ final class AppSettingsWindowController {
         let gitPane = Settings.Pane(
             identifier: .gitMenuBarGit,
             title: "Git",
-            toolbarIcon: NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: "Git settings")
+            toolbarIcon: Self.toolbarIcon(.gitBranch, accessibilityDescription: "Git settings")
                 ?? NSImage(),
             contentView: {
                 GitSettingsPaneView(
@@ -59,7 +70,7 @@ final class AppSettingsWindowController {
         let aiPane = Settings.Pane(
             identifier: .gitMenuBarAI,
             title: "AI",
-            toolbarIcon: NSImage(systemSymbolName: "sparkles", accessibilityDescription: "AI settings")
+            toolbarIcon: Self.toolbarIcon(.sparkles, accessibilityDescription: "AI settings")
                 ?? NSImage(),
             contentView: {
                 AISettingsPaneView()
@@ -73,7 +84,7 @@ final class AppSettingsWindowController {
         let shortcutsPane = Settings.Pane(
             identifier: .gitMenuBarShortcuts,
             title: "Shortcuts",
-            toolbarIcon: NSImage(systemSymbolName: "keyboard", accessibilityDescription: "Shortcuts settings")
+            toolbarIcon: Self.toolbarIcon(.keyboard, accessibilityDescription: "Shortcuts settings")
                 ?? NSImage(),
             contentView: {
                 ShortcutsSettingsPaneView(manager: shortcutManager)

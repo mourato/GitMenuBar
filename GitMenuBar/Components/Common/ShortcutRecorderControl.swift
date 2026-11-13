@@ -201,7 +201,7 @@ struct ShortcutKeycapButtonStyle: ButtonStyle {
                 EmptyShortcutCTAView(title: "Set shortcut")
             }
         } header: {
-            SettingsFormSectionHeader(title: "Keyboard Shortcuts", icon: "keyboard")
+            SettingsFormSectionHeader(title: "Keyboard Shortcuts", icon: .keyboard)
         }
     }
     .formStyle(.grouped)

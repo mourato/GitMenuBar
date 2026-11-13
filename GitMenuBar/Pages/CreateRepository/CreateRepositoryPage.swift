@@ -9,7 +9,7 @@ struct CreateRepositoryPageView: View {
         VStack(spacing: 12) {
             InlinePageHeader(
                 title: "Create Repository",
-                systemImage: "plus.circle.fill",
+                icon: .circlePlus,
                 actionTitle: "Cancel",
                 onAction: onCancel
             )

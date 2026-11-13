@@ -9,7 +9,8 @@ enum StatusItemBadgeRenderer {
             return resized
         }
 
-        let fallback = NSImage(systemSymbolName: "person.crop.circle.fill", accessibilityDescription: "GitBar")
+        let fallback = NSImage(lucide: .circleUserRound)
+        fallback?.accessibilityDescription = "GitBar"
         fallback?.isTemplate = true
         return fallback
     }
