@@ -67,7 +67,7 @@ struct GeneralSettingsPaneView: View {
                 Toggle("Show window on monitor with mouse pointer", isOn: $toggleShortcutUsesMouseMonitor)
                     .toggleStyle(.switch)
             } header: {
-                SettingsFormSectionHeader(title: "App Behavior", icon: "app.badge")
+                SettingsFormSectionHeader(title: "App Behavior", icon: .appWindow)
             } footer: {
                 Text("At least one icon (Dock or Menu Bar) must remain enabled so you can access GitMenuBar.")
             }
@@ -76,7 +76,7 @@ struct GeneralSettingsPaneView: View {
                 Toggle("Show agent activity", isOn: $showAgentActivity)
                     .toggleStyle(.switch)
             } header: {
-                SettingsFormSectionHeader(title: "Projects", icon: "folder")
+                SettingsFormSectionHeader(title: "Projects", icon: .folder)
             } footer: {
                 Text("Shows running and recent coding agents using local processes and session data while the sidebar is visible.")
             }
@@ -99,7 +99,7 @@ struct GeneralSettingsPaneView: View {
                 }
                 .pickerStyle(.segmented)
             } header: {
-                SettingsFormSectionHeader(title: "Appearance", icon: "paintbrush")
+                SettingsFormSectionHeader(title: "Appearance", icon: .paintbrush)
             }
 
             Section {
@@ -108,7 +108,7 @@ struct GeneralSettingsPaneView: View {
                 }
                 .workbenchGhost()
             } header: {
-                SettingsFormSectionHeader(title: "App", icon: "power")
+                SettingsFormSectionHeader(title: "App", icon: .power)
             }
         }
         .preferredColorScheme(preferredColorScheme)
@@ -154,7 +154,7 @@ struct GitSettingsPaneView: View {
                 }
                 .pickerStyle(.menu)
             } header: {
-                SettingsFormSectionHeader(title: "Commit", icon: "text.badge.checkmark")
+                SettingsFormSectionHeader(title: "Commit", icon: .fileCheck)
             } footer: {
                 Text(
                     "Choose whether the main button commits changes locally or also pushes them to the remote. "
@@ -167,7 +167,7 @@ struct GitSettingsPaneView: View {
                     .toggleStyle(.switch)
                 Button("Fetch now", action: onFetchNow)
             } header: {
-                SettingsFormSectionHeader(title: "Remote", icon: "arrow.2.circlepath")
+                SettingsFormSectionHeader(title: "Remote", icon: .refreshCw)
             } footer: {
                 Text(
                     "When enabled, GitMenuBar fetches in the background and the Fetch button stays hidden."
@@ -177,7 +177,7 @@ struct GitSettingsPaneView: View {
             Section {
                 GitHubConnectionSection(setAutoHideSuspended: onSetAutoHideSuspended)
             } header: {
-                SettingsFormSectionHeader(title: "GitHub", icon: "globe")
+                SettingsFormSectionHeader(title: "GitHub", icon: .globe)
             }
         }
         .preferredColorScheme(preferredColorScheme)
@@ -196,7 +196,7 @@ struct AISettingsPaneView: View {
             Section {
                 AISettingsSectionView()
             } header: {
-                SettingsFormSectionHeader(title: "AI Commit Generation", icon: "sparkles")
+                SettingsFormSectionHeader(title: "AI Commit Generation", icon: .sparkles)
             } footer: {
                 Text("The fallback provider and model are used when retrying after the selected model fails.")
             }
@@ -216,7 +216,7 @@ struct ShortcutsSettingsPaneView: View {
             Section {
                 KeyboardShortcutsSection(manager: manager)
             } header: {
-                SettingsFormSectionHeader(title: "Keyboard Shortcuts", icon: "keyboard")
+                SettingsFormSectionHeader(title: "Keyboard Shortcuts", icon: .keyboard)
             }
         }
         .preferredColorScheme(SettingsAppearance.preferredColorScheme(for: appearanceMode))

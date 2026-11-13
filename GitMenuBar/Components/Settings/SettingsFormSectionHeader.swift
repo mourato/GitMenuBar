@@ -3,12 +3,12 @@ import SwiftUI
 /// A native Form Section header with shared Settings icon and title anatomy.
 struct SettingsFormSectionHeader<Accessory: View>: View {
     private let title: String
-    private let icon: String?
+    private let icon: LucideIconName?
     private let accessory: Accessory
 
     init(
         title: String,
-        icon: String? = nil,
+        icon: LucideIconName? = nil,
         @ViewBuilder accessory: () -> Accessory
     ) {
         self.title = title
@@ -19,9 +19,8 @@ struct SettingsFormSectionHeader<Accessory: View>: View {
     var body: some View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
             if let icon {
-                Image(systemName: icon)
+                LucideIconView(name: icon)
                     .foregroundStyle(Color.accentColor)
-                    .accessibilityHidden(true)
             }
 
             Text(title)
@@ -35,7 +34,7 @@ struct SettingsFormSectionHeader<Accessory: View>: View {
 }
 
 extension SettingsFormSectionHeader where Accessory == EmptyView {
-    init(title: String, icon: String? = nil) {
+    init(title: String, icon: LucideIconName? = nil) {
         self.init(title: title, icon: icon) { EmptyView() }
     }
 }
@@ -46,7 +45,7 @@ extension SettingsFormSectionHeader where Accessory == EmptyView {
             Text("Native grouped Form content")
                 .font(WorkbenchTypography.body)
         } header: {
-            SettingsFormSectionHeader(title: "Workflow", icon: "bolt.fill") {
+            SettingsFormSectionHeader(title: "Workflow", icon: .zap) {
                 Text("Optional")
                     .foregroundStyle(.secondary)
             }

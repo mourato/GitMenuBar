@@ -259,7 +259,7 @@ struct AISettingsSectionView: View {
             Section {
                 AISettingsSectionView()
             } header: {
-                SettingsFormSectionHeader(title: "AI Commit Generation", icon: "sparkles")
+                SettingsFormSectionHeader(title: "AI Commit Generation", icon: .sparkles)
             }
         }
         .formStyle(.grouped)

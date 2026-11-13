@@ -43,9 +43,7 @@ struct GitHubConnectionSection: View {
                             .kerning(2)
 
                         HStack(spacing: WorkbenchMetrics.microSpacing) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .accessibilityHidden(true)
-                                .font(.caption2)
+                            LucideIconView(name: .circleCheck, size: 12)
                                 .foregroundStyle(Color.accentColor)
                             Text("Copied to clipboard")
                                 .font(WorkbenchTypography.caption)
@@ -118,7 +116,7 @@ struct GitHubConnectionSection: View {
             Section {
                 GitHubConnectionSection(setAutoHideSuspended: { _ in })
             } header: {
-                SettingsFormSectionHeader(title: "GitHub", icon: "globe")
+                SettingsFormSectionHeader(title: "GitHub", icon: .globe)
             }
         }
         .formStyle(.grouped)

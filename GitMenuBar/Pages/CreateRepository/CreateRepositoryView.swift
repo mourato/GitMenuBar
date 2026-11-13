@@ -44,12 +44,10 @@ struct CreateRepoContentView: View {
         VStack(spacing: WorkbenchMetrics.sectionSpacing) {
             // Folder info section
             VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-                SettingsFormSectionHeader(title: "Folder", icon: "folder")
+                SettingsFormSectionHeader(title: "Folder", icon: .folder)
 
                 HStack {
-                    Image(systemName: "folder.fill")
-                        .accessibilityHidden(true)
-                        .font(WorkbenchTypography.caption)
+                    LucideIconView(name: .folder, size: 14)
                         .foregroundStyle(.secondary)
                     Text(URL(fileURLWithPath: folderPath).lastPathComponent)
                         .font(WorkbenchTypography.caption)
@@ -66,7 +64,7 @@ struct CreateRepoContentView: View {
 
             // Repository name section
             VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
-                SettingsFormSectionHeader(title: "Repository Name", icon: "text.cursor")
+                SettingsFormSectionHeader(title: "Repository Name", icon: .textCursor)
 
                 TextField("my-awesome-project", text: $repoName)
                     .textFieldStyle(.roundedBorder)
@@ -96,8 +94,7 @@ struct CreateRepoContentView: View {
                             .frame(width: 14, height: 14)
                         Text("Creating")
                     } else {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .accessibilityHidden(true)
+                        LucideIconView(name: .circleArrowUp)
                         Text("Create & Publish to GitHub")
                     }
                 }

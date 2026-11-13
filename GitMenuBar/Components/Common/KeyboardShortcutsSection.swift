@@ -31,7 +31,7 @@ struct KeyboardShortcutsSection: View {
         Section {
             KeyboardShortcutsSection(manager: GlobalShortcutManager(defaults: defaults))
         } header: {
-            SettingsFormSectionHeader(title: "Keyboard Shortcuts", icon: "keyboard")
+            SettingsFormSectionHeader(title: "Keyboard Shortcuts", icon: .keyboard)
         }
     }
     .formStyle(.grouped)

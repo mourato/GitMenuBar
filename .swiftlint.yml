@@ -125,9 +125,6 @@ custom_rules:
       - GitMenuBar/Components/Common/LucideIconView.swift
       # Legacy SF Symbol call sites, grandfathered. Migrate them in #24-#26;
       # do NOT add new files here — new uses fail the lint.
-      - GitMenuBar/App/AppSettingsWindowController.swift
-      - GitMenuBar/App/MainWindowToolbarController.swift
-      - GitMenuBar/App/StatusItemBadgeRenderer.swift
       - GitMenuBar/Components/AI/AIProviderEditorSheet.swift
       - GitMenuBar/Components/AI/AIProviderManagementSheet.swift
       - GitMenuBar/Components/AI/AtomicCommitReviewSheet.swift
@@ -141,11 +138,8 @@ custom_rules:
       - GitMenuBar/Components/Branches/NewBranchButton.swift
       - GitMenuBar/Components/Branches/WorktreeManagementRowView.swift
       - GitMenuBar/Components/Common/CommitComposer.swift
-      - GitMenuBar/Components/Common/GitHubConnectionSection.swift
-      - GitMenuBar/Components/Common/InlinePageHeader.swift
       - GitMenuBar/Components/Common/InlineStatusBannerView.swift
       - GitMenuBar/Components/Common/RepositoryOptionsPopoverView.swift
-      - GitMenuBar/Components/Common/RepositoryVisibilityToggle.swift
       - GitMenuBar/Components/Common/ShortcutRecorderControl.swift
       - GitMenuBar/Components/Common/WorkbenchButtonStyles.swift
       - GitMenuBar/Components/Common/WorkbenchSectionHeaderChrome.swift
@@ -161,18 +155,14 @@ custom_rules:
       - GitMenuBar/Components/Projects/ProjectSelectorPopover.swift
       - GitMenuBar/Components/Projects/ProjectSidebarRowView.swift
       - GitMenuBar/Components/Projects/ProjectsSidebarView.swift
-      - GitMenuBar/Components/Settings/SettingsFormSectionHeader.swift
       - GitMenuBar/Components/UsageQuota/QuotaAPIKeyEditorView.swift
       - GitMenuBar/Components/UsageQuota/QuotaProviderRowView.swift
       - GitMenuBar/Components/UsageQuota/QuotaStaleInfoPanel.swift
-      - GitMenuBar/Components/UsageQuota/UsageQuotaSettingsSection.swift
       - GitMenuBar/Components/UsageQuota/UsageQuotaSummaryView.swift
       - GitMenuBar/Components/WorkingTree/WorkingTreeCleanStateView.swift
       - GitMenuBar/Components/WorkingTree/WorkingTreeDiffTreeViews.swift
       - GitMenuBar/Components/WorkingTree/WorkingTreeFileRow.swift
       - GitMenuBar/Components/WorkingTree/WorkingTreeSectionHeaderView.swift
-      - GitMenuBar/Pages/CreateRepository/CreateRepositoryPage.swift
-      - GitMenuBar/Pages/CreateRepository/CreateRepositoryView.swift
       - GitMenuBar/Pages/MainMenu/IssueLabelControls.swift
       - GitMenuBar/Pages/MainMenu/IssuesSidePanelView.swift
       - GitMenuBar/Pages/MainMenu/MainMenuOverviewSection.swift

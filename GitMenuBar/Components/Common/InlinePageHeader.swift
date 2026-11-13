@@ -2,17 +2,15 @@ import SwiftUI
 
 struct InlinePageHeader: View {
     let title: String
-    let systemImage: String
+    let icon: LucideIconName
     let actionTitle: String
     let onAction: () -> Void
 
     var body: some View {
         HStack {
             HStack(spacing: WorkbenchMetrics.chipSpacing) {
-                Image(systemName: systemImage)
-                    .font(WorkbenchTypography.windowTitle)
+                LucideIconView(name: icon)
                     .foregroundStyle(Color.accentColor)
-                    .accessibilityHidden(true)
                 Text(title)
                     .font(WorkbenchTypography.windowTitle)
             }
@@ -30,7 +28,7 @@ struct InlinePageHeader: View {
 #Preview("Inline Page Header") {
     InlinePageHeader(
         title: "Create Repository",
-        systemImage: "plus.circle.fill",
+        icon: .circlePlus,
         actionTitle: "Cancel",
         onAction: {}
     )
