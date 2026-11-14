@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Only use this entitlements file when the signature carries a provisioning
+	  profile for a Development Team (run-build.sh does it when
+	  GITMENUBAR_DEVELOPMENT_TEAM is set). Without a profile, macOS kills the app
+	  at launch because keychain-access-groups is a restricted entitlement.
+	-->
+	<key>com.apple.security.app-sandbox</key>
+	<false/>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.mourato.GitMenuBar</string>
+	</array>
+</dict>
+</plist>

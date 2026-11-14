@@ -14,7 +14,7 @@ NO_INTERACTIVE=0
 FORCE_TERMINATE=0
 SKIP_LAUNCH=0
 CONFIRM_INSTALL=1
-SIGNING_IDENTITY="${GITMENUBAR_CODE_SIGN_IDENTITY:-${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY:-}}"
+SIGNING_IDENTITY="${GITMENUBAR_CODE_SIGN_IDENTITY:-}"
 APPLICATIONS_DIR="${GITMENUBAR_APPLICATIONS_DIR:-/Applications}"
 SHUTDOWN_TIMEOUT="${GITMENUBAR_SHUTDOWN_TIMEOUT_SECONDS:-15}"
 STARTUP_TIMEOUT="${GITMENUBAR_STARTUP_TIMEOUT_SECONDS:-15}"
@@ -40,7 +40,7 @@ Options:
 
 Environment:
   GITMENUBAR_APPLICATIONS_DIR        Override installation root for tests.
-  GITMENUBAR_CODE_SIGN_IDENTITY      Default signing identity for --sign-identity.
+  GITMENUBAR_CODE_SIGN_IDENTITY      Stable identity for local builds and --sign-identity.
   GITMENUBAR_SHUTDOWN_TIMEOUT_SECONDS
   GITMENUBAR_STARTUP_TIMEOUT_SECONDS
 USAGE
@@ -102,9 +102,7 @@ sign_candidate_if_needed() {
     local candidate="$1"
 
     if [ -n "$SIGNING_IDENTITY" ]; then
-        SIGNING_IDENTITY="$(gitmenubar_resolve_codesign_identity "$SIGNING_IDENTITY")"
-        echo "Signing Release candidate with: ${SIGNING_IDENTITY}"
-        codesign --force --deep --keychain "${HOME}/Library/Keychains/login.keychain-db" --timestamp=none --sign "$SIGNING_IDENTITY" "$candidate"
+        gitmenubar_sign_app_bundle "$candidate" "$SIGNING_IDENTITY"
     elif ! codesign --verify --deep --strict "$candidate" >/dev/null 2>&1; then
         echo "Release candidate is not signed for local install; applying ad-hoc signature."
         codesign --force --deep --sign - "$candidate"
@@ -191,9 +189,6 @@ install_release() {
     backup="${target}.backup.$$"
 
     [ -d "$candidate" ] || fail "Release candidate not found at: $candidate"
-    if [ -z "$SIGNING_IDENTITY" ] && [ "$(gitmenubar_autodetect_release_signing_mode)" = "identity" ]; then
-        SIGNING_IDENTITY="${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}"
-    fi
     sign_candidate_if_needed "$candidate"
     validate_bundle "$candidate" || fail "Release candidate is not installable: $candidate"
     case "$target" in

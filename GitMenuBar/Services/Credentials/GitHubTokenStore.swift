@@ -1,76 +1,70 @@
 import Foundation
-import Security
 
 protocol GitHubTokenStore: Sendable {
     func saveToken(_ token: String)
     func storedToken() -> String?
     func deleteStoredToken()
+    /// Drops the in-memory copy so the next read consults the keychain again.
+    func invalidateCachedToken()
 }
 
-final class GitHubKeychainTokenStore: GitHubTokenStore {
+extension GitHubTokenStore {
+    func invalidateCachedToken() {}
+}
+
+final class GitHubKeychainTokenStore: GitHubTokenStore, @unchecked Sendable {
     private let service: String
     private let account: String
+    private let client: any KeychainItemClient
+    private let lock = NSLock()
+    /// `nil` means not loaded yet; `.some(nil)` means the keychain has no token.
+    private var cachedToken: String??
 
     init(
         service: String = "com.mourato.GitMenuBar",
-        account: String = "github-access-token"
+        account: String = "github-access-token",
+        client: any KeychainItemClient = SecurityKeychainItemClient(accessibility: .afterFirstUnlock)
     ) {
         self.service = service
         self.account = account
+        self.client = client
     }
 
     func saveToken(_ token: String) {
-        let data = Data(token.utf8)
-
-        let deleteQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
-
-        let addQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
-        ]
-
-        let status = SecItemAdd(addQuery as CFDictionary, nil)
-        if status != errSecSuccess {
-            print("Error storing token in keychain: \(status)")
+        lock.lock(); defer { lock.unlock() }
+        do {
+            try client.write(Data(token.utf8), service: service, account: account)
+            cachedToken = .some(token)
+        } catch {
+            print("Error storing token in keychain: \(error)")
         }
     }
 
+    /// Reads the keychain once per unlock; later calls reuse the copy.
     func storedToken() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess,
-              let data = result as? Data,
-              let token = String(data: data, encoding: .utf8)
-        else {
+        lock.lock(); defer { lock.unlock() }
+        if let cachedToken {
+            return cachedToken
+        }
+        do {
+            let data = try client.read(service: service, account: account)
+            let token = data.flatMap { String(data: $0, encoding: .utf8) }
+            cachedToken = .some(token)
+            return token
+        } catch {
+            // A failed read is not a definitive "no token"; retry on the next call.
             return nil
         }
-
-        return token
     }
 
     func deleteStoredToken() {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-        SecItemDelete(query as CFDictionary)
+        lock.lock(); defer { lock.unlock() }
+        try? client.delete(service: service, account: account)
+        cachedToken = .some(nil)
+    }
+
+    func invalidateCachedToken() {
+        lock.lock(); defer { lock.unlock() }
+        cachedToken = nil
     }
 }
