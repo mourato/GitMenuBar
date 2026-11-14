@@ -50,10 +50,11 @@ and [ADR 0025](docs/adr/0025-lucide-interface-icon-pack.md) (Lucide icon pack).
 - One interactive accent: the native `Color.accentColor`. Text and labels use
   native `.primary` and `.secondary`.
 - Semantic fills and borders come from `WorkbenchPalette`: `hoverFill`,
-  `selectedFill`, `neutralBorder`, `warningFill`/`warningBorder`,
-  `errorFill`/`errorBorder`, `successFill`, and `accentFill`. The
-  status fills and borders and `accentFill` take `ColorSchemeContrast`;
-  `hoverFill` and `selectedFill` do not adapt to contrast. Hover and selection use
+  `neutralSelectionFill`, `selectedFill`, `neutralBorder`,
+  `warningFill`/`warningBorder`, `errorFill`/`errorBorder`, `successFill`, and
+  `accentFill`. The status fills and borders and `accentFill` take
+  `ColorSchemeContrast`; `hoverFill`, `neutralSelectionFill`, and
+  `selectedFill` do not adapt to contrast. Hover and selection use
   these functions, never local opacity values.
 - Diff, warning, error, success, and quota colors are semantic. Color carries
   meaning, never decoration.
@@ -82,8 +83,10 @@ and [ADR 0025](docs/adr/0025-lucide-interface-icon-pack.md) (Lucide icon pack).
   commit history), with optional quota cards secondary to Git work. The main
   scroll viewport reaches the detail column edges; `windowPadding` belongs to
   its scroll content, so native toolbar effects and scrolling reach the edges.
-- The repository overview always presents five metrics: Changes, Branches,
-  Stashes, Pull Requests, and Issues. `ViewThatFits` selects adaptive tiers
+- The repository overview always presents five metrics in one order: Changes,
+  Branches, Stashes, Issues, and Pull Requests. The three local Git metrics
+  form a group, then a discrete divider that runs the full height with a small
+  gap separates the two GitHub metrics. `ViewThatFits` selects adaptive tiers
   from the card's own width.
 - `NavigationSplitView` owns the Projects sidebar's width, selection, and
   collapse. While visible, the sidebar is user-resizable between
@@ -166,6 +169,17 @@ corner style.
   branch has none, `1 unmerged branch`/`N unmerged branches`, and unpushed
   branches beyond the current branch; a Needs Attention row always states at
   least one reason, so it never reads "Up to date".
+- Repository overview strip: five cells in sidebar order. Positive counts use
+  the strong value hierarchy; a known zero, `Clean`, `None`, and an unknown `—`
+  share one quiet secondary weight, and an unknown value never becomes zero.
+  The Issues and Pull Requests cells reuse the Projects sidebar marker roles
+  (`issueMarker()`, `pullRequestMarker()`) while their numbers stay neutral;
+  GitHub-unavailable cells stay neutral and never use error styling. Cells with
+  an action keep the shared hover fill and add a small chevron on hover or
+  while active; a cell without an action shows neither. The cell whose side
+  panel is open gets `WorkbenchPalette.neutralSelectionFill()` from the current
+  selection, never from parallel state. Compact cells keep all five metrics in
+  one row, omit the chevron, and keep their icons as the only labels.
 - Cleanup review banner: one summary line (`N ready to clean`, `M blocked`)
   and one Review action. Review opens the shared cleanup sheet with Ready and
   Blocked sections and a checked subset of ready units.
@@ -291,6 +305,10 @@ corner style.
   ([ADR 0015](docs/adr/0015-contextual-side-panel.md),
   [ADR 0021](docs/adr/0021-side-panel-split-column.md)).
 - The Changes metric opens the Working Tree side panel.
+- The repository overview cell that owns the open side panel shows the neutral
+  selection fill. Opening, switching, Escape, the close control, a repository
+  change, and leaving the main route all update it from
+  `MainMenuSidePanelSelection`; no parallel highlight state exists.
 - When the sidebar is collapsed, the native `.toggleSidebar` toolbar item
   stays available as the re-entry control.
 - Stage and Unstage section actions stay visible; per-file actions are

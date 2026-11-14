@@ -122,6 +122,13 @@ enum WorkbenchPalette {
         Color.primary.opacity(0.06)
     }
 
+    /// Neutral fill for a selected navigation surface, such as the repository
+    /// overview cell whose side panel is open. The accent stays on focused
+    /// content selection.
+    static func neutralSelectionFill() -> Color {
+        Color.primary.opacity(0.10)
+    }
+
     static func selectedFill() -> Color {
         Color.accentColor.opacity(0.14)
     }

@@ -2,6 +2,7 @@ import SwiftUI
 
 private struct RepositoryOverviewPreviewMatrix: View {
     let width: CGFloat
+    var selection: MainMenuSidePanelSelection?
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
@@ -13,6 +14,7 @@ private struct RepositoryOverviewPreviewMatrix: View {
 
                     RepositoryOverviewView(
                         overview: state.overview,
+                        selection: selection,
                         onSelectSection: { _ in },
                         onOpenGitHubPage: { _ in },
                         canOpenGitHubPage: true
@@ -195,4 +197,16 @@ private enum RepositoryOverviewPreviewState: String, CaseIterable, Identifiable 
 
 #Preview("Tier C · State matrix") {
     RepositoryOverviewPreviewMatrix(width: 280)
+}
+
+#Preview("Tier A · Issues open") {
+    RepositoryOverviewPreviewMatrix(width: 1040, selection: .issues)
+}
+
+#Preview("Tier B · Issues open") {
+    RepositoryOverviewPreviewMatrix(width: 520, selection: .issues)
+}
+
+#Preview("Tier C · Issues open") {
+    RepositoryOverviewPreviewMatrix(width: 280, selection: .issues)
 }
