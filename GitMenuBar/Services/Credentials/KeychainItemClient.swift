@@ -88,11 +88,14 @@ struct SecurityKeychainItemClient: KeychainItemClient {
             return
         }
         guard updateStatus == errSecItemNotFound else { throw KeychainItemError.keychain(updateStatus) }
+        try addItem(query: query, attributes: attributes)
+    }
 
+    private func addItem(query: [String: Any], attributes: [String: Any]) throws {
         var addQuery = query
         attributes.forEach { addQuery[$0.key] = $0.value }
         let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-        if addStatus == errSecDuplicateItem {
+        guard addStatus != errSecDuplicateItem else {
             let retryStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
             guard retryStatus == errSecSuccess else { throw KeychainItemError.keychain(retryStatus) }
             return
