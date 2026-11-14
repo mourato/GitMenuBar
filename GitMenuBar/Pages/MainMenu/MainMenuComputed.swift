@@ -363,20 +363,20 @@ struct MainMenuPrimaryActionState: Equatable {
         return syncLabelState.title
     }
 
-    var primaryButtonSystemImage: String? {
+    var primaryButtonIcon: LucideIconName? {
         if showsIdleCommitState {
             return nil
         }
 
         if showsCommitAction {
-            return "checkmark"
+            return .check
         }
 
         switch syncLabelState {
         case .pushOnly:
-            return "arrow.up"
+            return .arrowUp
         case .syncChanges:
-            return "arrow.2.circlepath"
+            return .refreshCw
         case .none:
             return nil
         }
@@ -586,8 +586,8 @@ extension MainMenuView {
         primaryActionState.primaryButtonTitle
     }
 
-    var primaryButtonSystemImage: String? {
-        primaryActionState.primaryButtonSystemImage
+    var primaryButtonIcon: LucideIconName? {
+        primaryActionState.primaryButtonIcon
     }
 
     var isPrimaryActionBusy: Bool {

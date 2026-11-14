@@ -16,9 +16,7 @@ struct BranchFilterChipsView: View {
                 } label: {
                     HStack(spacing: WorkbenchMetrics.microSpacing) {
                         if isSelected {
-                            Image(systemName: "checkmark")
-                                .font(.caption2.bold())
-                                .accessibilityHidden(true)
+                            LucideIconView(name: .check, size: 12)
                         }
                         Text(item.title).bold(isSelected)
                         Text("\(count)")

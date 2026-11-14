@@ -4,7 +4,7 @@ struct CommitWorkflowView: View {
     @Binding var commentText: String
     var isCommentFieldFocused: FocusState<Bool>.Binding
     let showsCommentField: Bool
-    let primaryButtonSystemImage: String?
+    let primaryButtonIcon: LucideIconName?
     let isPrimaryActionBusy: Bool
     let automaticMessageHint: String?
     let generationDisabledReason: String?
@@ -31,7 +31,7 @@ struct CommitWorkflowView: View {
             commentText: $commentText,
             isCommentFieldFocused: isCommentFieldFocused,
             showsCommentField: showsCommentField,
-            primaryButtonSystemImage: primaryButtonSystemImage,
+            primaryButtonIcon: primaryButtonIcon,
             isPrimaryActionBusy: isPrimaryActionBusy,
             automaticMessageHint: automaticMessageHint,
             generationDisabledReason: generationDisabledReason,
@@ -166,7 +166,7 @@ private struct CommitWorkflowPreviewContent: View {
             commentText: $message,
             isCommentFieldFocused: $isFocused,
             showsCommentField: true,
-            primaryButtonSystemImage: "checkmark",
+            primaryButtonIcon: .check,
             isPrimaryActionBusy: false,
             automaticMessageHint: nil,
             generationDisabledReason: nil,

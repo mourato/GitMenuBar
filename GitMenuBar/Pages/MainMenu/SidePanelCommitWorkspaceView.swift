@@ -5,7 +5,7 @@ struct SidePanelCommitWorkspaceView: View {
     @Binding var commitMessage: String
     let commitFieldFocus: FocusState<Bool>.Binding
     let showsCommitField: Bool
-    let commitPrimaryButtonSystemImage: String?
+    let commitPrimaryButtonIcon: LucideIconName?
     let isCommitActionBusy: Bool
     let commitAutomaticMessageHint: String?
     let commitGenerationDisabledReason: String?
@@ -50,7 +50,7 @@ struct SidePanelCommitWorkspaceView: View {
                 commentText: $commitMessage,
                 isCommentFieldFocused: commitFieldFocus,
                 showsCommentField: showsCommitField,
-                primaryButtonSystemImage: commitPrimaryButtonSystemImage,
+                primaryButtonIcon: commitPrimaryButtonIcon,
                 isPrimaryActionBusy: isCommitActionBusy,
                 automaticMessageHint: commitAutomaticMessageHint,
                 generationDisabledReason: commitGenerationDisabledReason,
@@ -121,7 +121,7 @@ struct SidePanelCommitWorkspaceView: View {
                         Task { _ = await actionCoordinator.sidePanel.unstageAllSidePanelFiles() }
                     },
                     onDiscardAll: nil,
-                    actionIcon: "minus.circle",
+                    actionIcon: .circleMinus,
                     actionHelp: "Unstage all staged changes",
                     showsViewModeToggle: gitManager.changedFiles.isEmpty,
                     showsEmptyState: true
@@ -151,7 +151,7 @@ struct SidePanelCommitWorkspaceView: View {
                             Task { _ = await actionCoordinator.sidePanel.stageAllSidePanelFiles() }
                         },
                         onDiscardAll: onDiscardAllUnstaged,
-                        actionIcon: "plus.circle",
+                        actionIcon: .circlePlus,
                         actionHelp: "Stage all unstaged changes",
                         showsViewModeToggle: true
                     )
@@ -203,7 +203,7 @@ private struct SidePanelCommitWorkspacePreviewHost: View {
             commitMessage: $commitMessage,
             commitFieldFocus: $isCommitFieldFocused,
             showsCommitField: true,
-            commitPrimaryButtonSystemImage: "checkmark",
+            commitPrimaryButtonIcon: .check,
             isCommitActionBusy: false,
             commitAutomaticMessageHint: nil,
             commitGenerationDisabledReason: nil,

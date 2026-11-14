@@ -68,7 +68,7 @@ extension MainMenuView {
                     commitMessage: $workspace.commentText,
                     commitFieldFocus: $isCommentFieldFocused,
                     showsCommitField: showsCommentField,
-                    commitPrimaryButtonSystemImage: primaryButtonSystemImage,
+                    commitPrimaryButtonIcon: primaryButtonIcon,
                     isCommitActionBusy: isPrimaryActionBusy,
                     commitAutomaticMessageHint: automaticMessageHint,
                     commitGenerationDisabledReason: shouldShowGenerationHint

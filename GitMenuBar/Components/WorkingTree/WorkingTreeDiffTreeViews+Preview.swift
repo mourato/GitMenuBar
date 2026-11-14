@@ -36,7 +36,7 @@ import SwiftUI
         var body: some View {
             WorkingTreeDiffTreeView(
                 files: files,
-                actionIcon: "minus.circle",
+                actionIcon: .circleMinus,
                 selectedItemID: .stagedFile(path: files[0].file.path),
                 onSelect: { _ in },
                 onStageToggle: { _ in },

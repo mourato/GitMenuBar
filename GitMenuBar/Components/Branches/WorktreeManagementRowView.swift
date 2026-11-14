@@ -25,8 +25,7 @@ struct WorktreeManagementRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: info.worktree.isDetached ? "rectangle.dashed" : "folder.fill")
-                .font(WorkbenchTypography.body)
+            LucideIconView(name: info.worktree.isDetached ? .boxSelect : .folder)
                 .foregroundStyle(.secondary)
                 .frame(width: 18)
 
@@ -56,11 +55,11 @@ struct WorktreeManagementRowView: View {
                 HStack(spacing: 6) {
                     CleanupStatusBadgeView(status: info.status)
                     if info.worktree.workingTreeState == .clean {
-                        Label("Clean", systemImage: "checkmark")
+                        Label(lucide: .check, "Clean")
                             .font(WorkbenchTypography.caption)
                             .foregroundStyle(.secondary)
                     } else if info.worktree.workingTreeState == .dirty {
-                        Label("Uncommitted changes", systemImage: "pencil")
+                        Label(lucide: .pencil, "Uncommitted changes")
                             .font(WorkbenchTypography.caption)
                             .foregroundStyle(.orange)
                     }
@@ -81,8 +80,7 @@ struct WorktreeManagementRowView: View {
                     Button("Force Remove Worktree", role: .destructive, action: onForceRemove)
                 }
             } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(WorkbenchTypography.body)
+                LucideIconView(name: .ellipsis)
                     .foregroundStyle(.secondary)
             }
             .menuStyle(.borderlessButton)

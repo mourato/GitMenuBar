@@ -6,10 +6,8 @@ struct NewBranchButton: View {
     var body: some View {
         Button(action: onTap) {
             HStack {
-                Image(systemName: "plus.circle.fill")
-                    .font(.caption2)
+                LucideIconView(name: .circlePlus, size: 12)
                     .foregroundStyle(Color.accentColor)
-                    .accessibilityHidden(true)
                 Text("New Branch")
                     .font(.caption.weight(.medium))
                 Spacer()

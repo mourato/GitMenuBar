@@ -22,9 +22,8 @@ struct InlineStatusBannerView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: WorkbenchMetrics.compactSpacing) {
-            Image(systemName: iconName)
+            LucideIconView(name: icon)
                 .foregroundStyle(iconColor)
-                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 if let title = banner.title {
@@ -74,14 +73,14 @@ struct InlineStatusBannerView: View {
         return AnyShapeStyle(.thinMaterial)
     }
 
-    private var iconName: String {
+    private var icon: LucideIconName {
         switch banner.style {
         case .info:
-            "info.circle.fill"
+            .info
         case .warning:
-            "exclamationmark.triangle.fill"
+            .triangleAlert
         case .error:
-            "xmark.octagon.fill"
+            .octagonX
         }
     }
 

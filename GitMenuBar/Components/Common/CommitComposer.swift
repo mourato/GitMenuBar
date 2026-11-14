@@ -4,7 +4,7 @@ struct CommitComposerSectionView: View {
     @Binding var commentText: String
     let isCommentFieldFocused: FocusState<Bool>.Binding
     let showsCommentField: Bool
-    let primaryButtonSystemImage: String?
+    let primaryButtonIcon: LucideIconName?
     let isPrimaryActionBusy: Bool
     let automaticMessageHint: String?
     let generationDisabledReason: String?
@@ -124,8 +124,8 @@ struct CommitComposerSectionView: View {
                     .controlSize(.small)
             }
 
-            if let primaryButtonSystemImage {
-                Label(resolvedPrimaryButtonTitle, systemImage: primaryButtonSystemImage)
+            if let primaryButtonIcon {
+                Label(lucide: primaryButtonIcon, resolvedPrimaryButtonTitle)
                     .labelStyle(.titleAndIcon)
             } else {
                 Text(resolvedPrimaryButtonTitle)
@@ -150,7 +150,7 @@ private struct GeneratedMessageCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-            Label("Generated message", systemImage: "sparkles")
+            Label(lucide: .sparkles, "Generated message")
                 .font(WorkbenchTypography.captionStrong)
                 .foregroundStyle(Color.accentColor)
 
@@ -240,11 +240,10 @@ private extension View {
 
                 Menu {
                     Button(action: onSplitCommits) {
-                        Label("Split with AI", systemImage: "sparkles")
+                        Label(lucide: .sparkles, "Split with AI")
                     }
                 } label: {
-                    Image(systemName: "chevron.down")
-                        .font(.caption.weight(.semibold))
+                    LucideIconView(name: .chevronDown, size: 12)
                         .frame(width: WorkbenchMetrics.iconHitTarget)
                 }
                 .menuStyle(.button)
@@ -289,7 +288,7 @@ private struct CommitComposerSectionPreviewContainer: View {
             commentText: $message,
             isCommentFieldFocused: $isFocused,
             showsCommentField: showsCommentField,
-            primaryButtonSystemImage: "checkmark",
+            primaryButtonIcon: .check,
             isPrimaryActionBusy: false,
             automaticMessageHint: automaticMessageHint,
             generationDisabledReason: nil,

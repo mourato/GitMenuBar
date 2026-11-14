@@ -2,7 +2,7 @@ import SwiftUI
 
 struct WorkingTreeDiffTreeView: View {
     let files: [WorkingTreeRowAdapter]
-    let actionIcon: String
+    let actionIcon: LucideIconName
     let selectedItemID: MainMenuSelectableItem?
     let onSelect: (MainMenuSelectableItem) -> Void
     let onStageToggle: (String) -> Void
@@ -20,7 +20,7 @@ struct WorkingTreeDiffTreeView: View {
 
     init(
         files: [WorkingTreeRowAdapter],
-        actionIcon: String,
+        actionIcon: LucideIconName,
         selectedItemID: MainMenuSelectableItem?,
         onSelect: @escaping (MainMenuSelectableItem) -> Void,
         onStageToggle: @escaping (String) -> Void,
@@ -102,7 +102,7 @@ private struct WorkingTreeDiffTreeContext {
     let hasDirectoryNodes: Bool
     let allDirectoriesExpanded: Bool
     let directoryExpansionOverrides: [String: Bool]
-    let actionIcon: String
+    let actionIcon: LucideIconName
     let selectedItemID: MainMenuSelectableItem?
     let adapterForPath: (String) -> WorkingTreeRowAdapter?
     let onToggleDirectory: (String) -> Void
@@ -162,9 +162,7 @@ struct WorkingTreeDiffTreeDirectoryRowView: View {
             }
 
             HStack(spacing: WorkbenchMetrics.chipSpacing) {
-                Image(systemName: "chevron.right")
-                    .accessibilityHidden(true)
-                    .font(.system(size: WorkingTreeLayoutMetrics.treeChevronFontSize, weight: .semibold))
+                LucideIconView(name: .chevronRight, size: 9)
                     .foregroundStyle(.tertiary)
                     .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     .frame(width: WorkingTreeLayoutMetrics.treeChevronWidth, alignment: .center)

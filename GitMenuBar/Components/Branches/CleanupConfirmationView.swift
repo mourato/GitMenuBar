@@ -98,17 +98,17 @@ struct CleanupConfirmationView: View {
     @ViewBuilder
     private var riskWarnings: some View {
         if !unmergedSelected.isEmpty, !didReviewRisk {
-            Label("Deleting an unmerged branch permanently removes its branch reference and may make its commits harder to recover.", systemImage: "exclamationmark.triangle.fill")
+            Label(lucide: .triangleAlert, "Deleting an unmerged branch permanently removes its branch reference and may make its commits harder to recover.")
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.red)
         }
         if !forcedSelected.isEmpty, !didReviewRisk {
-            Label("Force removal permanently deletes this worktree directory and all uncommitted changes. The branch will be kept.", systemImage: "exclamationmark.triangle.fill")
+            Label(lucide: .triangleAlert, "Force removal permanently deletes this worktree directory and all uncommitted changes. The branch will be kept.")
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.red)
         }
         if !pairedSelected.isEmpty, !didReviewRisk {
-            Label("Paired worktree directories will be removed before their branches.", systemImage: "exclamationmark.triangle.fill")
+            Label(lucide: .triangleAlert, "Paired worktree directories will be removed before their branches.")
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.orange)
         }
@@ -138,8 +138,8 @@ struct CleanupConfirmationView: View {
             showsAllReady.toggle()
         } label: {
             Label(
-                showsAllReady ? "Show fewer" : "\(hiddenCount) more",
-                systemImage: showsAllReady ? "chevron.up" : "chevron.down"
+                lucide: showsAllReady ? .chevronUp : .chevronDown,
+                showsAllReady ? "Show fewer" : "\(hiddenCount) more"
             )
             .font(WorkbenchTypography.caption)
         }

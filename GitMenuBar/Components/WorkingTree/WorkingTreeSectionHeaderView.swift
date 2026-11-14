@@ -4,7 +4,7 @@ struct WorkingTreeSectionHeaderView: View {
     let title: String
     let summary: WorkingTreeSectionSummary
     @Binding var isCollapsed: Bool
-    let actionIcon: String
+    let actionIcon: LucideIconName
     let actionHelp: String
     let showsAction: Bool
     let onAction: () -> Void
@@ -65,11 +65,8 @@ struct WorkingTreeSectionHeaderView: View {
     private var headerToggle: some View {
         Button(action: toggleSection) {
             HStack(spacing: WorkbenchMetrics.chipSpacing) {
-                Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                    .accessibilityHidden(true)
-                    .font(WorkbenchTypography.captionStrong)
+                LucideIconView(name: isCollapsed ? .chevronRight : .chevronDown, size: 12)
                     .foregroundStyle(.secondary)
-                    .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
 
                 Text(title)
                     .font(WorkbenchTypography.captionStrong)
@@ -120,8 +117,7 @@ struct WorkingTreeSectionHeaderView: View {
             HStack(spacing: WorkbenchMetrics.microSpacing) {
                 if let onDiscardAll {
                     Button(action: onDiscardAll) {
-                        Image(systemName: "arrow.uturn.backward")
-                            .font(WorkbenchTypography.captionStrong)
+                        LucideIconView(name: .undo2, size: 12)
                             .foregroundStyle(.primary)
                             .frame(
                                 width: WorkingTreeLayoutMetrics.actionHitTarget,
@@ -139,12 +135,10 @@ struct WorkingTreeSectionHeaderView: View {
 
                 if showsDirectoryControls, let onToggleAllDirectories {
                     Button(action: onToggleAllDirectories) {
-                        Image(
-                            systemName: allDirectoriesExpanded
-                                ? "arrow.down.right.and.arrow.up.left"
-                                : "arrow.up.left.and.arrow.down.right"
+                        LucideIconView(
+                            name: allDirectoriesExpanded ? .unfoldVertical : .foldVertical,
+                            size: 12
                         )
-                        .font(WorkbenchTypography.captionStrong)
                         .foregroundStyle(.primary)
                         .frame(
                             width: WorkingTreeLayoutMetrics.actionHitTarget,
@@ -159,8 +153,7 @@ struct WorkingTreeSectionHeaderView: View {
                 }
 
                 Button(action: onAction) {
-                    Image(systemName: actionIcon)
-                        .font(WorkbenchTypography.captionStrong)
+                    LucideIconView(name: actionIcon, size: 12)
                         .foregroundStyle(.primary)
                         .frame(
                             width: WorkingTreeLayoutMetrics.actionHitTarget,
@@ -183,12 +176,12 @@ struct WorkingTreeSectionHeaderView: View {
 
     private func viewModeToggle(displayMode: Binding<AppPreferences.WorkingTreeDisplayMode>) -> some View {
         Picker("View mode", selection: displayMode) {
-            Image(systemName: "list.bullet.indent")
+            LucideIconView(name: .listTree)
                 .tag(AppPreferences.WorkingTreeDisplayMode.tree)
                 .accessibilityLabel("Tree view")
                 .help("Tree view")
 
-            Image(systemName: "list.bullet")
+            LucideIconView(name: .list)
                 .tag(AppPreferences.WorkingTreeDisplayMode.flat)
                 .accessibilityLabel("Flat view")
                 .help("Flat view")
@@ -242,7 +235,7 @@ private struct WorkingTreeSectionHeaderPreviewContainer: View {
                 title: "Staged",
                 summary: previewFiles.map(\.file).sectionSummary,
                 isCollapsed: $isCollapsed,
-                actionIcon: "minus.circle",
+                actionIcon: .circleMinus,
                 actionHelp: "Unstage all staged changes",
                 showsAction: true,
                 onAction: {},
@@ -258,7 +251,7 @@ private struct WorkingTreeSectionHeaderPreviewContainer: View {
             if !isCollapsed {
                 WorkingTreeDiffTreeView(
                     files: previewFiles,
-                    actionIcon: "minus.circle",
+                    actionIcon: .circleMinus,
                     selectedItemID: nil,
                     onSelect: { _ in },
                     onStageToggle: { _ in },
@@ -293,7 +286,7 @@ private struct WorkingTreeSectionHeaderPreviewContainer: View {
                     removedLineCount: 11
                 ),
                 isCollapsed: $isCollapsed,
-                actionIcon: "plus.circle",
+                actionIcon: .circlePlus,
                 actionHelp: "Stage all unstaged changes",
                 showsAction: true,
                 onAction: {},

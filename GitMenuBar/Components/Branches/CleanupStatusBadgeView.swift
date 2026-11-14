@@ -9,7 +9,7 @@ struct CleanupStatusBadgeView: View {
     }
 
     private let title: String
-    private let systemImage: String
+    private let icon: LucideIconName
     private let tone: Tone
 
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
@@ -18,27 +18,27 @@ struct CleanupStatusBadgeView: View {
         switch status {
         case .mergedIntoDefault:
             title = "Merged"
-            systemImage = "checkmark.circle.fill"
+            icon = .circleCheck
             tone = .success
         case .notMerged:
             title = "Not merged"
-            systemImage = "arrow.triangle.branch"
+            icon = .gitBranch
             tone = .warning
         case .protected:
             title = "Protected"
-            systemImage = "lock.fill"
+            icon = .lock
             tone = .neutral
         case .current:
             title = "Current"
-            systemImage = "checkmark"
+            icon = .check
             tone = .neutral
         case .checkedOutElsewhere:
             title = "In worktree"
-            systemImage = "square.stack.3d.up"
+            icon = .layers
             tone = .neutral
         case .unknown:
             title = "Unknown"
-            systemImage = "questionmark.circle"
+            icon = .circleHelp
             tone = .error
         }
     }
@@ -47,45 +47,45 @@ struct CleanupStatusBadgeView: View {
         switch status {
         case .eligible:
             title = "Eligible"
-            systemImage = "checkmark.circle.fill"
+            icon = .circleCheck
             tone = .success
         case .main:
             title = "Main worktree"
-            systemImage = "house.fill"
+            icon = .house
             tone = .neutral
         case .current:
             title = "Current"
-            systemImage = "location.fill"
+            icon = .mapPin
             tone = .neutral
         case .dirty:
             title = "Dirty"
-            systemImage = "exclamationmark.triangle.fill"
+            icon = .triangleAlert
             tone = .warning
         case .locked:
             title = "Locked"
-            systemImage = "lock.fill"
+            icon = .lock
             tone = .warning
         case .prunable:
             title = "Prunable"
-            systemImage = "trash"
+            icon = .trash2
             tone = .warning
         case .branchNotMerged:
             title = "Not merged"
-            systemImage = "arrow.triangle.branch"
+            icon = .gitBranch
             tone = .warning
         case .detached:
             title = "Detached"
-            systemImage = "rectangle.dashed"
+            icon = .boxSelect
             tone = .neutral
         case .unknown:
             title = "Unknown"
-            systemImage = "questionmark.circle"
+            icon = .circleHelp
             tone = .error
         }
     }
 
     var body: some View {
-        Label(title, systemImage: systemImage)
+        Label(lucide: icon, title)
             .font(WorkbenchTypography.captionStrong)
             .foregroundStyle(foregroundColor)
             .lineLimit(1)

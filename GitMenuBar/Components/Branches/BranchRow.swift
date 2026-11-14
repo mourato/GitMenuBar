@@ -37,8 +37,7 @@ struct BranchRowView: View {
                     .font(WorkbenchTypography.body)
                 Spacer()
                 if isCurrentBranch {
-                    Image(systemName: "checkmark")
-                        .font(WorkbenchTypography.captionStrong)
+                    LucideIconView(name: .check, size: 12)
                         .foregroundStyle(Color.accentColor)
                 }
             }
