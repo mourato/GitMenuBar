@@ -1,76 +1,4 @@
 import Foundation
-import Security
-
-enum AIKeychainStoreError: Error, Equatable {
-    case keychain(OSStatus)
-    case invalidPayload
-}
-
-protocol AIKeychainItemClient: Sendable {
-    func read(service: String, account: String) throws -> Data?
-    func write(_ data: Data, service: String, account: String) throws
-    func delete(service: String, account: String) throws
-}
-
-struct SecurityAIKeychainItemClient: AIKeychainItemClient {
-    func read(service: String, account: String) throws -> Data? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        if status == errSecItemNotFound {
-            return nil
-        }
-        guard status == errSecSuccess else { throw AIKeychainStoreError.keychain(status) }
-        guard let data = result as? Data else { throw AIKeychainStoreError.invalidPayload }
-        return data
-    }
-
-    func write(_ data: Data, service: String, account: String) throws {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-        let attributes: [String: Any] = [
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-        ]
-        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if updateStatus == errSecSuccess {
-            return
-        }
-        guard updateStatus == errSecItemNotFound else { throw AIKeychainStoreError.keychain(updateStatus) }
-
-        var addQuery = query
-        attributes.forEach { addQuery[$0.key] = $0.value }
-        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-        guard addStatus == errSecSuccess || addStatus == errSecDuplicateItem else {
-            throw AIKeychainStoreError.keychain(addStatus)
-        }
-        if addStatus == errSecDuplicateItem {
-            let retryStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-            guard retryStatus == errSecSuccess else { throw AIKeychainStoreError.keychain(retryStatus) }
-        }
-    }
-
-    func delete(service: String, account: String) throws {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
-            throw AIKeychainStoreError.keychain(status)
-        }
-    }
-}
 
 private struct AIKeychainPayload: Codable, Equatable {
     let version: Int
@@ -83,6 +11,12 @@ protocol AIAPIKeyStore: Sendable {
     func fetchAllAPIKeys() throws -> [AIProviderCredentialID: String]
     func replaceAPIKeys(_ values: [AIProviderCredentialID: String]) throws
     func deleteAPIKey(for credentialID: AIProviderCredentialID) throws
+    /// Drops the in-memory copy so the next read consults the keychain again.
+    func invalidateCachedCredentials()
+}
+
+extension AIAPIKeyStore {
+    func invalidateCachedCredentials() {}
 }
 
 final class AIKeychainStore: AIAPIKeyStore, @unchecked Sendable {
@@ -91,13 +25,14 @@ final class AIKeychainStore: AIAPIKeyStore, @unchecked Sendable {
 
     private let service: String
     private let account: String
-    private let client: any AIKeychainItemClient
+    private let client: any KeychainItemClient
     private let lock = NSLock()
+    private var cachedValues: [AIProviderCredentialID: String]?
 
     init(
         service: String = AIKeychainStore.serviceName,
         account: String = AIKeychainStore.accountName,
-        client: any AIKeychainItemClient = SecurityAIKeychainItemClient()
+        client: any KeychainItemClient = SecurityKeychainItemClient()
     ) {
         self.service = service
         self.account = account
@@ -133,23 +68,37 @@ final class AIKeychainStore: AIAPIKeyStore, @unchecked Sendable {
         try writeValues(values)
     }
 
+    func invalidateCachedCredentials() {
+        lock.lock(); defer { lock.unlock() }
+        cachedValues = nil
+    }
+
+    /// Reads the single keychain blob once per unlock; later calls reuse the copy.
     private func readValues() throws -> [AIProviderCredentialID: String] {
-        guard let data = try client.read(service: service, account: account) else { return [:] }
+        if let cachedValues {
+            return cachedValues
+        }
+        guard let data = try client.read(service: service, account: account) else {
+            cachedValues = [:]
+            return [:]
+        }
         guard let payload = try? JSONDecoder().decode(AIKeychainPayload.self, from: data), payload.version == 1 else {
-            throw AIKeychainStoreError.invalidPayload
+            throw KeychainItemError.invalidPayload
         }
         var values: [AIProviderCredentialID: String] = [:]
         for (key, value) in payload.values {
             guard key.hasPrefix("custom:") || ["openrouter", "opencodego", "google", "openai", "anthropic"].contains(key) else {
-                throw AIKeychainStoreError.invalidPayload
+                throw KeychainItemError.invalidPayload
             }
             values[AIProviderCredentialID(rawValue: key)] = value
         }
+        cachedValues = values
         return values
     }
 
     private func writeValues(_ values: [AIProviderCredentialID: String]) throws {
         let payload = AIKeychainPayload(version: 1, values: values.reduce(into: [:]) { $0[$1.key.rawValue] = $1.value })
         try client.write(JSONEncoder().encode(payload), service: service, account: account)
+        cachedValues = values
     }
 }

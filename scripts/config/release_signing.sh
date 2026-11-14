@@ -190,3 +190,66 @@ EOF
   gitmenubar_print_codesign_identity_diagnostics "${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}"
   return 1
 }
+
+# Identity shared by every local build (`make build`) and install (`make install-app`).
+# Order: explicit GITMENUBAR_CODE_SIGN_IDENTITY, then the release identity
+# (default "Apple Development"), then the repository self-signed identity created by
+# `make setup-self-signed-cert`. Prints "-" when none is available (ad-hoc signing).
+gitmenubar_local_codesign_identity() {
+  local candidate=""
+  local candidates=()
+
+  if [ -n "${GITMENUBAR_CODE_SIGN_IDENTITY:-}" ]; then
+    candidates+=("${GITMENUBAR_CODE_SIGN_IDENTITY}")
+  fi
+  candidates+=("${GITMENUBAR_RELEASE_CODE_SIGN_IDENTITY}")
+  candidates+=("${GITMENUBAR_SELF_SIGNED_IDENTITY:-GitMenuBar Local Self-Signed}")
+
+  for candidate in "${candidates[@]}"; do
+    if [ -n "${candidate}" ] && gitmenubar_codesign_identity_is_stable "${candidate}" 2 0.10; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
+
+  printf '%s\n' "-"
+}
+
+# Signs a built app bundle with the shared local identity, preserving the bundle
+# identifier, entitlements, and flags xcodebuild produced. An explicit identity in the
+# second argument takes precedence. Leaves the existing ad-hoc signature when no stable
+# identity is available.
+gitmenubar_sign_app_bundle() {
+  local bundle="$1"
+  local requested="${2:-}"
+  local identity_name=""
+  local identity_hash=""
+
+  if [ ! -d "${bundle}" ]; then
+    echo "Cannot sign missing bundle: ${bundle}" >&2
+    return 1
+  fi
+
+  if [ -n "${requested}" ]; then
+    identity_name="${requested}"
+  else
+    identity_name="$(gitmenubar_local_codesign_identity)"
+  fi
+
+  if [ "${identity_name}" = "-" ]; then
+    echo "warning: no stable code signing identity found; keeping the ad-hoc signature." >&2
+    echo "warning: run 'make setup-self-signed-cert' or set GITMENUBAR_CODE_SIGN_IDENTITY." >&2
+    return 0
+  fi
+
+  identity_hash="$(gitmenubar_resolve_codesign_identity "${identity_name}")"
+  echo "Signing with '${identity_name}' (${identity_hash})"
+  codesign \
+    --force \
+    --deep \
+    --preserve-metadata=identifier,entitlements,flags \
+    --keychain "${HOME}/Library/Keychains/login.keychain-db" \
+    --timestamp=none \
+    --sign "${identity_hash}" \
+    "${bundle}"
+}

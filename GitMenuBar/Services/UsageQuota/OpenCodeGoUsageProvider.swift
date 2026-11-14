@@ -42,7 +42,9 @@ struct OpenCodeGoUsageProvider: UsageQuotaProviding {
                 switch error {
                 case .invalidCredentials:
                     // Chave configurada rejeitada: erro explícito, sem mascarar
-                    // com estimativa local de outra conta.
+                    // com estimativa local de outra conta. A cópia em memória pode
+                    // estar defasada, então a keychain é relida na próxima consulta.
+                    keyStore?.invalidateCachedCredentials()
                     return .unavailable(providerID: .opencodeGo, statusNote: "token expired — open OpenCode")
                 case .unavailable:
                     break

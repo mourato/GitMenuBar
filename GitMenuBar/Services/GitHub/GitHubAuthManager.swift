@@ -274,23 +274,49 @@ class GitHubAuthManager {
 
     private func fetchUsername() async {
         guard let token = getStoredToken() else { return }
+        switch await fetchLogin(token: token) {
+        case let .login(login):
+            await MainActor.run {
+                self.username = login
+            }
+        case .rejected:
+            // The cached token may be stale relative to the keychain item, for example
+            // after another build wrote it. Re-read the keychain once before giving up.
+            tokenStore.invalidateCachedToken()
+            guard let refreshedToken = getStoredToken(), refreshedToken != token else { return }
+            if case let .login(login) = await fetchLogin(token: refreshedToken) {
+                await MainActor.run {
+                    self.username = login
+                }
+            }
+        case .failed:
+            break
+        }
+    }
 
+    private enum LoginFetchResult {
+        case login(String)
+        case rejected
+        case failed
+    }
+
+    private func fetchLogin(token: String) async -> LoginFetchResult {
         let url = URL(string: "https://api.github.com/user")!
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
         do {
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else { return .failed }
+            guard http.statusCode != 401 else { return .rejected }
+            guard (200 ... 299).contains(http.statusCode) else { return .failed }
 
             let login = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["login"] as? String
-            if let login {
-                await MainActor.run {
-                    self.username = login
-                }
-            }
+            return login.map(LoginFetchResult.login) ?? .failed
         } catch {
             print("Error fetching username: \(error)")
+            return .failed
         }
     }
 

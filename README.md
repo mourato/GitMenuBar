@@ -99,6 +99,13 @@ make install-app
 The repository also provides `make build-release`, `make test`, and `make lint`
 for local development and verification.
 
+Local builds are signed with one stable identity so macOS keeps the keychain
+"Always allow" grants across rebuilds and reinstalls. The default is an `Apple
+Development` certificate. Set `GITMENUBAR_CODE_SIGN_IDENTITY` to use another
+identity, or run `make setup-self-signed-cert` and set it to `GitMenuBar Local
+Self-Signed`. Details, including the keychain access group status:
+[docs/local-signing.md](docs/local-signing.md).
+
 ## Getting Started
 
 1. **Add a project**: Open GitMenuBar and choose a local repository folder. Add other repositories from the Projects sidebar when you want to monitor them too.
