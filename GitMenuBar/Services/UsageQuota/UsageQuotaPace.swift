@@ -39,6 +39,9 @@ enum UsageQuotaPace {
     struct Reading: Equatable, Sendable {
         let fillPercent: Double
         let percentText: String
+        /// Compact countdown for the row label (e.g. `3h 30m`), nil when the reset is unknown or past.
+        let resetCountdownText: String?
+        /// Full reset sentence for tooltips and VoiceOver (e.g. `Resets in 3h 30m`).
         let resetText: String?
         let detailText: String?
         let paceLeftText: String?
@@ -118,11 +121,12 @@ enum UsageQuotaPace {
         let used = 100 - window.remainingPercent
         let fillPercent = showUsed ? Double(used) : Double(window.remainingPercent)
         let percentText = showUsed ? "\(used)% used" : "\(window.remainingPercent)% left"
-        let resetText: String? = if let resetAt = window.resetAt, resetAt > now {
-            "Resets in \(UsageQuotaFormatting.resetCountdown(until: resetAt, now: now))"
+        let resetCountdownText: String? = if let resetAt = window.resetAt, resetAt > now {
+            UsageQuotaFormatting.resetCountdown(until: resetAt, now: now)
         } else {
             nil
         }
+        let resetText = resetCountdownText.map { "Resets in \($0)" }
         let clockTime = UsageQuotaFormatting.resetClockTime(until: window.resetAt, now: now)
         let detailText: String? = clockTime == "—" ? nil : "Resets at \(clockTime)"
 
@@ -144,6 +148,7 @@ enum UsageQuotaPace {
         return Reading(
             fillPercent: fillPercent,
             percentText: percentText,
+            resetCountdownText: resetCountdownText,
             resetText: resetText,
             detailText: detailText,
             paceLeftText: paceLeftText,

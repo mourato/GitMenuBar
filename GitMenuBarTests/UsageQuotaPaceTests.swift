@@ -205,9 +205,41 @@ final class UsageQuotaPaceTests: XCTestCase {
             now: now
         )
 
+        XCTAssertEqual(reading.resetCountdownText, "2h 30m")
         XCTAssertEqual(reading.resetText, "Resets in 2h 30m")
         XCTAssertNotNil(reading.detailText)
         XCTAssertTrue(reading.detailText?.hasPrefix("Resets at ") ?? false)
+    }
+
+    func testReadingOmitsResetTextWithoutAFutureReset() {
+        let noReset = UsageWindow(remainingPercent: 60, resetAt: nil, label: "Credits")
+        let noResetReading = UsageQuotaPace.reading(
+            for: noReset,
+            showUsed: false,
+            thresholds: [50, 80],
+            workdaysPerWeek: 5,
+            showPace: true,
+            now: now
+        )
+        XCTAssertNil(noResetReading.resetCountdownText)
+        XCTAssertNil(noResetReading.resetText)
+
+        let pastReset = UsageWindow(
+            remainingPercent: 60,
+            resetAt: now.addingTimeInterval(-60),
+            label: "5h",
+            durationSeconds: 18000
+        )
+        let pastResetReading = UsageQuotaPace.reading(
+            for: pastReset,
+            showUsed: false,
+            thresholds: [50, 80],
+            workdaysPerWeek: 5,
+            showPace: true,
+            now: now
+        )
+        XCTAssertNil(pastResetReading.resetCountdownText)
+        XCTAssertNil(pastResetReading.resetText)
     }
 
     func testSanitizedThresholds() {

@@ -9,6 +9,7 @@ struct UsageQuotaMenuView: View {
 
     var body: some View {
         let snapshots = orderedSnapshots
+        let showUsed = preferences.valueStyle == .used
         VStack(alignment: .leading, spacing: 12) {
             if snapshots.isEmpty, usageQuotaStore.costEstimates == nil {
                 Text("No usage figures available")
@@ -16,11 +17,14 @@ struct UsageQuotaMenuView: View {
                     .foregroundStyle(UsageQuotaMenuInk.secondary)
                     .padding(.vertical, 10)
             } else {
+                if !snapshots.isEmpty {
+                    UsageQuotaValueStyleCaption(showUsed: showUsed)
+                }
                 ForEach(snapshots) { snapshot in
                     providerSection(snapshot)
                 }
                 if let estimates = usageQuotaStore.costEstimates, !estimates.rows.isEmpty {
-                    UsageQuotaCostDotsCard(estimates: estimates)
+                    UsageQuotaCostCard(estimates: estimates)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
                         .background(
@@ -46,19 +50,20 @@ struct UsageQuotaMenuView: View {
     }
 
     private func providerSection(_ snapshot: UsageQuotaSnapshot) -> some View {
-        let showUsed = preferences.valueStyle == .used
-        return UsageQuotaDotsCard(
+        UsageQuotaLineCard(
             providerID: snapshot.providerID,
             displayName: snapshot.displayName,
-            pillText: UsageQuotaDotsCard.pillText(
+            pillText: UsageQuotaLineCard.pillText(
                 plan: snapshot.planText,
-                intervalChip: snapshot.primaryDisplayWindow?.intervalChip,
                 resetCredits: creditsMetricSelected(for: snapshot) ? snapshot.resetCreditsAvailable : nil
             ),
             staleStyle: snapshot.isStale ? .text : .none,
-            rows: dotsRows(for: snapshot),
+            rows: quotaRows(for: snapshot),
             footnote: footnoteText(for: snapshot),
-            showUsed: showUsed
+            showUsed: preferences.valueStyle == .used,
+            showsPace: preferences.showsPace,
+            workdaysPerWeek: preferences.workdaysPerWeek,
+            showsWorkdayTicks: preferences.workdayTickAppearance == .subtle
         )
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
@@ -74,40 +79,36 @@ struct UsageQuotaMenuView: View {
         .accessibilityElement(children: .contain)
     }
 
-    private func dotsRows(for snapshot: UsageQuotaSnapshot) -> [UsageQuotaDotsCard.RowData] {
-        var rows: [UsageQuotaDotsCard.RowData] = []
+    private func quotaRows(for snapshot: UsageQuotaSnapshot) -> [UsageQuotaLineCard.RowData] {
+        var rows: [UsageQuotaLineCard.RowData] = []
         if let sessionWindow = snapshot.sessionWindow {
-            rows.append(UsageQuotaDotsCard.RowData(
+            rows.append(UsageQuotaLineCard.RowData(
                 title: UsageQuotaPace.rowTitle(isSessionWindow: true, window: sessionWindow),
-                countdown: UsageQuotaDotsCard.bareCountdown(until: sessionWindow.resetAt),
-                remainingPercent: sessionWindow.remainingPercent,
+                window: sessionWindow,
                 thresholds: preferences.sessionWarningThresholds,
                 kind: .session
             ))
         }
         if let weeklyWindow = snapshot.weeklyWindow {
-            rows.append(UsageQuotaDotsCard.RowData(
+            rows.append(UsageQuotaLineCard.RowData(
                 title: UsageQuotaPace.rowTitle(isSessionWindow: false, window: weeklyWindow),
-                countdown: UsageQuotaDotsCard.bareCountdown(until: weeklyWindow.resetAt),
-                remainingPercent: weeklyWindow.remainingPercent,
+                window: weeklyWindow,
                 thresholds: preferences.weeklyWarningThresholds,
                 kind: .weekly
             ))
         }
         if let monthlyWindow = snapshot.tertiaryMonthlyWindow {
-            rows.append(UsageQuotaDotsCard.RowData(
+            rows.append(UsageQuotaLineCard.RowData(
                 title: monthlyWindow.label,
-                countdown: UsageQuotaDotsCard.bareCountdown(until: monthlyWindow.resetAt),
-                remainingPercent: monthlyWindow.remainingPercent,
+                window: monthlyWindow,
                 thresholds: preferences.weeklyWarningThresholds,
                 kind: .model
             ))
         }
         for window in snapshot.modelWindows {
-            rows.append(UsageQuotaDotsCard.RowData(
+            rows.append(UsageQuotaLineCard.RowData(
                 title: window.label,
-                countdown: UsageQuotaDotsCard.bareCountdown(until: window.resetAt),
-                remainingPercent: window.remainingPercent,
+                window: window,
                 thresholds: preferences.weeklyWarningThresholds,
                 kind: .model
             ))
@@ -346,101 +347,118 @@ private enum UsageQuotaMenuInk {
     static let border = Color(nsColor: .separatorColor)
 }
 
-#Preview("Usage Quota Menu") {
-    UsageQuotaMenuPreviewHarness()
-}
+#if DEBUG
+    #Preview("Usage Quota Menu") {
+        UsageQuotaMenuPreviewHarness()
+    }
 
-#Preview("Usage Quota Menu – Circular") {
-    UsageQuotaMenuPreviewHarness(meterStyle: .circular)
-}
+    #Preview("Usage Quota Menu – Circular") {
+        UsageQuotaMenuPreviewHarness(meterStyle: .circular)
+    }
 
-#Preview("Usage Quota Menu – Claude Models") {
-    UsageQuotaMenuPreviewHarness(snapshot: UsageQuotaSnapshot(
-        providerID: .claudeCode,
-        displayName: "Claude Code",
-        sessionWindow: UsageWindow(
-            remainingPercent: 77,
-            resetAt: Date().addingTimeInterval(8100),
-            label: "5h",
-            durationSeconds: 18000
-        ),
-        weeklyWindow: UsageWindow(
-            remainingPercent: 58,
-            resetAt: Date().addingTimeInterval(86400 * 3),
-            label: "7d",
-            durationSeconds: 604_800
-        ),
-        modelWindows: [
-            UsageWindow(
-                remainingPercent: 88,
-                resetAt: Date().addingTimeInterval(86400 * 3),
-                label: "Sonnet",
-                durationSeconds: 604_800
-            ),
-            UsageWindow(
-                remainingPercent: 32,
-                resetAt: Date().addingTimeInterval(86400 * 3),
-                label: "Opus",
-                durationSeconds: 604_800
-            )
-        ],
-        isAvailable: true
-    ))
-}
-
-private struct UsageQuotaMenuPreviewHarness: View {
-    @State private var store: UsageQuotaStore
-    @State private var preferences: UsageQuotaPresentationPreferences
-
-    init(
-        snapshot: UsageQuotaSnapshot? = nil,
-        meterStyle: UsageQuotaPresentationPreferences.MeterStyle = .text
-    ) {
-        let snapshot = snapshot ?? UsageQuotaSnapshot(
-            providerID: .codex,
-            displayName: "Codex",
+    #Preview("Usage Quota Menu – Claude Models") {
+        UsageQuotaMenuPreviewHarness(snapshots: [UsageQuotaSnapshot(
+            providerID: .claudeCode,
+            displayName: "Claude Code",
             sessionWindow: UsageWindow(
-                remainingPercent: 62,
+                remainingPercent: 77,
                 resetAt: Date().addingTimeInterval(8100),
                 label: "5h",
                 durationSeconds: 18000
             ),
             weeklyWindow: UsageWindow(
-                remainingPercent: 88,
+                remainingPercent: 58,
                 resetAt: Date().addingTimeInterval(86400 * 3),
                 label: "7d",
                 durationSeconds: 604_800
             ),
-            creditValueText: "12.50 credits",
+            modelWindows: [
+                UsageWindow(
+                    remainingPercent: 88,
+                    resetAt: Date().addingTimeInterval(86400 * 3),
+                    label: "Sonnet",
+                    durationSeconds: 604_800
+                ),
+                UsageWindow(
+                    remainingPercent: 32,
+                    resetAt: Date().addingTimeInterval(86400 * 3),
+                    label: "Opus",
+                    durationSeconds: 604_800
+                )
+            ],
             isAvailable: true
-        )
-        let store = UsageQuotaStore(providers: [UsageQuotaPreviewProvider(snapshot: snapshot)])
-        store.showAIUsageQuotas = true
-        _store = State(wrappedValue: store)
-        let defaults = UserDefaults(suiteName: "UsageQuotaMenuPreview") ?? UserDefaults()
-        let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
-        preferences.meterStyle = meterStyle
-        _preferences = State(wrappedValue: preferences)
+        )])
     }
 
-    var body: some View {
-        UsageQuotaMenuView()
-            .environment(store)
-            .environment(preferences)
-    }
-}
-
-private struct UsageQuotaPreviewProvider: UsageQuotaProviding {
-    let id: UsageProviderID
-    let snapshot: UsageQuotaSnapshot
-
-    init(snapshot: UsageQuotaSnapshot) {
-        id = snapshot.providerID
-        self.snapshot = snapshot
+    #Preview("Usage Quota Menu – Issue 19 Fixture") {
+        UsageQuotaMenuPreviewHarness(snapshots: PreviewUsageQuotaSnapshotFactory.issueFixture)
     }
 
-    // swiftlint:disable:next async_without_await
-    func fetchSnapshot() async -> UsageQuotaSnapshot {
-        snapshot
+    private struct UsageQuotaMenuPreviewHarness: View {
+        @State private var store: UsageQuotaStore
+        @State private var preferences: UsageQuotaPresentationPreferences
+
+        init(
+            snapshots: [UsageQuotaSnapshot]? = nil,
+            meterStyle: UsageQuotaPresentationPreferences.MeterStyle = .text
+        ) {
+            let snapshots = snapshots ?? [
+                UsageQuotaSnapshot(
+                    providerID: .codex,
+                    displayName: "Codex",
+                    sessionWindow: UsageWindow(
+                        remainingPercent: 62,
+                        resetAt: Date().addingTimeInterval(8100),
+                        label: "5h",
+                        durationSeconds: 18000
+                    ),
+                    weeklyWindow: UsageWindow(
+                        remainingPercent: 88,
+                        resetAt: Date().addingTimeInterval(86400 * 3),
+                        label: "7d",
+                        durationSeconds: 604_800
+                    ),
+                    creditValueText: "12.50 credits",
+                    isAvailable: true
+                )
+            ]
+            let name = "UsageQuotaMenuPreview-\(meterStyle.rawValue)-\(snapshots.map(\.providerID.rawValue).joined(separator: "-"))"
+            let defaults = UserDefaults(suiteName: name) ?? .standard
+            defaults.removePersistentDomain(forName: name)
+            defaults.set(true, forKey: AppPreferences.Keys.showAIUsageQuotas)
+            let snapshotStore = UsageQuotaSnapshotStore(defaults: defaults)
+            for snapshot in snapshots {
+                snapshotStore.save(snapshot)
+            }
+            _store = State(wrappedValue: UsageQuotaStore(
+                defaults: defaults,
+                snapshotStore: snapshotStore,
+                providers: snapshots.map { UsageQuotaPreviewProvider(snapshot: $0) }
+            ))
+            let preferences = UsageQuotaPresentationPreferences(defaults: defaults, keyStore: InMemoryAIAPIKeyStore())
+            preferences.meterStyle = meterStyle
+            _preferences = State(wrappedValue: preferences)
+        }
+
+        var body: some View {
+            UsageQuotaMenuView()
+                .environment(store)
+                .environment(preferences)
+        }
     }
-}
+
+    private struct UsageQuotaPreviewProvider: UsageQuotaProviding {
+        let id: UsageProviderID
+        let snapshot: UsageQuotaSnapshot
+
+        init(snapshot: UsageQuotaSnapshot) {
+            id = snapshot.providerID
+            self.snapshot = snapshot
+        }
+
+        // swiftlint:disable:next async_without_await
+        func fetchSnapshot() async -> UsageQuotaSnapshot {
+            snapshot
+        }
+    }
+#endif

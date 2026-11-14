@@ -1,26 +1,47 @@
 @testable import GitMenuBar
 import XCTest
 
-final class UsageQuotaDotsCardTests: XCTestCase {
-    func testFilledSegments() {
-        XCTAssertEqual(UsageQuotaDotsCard.filledSegments(displayPercent: 0), 0)
-        XCTAssertEqual(UsageQuotaDotsCard.filledSegments(displayPercent: -5), 0)
-        XCTAssertEqual(UsageQuotaDotsCard.filledSegments(displayPercent: 8), 1)
-        XCTAssertEqual(UsageQuotaDotsCard.filledSegments(displayPercent: 47), 2)
-        XCTAssertEqual(UsageQuotaDotsCard.filledSegments(displayPercent: 63), 3)
-        XCTAssertEqual(UsageQuotaDotsCard.filledSegments(displayPercent: 85), 4)
-        XCTAssertEqual(UsageQuotaDotsCard.filledSegments(displayPercent: 94), 5)
-        XCTAssertEqual(UsageQuotaDotsCard.filledSegments(displayPercent: 100), 5)
+final class UsageQuotaLineCardTests: XCTestCase {
+    private let now = Date(timeIntervalSince1970: 1_750_000_000)
+
+    private func window(
+        remainingPercent: Int,
+        elapsedFraction: Double,
+        durationSeconds: Int = 10000
+    ) -> UsageWindow {
+        let duration = TimeInterval(durationSeconds)
+        return UsageWindow(
+            remainingPercent: remainingPercent,
+            resetAt: now.addingTimeInterval(duration * (1 - elapsedFraction)),
+            label: "5h",
+            durationSeconds: durationSeconds
+        )
+    }
+
+    private func reading(
+        remainingPercent: Int,
+        elapsedFraction: Double,
+        showUsed: Bool,
+        showsPace: Bool = true
+    ) -> UsageQuotaPace.Reading {
+        UsageQuotaPace.reading(
+            for: window(remainingPercent: remainingPercent, elapsedFraction: elapsedFraction),
+            showUsed: showUsed,
+            thresholds: [50, 80],
+            workdaysPerWeek: 5,
+            showPace: showsPace,
+            now: now
+        )
     }
 
     func testRowAlertLevelFollowsConfiguredThresholds() {
         let thresholds = [50, 80]
         func level(remaining: Int) -> UsageQuotaAlertLevel {
-            UsageQuotaDotsCard.RowData(
+            UsageQuotaLineCard.RowData(
                 title: "Session",
-                countdown: nil,
-                remainingPercent: remaining,
-                thresholds: thresholds
+                window: UsageWindow(remainingPercent: remaining, resetAt: nil, label: "Session"),
+                thresholds: thresholds,
+                kind: .session
             ).alertLevel
         }
         // Remaining 55% is 45% used, 40% is 60% used, 15% is 85% used.
@@ -30,10 +51,9 @@ final class UsageQuotaDotsCardTests: XCTestCase {
     }
 
     func testWeeklyZeroRowIsAlwaysErrorLevel() {
-        let row = UsageQuotaDotsCard.RowData(
+        let row = UsageQuotaLineCard.RowData(
             title: "Weekly",
-            countdown: nil,
-            remainingPercent: 0,
+            window: UsageWindow(remainingPercent: 0, resetAt: nil, label: "Weekly"),
             thresholds: [],
             kind: .weekly
         )
@@ -42,9 +62,131 @@ final class UsageQuotaDotsCardTests: XCTestCase {
         XCTAssertEqual(row.alertLevel, .error)
     }
 
+    func testRemainingDeficitFillsActualValueAndHatchesToExpectedMarker() throws {
+        let reading = reading(remainingPercent: 22, elapsedFraction: 0.36, showUsed: false)
+
+        XCTAssertEqual(reading.fillPercent, 22, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(reading.pacePercent), 64, accuracy: 0.001)
+        XCTAssertTrue(reading.paceDeficit)
+
+        let hatch = try XCTUnwrap(UsageQuotaLineMeter.hatchRange(
+            fillPercent: reading.fillPercent,
+            pacePercent: reading.pacePercent,
+            paceDeficit: reading.paceDeficit
+        ))
+        XCTAssertEqual(hatch.lowerBound, 22, accuracy: 0.001)
+        XCTAssertEqual(hatch.upperBound, 64, accuracy: 0.001)
+    }
+
+    func testUsedDeficitHatchesBetweenExpectedMarkerAndFill() throws {
+        let reading = reading(remainingPercent: 22, elapsedFraction: 0.36, showUsed: true)
+
+        XCTAssertEqual(reading.fillPercent, 78, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(reading.pacePercent), 36, accuracy: 0.001)
+        XCTAssertTrue(reading.paceDeficit)
+
+        let hatch = try XCTUnwrap(UsageQuotaLineMeter.hatchRange(
+            fillPercent: reading.fillPercent,
+            pacePercent: reading.pacePercent,
+            paceDeficit: reading.paceDeficit
+        ))
+        XCTAssertEqual(hatch.lowerBound, 36, accuracy: 0.001)
+        XCTAssertEqual(hatch.upperBound, 78, accuracy: 0.001)
+    }
+
+    func testReserveAndOnTrackHaveNoHatch() {
+        // 76% left with 54% expected left: consumption is behind pace, not a deficit.
+        let reserve = reading(remainingPercent: 76, elapsedFraction: 0.46, showUsed: false)
+        XCTAssertEqual(reserve.fillPercent, 76, accuracy: 0.001)
+        XCTAssertEqual(reserve.pacePercent ?? -1, 54, accuracy: 0.001)
+        XCTAssertFalse(reserve.paceDeficit)
+        XCTAssertNil(UsageQuotaLineMeter.hatchRange(
+            fillPercent: reserve.fillPercent,
+            pacePercent: reserve.pacePercent,
+            paceDeficit: reserve.paceDeficit
+        ))
+
+        // On-track readings hide the marker entirely, so a stale deficit flag cannot hatch.
+        let onTrack = reading(remainingPercent: 51, elapsedFraction: 0.5, showUsed: false)
+        XCTAssertNil(onTrack.pacePercent)
+        XCTAssertNil(UsageQuotaLineMeter.hatchRange(
+            fillPercent: onTrack.fillPercent,
+            pacePercent: onTrack.pacePercent,
+            paceDeficit: true
+        ))
+    }
+
+    func testHatchGeometryClampsToBar() throws {
+        let hatch = try XCTUnwrap(UsageQuotaLineMeter.hatchRange(
+            fillPercent: -5,
+            pacePercent: 140,
+            paceDeficit: true
+        ))
+        XCTAssertEqual(hatch.lowerBound, 0, accuracy: 0.001)
+        XCTAssertEqual(hatch.upperBound, 100, accuracy: 0.001)
+        XCTAssertNil(UsageQuotaLineMeter.hatchRange(
+            fillPercent: 40,
+            pacePercent: 40,
+            paceDeficit: true
+        ))
+    }
+
+    func testHiddenPaceStillCarriesNoMarkerOrHatch() {
+        let reading = reading(remainingPercent: 22, elapsedFraction: 0.36, showUsed: false, showsPace: false)
+
+        XCTAssertNil(reading.pacePercent)
+        XCTAssertNil(reading.paceLeftText)
+        XCTAssertNil(reading.paceRightText)
+        XCTAssertNil(UsageQuotaLineMeter.hatchRange(
+            fillPercent: reading.fillPercent,
+            pacePercent: reading.pacePercent,
+            paceDeficit: reading.paceDeficit
+        ))
+    }
+
+    func testRowsShowOnlyPercentUnlessWeeklyQuotaIsExhausted() {
+        XCTAssertEqual(
+            UsageQuotaFormatting.compactDisplayValueText(remainingPercent: 22, kind: .session, showUsed: false),
+            "22%"
+        )
+        XCTAssertEqual(
+            UsageQuotaFormatting.compactDisplayValueText(remainingPercent: 22, kind: .session, showUsed: true),
+            "78%"
+        )
+        XCTAssertEqual(
+            UsageQuotaFormatting.compactDisplayValueText(remainingPercent: 0, kind: .weekly, showUsed: false),
+            "Exhausted"
+        )
+    }
+
+    func testRowAccessibilityValueKeepsDirectionResetAndPace() {
+        let reading = reading(remainingPercent: 22, elapsedFraction: 0.36, showUsed: false)
+
+        let value = UsageQuotaLineCard.rowAccessibilityValue(reading: reading, isExhausted: false)
+        XCTAssertTrue(value.hasPrefix("22% left, Resets in "))
+        XCTAssertTrue(value.contains("42% in deficit"))
+        XCTAssertFalse(value.contains("left left"))
+    }
+
+    func testExhaustedRowAccessibilityValueOmitsPercentDirection() {
+        let reading = UsageQuotaPace.reading(
+            for: UsageWindow(remainingPercent: 0, resetAt: nil, label: "Weekly"),
+            showUsed: false,
+            thresholds: [50, 80],
+            workdaysPerWeek: 5,
+            showPace: true,
+            now: now
+        )
+
+        XCTAssertEqual(
+            UsageQuotaLineCard.rowAccessibilityValue(reading: reading, isExhausted: true),
+            "quota exhausted"
+        )
+    }
+
     @MainActor
     func testMenuReadingNamesAnExhaustedWeeklyQuota() throws {
-        let suiteName = "UsageQuotaDotsCardTests.\(UUID().uuidString)"
+        let suiteName = "UsageQuotaLineCardTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
@@ -75,7 +217,7 @@ final class UsageQuotaDotsCardTests: XCTestCase {
 
     @MainActor
     func testMenuBarHidesWeeklyExhaustionAndRestoresProviderAfterRefresh() throws {
-        let suiteName = "UsageQuotaDotsCardTests.\(UUID().uuidString)"
+        let suiteName = "UsageQuotaLineCardTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
@@ -105,7 +247,7 @@ final class UsageQuotaDotsCardTests: XCTestCase {
 
     @MainActor
     func testModelOnlyProviderAppearsInMenuBar() throws {
-        let suiteName = "UsageQuotaDotsCardTests.\(UUID().uuidString)"
+        let suiteName = "UsageQuotaLineCardTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let preferences = UsageQuotaPresentationPreferences(defaults: defaults)
@@ -123,44 +265,40 @@ final class UsageQuotaDotsCardTests: XCTestCase {
         XCTAssertEqual(group.fractions, [0.45])
     }
 
-    func testPillText() {
+    func testPillTextKeepsPlanAndResetsOnly() {
         XCTAssertEqual(
-            UsageQuotaDotsCard.pillText(plan: "Pro", intervalChip: "5h", resetCredits: 3),
+            UsageQuotaLineCard.pillText(plan: "Pro", resetCredits: 3),
             "Pro · 3 resets"
         )
         XCTAssertEqual(
-            UsageQuotaDotsCard.pillText(plan: "Pro", intervalChip: "5h", resetCredits: 1),
+            UsageQuotaLineCard.pillText(plan: "Pro", resetCredits: 1),
             "Pro · 1 reset"
         )
         XCTAssertEqual(
-            UsageQuotaDotsCard.pillText(plan: "Pro", intervalChip: "5h", resetCredits: nil),
+            UsageQuotaLineCard.pillText(plan: "Pro", resetCredits: nil),
             "Pro"
         )
         XCTAssertEqual(
-            UsageQuotaDotsCard.pillText(plan: nil, intervalChip: "7d", resetCredits: nil),
-            "7d"
-        )
-        XCTAssertEqual(
-            UsageQuotaDotsCard.pillText(plan: nil, intervalChip: nil, resetCredits: 2),
+            UsageQuotaLineCard.pillText(plan: nil, resetCredits: 2),
             "2 resets"
         )
-        XCTAssertNil(UsageQuotaDotsCard.pillText(plan: nil, intervalChip: nil, resetCredits: nil))
-        XCTAssertNil(UsageQuotaDotsCard.pillText(plan: nil, intervalChip: nil, resetCredits: 0))
+        XCTAssertNil(UsageQuotaLineCard.pillText(plan: nil, resetCredits: nil))
+        XCTAssertNil(UsageQuotaLineCard.pillText(plan: nil, resetCredits: 0))
     }
 
     func testHeaderAccessibilityTextAnnouncesProviderPlanAndResetsOnce() {
         XCTAssertEqual(
-            UsageQuotaDotsCard.headerAccessibilityText(
+            UsageQuotaLineCard.headerAccessibilityText(
                 displayName: "Codex",
-                pillText: UsageQuotaDotsCard.pillText(plan: "Plus", intervalChip: "5h", resetCredits: 1),
+                pillText: UsageQuotaLineCard.pillText(plan: "Plus", resetCredits: 1),
                 isStale: false
             ),
             "Codex, Plus, 1 reset"
         )
         XCTAssertEqual(
-            UsageQuotaDotsCard.headerAccessibilityText(
+            UsageQuotaLineCard.headerAccessibilityText(
                 displayName: "Codex",
-                pillText: UsageQuotaDotsCard.pillText(plan: "Plus", intervalChip: "5h", resetCredits: 3),
+                pillText: UsageQuotaLineCard.pillText(plan: "Plus", resetCredits: 3),
                 isStale: true
             ),
             "Codex, Plus, 3 resets, Outdated"
@@ -169,23 +307,23 @@ final class UsageQuotaDotsCardTests: XCTestCase {
 
     func testHeaderAccessibilityTextOmitsMissingParts() {
         XCTAssertEqual(
-            UsageQuotaDotsCard.headerAccessibilityText(
+            UsageQuotaLineCard.headerAccessibilityText(
                 displayName: "Codex",
-                pillText: UsageQuotaDotsCard.pillText(plan: nil, intervalChip: nil, resetCredits: 1),
+                pillText: UsageQuotaLineCard.pillText(plan: nil, resetCredits: 1),
                 isStale: false
             ),
             "Codex, 1 reset"
         )
         XCTAssertEqual(
-            UsageQuotaDotsCard.headerAccessibilityText(
+            UsageQuotaLineCard.headerAccessibilityText(
                 displayName: "Codex",
-                pillText: UsageQuotaDotsCard.pillText(plan: "Plus", intervalChip: "5h", resetCredits: nil),
+                pillText: UsageQuotaLineCard.pillText(plan: "Plus", resetCredits: nil),
                 isStale: false
             ),
             "Codex, Plus"
         )
         XCTAssertEqual(
-            UsageQuotaDotsCard.headerAccessibilityText(
+            UsageQuotaLineCard.headerAccessibilityText(
                 displayName: "Codex",
                 pillText: nil,
                 isStale: false
@@ -193,23 +331,13 @@ final class UsageQuotaDotsCardTests: XCTestCase {
             "Codex"
         )
         XCTAssertEqual(
-            UsageQuotaDotsCard.headerAccessibilityText(
+            UsageQuotaLineCard.headerAccessibilityText(
                 displayName: "Codex",
                 pillText: nil,
                 isStale: true
             ),
             "Codex, Outdated"
         )
-    }
-
-    func testBareCountdown() {
-        let now = Date()
-        XCTAssertEqual(
-            UsageQuotaDotsCard.bareCountdown(until: now.addingTimeInterval(5400), now: now),
-            "1h 30m"
-        )
-        XCTAssertNil(UsageQuotaDotsCard.bareCountdown(until: nil, now: now))
-        XCTAssertNil(UsageQuotaDotsCard.bareCountdown(until: now.addingTimeInterval(-60), now: now))
     }
 
     func testAmountText() {

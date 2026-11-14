@@ -94,12 +94,73 @@ private struct UsageQuotaStripPreviewHarness: View {
     }
 }
 
-private enum PreviewUsageQuotaSnapshotFactory {
+enum PreviewUsageQuotaSnapshotFactory {
     static let multiProvider: [UsageQuotaSnapshot] = [
         codex(remainingPercent: 62, resetInterval: 8100, weeklyPercent: 88, resetCreditsAvailable: 2),
         cursor(remainingPercent: 41, resetInterval: 86400 * 12),
         openrouter(remainingPercent: 42, balanceText: "$12.50 left")
     ]
+
+    /// Issue #19 screen fixture: reserve, deficit, monthly, no-duration,
+    /// exhausted, and Outdated windows in one set for the menu and popover.
+    static let issueFixture: [UsageQuotaSnapshot] = [
+        UsageQuotaSnapshot(
+            providerID: .claudeCode,
+            displayName: "Claude Code",
+            sessionWindow: pacedWindow(remainingPercent: 76, durationSeconds: 5 * 3600, elapsed: 0.46, label: "5h"),
+            weeklyWindow: pacedWindow(remainingPercent: 22, durationSeconds: 7 * 86400, elapsed: 0.36, label: "7d"),
+            tertiaryMonthlyWindow: pacedWindow(
+                remainingPercent: 67,
+                durationSeconds: 30 * 86400,
+                elapsed: 0.13,
+                label: "30-day"
+            ),
+            modelWindows: [
+                pacedWindow(remainingPercent: 76, durationSeconds: 7 * 86400, elapsed: 0.36, label: "Opus")
+            ],
+            resetCreditsAvailable: 2,
+            planText: "Pro",
+            isAvailable: true
+        ),
+        UsageQuotaSnapshot(
+            providerID: .cursor,
+            displayName: "Cursor",
+            sessionWindow: pacedWindow(remainingPercent: 41, durationSeconds: 30 * 86400, elapsed: 0.35, label: "Plan"),
+            weeklyWindow: nil,
+            planText: "Pro",
+            isAvailable: true,
+            isStale: true
+        ),
+        UsageQuotaSnapshot(
+            providerID: .antigravity,
+            displayName: "Antigravity",
+            sessionWindow: nil,
+            weeklyWindow: pacedWindow(remainingPercent: 0, durationSeconds: 7 * 86400, elapsed: 0.61, label: "7d"),
+            isAvailable: true
+        ),
+        UsageQuotaSnapshot(
+            providerID: .openrouter,
+            displayName: "OpenRouter",
+            sessionWindow: UsageWindow(remainingPercent: 42, resetAt: nil, label: "Credits"),
+            weeklyWindow: nil,
+            creditValueText: "$12.50 left",
+            isAvailable: true
+        )
+    ]
+
+    private static func pacedWindow(
+        remainingPercent: Int,
+        durationSeconds: Int,
+        elapsed: Double,
+        label: String
+    ) -> UsageWindow {
+        UsageWindow(
+            remainingPercent: remainingPercent,
+            resetAt: Date().addingTimeInterval(TimeInterval(durationSeconds) * (1 - elapsed)),
+            label: label,
+            durationSeconds: durationSeconds
+        )
+    }
 
     static func codex(
         remainingPercent: Int,
@@ -201,7 +262,7 @@ private enum PreviewUsageQuotaSnapshotFactory {
     }
 }
 
-private struct PreviewUsageQuotaProvider: UsageQuotaProviding {
+struct PreviewUsageQuotaProvider: UsageQuotaProviding {
     let id: UsageProviderID
     let snapshot: UsageQuotaSnapshot
 
