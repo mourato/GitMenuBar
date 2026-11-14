@@ -6,15 +6,13 @@ import SwiftUI
 /// can succeed.
 struct IssueLabelStatusView: View {
     let text: String
-    let systemImage: String
+    let icon: LucideIconName
     let retry: (() -> Void)?
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.compactSpacing) {
-            Image(systemName: systemImage)
-                .font(WorkbenchTypography.caption)
+            LucideIconView(name: icon, size: 12)
                 .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
             Text(text)
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
@@ -69,10 +67,8 @@ struct IssueLabelMenu: View {
                         Button("New Label in Repository", action: onCreate)
                     }
                 } label: {
-                    Image(systemName: "tag")
-                        .font(WorkbenchTypography.body)
+                    LucideIconView(name: .tag)
                         .foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
@@ -310,12 +306,12 @@ enum IssueLabelMessages {
         }
         IssueLabelStatusView(
             text: IssueLabelMessages.mutation(.forbidden),
-            systemImage: "exclamationmark.triangle",
+            icon: .triangleAlert,
             retry: nil
         )
         IssueLabelStatusView(
             text: "Labels are read-only in this repository. Your GitHub account can view them but not change them.",
-            systemImage: "lock",
+            icon: .lock,
             retry: nil
         )
     }

@@ -75,7 +75,7 @@ struct ProjectsSidebarView: View {
             Spacer(minLength: 0)
 
             Button(action: onAddProject) {
-                Image(systemName: "plus")
+                LucideIconView(name: .plus)
             }
             .buttonStyle(.borderless)
             .controlSize(.small)
@@ -86,17 +86,17 @@ struct ProjectsSidebarView: View {
 
             Menu {
                 Button(action: onRefreshAll) {
-                    Label("Refresh All Projects", systemImage: "arrow.clockwise")
+                    Label(lucide: .refreshCw, "Refresh All Projects")
                 }
                 Button(action: onFetchAll) {
-                    Label("Fetch All Projects", systemImage: "arrow.down.circle")
+                    Label(lucide: .circleArrowDown, "Fetch All Projects")
                 }
                 Divider()
                 Button(action: onProjectCleanup) {
-                    Label("Project Cleanup…", systemImage: "wand.and.stars")
+                    Label(lucide: .wandSparkles, "Project Cleanup…")
                 }
             } label: {
-                Image(systemName: "ellipsis.circle")
+                LucideIconView(name: .ellipsis)
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
@@ -112,7 +112,7 @@ struct ProjectsSidebarView: View {
     private var sidebarBottomActions: some View {
         HStack(alignment: .center, spacing: WorkbenchMetrics.compactSpacing) {
             Button(action: onOpenSettings) {
-                Image(systemName: "gearshape")
+                LucideIconView(name: .settings)
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.borderless)

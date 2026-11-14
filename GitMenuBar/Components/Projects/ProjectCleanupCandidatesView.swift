@@ -21,11 +21,12 @@ struct ProjectCleanupCandidatesView: View {
             }
 
             if row.units.isEmpty {
-                ContentUnavailableView(
+                LucideContentUnavailableView(
                     "No Safe Cleanup Candidates",
-                    systemImage: "checkmark.shield",
-                    description: Text(emptyDescription)
-                )
+                    icon: .shieldCheck
+                ) {
+                    Text(emptyDescription)
+                }
                 .frame(maxWidth: .infinity, minHeight: 160)
             } else {
                 ScrollView {
@@ -58,13 +59,13 @@ struct ProjectCleanupCandidatesView: View {
 
     private func candidateRow(_ unit: GitCleanupUnit) -> some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-            Label(unit.branch.reference.name, systemImage: "arrow.triangle.branch")
+            Label(lucide: .gitBranch, unit.branch.reference.name)
                 .font(.body.weight(.medium))
             Text("Merged into \(defaultBranchName)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if let worktree = unit.worktree {
-                Label(worktree.worktree.path, systemImage: "square.stack.3d.up")
+                Label(lucide: .layers, worktree.worktree.path)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)

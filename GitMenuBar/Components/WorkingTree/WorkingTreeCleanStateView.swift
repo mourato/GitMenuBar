@@ -10,10 +10,8 @@ struct WorkingTreeCleanStateView: View {
     var body: some View {
         VStack(spacing: WorkbenchMetrics.compactSpacing) {
             VStack(spacing: WorkbenchMetrics.compactSpacing) {
-                Image(systemName: "checkmark.circle")
-                    .font(.title)
+                LucideIconView(name: .circleCheck, size: 28)
                     .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
 
                 Text("Everything committed")
                     .font(WorkbenchTypography.sectionLabel)

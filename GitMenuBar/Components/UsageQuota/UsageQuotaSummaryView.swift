@@ -45,9 +45,8 @@ private struct UsageQuotaSummaryItem: View {
             HStack(spacing: WorkbenchMetrics.microSpacing) {
                 ProviderIconView(providerID: snapshot.providerID)
                 if isExhausted {
-                    Image(systemName: "exclamationmark.circle.fill")
+                    LucideIconView(name: .circleAlert)
                         .foregroundStyle(UsageQuotaAlertLevel.error.color)
-                        .accessibilityHidden(true)
                 } else {
                     switch preferences.meterStyle {
                     case .text:
@@ -167,20 +166,19 @@ struct ProviderIconView: View {
                 .foregroundStyle(tint ?? providerID.brandColor)
                 .accessibilityHidden(true)
         } else {
-            Image(systemName: fallbackSymbol)
-                .font(WorkbenchTypography.captionStrong)
+            LucideIconView(name: fallbackIcon)
                 .foregroundStyle(tint ?? .secondary)
                 .frame(width: 18, height: 18)
                 .accessibilityHidden(true)
         }
     }
 
-    private var fallbackSymbol: String {
+    private var fallbackIcon: LucideIconName {
         switch providerID {
         case .claudeCode:
-            "cloud.fill"
+            .cloud
         default:
-            "sparkles"
+            .sparkles
         }
     }
 }

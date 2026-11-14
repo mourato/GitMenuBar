@@ -35,10 +35,11 @@ struct SidePanelHeaderView: View {
             Spacer(minLength: 0)
 
             if let onStash {
-                Menu("More actions", systemImage: "ellipsis") {
+                Menu {
                     Button("Stash changes", action: onStash)
+                } label: {
+                    LucideIconView(name: .ellipsis)
                 }
-                .labelStyle(.iconOnly)
                 .font(.system(size: 12, weight: .semibold))
                 .frame(width: WorkbenchMetrics.iconHitTarget, height: WorkbenchMetrics.iconHitTarget)
                 .contentShape(Rectangle())
@@ -49,8 +50,7 @@ struct SidePanelHeaderView: View {
             }
 
             Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .semibold))
+                LucideIconView(name: .x, size: 12)
                     .frame(width: WorkbenchMetrics.iconHitTarget, height: WorkbenchMetrics.iconHitTarget)
                     .contentShape(Rectangle())
             }

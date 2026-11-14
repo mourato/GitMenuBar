@@ -142,9 +142,7 @@ struct EmptyShortcutCTAView: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Image(systemName: "return")
-                .accessibilityHidden(true)
-                .font(.system(size: 11, weight: .semibold))
+            LucideIconView(name: .cornerDownLeft, size: 12)
             Text(title)
                 .font(.system(size: 12, weight: .medium))
         }

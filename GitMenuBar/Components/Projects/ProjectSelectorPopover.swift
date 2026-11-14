@@ -29,7 +29,7 @@ struct ProjectSelectorPopoverView: View {
                     Text("Projects").font(WorkbenchTypography.captionStrong)
                     Spacer()
                     Button(action: onBrowse) {
-                        Image(systemName: "folder.badge.plus")
+                        LucideIconView(name: .folderPlus)
                     }
                     .workbenchIcon()
                     .accessibilityLabel("Add project")
@@ -144,13 +144,13 @@ private struct ProjectSelectorRowView: View {
 
             if isRenaming {
                 Button(action: onCommitRename) {
-                    Image(systemName: "checkmark")
+                    LucideIconView(name: .check)
                 }
                 .workbenchIcon()
                 .accessibilityLabel("Save project name")
 
                 Button(action: onCancelRename) {
-                    Image(systemName: "xmark")
+                    LucideIconView(name: .x)
                 }
                 .workbenchIcon()
                 .accessibilityLabel("Cancel rename")
@@ -163,7 +163,7 @@ private struct ProjectSelectorRowView: View {
                         Divider(); Button("Repository options", action: onShowRepositoryOptions)
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    LucideIconView(name: .ellipsis)
                 }
                 .menuIndicator(.hidden)
                 .workbenchIcon()
@@ -227,8 +227,7 @@ private struct ProjectSelectorRowView: View {
     }
 
     private var projectStatusIcon: some View {
-        Image(systemName: isCurrent ? "checkmark.circle.fill" : "circle")
-            .accessibilityHidden(true)
+        LucideIconView(name: isCurrent ? .circleCheck : .circle)
             .foregroundStyle(isCurrent ? Color.accentColor : Color.secondary)
     }
 

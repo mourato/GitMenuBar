@@ -14,8 +14,10 @@ struct ProjectCleanupResultsView: View {
             }
 
             HStack(spacing: WorkbenchMetrics.compactSpacing) {
-                Button("Refresh", systemImage: "arrow.clockwise", action: onRefresh)
-                    .workbenchGhost()
+                Button(action: onRefresh) {
+                    Label(lucide: .refreshCw, "Refresh")
+                }
+                .workbenchGhost()
                 Spacer(minLength: 0)
                 Button("Dismiss", action: onDismiss)
                     .workbenchSecondary()
@@ -23,11 +25,9 @@ struct ProjectCleanupResultsView: View {
             }
 
             if result.projects.isEmpty {
-                ContentUnavailableView(
-                    "No Cleanup Results",
-                    systemImage: "checkmark.circle",
-                    description: Text("No cleanup changes were recorded.")
-                )
+                LucideContentUnavailableView("No Cleanup Results", icon: .circleCheck) {
+                    Text("No cleanup changes were recorded.")
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView(.vertical) {
@@ -46,19 +46,19 @@ struct ProjectCleanupResultsView: View {
 
     private var summary: some View {
         HStack(spacing: WorkbenchMetrics.sectionSpacing) {
-            summaryItem(result.completedCount, title: "completed", icon: "checkmark.circle.fill", color: .green)
-            summaryItem(result.partialCount, title: "partial", icon: "exclamationmark.circle.fill", color: .orange)
-            summaryItem(result.skippedCount, title: "skipped", icon: "minus.circle.fill", color: .secondary)
-            summaryItem(result.failedCount, title: "failed", icon: "xmark.octagon.fill", color: .red)
-            summaryItem(result.excludedCount, title: "excluded", icon: "nosign", color: .secondary)
+            summaryItem(result.completedCount, title: "completed", icon: .circleCheck, color: .green)
+            summaryItem(result.partialCount, title: "partial", icon: .triangleAlert, color: .orange)
+            summaryItem(result.skippedCount, title: "skipped", icon: .circleMinus, color: .secondary)
+            summaryItem(result.failedCount, title: "failed", icon: .octagonX, color: .red)
+            summaryItem(result.excludedCount, title: "excluded", icon: .ban, color: .secondary)
         }
         .font(WorkbenchTypography.captionStrong)
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func summaryItem(_ count: Int, title: String, icon: String, color: Color) -> some View {
-        Label("\(count) \(title)", systemImage: icon)
+    private func summaryItem(_ count: Int, title: String, icon: LucideIconName, color: Color) -> some View {
+        Label(lucide: icon, "\(count) \(title)")
             .foregroundStyle(color)
     }
 
@@ -71,7 +71,7 @@ struct ProjectCleanupResultsView: View {
                 Spacer(minLength: WorkbenchMetrics.compactSpacing)
 
                 if project.exclusionReason != nil {
-                    Label("Excluded", systemImage: "nosign")
+                    Label(lucide: .ban, "Excluded")
                         .font(WorkbenchTypography.captionStrong)
                         .foregroundStyle(.secondary)
                 }
@@ -91,9 +91,8 @@ struct ProjectCleanupResultsView: View {
             } else {
                 ForEach(project.items) { item in
                     HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.microSpacing) {
-                        Image(systemName: statusIcon(item.status))
+                        LucideIconView(name: statusIcon(item.status))
                             .foregroundStyle(statusColor(item.status))
-                            .accessibilityHidden(true)
 
                         VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
                             Text(item.unit?.title ?? item.target.title)
@@ -125,12 +124,12 @@ struct ProjectCleanupResultsView: View {
         }
     }
 
-    private func statusIcon(_ value: GitCleanupItemResultStatus) -> String {
+    private func statusIcon(_ value: GitCleanupItemResultStatus) -> LucideIconName {
         switch value {
-        case .succeeded: "checkmark.circle.fill"
-        case .partiallySucceeded: "exclamationmark.circle.fill"
-        case .skipped: "minus.circle.fill"
-        case .failed: "xmark.octagon.fill"
+        case .succeeded: .circleCheck
+        case .partiallySucceeded: .triangleAlert
+        case .skipped: .circleMinus
+        case .failed: .octagonX
         }
     }
 

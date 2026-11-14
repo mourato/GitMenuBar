@@ -26,13 +26,13 @@ enum AgentHarnessID: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
-    var fallbackSymbol: String {
+    var fallbackIcon: LucideIconName {
         switch self {
-        case .claudeCode: "cloud.fill"
-        case .codex: "cpu"
-        case .cursor: "cursorarrow.rays"
-        case .opencode: "terminal.fill"
-        case .antigravity: "sparkles"
+        case .claudeCode: .cloud
+        case .codex: .cpu
+        case .cursor: .mousePointerClick
+        case .opencode: .terminal
+        case .antigravity: .sparkles
         }
     }
 

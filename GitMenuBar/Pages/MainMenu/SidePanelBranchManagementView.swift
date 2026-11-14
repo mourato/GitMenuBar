@@ -343,16 +343,18 @@ struct SidePanelBranchManagementView: View {
     private var footer: some View {
         let worktreeCount = gitManager.worktreeSnapshot?.worktrees.count ?? 0
         return HStack {
-            Button("New Branch", systemImage: "plus", action: onCreateBranch)
-                .workbenchSecondary()
-                .disabled(actionCoordinator.isBusy)
+            Button(action: onCreateBranch) {
+                Label(lucide: .plus, "New Branch")
+            }
+            .workbenchSecondary()
+            .disabled(actionCoordinator.isBusy)
             Spacer()
             Button {
                 withAnimation(WorkbenchMotion.swap) { worktreesExpanded.toggle() }
             } label: {
                 HStack(spacing: WorkbenchMetrics.microSpacing) {
                     Text("Worktrees \(worktreeCount)")
-                    Image(systemName: "chevron.right").rotationEffect(.degrees(worktreesExpanded ? 90 : 0))
+                    LucideIconView(name: .chevronRight, size: 12).rotationEffect(.degrees(worktreesExpanded ? 90 : 0))
                 }
                 .frame(minHeight: WorkbenchMetrics.minimumHitTarget)
                 .contentShape(Rectangle())
@@ -518,7 +520,7 @@ struct SidePanelBranchManagementView: View {
 
     private func filterField(query: Binding<String>, placeholder: String) -> some View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            LucideIconView(name: .search, size: 14).foregroundStyle(.secondary)
             TextField(placeholder, text: query)
                 .textFieldStyle(.plain)
                 .font(WorkbenchTypography.body)
@@ -526,7 +528,7 @@ struct SidePanelBranchManagementView: View {
                 Button {
                     query.wrappedValue = ""
                 } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    LucideIconView(name: .circleX).foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Clear filter")

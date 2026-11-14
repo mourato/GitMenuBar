@@ -39,7 +39,7 @@ struct AIProviderManagementSheet: View {
             VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
                 if aiProviderStore.providers.isEmpty {
                     ContentUnavailableView {
-                        Label("No AI providers", systemImage: "sparkles")
+                        Label(lucide: .sparkles, "No AI providers")
                     } description: {
                         Text("Add a provider to generate commit messages.")
                     } actions: {

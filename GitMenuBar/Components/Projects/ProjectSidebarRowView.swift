@@ -152,7 +152,7 @@ struct ProjectSidebarRowView: View {
 
     private func openCountLabel(role: GitHubCountRole, text: String) -> some View {
         HStack(spacing: WorkbenchMetrics.microSpacing) {
-            Image(systemName: role.symbol)
+            LucideIconView(name: role.symbol)
                 .foregroundStyle(role.marker)
                 .accessibilityHidden(true)
             Text(text)
@@ -192,10 +192,10 @@ private enum GitHubCountRole {
     case issues
     case pullRequests
 
-    var symbol: String {
+    var symbol: LucideIconName {
         switch self {
-        case .issues: "smallcircle.filled.circle"
-        case .pullRequests: "arrow.triangle.pull"
+        case .issues: .circleDot
+        case .pullRequests: .gitPullRequest
         }
     }
 

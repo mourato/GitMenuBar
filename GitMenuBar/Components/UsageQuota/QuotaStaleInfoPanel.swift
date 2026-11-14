@@ -8,8 +8,7 @@ struct StaleQuotaInfoButton: View {
         Button {
             presentationModel.requestQuotaInfo(snapshot: snapshot)
         } label: {
-            Image(systemName: "info.circle")
-                .font(WorkbenchTypography.caption)
+            LucideIconView(name: .info, size: 12)
                 .foregroundStyle(.secondary)
         }
         .workbenchIcon()
@@ -27,9 +26,8 @@ struct QuotaStaleInfoPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
             HStack(spacing: WorkbenchMetrics.compactSpacing) {
-                Image(systemName: "exclamationmark.triangle.fill")
+                LucideIconView(name: .triangleAlert)
                     .foregroundStyle(.orange)
-                    .accessibilityHidden(true)
 
                 Text("\(snapshot.displayName) usage is out of date")
                     .font(WorkbenchTypography.captionStrong)

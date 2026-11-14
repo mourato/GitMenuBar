@@ -26,7 +26,7 @@ enum FileTypeIconArtwork: Equatable, Sendable {
 struct FileTypeIconDescriptor: Equatable, Sendable {
     let kind: FileTypeIconKind
     let artwork: FileTypeIconArtwork
-    let fallbackSymbolName: String
+    let fallbackIcon: LucideIconName
     let lightColor: Color
     let darkColor: Color
     let lightHex: String
@@ -51,7 +51,7 @@ private struct FileTypeIconColorPair {
 private struct FileTypeIconMapping {
     let kind: FileTypeIconKind
     let artwork: FileTypeIconArtwork
-    let fallbackSymbolName: String
+    let fallbackIcon: LucideIconName
 }
 
 enum FileTypeIcon {
@@ -64,11 +64,11 @@ enum FileTypeIcon {
             return descriptor(for: mapping)
         }
 
-        return descriptor(for: .generic, artwork: .pierre("default"), fallbackSymbolName: "doc")
+        return descriptor(for: .generic, artwork: .pierre("default"), fallbackIcon: .file)
     }
 
-    static func directoryIconName(isExpanded: Bool) -> String {
-        isExpanded ? "folder.fill" : "folder"
+    static func directoryIconName(isExpanded: Bool) -> LucideIconName {
+        isExpanded ? .folderOpen : .folder
     }
 
     private static let exactFileMappings: [String: FileTypeIconMapping] = [
@@ -91,15 +91,15 @@ enum FileTypeIcon {
     ]
 
     private static let extensionMappings: [String: FileTypeIconMapping] = [
-        "swift": FileTypeIconMapping(kind: .swift, artwork: .pierre("swift"), fallbackSymbolName: "swift"),
-        "md": FileTypeIconMapping(kind: .markdown, artwork: .pierre("markdown"), fallbackSymbolName: "doc.richtext"),
-        "markdown": FileTypeIconMapping(kind: .markdown, artwork: .pierre("markdown"), fallbackSymbolName: "doc.richtext"),
-        "json": FileTypeIconMapping(kind: .json, artwork: .pierre("json"), fallbackSymbolName: "curlybraces"),
-        "yaml": FileTypeIconMapping(kind: .yaml, artwork: .pierre("json"), fallbackSymbolName: "curlybraces"),
-        "yml": FileTypeIconMapping(kind: .yaml, artwork: .pierre("json"), fallbackSymbolName: "curlybraces"),
-        "sh": FileTypeIconMapping(kind: .shell, artwork: .pierre("bash"), fallbackSymbolName: "terminal"),
-        "bash": FileTypeIconMapping(kind: .shell, artwork: .pierre("bash"), fallbackSymbolName: "terminal"),
-        "zsh": FileTypeIconMapping(kind: .shell, artwork: .pierre("bash"), fallbackSymbolName: "terminal")
+        "swift": FileTypeIconMapping(kind: .swift, artwork: .pierre("swift"), fallbackIcon: .fileCode),
+        "md": FileTypeIconMapping(kind: .markdown, artwork: .pierre("markdown"), fallbackIcon: .fileText),
+        "markdown": FileTypeIconMapping(kind: .markdown, artwork: .pierre("markdown"), fallbackIcon: .fileText),
+        "json": FileTypeIconMapping(kind: .json, artwork: .pierre("json"), fallbackIcon: .braces),
+        "yaml": FileTypeIconMapping(kind: .yaml, artwork: .pierre("json"), fallbackIcon: .braces),
+        "yml": FileTypeIconMapping(kind: .yaml, artwork: .pierre("json"), fallbackIcon: .braces),
+        "sh": FileTypeIconMapping(kind: .shell, artwork: .pierre("bash"), fallbackIcon: .terminal),
+        "bash": FileTypeIconMapping(kind: .shell, artwork: .pierre("bash"), fallbackIcon: .terminal),
+        "zsh": FileTypeIconMapping(kind: .shell, artwork: .pierre("bash"), fallbackIcon: .terminal)
     ]
     .merging(mappings(for: imageExtensions, to: imageMapping)) { current, _ in current }
     .merging(mappings(for: configExtensions, to: configMapping)) { current, _ in current }
@@ -140,47 +140,47 @@ enum FileTypeIcon {
     private static let configMapping = FileTypeIconMapping(
         kind: .config,
         artwork: .pierre("default"),
-        fallbackSymbolName: "doc.badge.gearshape"
+        fallbackIcon: .fileCog
     )
-    private static let imageMapping = FileTypeIconMapping(kind: .image, artwork: .pierre("image"), fallbackSymbolName: "photo")
+    private static let imageMapping = FileTypeIconMapping(kind: .image, artwork: .pierre("image"), fallbackIcon: .image)
     private static let uiResourceMapping = FileTypeIconMapping(
         kind: .uiResource,
         artwork: .pierre("default"),
-        fallbackSymbolName: "square.grid.2x2"
+        fallbackIcon: .grid2x2
     )
     private static let sourceCodeMapping = FileTypeIconMapping(
         kind: .sourceCode,
         artwork: .system("curlybraces"),
-        fallbackSymbolName: "curlybraces"
+        fallbackIcon: .braces
     )
-    private static let webMapping = FileTypeIconMapping(kind: .web, artwork: .system("globe"), fallbackSymbolName: "globe")
+    private static let webMapping = FileTypeIconMapping(kind: .web, artwork: .system("globe"), fallbackIcon: .globe)
     private static let stylesheetMapping = FileTypeIconMapping(
         kind: .stylesheet,
         artwork: .system("number"),
-        fallbackSymbolName: "number"
+        fallbackIcon: .hash
     )
     private static let packageMapping = FileTypeIconMapping(
         kind: .package,
         artwork: .system("shippingbox"),
-        fallbackSymbolName: "shippingbox"
+        fallbackIcon: .package
     )
-    private static let lockfileMapping = FileTypeIconMapping(kind: .package, artwork: .system("lock"), fallbackSymbolName: "lock")
+    private static let lockfileMapping = FileTypeIconMapping(kind: .package, artwork: .system("lock"), fallbackIcon: .lock)
     private static let xcodeProjectMapping = FileTypeIconMapping(
         kind: .xcodeProject,
         artwork: .system("hammer"),
-        fallbackSymbolName: "hammer"
+        fallbackIcon: .hammer
     )
 
     private static func descriptor(
         for kind: FileTypeIconKind,
         artwork: FileTypeIconArtwork,
-        fallbackSymbolName: String
+        fallbackIcon: LucideIconName
     ) -> FileTypeIconDescriptor {
         let colors = colorPair(for: kind)
         return FileTypeIconDescriptor(
             kind: kind,
             artwork: artwork,
-            fallbackSymbolName: fallbackSymbolName,
+            fallbackIcon: fallbackIcon,
             lightColor: colors.light,
             darkColor: colors.dark,
             lightHex: colors.lightHex,
@@ -192,7 +192,7 @@ enum FileTypeIcon {
         descriptor(
             for: mapping.kind,
             artwork: mapping.artwork,
-            fallbackSymbolName: mapping.fallbackSymbolName
+            fallbackIcon: mapping.fallbackIcon
         )
     }
 
@@ -346,9 +346,7 @@ struct FileTypeIconView: View {
                 .accessibilityHidden(true)
                 .frame(width: 14, height: 14)
         } else {
-            Image(systemName: descriptor.fallbackSymbolName)
-                .accessibilityHidden(true)
-                .font(WorkbenchTypography.captionStrong)
+            LucideIconView(name: descriptor.fallbackIcon)
                 .foregroundStyle(descriptor.color(for: colorScheme))
         }
     }
@@ -358,8 +356,7 @@ struct FileTypeDirectoryIconView: View {
     let isExpanded: Bool
 
     var body: some View {
-        Image(systemName: FileTypeIcon.directoryIconName(isExpanded: isExpanded))
-            .font(WorkbenchTypography.captionStrong)
+        LucideIconView(name: FileTypeIcon.directoryIconName(isExpanded: isExpanded))
             .foregroundStyle(.secondary)
             .frame(width: 14, alignment: .center)
             .accessibilityHidden(true)

@@ -278,21 +278,21 @@ private enum RepositoryOverviewMetricDensity: Equatable {
 private struct RepositoryOverviewMetricDefinition {
     let title: String
     let shortTitle: String
-    let symbol: String
+    let symbol: LucideIconName
     let accessibilityHint: String
 
-    init(_ title: String, _ shortTitle: String, _ symbol: String, _ accessibilityHint: String) {
+    init(_ title: String, _ shortTitle: String, _ symbol: LucideIconName, _ accessibilityHint: String) {
         self.title = title
         self.shortTitle = shortTitle
         self.symbol = symbol
         self.accessibilityHint = accessibilityHint
     }
 
-    static let changes = Self("Changes", "Changes", "plus.forwardslash.minus", "Opens Changes in the side panel")
-    static let branches = Self("Branches", "Branches", "arrow.triangle.branch", "Opens Branches in the side panel")
-    static let stashes = Self("Stashes", "Stashes", "tray.full", "Opens Stashes in the side panel")
-    static let pullRequests = Self("Pull Requests", "PRs", "arrow.triangle.pull", "Opens pull requests on GitHub")
-    static let issues = Self("Issues", "Issues", "smallcircle.filled.circle", "Opens Issues in the side panel")
+    static let changes = Self("Changes", "Changes", .diff, "Opens Changes in the side panel")
+    static let branches = Self("Branches", "Branches", .gitBranch, "Opens Branches in the side panel")
+    static let stashes = Self("Stashes", "Stashes", .archive, "Opens Stashes in the side panel")
+    static let pullRequests = Self("Pull Requests", "PRs", .gitPullRequest, "Opens pull requests on GitHub")
+    static let issues = Self("Issues", "Issues", .circleDot, "Opens Issues in the side panel")
 }
 
 private struct RepositoryOverviewMetricPresentation {
@@ -306,7 +306,7 @@ private struct RepositoryOverviewMetricPresentation {
 private struct RepositoryOverviewMetric {
     let title: String
     let shortTitle: String
-    let symbol: String
+    let symbol: LucideIconName
     let value: String
     let qualifier: String
     let state: RepositoryMetricState<Int>
@@ -438,10 +438,8 @@ private struct RepositoryOverviewColumnView: View {
             }
         case .compact:
             HStack(spacing: WorkbenchMetrics.chipSpacing) {
-                Image(systemName: metric.symbol)
-                    .font(WorkbenchTypography.captionStrong)
+                LucideIconView(name: metric.symbol, size: 12)
                     .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
                 valueText
             }
             .frame(maxWidth: .infinity, alignment: .center)

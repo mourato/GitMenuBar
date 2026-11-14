@@ -134,7 +134,7 @@ struct SidePanelDetailView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .workbenchPanelSurface(cornerRadius: WorkbenchMetrics.cornerRadius, material: .thin)
         } else {
-            emptyState("This file is no longer in the working tree", systemImage: "doc", description: "It was staged, discarded, or the working tree refreshed.")
+            emptyState("This file is no longer in the working tree", icon: .file, description: "It was staged, discarded, or the working tree refreshed.")
         }
     }
 
@@ -262,7 +262,7 @@ struct SidePanelDetailView: View {
                 .accessibilityHint("Parks working tree changes in a new stash")
             }
             if gitManager.stashes.isEmpty {
-                emptyState("No retained stashes", systemImage: "archivebox", description: "Stash to park work in progress without committing.")
+                emptyState("No retained stashes", icon: .archive, description: "Stash to park work in progress without committing.")
             } else {
                 ForEach(gitManager.stashes) { stash in
                     VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
@@ -319,11 +319,11 @@ struct SidePanelDetailView: View {
     }
 
     @ViewBuilder
-    private func emptyState(_ title: String, systemImage: String, description: String? = nil) -> some View {
+    private func emptyState(_ title: String, icon: LucideIconName, description: String? = nil) -> some View {
         if let description {
-            ContentUnavailableView(title, systemImage: systemImage, description: Text(description))
+            LucideContentUnavailableView(title, icon: icon) { Text(description) }
         } else {
-            ContentUnavailableView(title, systemImage: systemImage)
+            LucideContentUnavailableView(title, icon: icon)
         }
     }
 

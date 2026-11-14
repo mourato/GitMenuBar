@@ -34,11 +34,8 @@ struct AgentBadgeIconView: View {
                 .foregroundStyle(iconTint)
                 .accessibilityHidden(true)
         } else {
-            Image(systemName: activity.harness.fallbackSymbol)
-                .resizable()
-                .scaledToFit()
+            LucideIconView(name: activity.harness.fallbackIcon)
                 .foregroundStyle(iconTint)
-                .accessibilityHidden(true)
         }
     }
 

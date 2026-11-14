@@ -29,7 +29,7 @@ struct QuotaAPIKeyEditorView: View {
                 Button {
                     isRevealed.toggle()
                 } label: {
-                    Image(systemName: isRevealed ? "eye.slash" : "eye")
+                    LucideIconView(name: isRevealed ? .eyeOff : .eye)
                         .foregroundStyle(.secondary)
                         .frame(minWidth: WorkbenchMetrics.iconHitTarget, minHeight: WorkbenchMetrics.iconHitTarget)
                 }

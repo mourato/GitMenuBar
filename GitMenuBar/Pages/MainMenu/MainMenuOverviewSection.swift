@@ -52,8 +52,7 @@ struct MainMenuOverviewSection: View {
 
     private func createRepoSuggestionBanner(path: String) -> some View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .accessibilityHidden(true)
+            LucideIconView(name: .triangleAlert)
                 .foregroundStyle(.orange)
 
             Text("GitHub remote not found for this repository.")

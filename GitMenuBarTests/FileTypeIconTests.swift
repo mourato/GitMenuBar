@@ -7,7 +7,7 @@ final class FileTypeIconTests: XCTestCase {
 
         XCTAssertEqual(descriptor.kind, .swift)
         XCTAssertEqual(descriptor.artwork, .pierre("swift"))
-        XCTAssertEqual(descriptor.fallbackSymbolName, "swift")
+        XCTAssertEqual(descriptor.fallbackIcon, .fileCode)
     }
 
     func testPackageSwiftUsesSwiftKind() {
@@ -15,7 +15,7 @@ final class FileTypeIconTests: XCTestCase {
 
         XCTAssertEqual(descriptor.kind, .swift)
         XCTAssertEqual(descriptor.artwork, .pierre("swift"))
-        XCTAssertEqual(descriptor.fallbackSymbolName, "swift")
+        XCTAssertEqual(descriptor.fallbackIcon, .fileCode)
     }
 
     func testMarkdownExtensionMapsToMarkdownKind() {
@@ -23,7 +23,7 @@ final class FileTypeIconTests: XCTestCase {
 
         XCTAssertEqual(descriptor.kind, .markdown)
         XCTAssertEqual(descriptor.artwork, .pierre("markdown"))
-        XCTAssertEqual(descriptor.fallbackSymbolName, "doc.richtext")
+        XCTAssertEqual(descriptor.fallbackIcon, .fileText)
     }
 
     func testMarkdownVariantExtensionMapsToMarkdownKind() {
@@ -31,7 +31,7 @@ final class FileTypeIconTests: XCTestCase {
 
         XCTAssertEqual(descriptor.kind, .markdown)
         XCTAssertEqual(descriptor.artwork, .pierre("markdown"))
-        XCTAssertEqual(descriptor.fallbackSymbolName, "doc.richtext")
+        XCTAssertEqual(descriptor.fallbackIcon, .fileText)
     }
 
     func testJSONExtensionMapsToJSONKind() {
@@ -39,7 +39,7 @@ final class FileTypeIconTests: XCTestCase {
 
         XCTAssertEqual(descriptor.kind, .json)
         XCTAssertEqual(descriptor.artwork, .pierre("json"))
-        XCTAssertEqual(descriptor.fallbackSymbolName, "curlybraces")
+        XCTAssertEqual(descriptor.fallbackIcon, .braces)
     }
 
     func testYAMLExtensionsMapToYAMLKind() {
@@ -48,7 +48,7 @@ final class FileTypeIconTests: XCTestCase {
         XCTAssertEqual(descriptor.kind, .yaml)
         XCTAssertEqual(FileTypeIcon.resolve(for: "config.yml").kind, .yaml)
         XCTAssertEqual(descriptor.artwork, .pierre("json"))
-        XCTAssertEqual(descriptor.fallbackSymbolName, "curlybraces")
+        XCTAssertEqual(descriptor.fallbackIcon, .braces)
     }
 
     func testShellExtensionsMapToShellKind() {
@@ -56,7 +56,7 @@ final class FileTypeIconTests: XCTestCase {
             let descriptor = FileTypeIcon.resolve(for: path)
             XCTAssertEqual(descriptor.kind, .shell, "Expected shell kind for \(path)")
             XCTAssertEqual(descriptor.artwork, .pierre("bash"))
-            XCTAssertEqual(descriptor.fallbackSymbolName, "terminal")
+            XCTAssertEqual(descriptor.fallbackIcon, .terminal)
         }
     }
 
@@ -65,7 +65,7 @@ final class FileTypeIconTests: XCTestCase {
 
         XCTAssertEqual(descriptor.kind, .image)
         XCTAssertEqual(descriptor.artwork, .pierre("image"))
-        XCTAssertEqual(descriptor.fallbackSymbolName, "photo")
+        XCTAssertEqual(descriptor.fallbackIcon, .image)
     }
 
     func testUnknownExtensionMapsToGenericKind() {
@@ -73,7 +73,7 @@ final class FileTypeIconTests: XCTestCase {
 
         XCTAssertEqual(descriptor.kind, .generic)
         XCTAssertEqual(descriptor.artwork, .pierre("default"))
-        XCTAssertEqual(descriptor.fallbackSymbolName, "doc")
+        XCTAssertEqual(descriptor.fallbackIcon, .file)
     }
 
     func testMakefileMapsToConfigKind() {
@@ -81,7 +81,7 @@ final class FileTypeIconTests: XCTestCase {
 
         XCTAssertEqual(descriptor.kind, .config)
         XCTAssertEqual(descriptor.artwork, .pierre("default"))
-        XCTAssertEqual(descriptor.fallbackSymbolName, "doc.badge.gearshape")
+        XCTAssertEqual(descriptor.fallbackIcon, .fileCog)
     }
 
     func testDockerfileMapsToConfigKind() {
@@ -89,14 +89,14 @@ final class FileTypeIconTests: XCTestCase {
 
         XCTAssertEqual(descriptor.kind, .config)
         XCTAssertEqual(descriptor.artwork, .pierre("default"))
-        XCTAssertEqual(descriptor.fallbackSymbolName, "doc.badge.gearshape")
+        XCTAssertEqual(descriptor.fallbackIcon, .fileCog)
     }
 
     func testHiddenConfigFilesMapToConfigKind() {
         for path in [".gitignore", ".gitattributes", ".swiftformat", ".swiftlint.yml"] {
             let descriptor = FileTypeIcon.resolve(for: path)
             XCTAssertEqual(descriptor.kind, .config, "Expected config kind for \(path)")
-            XCTAssertEqual(descriptor.fallbackSymbolName, "doc.badge.gearshape")
+            XCTAssertEqual(descriptor.fallbackIcon, .fileCog)
         }
     }
 
@@ -105,7 +105,7 @@ final class FileTypeIconTests: XCTestCase {
             let descriptor = FileTypeIcon.resolve(for: path)
             XCTAssertEqual(descriptor.kind, .sourceCode, "Expected sourceCode kind for \(path)")
             XCTAssertEqual(descriptor.artwork, .system("curlybraces"))
-            XCTAssertEqual(descriptor.fallbackSymbolName, "curlybraces")
+            XCTAssertEqual(descriptor.fallbackIcon, .braces)
         }
     }
 
@@ -114,7 +114,7 @@ final class FileTypeIconTests: XCTestCase {
 
         XCTAssertEqual(descriptor.kind, .web)
         XCTAssertEqual(descriptor.artwork, .system("globe"))
-        XCTAssertEqual(descriptor.fallbackSymbolName, "globe")
+        XCTAssertEqual(descriptor.fallbackIcon, .globe)
     }
 
     func testStylesheetExtensionsMapToStylesheetKind() {
@@ -122,7 +122,7 @@ final class FileTypeIconTests: XCTestCase {
             let descriptor = FileTypeIcon.resolve(for: path)
             XCTAssertEqual(descriptor.kind, .stylesheet, "Expected stylesheet kind for \(path)")
             XCTAssertEqual(descriptor.artwork, .system("number"))
-            XCTAssertEqual(descriptor.fallbackSymbolName, "number")
+            XCTAssertEqual(descriptor.fallbackIcon, .hash)
         }
     }
 
@@ -131,7 +131,7 @@ final class FileTypeIconTests: XCTestCase {
             let descriptor = FileTypeIcon.resolve(for: path)
             XCTAssertEqual(descriptor.kind, .package, "Expected package kind for \(path)")
             XCTAssertEqual(descriptor.artwork, .system("shippingbox"))
-            XCTAssertEqual(descriptor.fallbackSymbolName, "shippingbox")
+            XCTAssertEqual(descriptor.fallbackIcon, .package)
         }
     }
 
@@ -140,7 +140,7 @@ final class FileTypeIconTests: XCTestCase {
             let descriptor = FileTypeIcon.resolve(for: path)
             XCTAssertEqual(descriptor.kind, .package, "Expected package kind for \(path)")
             XCTAssertEqual(descriptor.artwork, .system("lock"))
-            XCTAssertEqual(descriptor.fallbackSymbolName, "lock")
+            XCTAssertEqual(descriptor.fallbackIcon, .lock)
         }
     }
 
@@ -149,13 +149,13 @@ final class FileTypeIconTests: XCTestCase {
             let descriptor = FileTypeIcon.resolve(for: path)
             XCTAssertEqual(descriptor.kind, .xcodeProject, "Expected xcodeProject kind for \(path)")
             XCTAssertEqual(descriptor.artwork, .system("hammer"))
-            XCTAssertEqual(descriptor.fallbackSymbolName, "hammer")
+            XCTAssertEqual(descriptor.fallbackIcon, .hammer)
         }
     }
 
     func testDirectoryIconNameReflectsExpansion() {
-        XCTAssertEqual(FileTypeIcon.directoryIconName(isExpanded: false), "folder")
-        XCTAssertEqual(FileTypeIcon.directoryIconName(isExpanded: true), "folder.fill")
+        XCTAssertEqual(FileTypeIcon.directoryIconName(isExpanded: false), .folder)
+        XCTAssertEqual(FileTypeIcon.directoryIconName(isExpanded: true), .folderOpen)
     }
 
     func testLightAndDarkColorsDifferForSwift() {

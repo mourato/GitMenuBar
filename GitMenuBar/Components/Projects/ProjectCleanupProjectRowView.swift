@@ -34,7 +34,7 @@ struct ProjectCleanupProjectRowView: View {
             }
             Spacer(minLength: 0)
             Button(action: onInspect) {
-                Image(systemName: "eye")
+                LucideIconView(name: .eye)
             }
             .workbenchIcon()
             .accessibilityLabel("View safe cleanup candidates for \(row.project.name)")

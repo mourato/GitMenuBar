@@ -25,11 +25,13 @@ ICONS=(
     arrow-up
     ban
     box-select
+    braces
     check
     chevron-down
     chevron-left
     chevron-right
     chevron-up
+    circle
     circle-alert
     circle-arrow-down
     circle-arrow-up
@@ -42,6 +44,8 @@ ICONS=(
     circle-x
     cloud
     copy
+    corner-down-left
+    cpu
     diff
     ellipsis
     equal
@@ -49,6 +53,7 @@ ICONS=(
     eye-off
     file
     file-check
+    file-code
     file-cog
     file-plus
     file-text
@@ -60,15 +65,23 @@ ICONS=(
     git-branch
     git-pull-request
     globe
+    grid-2x2
+    hammer
+    hash
     house
+    image
     info
     keyboard
     layers
     list
     list-tree
     lock
+    log-in
     map-pin
+    menu
+    mouse-pointer-click
     octagon-x
+    package
     paintbrush
     pencil
     plus
@@ -76,8 +89,10 @@ ICONS=(
     refresh-cw
     search
     settings
+    shield-check
     sparkles
     tag
+    terminal
     text-cursor
     trash-2
     triangle-alert
