@@ -73,18 +73,13 @@ struct BranchManagementRowView: View {
     private var rowContent: some View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
             if branch.isCurrent {
-                Image(systemName: "checkmark")
-                    .font(WorkbenchTypography.captionStrong)
+                LucideIconView(name: .check, size: 12)
                     .foregroundStyle(Color.accentColor)
                     .frame(width: Layout.statusSlotDiameter)
-                    .accessibilityHidden(true)
             } else if branch.isRemote {
-                Image(systemName: "icloud")
-                    .font(WorkbenchTypography.caption)
+                LucideIconView(name: .cloud, size: 12)
                     .foregroundStyle(.secondary)
                     .frame(width: Layout.statusSlotDiameter)
-                    .accessibilityHidden(true)
-            } else {
                 Circle()
                     .fill(statusDotColor)
                     .frame(width: Layout.statusDotDiameter, height: Layout.statusDotDiameter)
@@ -116,10 +111,12 @@ struct BranchManagementRowView: View {
                 CleanupStatusBadgeView(status: cleanupStatus)
             }
 
-            Menu("Branch actions", systemImage: "ellipsis.circle") {
+            Menu {
                 branchActions
+            } label: {
+                LucideIconView(name: .ellipsis)
+                    .foregroundStyle(.secondary)
             }
-            .labelStyle(.iconOnly)
             .font(WorkbenchTypography.body)
             .foregroundStyle(.secondary)
             .menuStyle(.borderlessButton)
@@ -182,25 +179,25 @@ struct BranchManagementRowView: View {
     private var trackingBadge: some View {
         switch branch.trackingStatus {
         case .upToDate:
-            Label("Up to date", systemImage: "equal")
+            Label(lucide: .equal, "Up to date")
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.green)
         case let .ahead(count):
-            Label("Ahead \(count)", systemImage: "arrow.up")
+            Label(lucide: .arrowUp, "Ahead \(count)")
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(Color.accentColor)
         case let .behind(count):
-            Label("Behind \(count)", systemImage: "arrow.down")
+            Label(lucide: .arrowDown, "Behind \(count)")
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.orange)
         case let .diverged(ahead, behind):
-            Label("Diverged \(ahead)/\(behind)", systemImage: "arrow.left.arrow.right")
+            Label(lucide: .arrowLeftRight, "Diverged \(ahead)/\(behind)")
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.orange)
         case .noRemote:
             EmptyView()
         case .unknown:
-            Label("Unknown", systemImage: "questionmark")
+            Label(lucide: .circleHelp, "Unknown")
                 .font(WorkbenchTypography.caption)
                 .foregroundStyle(.secondary)
         }

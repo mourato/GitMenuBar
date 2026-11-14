@@ -52,6 +52,7 @@ ICONS=(
     file-cog
     file-plus
     file-text
+    fold-vertical
     folder
     folder-open
     folder-plus
@@ -63,6 +64,8 @@ ICONS=(
     info
     keyboard
     layers
+    list
+    list-tree
     lock
     map-pin
     octagon-x
@@ -79,6 +82,7 @@ ICONS=(
     trash-2
     triangle-alert
     undo-2
+    unfold-vertical
     wand-sparkles
     x
     zap

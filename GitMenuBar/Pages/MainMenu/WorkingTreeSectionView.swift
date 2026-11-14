@@ -16,7 +16,7 @@ struct WorkingTreeSectionView: View {
     let onReveal: (String) -> Void
     let onAction: () -> Void
     let onDiscardAll: (() -> Void)?
-    let actionIcon: String
+    let actionIcon: LucideIconName
     let actionHelp: String
     var showsViewModeToggle = false
     var showsEmptyState = false
@@ -172,7 +172,7 @@ struct WorkingTreeSectionView: View {
         onReveal: { _ in },
         onAction: {},
         onDiscardAll: nil,
-        actionIcon: "minus.circle",
+        actionIcon: .circleMinus,
         actionHelp: "Unstage all staged changes"
     )
     .padding()
@@ -196,7 +196,7 @@ struct WorkingTreeSectionView: View {
         onReveal: { _ in },
         onAction: {},
         onDiscardAll: nil,
-        actionIcon: "minus.circle",
+        actionIcon: .circleMinus,
         actionHelp: "Unstage all staged changes",
         showsEmptyState: true
     )
@@ -242,7 +242,7 @@ struct WorkingTreeSectionView: View {
         onReveal: { _ in },
         onAction: {},
         onDiscardAll: {},
-        actionIcon: "plus.circle",
+        actionIcon: .circlePlus,
         actionHelp: "Stage all unstaged changes",
         showsViewModeToggle: true
     )

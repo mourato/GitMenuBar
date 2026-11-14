@@ -50,14 +50,13 @@ struct WorkingTreeLineDiffView: View {
 
 @MainActor
 func workingTreeRowIconButton(
-    systemName: String,
+    icon: LucideIconName,
     help: String,
     accessibilityLabel: String,
     action: @escaping () -> Void
 ) -> some View {
     Button(action: action) {
-        Image(systemName: systemName)
-            .font(WorkbenchTypography.captionStrong)
+        LucideIconView(name: icon, size: 14)
             .foregroundStyle(.primary)
             .frame(
                 width: WorkingTreeLayoutMetrics.actionHitTarget,
@@ -82,7 +81,7 @@ struct WorkingTreeDiffTreeFileRowView: View {
     let showsChevronSpacer: Bool
     let stat: DiffTreeStat?
     let file: WorkingTreeFile
-    let actionIcon: String
+    let actionIcon: LucideIconName
     let actionHelp: String
     let actionAccessibilityLabel: String
     var isSelected = false
@@ -154,14 +153,14 @@ struct WorkingTreeDiffTreeFileRowView: View {
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(action: onAction) {
-                Label(actionAccessibilityLabel, systemImage: actionIcon)
+                Label(lucide: actionIcon, actionAccessibilityLabel)
             }
             .tint(.accentColor)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             if let onDiscard {
                 Button(role: .destructive, action: onDiscard) {
-                    Label("Discard changes in \(name)", systemImage: "arrow.uturn.backward")
+                    Label(lucide: .undo2, "Discard changes in \(name)")
                 }
             }
         }
@@ -179,11 +178,9 @@ struct WorkingTreeDiffTreeFileRowView: View {
                         .frame(width: WorkingTreeLayoutMetrics.treeChevronWidth, height: WorkingTreeLayoutMetrics.treeChevronWidth)
                 }
 
-                Image(systemName: "doc")
-                    .font(WorkbenchTypography.captionStrong)
+                LucideIconView(name: .file, size: 14)
                     .foregroundStyle(.secondary)
                     .frame(width: 14, alignment: .center)
-                    .accessibilityHidden(true)
 
                 HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.microSpacing) {
                     Text(name)
@@ -220,7 +217,7 @@ struct WorkingTreeDiffTreeFileRowView: View {
                     HStack(spacing: 0) {
                         if let onOpen {
                             workingTreeRowIconButton(
-                                systemName: "doc",
+                                icon: .file,
                                 help: "Open File",
                                 accessibilityLabel: "Open \(name)",
                                 action: onOpen
@@ -229,7 +226,7 @@ struct WorkingTreeDiffTreeFileRowView: View {
 
                         if let onDiscard {
                             workingTreeRowIconButton(
-                                systemName: "arrow.uturn.backward",
+                                icon: .undo2,
                                 help: "Discard Changes",
                                 accessibilityLabel: "Discard changes in \(name)",
                                 action: onDiscard
@@ -237,7 +234,7 @@ struct WorkingTreeDiffTreeFileRowView: View {
                         }
 
                         workingTreeRowIconButton(
-                            systemName: actionIcon,
+                            icon: actionIcon,
                             help: actionHelp,
                             accessibilityLabel: actionAccessibilityLabel,
                             action: onAction

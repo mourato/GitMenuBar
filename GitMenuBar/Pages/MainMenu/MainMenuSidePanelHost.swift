@@ -10,7 +10,7 @@ struct MainMenuSidePanelHost: View {
     @Binding var commitMessage: String
     var commitFieldFocus: FocusState<Bool>.Binding
     let showsCommitField: Bool
-    let commitPrimaryButtonSystemImage: String?
+    let commitPrimaryButtonIcon: LucideIconName?
     let isCommitActionBusy: Bool
     let commitAutomaticMessageHint: String?
     let commitGenerationDisabledReason: String?
@@ -59,7 +59,7 @@ struct MainMenuSidePanelHost: View {
                 commitMessage: $commitMessage,
                 commitFieldFocus: commitFieldFocus,
                 showsCommitField: showsCommitField,
-                commitPrimaryButtonSystemImage: commitPrimaryButtonSystemImage,
+                commitPrimaryButtonIcon: commitPrimaryButtonIcon,
                 isCommitActionBusy: isCommitActionBusy,
                 commitAutomaticMessageHint: commitAutomaticMessageHint,
                 commitGenerationDisabledReason: commitGenerationDisabledReason,
@@ -135,7 +135,7 @@ private struct SidePanelHostPreviewContent: View {
             commitMessage: $message,
             commitFieldFocus: $isFocused,
             showsCommitField: true,
-            commitPrimaryButtonSystemImage: "checkmark",
+            commitPrimaryButtonIcon: .check,
             isCommitActionBusy: false,
             commitAutomaticMessageHint: nil,
             commitGenerationDisabledReason: nil,

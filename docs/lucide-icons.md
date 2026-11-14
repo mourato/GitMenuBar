@@ -9,7 +9,7 @@ vendored as a pinned `lucide-static` SVG subset. Rationale lives in
 |-----------|-------|
 | **SPDX** | `ISC` |
 | **Source** | npm registry tarball `lucide-static@1.72.0` via `scripts/sync-lucide-icons.sh` |
-| **Vendored** | 64 SVGs in `GitMenuBar/Resources/LucideIcons/` (epic-table subset only) |
+| **Vendored** | 68 SVGs in `GitMenuBar/Resources/LucideIcons/` (epic-table subset only) |
 | **Permissibility** | Clearly permissible for redistribution and derivative use under ISC |
 
 ## Using icons

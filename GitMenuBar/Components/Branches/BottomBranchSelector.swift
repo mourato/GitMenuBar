@@ -16,23 +16,21 @@ struct BottomBranchSelectorView: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 8) {
-                Label(currentBranch, systemImage: "arrow.triangle.branch")
+                Label(lucide: .gitBranch, currentBranch)
                     .font(WorkbenchTypography.detail)
                     .foregroundStyle(.primary)
                     .labelStyle(.titleAndIcon)
                     .lineLimit(1)
 
                 if commitCount > 0 {
-                    statusBadge(symbol: "arrow.up", count: commitCount, style: .accent)
+                    statusBadge(icon: .arrowUp, count: commitCount, style: .accent)
                 }
 
                 if isRemoteAhead {
-                    statusBadge(symbol: "arrow.down", count: behindCount, style: .warning)
+                    statusBadge(icon: .arrowDown, count: behindCount, style: .warning)
                 }
 
-                Image(systemName: "chevron.down")
-                    .accessibilityHidden(true)
-                    .font(WorkbenchTypography.captionStrong)
+                LucideIconView(name: .chevronDown, size: 12)
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 10)
@@ -94,11 +92,10 @@ struct BottomBranchSelectorView: View {
         return .clear
     }
 
-    private func statusBadge(symbol: String, count: Int, style: BadgeStyle) -> some View {
+    private func statusBadge(icon: LucideIconName, count: Int, style: BadgeStyle) -> some View {
         HStack(spacing: 4) {
-            Image(systemName: symbol)
-                .accessibilityHidden(true)
-                .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+            LucideIconView(name: icon, size: 12)
+                .foregroundStyle(style.foregroundColor)
             Text("\(count)")
                 .contentTransition(reduceMotion ? .identity : .numericText())
         }
