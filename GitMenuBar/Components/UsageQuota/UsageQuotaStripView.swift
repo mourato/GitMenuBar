@@ -61,7 +61,7 @@ struct UsageQuotaStripView: View {
     }
 }
 
-private struct UsageQuotaDetailsPopover: View {
+struct UsageQuotaDetailsPopover: View {
     let snapshots: [UsageQuotaSnapshot]
 
     @Environment(UsageQuotaPresentationPreferences.self) private var preferences
@@ -74,19 +74,24 @@ private struct UsageQuotaDetailsPopover: View {
     var body: some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
+                if !snapshots.isEmpty {
+                    UsageQuotaValueStyleCaption(showUsed: showUsed)
+                }
                 ForEach(snapshots) { snapshot in
-                    UsageQuotaDotsCard(
+                    UsageQuotaLineCard(
                         providerID: snapshot.providerID,
                         displayName: snapshot.displayName,
-                        pillText: UsageQuotaDotsCard.pillText(
+                        pillText: UsageQuotaLineCard.pillText(
                             plan: snapshot.planText,
-                            intervalChip: snapshot.primaryDisplayWindow?.intervalChip,
                             resetCredits: snapshot.resetCreditsAvailable
                         ),
                         staleStyle: snapshot.isStale ? .button(snapshot) : .none,
-                        rows: dotsRows(for: snapshot),
+                        rows: quotaRows(for: snapshot),
                         footnote: footnoteText(for: snapshot),
-                        showUsed: showUsed
+                        showUsed: showUsed,
+                        showsPace: preferences.showsPace,
+                        workdaysPerWeek: preferences.workdaysPerWeek,
+                        showsWorkdayTicks: preferences.workdayTickAppearance == .subtle
                     )
                     .padding(WorkbenchMetrics.compactSpacing)
                     .background(
@@ -97,7 +102,7 @@ private struct UsageQuotaDetailsPopover: View {
                 }
 
                 if let estimates = usageQuotaStore.costEstimates, !estimates.rows.isEmpty {
-                    UsageQuotaCostDotsCard(estimates: estimates)
+                    UsageQuotaCostCard(estimates: estimates)
                         .padding(WorkbenchMetrics.compactSpacing)
                         .background(
                             RoundedRectangle(cornerRadius: WorkbenchMetrics.cornerRadius, style: .continuous)
@@ -113,41 +118,37 @@ private struct UsageQuotaDetailsPopover: View {
         .accessibilityLabel("AI usage quota details")
     }
 
-    private func dotsRows(for snapshot: UsageQuotaSnapshot) -> [UsageQuotaDotsCard.RowData] {
-        var rows: [UsageQuotaDotsCard.RowData] = []
+    private func quotaRows(for snapshot: UsageQuotaSnapshot) -> [UsageQuotaLineCard.RowData] {
+        var rows: [UsageQuotaLineCard.RowData] = []
         if let window = snapshot.primaryDisplayWindow {
             let isSessionWindow = snapshot.sessionWindow == window
-            rows.append(UsageQuotaDotsCard.RowData(
+            rows.append(UsageQuotaLineCard.RowData(
                 title: UsageQuotaPace.rowTitle(isSessionWindow: isSessionWindow, window: window),
-                countdown: UsageQuotaDotsCard.bareCountdown(until: window.resetAt),
-                remainingPercent: window.remainingPercent,
+                window: window,
                 thresholds: isSessionWindow ? preferences.sessionWarningThresholds : preferences.weeklyWarningThresholds,
                 kind: isSessionWindow ? .session : .weekly
             ))
         }
         if let weekly = secondaryWeeklyWindow(for: snapshot) {
-            rows.append(UsageQuotaDotsCard.RowData(
+            rows.append(UsageQuotaLineCard.RowData(
                 title: "Weekly",
-                countdown: UsageQuotaDotsCard.bareCountdown(until: weekly.resetAt),
-                remainingPercent: weekly.remainingPercent,
+                window: weekly,
                 thresholds: preferences.weeklyWarningThresholds,
                 kind: .weekly
             ))
         }
         if let monthly = snapshot.tertiaryMonthlyWindow {
-            rows.append(UsageQuotaDotsCard.RowData(
+            rows.append(UsageQuotaLineCard.RowData(
                 title: monthly.label,
-                countdown: UsageQuotaDotsCard.bareCountdown(until: monthly.resetAt),
-                remainingPercent: monthly.remainingPercent,
+                window: monthly,
                 thresholds: preferences.weeklyWarningThresholds,
                 kind: .model
             ))
         }
         for window in snapshot.modelWindows {
-            rows.append(UsageQuotaDotsCard.RowData(
+            rows.append(UsageQuotaLineCard.RowData(
                 title: window.label,
-                countdown: UsageQuotaDotsCard.bareCountdown(until: window.resetAt),
-                remainingPercent: window.remainingPercent,
+                window: window,
                 thresholds: preferences.weeklyWarningThresholds,
                 kind: .model
             ))
@@ -172,3 +173,42 @@ private struct UsageQuotaDetailsPopover: View {
         return snapshot.creditValueText
     }
 }
+
+#if DEBUG
+    #Preview("Usage Quota Details Popover") {
+        UsageQuotaDetailsPopoverPreviewHarness()
+    }
+
+    private struct UsageQuotaDetailsPopoverPreviewHarness: View {
+        @State private var store: UsageQuotaStore
+        @State private var preferences: UsageQuotaPresentationPreferences
+
+        init() {
+            let name = "UsageQuotaDetailsPopoverPreview"
+            let defaults = UserDefaults(suiteName: name) ?? .standard
+            defaults.removePersistentDomain(forName: name)
+            defaults.set(true, forKey: AppPreferences.Keys.showAIUsageQuotas)
+            let snapshotStore = UsageQuotaSnapshotStore(defaults: defaults)
+            let snapshots = PreviewUsageQuotaSnapshotFactory.issueFixture
+            for snapshot in snapshots {
+                snapshotStore.save(snapshot)
+            }
+            _store = State(wrappedValue: UsageQuotaStore(
+                defaults: defaults,
+                snapshotStore: snapshotStore,
+                providers: snapshots.map { PreviewUsageQuotaProvider(snapshot: $0) }
+            ))
+            _preferences = State(wrappedValue: UsageQuotaPresentationPreferences(
+                defaults: defaults,
+                keyStore: InMemoryAIAPIKeyStore()
+            ))
+        }
+
+        var body: some View {
+            UsageQuotaDetailsPopover(snapshots: PreviewUsageQuotaSnapshotFactory.issueFixture)
+                .environment(store)
+                .environment(preferences)
+                .background(Color(nsColor: .windowBackgroundColor))
+        }
+    }
+#endif

@@ -199,16 +199,36 @@ corner style.
 - Commit workspace: in the side panel under the Working Tree selection, the
   commit composer sits fixed above the working tree, which is the workspace's
   single scroll owner. The composer owns the primary Commit action.
-- Quota meters follow `UsageQuotaPresentationPreferences` (value style, meter
-  style, warning thresholds). Color appears only past a configured threshold.
-  Meter size comes from `WorkbenchMetrics.quotaMeterWidth` and
-  `WorkbenchMetrics.quotaMeterHeight`.
+- Quota detail cards in the submenu and the footer popover always use the
+  continuous Line meter. The `Menu bar` Style preference changes only the
+  status-item strip. Value style (Remaining or Used) applies to both cards: a
+  surface states `% remaining` or `% used` once, rows show only `%`, and each
+  row's VoiceOver value keeps the direction plus the provider and window name.
+- A quota row is the window title with a compact `↻` reset countdown, a
+  flexible continuous bar, and a right-aligned monospaced percent. The reset
+  tooltip and accessibility say `Resets in …`; an unknown or past reset shows
+  no time. `UsageQuotaPace.rowTitle` still names special-duration windows.
 - A quota card header shows one provider icon, one provider name, at most one
-  plan/reset chip, and at most one stale marker. The provider name is the
-  header's primary text (semibold, primary color) and keeps its width; the chip
-  wraps before the name loses legibility. VoiceOver reads provider, plan, and
-  resets once from the header; the stale state stays reachable through that
-  header and, when the card has one, through a single stale control.
+  plan/reset chip, and at most one stale marker. The interval is not repeated
+  in the chip because the row title already carries it: with no plan and no
+  resets there is no chip, and with resets but no plan the chip is the reset
+  count. The provider name is the header's primary text (semibold, primary
+  color) and keeps its width; the chip wraps before the name loses legibility.
+  VoiceOver reads provider, plan, and resets once from the header; the stale
+  state stays reachable through that header and, when the card has one, through
+  a single stale control.
+- The Line meter draws its fill from `UsageQuotaPace.Reading.fillPercent` and
+  the pace marker from `pacePercent`. There is no marker when pace is hidden,
+  the stage is on track, or the window has no usable duration, reset, or
+  expected consumption. A real deficit hatches the span between the fill end
+  and the marker; a reserve never hatches. Warning ticks keep their
+  consumed-percent meaning and mirror in Remaining; workday ticks appear only
+  on seven-day windows, and both stay discrete and follow their preferences.
+  Bar and percent color keep the existing threshold severity, and a deficit
+  gets the hatch plus an accessible label instead of a new alert level.
+- Quota cards never draw an empty meter for missing data. Cost estimates use
+  one `API spend` card: the period appears once in the header, each provider
+  row keeps its real currency value, and an empty estimate hides the card.
 - Status-item quota strip: the user chooses whether the status item always
   shows up to two selected quota figures per provider or keeps them only in
   the quota submenu. The submenu keeps the provider cards and the refresh
