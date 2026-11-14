@@ -2,6 +2,9 @@ import SwiftUI
 
 struct RepositoryOverviewView: View {
     let overview: RepositoryOverviewSnapshot
+    /// The open side panel. The matching overview cell shows the neutral
+    /// selection state; there is no separate highlight state.
+    let selection: MainMenuSidePanelSelection?
     let onSelectSection: (MainMenuSidePanelSelection) -> Void
     let onOpenGitHubPage: (MainMenuGitHubDestination) -> Void
     let canOpenGitHubPage: Bool
@@ -35,13 +38,47 @@ struct RepositoryOverviewView: View {
             ForEach(Array(metrics.enumerated()), id: \.element.title) { index, metric in
                 RepositoryOverviewColumnView(
                     metric: metric,
-                    density: density
+                    density: density,
+                    isSelected: metric.panel != nil && metric.panel == activePanel
                 )
 
                 if index < metrics.count - 1, density != .compact {
-                    HStack(spacing: 0) { Divider().padding(.vertical, WorkbenchMetrics.microSpacing) }
+                    metricDivider(from: metric, to: metrics[index + 1])
                 }
             }
+        }
+    }
+
+    /// Dividers inside a group stay inset. The divider between local Git and
+    /// GitHub runs the full height with a small gap, so the two groups read
+    /// apart without adding a plate or a new surface.
+    @ViewBuilder
+    private func metricDivider(
+        from current: RepositoryOverviewMetric,
+        to next: RepositoryOverviewMetric
+    ) -> some View {
+        if current.group == next.group {
+            HStack(spacing: 0) {
+                Divider()
+                    .padding(.vertical, WorkbenchMetrics.microSpacing)
+            }
+        } else {
+            HStack(spacing: 0) {
+                Divider()
+            }
+            .padding(.horizontal, WorkbenchMetrics.microSpacing)
+        }
+    }
+
+    /// The overview cell that mirrors the open side panel. Detail selections
+    /// highlight their parent metric; History has no cell in the strip.
+    private var activePanel: RepositoryOverviewMetricPanel? {
+        switch selection {
+        case .workingTree, .stagedFile, .unstagedFile: .changes
+        case .branches, .branch, .unpushedCommits: .branches
+        case .stashes, .stash: .stashes
+        case .issues: .issues
+        case .history, .commit, nil: nil
         }
     }
 
@@ -52,29 +89,33 @@ struct RepositoryOverviewView: View {
         return [
             makeMetric(
                 .changes,
+                panel: .changes,
                 presentation: changes,
                 action: { onSelectSection(.workingTree) }
             ),
             makeMetric(
                 .branches,
+                panel: .branches,
                 presentation: branches,
                 action: { onSelectSection(.branches) }
             ),
             makeMetric(
                 .stashes,
+                panel: .stashes,
                 presentation: stashes,
                 action: { onSelectSection(.stashes) }
+            ),
+            makeGitHubMetric(
+                .issues,
+                panel: .issues,
+                state: overview.openIssues,
+                requiresKnownCount: false,
+                action: { onSelectSection(.issues) }
             ),
             makeGitHubMetric(
                 .pullRequests,
                 state: overview.openPullRequests,
                 action: { onOpenGitHubPage(.pullRequests) }
-            ),
-            makeGitHubMetric(
-                .issues,
-                state: overview.openIssues,
-                requiresKnownCount: false,
-                action: { onSelectSection(.issues) }
             )
         ]
     }
@@ -186,6 +227,7 @@ struct RepositoryOverviewView: View {
 
     private func makeMetric(
         _ definition: RepositoryOverviewMetricDefinition,
+        panel: RepositoryOverviewMetricPanel? = nil,
         presentation: RepositoryOverviewMetricPresentation,
         helpText: String? = nil,
         action: (() -> Void)?
@@ -194,10 +236,14 @@ struct RepositoryOverviewView: View {
             title: definition.title,
             shortTitle: definition.shortTitle,
             symbol: definition.symbol,
+            group: definition.group,
+            marker: definition.marker,
             value: presentation.value,
             qualifier: presentation.qualifier,
             state: presentation.state,
+            emphasis: emphasis(for: presentation.value),
             isError: presentation.isError,
+            panel: panel,
             accessibilityValue: presentation.accessibilityValue,
             helpText: helpText ?? presentation.accessibilityValue,
             accessibilityHint: definition.accessibilityHint,
@@ -205,8 +251,18 @@ struct RepositoryOverviewView: View {
         )
     }
 
+    /// Positive counts keep the strong value hierarchy. A known zero, a word
+    /// such as `None`, and unknown `—` share the quiet one.
+    private func emphasis(for value: String) -> RepositoryOverviewMetricEmphasis {
+        guard let count = Int(value), count > 0 else {
+            return .quiet
+        }
+        return .strong
+    }
+
     private func makeGitHubMetric(
         _ definition: RepositoryOverviewMetricDefinition,
+        panel: RepositoryOverviewMetricPanel? = nil,
         state: RepositoryMetricState<Int>,
         requiresKnownCount: Bool = true,
         action: @escaping () -> Void
@@ -237,6 +293,7 @@ struct RepositoryOverviewView: View {
         }
         return makeMetric(
             definition,
+            panel: panel,
             presentation: .init(
                 value: value,
                 qualifier: qualifier,
@@ -269,123 +326,24 @@ struct RepositoryOverviewView: View {
     }
 }
 
-private enum RepositoryOverviewMetricDensity: Equatable {
-    case wide
-    case medium
-    case compact
-}
-
-private struct RepositoryOverviewMetricDefinition {
-    let title: String
-    let shortTitle: String
-    let symbol: LucideIconName
-    let accessibilityHint: String
-
-    init(_ title: String, _ shortTitle: String, _ symbol: LucideIconName, _ accessibilityHint: String) {
-        self.title = title
-        self.shortTitle = shortTitle
-        self.symbol = symbol
-        self.accessibilityHint = accessibilityHint
-    }
-
-    static let changes = Self("Changes", "Changes", .diff, "Opens Changes in the side panel")
-    static let branches = Self("Branches", "Branches", .gitBranch, "Opens Branches in the side panel")
-    static let stashes = Self("Stashes", "Stashes", .archive, "Opens Stashes in the side panel")
-    static let pullRequests = Self("Pull Requests", "PRs", .gitPullRequest, "Opens pull requests on GitHub")
-    static let issues = Self("Issues", "Issues", .circleDot, "Opens Issues in the side panel")
-}
-
-private struct RepositoryOverviewMetricPresentation {
-    let value: String
-    let qualifier: String
-    let accessibilityValue: String
-    let state: RepositoryMetricState<Int>
-    let isError: Bool
-}
-
-private struct RepositoryOverviewMetric {
-    let title: String
-    let shortTitle: String
-    let symbol: LucideIconName
-    let value: String
-    let qualifier: String
-    let state: RepositoryMetricState<Int>
-    let isError: Bool
-    let accessibilityValue: String
-    let helpText: String
-    let accessibilityHint: String
-    let action: (() -> Void)?
-}
-
-private struct RepositoryOverviewMetricRowLayout: Layout {
-    let density: RepositoryOverviewMetricDensity
-    private var metricStride: Int {
-        density == .compact ? 1 : 2
-    }
-
-    func sizeThatFits(
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout Cache
-    ) -> CGSize {
-        _ = cache
-        let metricIndices = indices(in: subviews)
-        let metricSizes = metricIndices.map { subviews[$0].sizeThatFits(ProposedViewSize(width: 0, height: nil)) }
-        let dividerIndices = density == .compact ? [] : Array(stride(from: 1, to: subviews.count, by: metricStride))
-        let dividerWidth = dividerIndices.reduce(CGFloat.zero) { width, index in
-            width + subviews[index].sizeThatFits(.unspecified).width
-        }
-        let minimumWidth = (metricSizes.map(\.width).max() ?? 0) * CGFloat(metricSizes.count) + dividerWidth
-        return CGSize(width: max(proposal.width ?? minimumWidth, minimumWidth), height: metricSizes.map(\.height).max() ?? 0)
-    }
-
-    func placeSubviews(
-        in bounds: CGRect,
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout Cache
-    ) {
-        _ = (proposal, cache)
-        let metricIndices = indices(in: subviews)
-        guard !metricIndices.isEmpty else { return }
-        let dividerIndices = density == .compact ? [] : Array(stride(from: 1, to: subviews.count, by: metricStride))
-        let dividerWidths = dividerIndices.map { subviews[$0].sizeThatFits(.unspecified).width }
-        let dividerWidth = dividerWidths.reduce(CGFloat.zero, +)
-        let metricWidth = max((bounds.width - dividerWidth) / CGFloat(metricIndices.count), 0)
-        var currentX = bounds.minX
-        var dividerIndex = 0
-
-        for index in metricIndices {
-            subviews[index].place(
-                at: CGPoint(x: currentX, y: bounds.minY),
-                anchor: .topLeading,
-                proposal: ProposedViewSize(width: metricWidth, height: bounds.height)
-            )
-            currentX += metricWidth
-
-            guard dividerIndex < dividerIndices.count else { continue }
-            let divider = subviews[dividerIndices[dividerIndex]]
-            let width = dividerWidths[dividerIndex]
-            divider.place(
-                at: CGPoint(x: currentX, y: bounds.minY),
-                anchor: .topLeading,
-                proposal: ProposedViewSize(width: width, height: bounds.height)
-            )
-            currentX += width
-            dividerIndex += 1
-        }
-    }
-
-    private func indices(in subviews: Subviews) -> [Int] {
-        Array(stride(from: 0, to: subviews.count, by: metricStride))
-    }
-}
-
 private struct RepositoryOverviewColumnView: View {
     let metric: RepositoryOverviewMetric
     let density: RepositoryOverviewMetricDensity
+    let isSelected: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovered = false
+
+    private var isActionable: Bool {
+        metric.action != nil
+    }
+
+    private var cellShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: density == .compact ? WorkbenchMetrics.microCornerRadius : WorkbenchMetrics.rowCornerRadius,
+            style: .continuous
+        )
+    }
+
     var body: some View {
         Button(action: metric.action ?? {}) {
             metricContent
@@ -396,31 +354,43 @@ private struct RepositoryOverviewColumnView: View {
                     minHeight: WorkbenchMetrics.minimumHitTarget,
                     alignment: density == .compact ? .center : .leading
                 )
-                .background(
-                    RoundedRectangle(
-                        cornerRadius: density == .compact ? WorkbenchMetrics.microCornerRadius : WorkbenchMetrics.rowCornerRadius,
-                        style: .continuous
-                    )
-                    .fill(isHovered ? WorkbenchPalette.hoverFill() : .clear)
-                )
-                .contentShape(
-                    RoundedRectangle(
-                        cornerRadius: density == .compact ? WorkbenchMetrics.microCornerRadius : WorkbenchMetrics.rowCornerRadius,
-                        style: .continuous
-                    )
-                )
+                .background(cellShape.fill(cellFill))
+                .contentShape(cellShape)
         }
         .buttonStyle(.plain)
-        .disabled(metric.action == nil)
+        .disabled(!isActionable)
         .onHover { hovering in
-            isHovered = hovering
+            isHovered = hovering && isActionable
         }
+        .overlay(alignment: .topTrailing) { openingHint }
         .help(metric.helpText)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(metric.title)
         .accessibilityValue(metric.accessibilityValue)
-        .accessibilityHint(metric.accessibilityHint)
+        .accessibilityHint(isActionable ? metric.accessibilityHint : "")
         .accessibilityAddTraits(.isButton)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    /// A cell without an action keeps no hover fill and no chevron: it never
+    /// promises a click. The active panel keeps the chevron beside its neutral
+    /// selection fill so the selected cell still reads as the open route.
+    @ViewBuilder
+    private var openingHint: some View {
+        if density != .compact, isActionable, isHovered || isSelected {
+            LucideIconView(name: .chevronRight, size: 10)
+                .foregroundStyle(.tertiary)
+                .padding(.top, WorkbenchMetrics.compactSpacing)
+                .padding(.trailing, WorkbenchMetrics.compactSpacing)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private var cellFill: Color {
+        if isSelected {
+            return WorkbenchPalette.neutralSelectionFill()
+        }
+        return isHovered && isActionable ? WorkbenchPalette.hoverFill() : .clear
     }
 
     @ViewBuilder
@@ -428,30 +398,38 @@ private struct RepositoryOverviewColumnView: View {
         switch density {
         case .wide:
             VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-                titleText(metric.title)
+                titleRow(metric.title)
                 valueRow
             }
         case .medium:
             VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
-                titleText(metric.shortTitle)
+                titleRow(metric.shortTitle)
                 valueText
             }
         case .compact:
             HStack(spacing: WorkbenchMetrics.chipSpacing) {
                 LucideIconView(name: metric.symbol, size: 12)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(compactIconForegroundStyle)
                 valueText
             }
             .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
-    private func titleText(_ title: String) -> some View {
-        Text(title)
-            .font(WorkbenchTypography.caption)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
+    private func titleRow(_ title: String) -> some View {
+        HStack(spacing: WorkbenchMetrics.microSpacing) {
+            if let marker = metric.marker {
+                // The GitHub markers keep the Projects sidebar's roles; the
+                // number beside them stays neutral.
+                LucideIconView(name: metric.symbol, size: 11)
+                    .foregroundStyle(marker.color)
+            }
+            Text(title)
+                .font(WorkbenchTypography.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
     }
 
     private var valueRow: some View {
@@ -474,7 +452,7 @@ private struct RepositoryOverviewColumnView: View {
                 .accessibilityHidden(true)
         } else {
             Text(metric.value)
-                .font(density == .compact ? WorkbenchTypography.captionStrong : WorkbenchTypography.field)
+                .font(valueFont)
                 .foregroundStyle(valueForegroundStyle)
                 .monospacedDigit()
                 .lineLimit(1)
@@ -488,8 +466,23 @@ private struct RepositoryOverviewColumnView: View {
         }
     }
 
+    /// Compact cells keep the icon as their only label, so a GitHub metric
+    /// keeps its marker role there too.
+    private var compactIconForegroundStyle: Color {
+        metric.marker?.color ?? .secondary
+    }
+
+    private var valueFont: Font {
+        switch (density, metric.emphasis) {
+        case (.compact, .quiet): WorkbenchTypography.caption
+        case (.compact, .strong): WorkbenchTypography.captionStrong
+        case (_, .quiet): WorkbenchTypography.detail
+        case (_, .strong): WorkbenchTypography.field
+        }
+    }
+
     private var valueForegroundStyle: Color {
-        metric.isError ? .red : metric.value == "0" || metric.value == "—" ? .secondary : .primary
+        metric.isError ? .red : metric.emphasis == .quiet ? .secondary : .primary
     }
 
     private var qualifierForegroundStyle: Color {

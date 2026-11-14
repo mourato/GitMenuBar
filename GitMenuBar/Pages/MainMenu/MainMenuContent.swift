@@ -39,6 +39,7 @@ extension MainMenuView {
                     currentRepoPath: currentRepoPath,
                     onCreateRepo: { presentationModel.showCreateRepo(path: $0) },
                     overview: snapshotModel.renderSnapshot.overview,
+                    selection: workspace.selectedSidePanelSelection,
                     onSelectSection: { workspace.selectedSidePanelSelection = $0 },
                     history: sidePanelHistory
                 )

@@ -7,6 +7,7 @@ struct MainMenuOverviewSection: View {
     let currentRepoPath: String
     let onCreateRepo: (String) -> Void
     let overview: RepositoryOverviewSnapshot
+    let selection: MainMenuSidePanelSelection?
     let onSelectSection: (MainMenuSidePanelSelection) -> Void
     let history: SidePanelHistoryModel?
 
@@ -30,6 +31,7 @@ struct MainMenuOverviewSection: View {
             if !currentRepoPath.isEmpty {
                 RepositoryOverviewView(
                     overview: overview,
+                    selection: selection,
                     onSelectSection: onSelectSection,
                     onOpenGitHubPage: { actionCoordinator.openGitHubPage($0) },
                     canOpenGitHubPage: actionCoordinator.canOpenGitHubPage
@@ -84,6 +86,7 @@ struct MainMenuOverviewSection: View {
             currentRepoPath: "/tmp/demo",
             onCreateRepo: { _ in },
             overview: .empty,
+            selection: nil,
             onSelectSection: { _ in },
             history: nil
         )
