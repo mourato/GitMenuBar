@@ -14,9 +14,7 @@ struct ChangedFilesTreeRowChrome: View {
     var body: some View {
         HStack(spacing: WorkbenchMetrics.chipSpacing) {
             if showsChevron {
-                Image(systemName: "chevron.right")
-                    .accessibilityHidden(true)
-                    .font(WorkbenchTypography.captionStrong)
+                LucideIconView(name: .chevronRight, size: 12)
                     .foregroundStyle(.secondary)
                     .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     .frame(width: 12, alignment: .center)

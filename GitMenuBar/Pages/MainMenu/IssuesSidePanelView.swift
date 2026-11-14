@@ -93,8 +93,10 @@ struct IssuesSidePanelView: View {
 
                 Spacer(minLength: 0)
 
-                Button("Refresh Issues", systemImage: "arrow.clockwise") {
+                Button {
                     Task { await model.refresh() }
+                } label: {
+                    LucideIconView(name: .refreshCw)
                 }
                 .labelStyle(.iconOnly)
                 .workbenchIcon()
@@ -114,11 +116,12 @@ struct IssuesSidePanelView: View {
         case let .failed(error):
             failureView(error)
         case .loaded where model.issues.isEmpty:
-            ContentUnavailableView(
+            LucideContentUnavailableView(
                 stateFilter == .open ? "No Open Issues" : "No Closed Issues",
-                systemImage: "checkmark.circle",
-                description: Text("This repository has no \(stateFilter == .open ? "open" : "closed") issues.")
-            )
+                icon: .circleCheck
+            ) {
+                Text("This repository has no \(stateFilter == .open ? "open" : "closed") issues.")
+            }
         case .loaded:
             issueList
         }
@@ -130,19 +133,19 @@ struct IssuesSidePanelView: View {
             if let error = model.labelError {
                 IssueLabelStatusView(
                     text: IssueLabelMessages.mutation(error),
-                    systemImage: "exclamationmark.triangle",
+                    icon: .triangleAlert,
                     retry: model.canEditLabels ? { Task { await model.retryLastLabelChange() } } : nil
                 )
             } else if case let .failed(error) = model.labelsPhase {
                 IssueLabelStatusView(
                     text: IssueLabelMessages.list(error),
-                    systemImage: "exclamationmark.triangle",
+                    icon: .triangleAlert,
                     retry: { Task { await model.reloadLabels() } }
                 )
             } else if model.labelsPhase == .loaded, !model.canEditLabels {
                 IssueLabelStatusView(
                     text: "Labels are read-only in this repository. Your GitHub account can view them but not change them.",
-                    systemImage: "lock",
+                    icon: .lock,
                     retry: nil
                 )
             }
@@ -216,19 +219,14 @@ struct IssuesSidePanelView: View {
     private func failureView(_ error: GitHubIssueListError) -> some View {
         switch error {
         case .notAuthenticated:
-            ContentUnavailableView {
-                Label("Sign In to GitHub", systemImage: "person.crop.circle.badge.exclamationmark")
-            } description: {
+            LucideContentUnavailableView("Sign In to GitHub", icon: .logIn) {
                 Text("Connect your GitHub account in Settings to see issues for this project.")
-            } actions: {
                 openOnGitHubButton
             }
         case .unsupportedRepository:
-            ContentUnavailableView(
-                "Issues Not Available",
-                systemImage: "questionmark.folder",
-                description: Text("Issues show only for projects with a github.com remote.")
-            )
+            LucideContentUnavailableView("Issues Not Available", icon: .folder) {
+                Text("Issues show only for projects with a github.com remote.")
+            }
         case .repositoryNotFound:
             retryableFailure(
                 title: "Repository Not Found",
@@ -243,11 +241,8 @@ struct IssuesSidePanelView: View {
     }
 
     private func retryableFailure(title: String, message: String) -> some View {
-        ContentUnavailableView {
-            Label(title, systemImage: "exclamationmark.triangle")
-        } description: {
+        LucideContentUnavailableView(title, icon: .triangleAlert) {
             Text(message)
-        } actions: {
             Button("Try Again") {
                 Task { await model.reload() }
             }
@@ -271,9 +266,8 @@ private struct IssueRowView: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.compactSpacing) {
-            Image(systemName: issue.state == .open ? "circle.circle" : "checkmark.circle")
+            LucideIconView(name: issue.state == .open ? .circle : .circleCheck)
                 .foregroundStyle(issue.state == .open ? Color.green : Color.purple)
-                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: WorkbenchMetrics.microSpacing) {
                 Text(issue.title)

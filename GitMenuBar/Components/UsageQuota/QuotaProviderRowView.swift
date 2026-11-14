@@ -51,7 +51,7 @@ struct QuotaProviderRowView: View {
                 Button {
                     isExpanded.toggle()
                 } label: {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    LucideIconView(name: isExpanded ? .chevronDown : .chevronRight, size: 12)
                         .foregroundStyle(.secondary)
                         .frame(minWidth: WorkbenchMetrics.iconHitTarget, minHeight: WorkbenchMetrics.iconHitTarget)
                 }
@@ -83,7 +83,7 @@ struct QuotaProviderRowView: View {
     }
 
     private var dragHandleGlyph: some View {
-        Image(systemName: "line.3.horizontal")
+        LucideIconView(name: .menu, size: 14)
             .foregroundStyle(.tertiary)
     }
 

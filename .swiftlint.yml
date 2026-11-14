@@ -123,39 +123,5 @@ custom_rules:
     excluded:
       # The single sanctioned fallback inside the wrapper.
       - GitMenuBar/Components/Common/LucideIconView.swift
-      # Legacy SF Symbol call sites, grandfathered. Migrate them in #24-#26;
-      # do NOT add new files here — new uses fail the lint.
-      - GitMenuBar/Components/AI/AIProviderEditorSheet.swift
-      - GitMenuBar/Components/AI/AIProviderManagementSheet.swift
-      - GitMenuBar/Components/AI/AtomicCommitReviewSheet.swift
-      - GitMenuBar/Components/Branches/BranchSelectorPopover.swift
-      - GitMenuBar/Components/Common/RepositoryOptionsPopoverView.swift
-      - GitMenuBar/Components/Common/ShortcutRecorderControl.swift
-      - GitMenuBar/Components/Common/WorkbenchButtonStyles.swift
-      - GitMenuBar/Components/Common/WorkbenchSectionHeaderChrome.swift
-      - GitMenuBar/Components/History/ChangedFilesDiffTreeViews.swift
-      - GitMenuBar/Components/History/CommitDetailPageView.swift
-      - GitMenuBar/Components/History/FileTypeIcon.swift
-      - GitMenuBar/Components/History/HistoryTimelineSectionView.swift
-      - GitMenuBar/Components/Projects/AgentBadgeIconView.swift
-      - GitMenuBar/Components/Projects/ProjectCleanupCandidatesView.swift
-      - GitMenuBar/Components/Projects/ProjectCleanupPage.swift
-      - GitMenuBar/Components/Projects/ProjectCleanupProjectRowView.swift
-      - GitMenuBar/Components/Projects/ProjectCleanupResultsView.swift
-      - GitMenuBar/Components/Projects/ProjectSelectorPopover.swift
-      - GitMenuBar/Components/Projects/ProjectSidebarRowView.swift
-      - GitMenuBar/Components/Projects/ProjectsSidebarView.swift
-      - GitMenuBar/Components/UsageQuota/QuotaAPIKeyEditorView.swift
-      - GitMenuBar/Components/UsageQuota/QuotaProviderRowView.swift
-      - GitMenuBar/Components/UsageQuota/QuotaStaleInfoPanel.swift
-      - GitMenuBar/Components/UsageQuota/UsageQuotaSummaryView.swift
-      - GitMenuBar/Components/WorkingTree/WorkingTreeCleanStateView.swift
-      - GitMenuBar/Pages/MainMenu/IssueLabelControls.swift
-      - GitMenuBar/Pages/MainMenu/IssuesSidePanelView.swift
-      - GitMenuBar/Pages/MainMenu/MainMenuOverviewSection.swift
-      - GitMenuBar/Pages/MainMenu/RepositoryOverviewView.swift
-      - GitMenuBar/Pages/MainMenu/SidePanelBranchManagementView.swift
-      - GitMenuBar/Pages/MainMenu/SidePanelDetailView.swift
-      - GitMenuBar/Pages/MainMenu/SidePanelHeaderView.swift
 
 reporter: "xcode"

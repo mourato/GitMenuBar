@@ -27,7 +27,7 @@ struct BranchSelectorPopoverView: View {
             if !isDetachedHead {
                 Section("Current") {
                     VStack(alignment: .leading, spacing: 4) {
-                        Label(currentBranch, systemImage: "arrow.triangle.branch")
+                        Label(lucide: .gitBranch, currentBranch)
                             .font(WorkbenchTypography.body)
 
                         Text("Checked out in this repository.")
@@ -41,7 +41,7 @@ struct BranchSelectorPopoverView: View {
             if isDetachedHead {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
-                        Label("Detached HEAD State", systemImage: "exclamationmark.triangle.fill")
+                        Label(lucide: .triangleAlert, "Detached HEAD State")
                             .foregroundStyle(.orange)
 
                         Text("You aren't on a branch. Edits made here might be hard to find later.")
@@ -49,7 +49,7 @@ struct BranchSelectorPopoverView: View {
                             .foregroundStyle(.secondary)
 
                         Button(action: onCreateBranchFromDetached) {
-                            Label("Create Branch from Here", systemImage: "plus.branch")
+                            Label(lucide: .gitBranch, "Create Branch from Here")
                         }
                         .workbenchSecondary()
                     }
@@ -61,7 +61,7 @@ struct BranchSelectorPopoverView: View {
                 Section("Sync") {
                     Button(action: onQuickPull) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Label("Pull \(behindCount) commit\(behindCount == 1 ? "" : "s")", systemImage: "arrow.down.circle.fill")
+                            Label(lucide: .circleArrowDown, "Pull \(behindCount) commit\(behindCount == 1 ? "" : "s")")
                                 .font(WorkbenchTypography.body)
                             Text("Update the current branch from remote.")
                                 .font(WorkbenchTypography.caption)
@@ -99,7 +99,7 @@ struct BranchSelectorPopoverView: View {
 
             Section {
                 Button(action: onNewBranch) {
-                    Label("New Branch", systemImage: "plus")
+                    Label(lucide: .plus, "New Branch")
                 }
                 .workbenchRow()
             }

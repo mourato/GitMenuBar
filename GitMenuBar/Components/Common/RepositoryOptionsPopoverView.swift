@@ -23,7 +23,7 @@ struct RepositoryOptionsPopoverView: View {
             Button(action: onToggleVisibility) {
                 actionRow(
                     title: visibilityActionTitle,
-                    symbol: "lock.circle"
+                    icon: .lock
                 )
             }
             .workbenchRow()
@@ -31,7 +31,7 @@ struct RepositoryOptionsPopoverView: View {
             Button(role: .destructive, action: onDeleteRepository) {
                 actionRow(
                     title: "Delete Repository",
-                    symbol: "trash"
+                    icon: .trash2
                 )
             }
             .workbenchDestructiveRow()
@@ -41,11 +41,9 @@ struct RepositoryOptionsPopoverView: View {
         .workbenchPanelSurface(material: .thin)
     }
 
-    private func actionRow(title: String, symbol: String) -> some View {
+    private func actionRow(title: String, icon: LucideIconName) -> some View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
-            Image(systemName: symbol)
-                .accessibilityHidden(true)
-                .font(WorkbenchTypography.detail)
+            LucideIconView(name: icon, size: 14)
                 .foregroundStyle(.secondary)
 
             Text(title)

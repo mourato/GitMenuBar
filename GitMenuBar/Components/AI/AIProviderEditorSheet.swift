@@ -100,7 +100,7 @@ struct AIProviderEditorSheet: View {
 
                 if let validationError {
                     Section {
-                        Label(validationError, systemImage: "exclamationmark.triangle")
+                        Label(lucide: .triangleAlert, validationError)
                             .foregroundStyle(.red)
                             .fixedSize(horizontal: false, vertical: true)
                     }

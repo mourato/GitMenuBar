@@ -217,7 +217,7 @@ private struct HistoryTimelineRowView: View {
                 Button {
                     NSWorkspace.shared.open(commitURL)
                 } label: {
-                    Label("Open on GitHub", systemImage: "arrow.up.forward.app")
+                    Label(lucide: .appWindow, "Open on GitHub")
                 }
                 .tint(.accentColor)
             }
@@ -226,7 +226,7 @@ private struct HistoryTimelineRowView: View {
             Button {
                 onEditCommitMessage()
             } label: {
-                Label("Edit Message", systemImage: "pencil")
+                Label(lucide: .pencil, "Edit Message")
             }
             .tint(.accentColor)
         }

@@ -81,8 +81,7 @@ struct CommitDetailPageView: View {
             Spacer(minLength: 0)
 
             Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .semibold))
+                LucideIconView(name: .x, size: 12)
                     .frame(width: WorkbenchMetrics.iconHitTarget, height: WorkbenchMetrics.iconHitTarget)
                     .contentShape(Rectangle())
             }
@@ -176,7 +175,7 @@ struct CommitDetailPageView: View {
                     copyToPasteboard(message)
                 }
             } label: {
-                Label("Copy", systemImage: "doc.on.doc")
+                Label(lucide: .copy, "Copy")
             }
             .workbenchGhost()
 
@@ -200,8 +199,7 @@ struct CommitDetailPageView: View {
                 }
                 .disabled(!(actionSet?.canRestore ?? false))
             } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(WorkbenchTypography.body)
+                LucideIconView(name: .ellipsis)
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)

@@ -14,8 +14,12 @@ struct ProjectCleanupPage: View {
                         .font(.callout).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Refresh", systemImage: "arrow.clockwise") { store.refresh() }
-                    .disabled(store.loadState.isLoading || store.isRunning)
+                Button {
+                    store.refresh()
+                } label: {
+                    Label(lucide: .refreshCw, "Refresh")
+                }
+                .disabled(store.loadState.isLoading || store.isRunning)
                 Button("Clean Selected") { presentReview(store.reviewSelected()) }
                     .disabled(store.reviewSelected() == nil)
                 Button("Clean All") { presentReview(store.reviewAll()) }
@@ -34,13 +38,15 @@ struct ProjectCleanupPage: View {
                 ProgressView("Analyzing \(completed) of \(total) projects…")
                     .accessibilityValue("Loading project cleanup analysis")
             case let .failed(message):
-                Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
+                Label(lucide: .triangleAlert, message).foregroundStyle(.red)
                 Button("Try Again") { store.refresh() }
             case .idle:
                 Text("Open this page to analyze monitored projects.").foregroundStyle(.secondary)
             case .loaded:
                 if store.rows.isEmpty {
-                    ContentUnavailableView("No Monitored Projects", systemImage: "folder", description: Text("Add a project before reviewing cleanup."))
+                    LucideContentUnavailableView("No Monitored Projects", icon: .folder) {
+                        Text("Add a project before reviewing cleanup.")
+                    }
                 } else {
                     ScrollView(.vertical) {
                         VStack(alignment: .leading, spacing: WorkbenchMetrics.groupSpacing) {
@@ -155,9 +161,9 @@ struct ProjectCleanupPage: View {
 
     private var summary: some View {
         HStack(spacing: WorkbenchMetrics.sectionSpacing) {
-            Label("\(rowsWithCleanupCandidates.count) projects", systemImage: "folder")
-            Label("\(rowsWithCleanupCandidates.reduce(0) { $0 + $1.branchCount }) branches", systemImage: "arrow.triangle.branch")
-            Label("\(rowsWithCleanupCandidates.reduce(0) { $0 + $1.worktreeCount }) worktrees", systemImage: "square.stack.3d.up")
+            Label(lucide: .folder, "\(rowsWithCleanupCandidates.count) projects")
+            Label(lucide: .gitBranch, "\(rowsWithCleanupCandidates.reduce(0) { $0 + $1.branchCount }) branches")
+            Label(lucide: .layers, "\(rowsWithCleanupCandidates.reduce(0) { $0 + $1.worktreeCount }) worktrees")
         }
         .font(.callout.monospacedDigit())
         .foregroundStyle(.secondary)

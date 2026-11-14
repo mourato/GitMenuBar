@@ -94,15 +94,13 @@ private struct WorkbenchButtonVariantsPreviewMatrix: View {
 
             HStack(spacing: WorkbenchMetrics.compactSpacing) {
                 Button {} label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(WorkbenchTypography.body)
+                    LucideIconView(name: .ellipsis)
                 }
                 .workbenchIcon()
                 .accessibilityLabel("Repository options")
 
                 Button {} label: {
-                    Image(systemName: "gearshape")
-                        .font(WorkbenchTypography.body)
+                    LucideIconView(name: .settings)
                 }
                 .workbenchIcon()
                 .accessibilityLabel("Settings")
@@ -116,8 +114,7 @@ private struct WorkbenchButtonVariantsPreviewMatrix: View {
                         .font(WorkbenchTypography.body)
                     Spacer()
                     if selectedRow {
-                        Image(systemName: "checkmark")
-                            .accessibilityHidden(true)
+                        LucideIconView(name: .check, size: 12)
                             .foregroundStyle(Color.accentColor)
                     }
                 }
@@ -126,8 +123,7 @@ private struct WorkbenchButtonVariantsPreviewMatrix: View {
 
             Button(role: .destructive) {} label: {
                 HStack(spacing: WorkbenchMetrics.compactSpacing) {
-                    Image(systemName: "trash")
-                        .accessibilityHidden(true)
+                    LucideIconView(name: .trash2)
                     Text("Delete Repository")
                         .font(WorkbenchTypography.body)
                     Spacer()

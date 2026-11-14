@@ -225,6 +225,9 @@ corner style.
   Never name an SF Symbol or a Lucide file at a call site.
 - Lucide is outline-only; semantic color comes from the context
   (`WorkbenchPalette`, `.accentColor`), never from the icon.
+- Empty states use `LucideContentUnavailableView`: the system
+  content-unavailable view only accepts SF Symbols, so the app renders its own
+  centered layout through the catalog instead.
 - Out of the catalog by policy: `ProviderIcon-*` brand logos, `@pierre/trees`
   file-type artwork (`FileTypeIcon.swift`), `MenuBarIcon` / `AppIcon`, and the
   `M`/`D`/`U` letters in `GitModels.swift` (text, not icons).

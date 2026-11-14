@@ -92,11 +92,8 @@ struct WorkbenchSectionHeaderChrome<Trailing: View>: View {
 
     private var sectionTitle: some View {
         HStack(spacing: WorkbenchMetrics.chipSpacing) {
-            Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                .accessibilityHidden(true)
-                .font(WorkbenchTypography.captionStrong)
+            LucideIconView(name: isCollapsed ? .chevronRight : .chevronDown, size: 12)
                 .foregroundStyle(.secondary)
-                .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
 
             Text(title)
                 .font(WorkbenchTypography.body)
@@ -155,16 +152,18 @@ private struct SectionHeaderChromePreview: View {
                 HStack(spacing: WorkbenchMetrics.microSpacing) {
                     WorkingTreeLineDiffView(addedCount: 23, removedCount: 8)
 
-                    Button("Unstage all files", systemImage: "minus.circle") {}
-                        .font(WorkbenchTypography.captionStrong)
-                        .frame(
-                            width: WorkingTreeLayoutMetrics.actionHitTarget,
-                            height: WorkingTreeLayoutMetrics.actionHitTarget
-                        )
-                        .contentShape(Rectangle())
-                        .labelStyle(.iconOnly)
-                        .workbenchIcon()
-                        .help("Unstage all files")
+                    Button {} label: {
+                        Label(lucide: .circleMinus, "Unstage all files")
+                    }
+                    .font(WorkbenchTypography.captionStrong)
+                    .frame(
+                        width: WorkingTreeLayoutMetrics.actionHitTarget,
+                        height: WorkingTreeLayoutMetrics.actionHitTarget
+                    )
+                    .contentShape(Rectangle())
+                    .labelStyle(.iconOnly)
+                    .workbenchIcon()
+                    .help("Unstage all files")
 
                     Text("3 files")
                         .font(.caption.weight(.medium))
