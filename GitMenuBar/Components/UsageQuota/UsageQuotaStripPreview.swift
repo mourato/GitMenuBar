@@ -66,6 +66,36 @@ import SwiftUI
     )
 }
 
+// Compact surfaces share one style preference; this preview renders the
+// status-item strip for every style so Line sits beside the earlier options.
+#Preview("Usage Quota Menu Bar Strip – Styles") {
+    let preferences = PreviewUsageQuotaBarPreferences.make()
+    let groups = UsageQuotaMenuPresentation.groups(
+        snapshots: PreviewUsageQuotaSnapshotFactory.multiProvider,
+        preferences: preferences
+    )
+    VStack(alignment: .leading, spacing: WorkbenchMetrics.sectionSpacing) {
+        UsageQuotaMenuBarStrip(groups: groups, style: .line)
+        UsageQuotaMenuBarStrip(groups: groups, style: .bars)
+        UsageQuotaMenuBarStrip(groups: groups, style: .circular)
+        UsageQuotaMenuBarStrip(groups: groups, style: .text)
+    }
+    .padding()
+}
+
+@MainActor
+private enum PreviewUsageQuotaBarPreferences {
+    static func make() -> UsageQuotaPresentationPreferences {
+        let name = "PreviewUsageQuotaBarPreferences"
+        let defaults = UserDefaults(suiteName: name) ?? .standard
+        defaults.removePersistentDomain(forName: name)
+        return UsageQuotaPresentationPreferences(
+            defaults: defaults,
+            keyStore: InMemoryAIAPIKeyStore()
+        )
+    }
+}
+
 private struct UsageQuotaStripPreviewHarness: View {
     let snapshots: [UsageQuotaSnapshot]
 

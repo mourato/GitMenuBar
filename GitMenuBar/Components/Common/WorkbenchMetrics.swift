@@ -45,6 +45,10 @@ enum WorkbenchMetrics {
     static let minimumHitTarget: CGFloat = 32
     static let quotaMeterWidth: CGFloat = 20
     static let quotaMeterHeight: CGFloat = 6
+    /// Compact meter shared by the status-item strip and the footer quota
+    /// summary; the width matches one stacked reading in the menu bar.
+    static let quotaMeterCompactWidth: CGFloat = 26
+    static let quotaMeterCompactHeight: CGFloat = 3
     static let projectsMinimumWidth: CGFloat = 256
     static let projectsMaximumWidth: CGFloat = 360
     /// Preferred width for a project row's name and status column. Trailing
