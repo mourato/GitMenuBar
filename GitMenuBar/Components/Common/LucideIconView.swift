@@ -38,12 +38,42 @@ enum LucideIconRenderer {
         }
         return Bundle.main.url(forResource: file, withExtension: "svg", subdirectory: "Resources/LucideIcons")
     }
+
+    /// Size-aware render for surfaces that need larger than 16pt (ex.: Settings
+    /// `.toolbarItems` panes at 32pt). SVG source stays vector; setting `size`
+    /// keeps AppKit tinting via `isTemplate`. Cached per name+size.
+    static func image(for name: LucideIconName, size: CGFloat) -> NSImage? {
+        let key = "\(name.rawValue)@\(Int(size))" as NSString
+        if let cached = cache.object(forKey: key) {
+            return cached
+        }
+        guard let url = resourceURL(for: name),
+              let data = try? Data(contentsOf: url),
+              let image = NSImage(data: data)
+        else {
+            return nil
+        }
+        image.size = NSSize(width: size, height: size)
+        image.isTemplate = true
+        cache.setObject(image, forKey: key)
+        return image
+    }
 }
 
 extension NSImage {
     /// Template image for a catalog icon, tinted by its context.
     convenience init?(lucide name: LucideIconName) {
         guard let image = LucideIconRenderer.image(for: name) else {
+            return nil
+        }
+        self.init(size: image.size)
+        addRepresentations(image.representations)
+        isTemplate = true
+    }
+
+    /// Size-aware variant for surfaces above 16pt (ex.: Settings toolbar at 32pt).
+    convenience init?(lucide name: LucideIconName, size: CGFloat) {
+        guard let image = LucideIconRenderer.image(for: name, size: size) else {
             return nil
         }
         self.init(size: image.size)
