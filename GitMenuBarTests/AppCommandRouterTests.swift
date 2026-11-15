@@ -46,7 +46,7 @@ final class AppCommandRouterTests: XCTestCase {
         XCTAssertFalse(coordinator.isExecutingPrimaryAction)
     }
 
-    func testSyncInvocationSkipsOptionsWhenBehindOnly() async throws {
+    func testSyncInvocationSkipsOptionsWhenBehindOnly() async {
         let gitManager = GitManager(repositoryPathOverride: "")
         gitManager.isRemoteAhead = true
         gitManager.isAheadOfRemote = false
