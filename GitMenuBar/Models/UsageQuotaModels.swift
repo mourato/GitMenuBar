@@ -78,6 +78,10 @@ struct UsageWindow: Codable, Equatable, Sendable {
 enum UsageQuotaWindowKind: Hashable, Sendable {
     case session
     case weekly
+    /// The tertiary monthly window. Behaves like a model window for display
+    /// and exhaustion, but keeps its own slot in the quiet fallback order
+    /// (Session → Weekly → Monthly → tightest model).
+    case monthly
     case model
 }
 

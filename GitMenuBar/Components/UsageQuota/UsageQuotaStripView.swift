@@ -34,27 +34,27 @@ struct UsageQuotaStripView: View {
     }
 
     private func accessibilityValue(for snapshots: [UsageQuotaSnapshot]) -> String {
-        // Mirrors UsageQuotaSummaryView: primary window, else the tightest model window.
+        // Same critical-window resolution as the footer summary items, so the
+        // strip value never names a different window than the drawn meter.
         snapshots.compactMap { snapshot in
-            let exhaustedWeekly = snapshot.weeklyWindow.flatMap { $0.remainingPercent == 0 ? $0 : nil }
-            let window = exhaustedWeekly ?? snapshot.primaryDisplayWindow
-                ?? snapshot.modelWindows.min { $0.remainingPercent < $1.remainingPercent }
-            let kind: UsageQuotaWindowKind = if exhaustedWeekly != nil {
-                .weekly
-            } else if snapshot.sessionWindow != nil {
-                .session
-            } else if snapshot.weeklyWindow != nil {
-                .weekly
-            } else {
-                .model
-            }
-            return window.map {
-                let value = UsageQuotaFormatting.displayValueText(
-                    remainingPercent: $0.remainingPercent,
-                    kind: kind,
-                    showUsed: preferences.valueStyle == .used
+            UsageQuotaSummaryResolution.resolve(
+                snapshot: snapshot,
+                sessionThresholds: preferences.sessionWarningThresholds,
+                weeklyThresholds: preferences.weeklyWarningThresholds
+            ).map { resolved in
+                let reading = UsageQuotaPace.reading(
+                    for: resolved.window,
+                    showUsed: preferences.valueStyle == .used,
+                    thresholds: [],
+                    workdaysPerWeek: preferences.workdaysPerWeek,
+                    showPace: preferences.showsPace
                 )
-                return "\(snapshot.displayName) \(kind == .weekly && $0.remainingPercent == 0 ? "weekly quota exhausted" : value)"
+                return UsageQuotaSummaryResolution.describe(
+                    displayName: snapshot.displayName,
+                    resolution: resolved,
+                    reading: reading,
+                    isStale: snapshot.isStale
+                )
             }
         }
         .joined(separator: ", ")

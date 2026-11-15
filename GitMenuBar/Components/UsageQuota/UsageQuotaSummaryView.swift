@@ -27,36 +27,44 @@ private struct UsageQuotaSummaryItem: View {
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
-        if let display = displayWindow {
-            let displayPercent = UsageQuotaFormatting.displayPercent(
-                remainingPercent: display.window.remainingPercent,
-                showUsed: preferences.valueStyle == .used
+        if let resolved = UsageQuotaSummaryResolution.resolve(
+            snapshot: snapshot,
+            sessionThresholds: preferences.sessionWarningThresholds,
+            weeklyThresholds: preferences.weeklyWarningThresholds
+        ) {
+            let showUsed = preferences.valueStyle == .used
+            let reading = UsageQuotaPace.reading(
+                for: resolved.window,
+                showUsed: showUsed,
+                thresholds: [],
+                workdaysPerWeek: preferences.workdaysPerWeek,
+                showPace: preferences.showsPace
             )
-            let isExhausted = UsageQuotaFormatting.isWeeklyExhausted(
-                remainingPercent: display.window.remainingPercent,
-                kind: display.kind
+            let tint = resolved.alertLevel.color
+            let description = UsageQuotaSummaryResolution.describe(
+                displayName: snapshot.displayName,
+                resolution: resolved,
+                reading: reading,
+                isStale: snapshot.isStale
             )
-            let tint = isExhausted
-                ? UsageQuotaAlertLevel.error.color
-                : UsageQuotaFormatting.alertLevel(
-                    remainingPercent: display.window.remainingPercent,
-                    thresholds: warningThresholds
-                ).color
             HStack(spacing: WorkbenchMetrics.microSpacing) {
                 ProviderIconView(providerID: snapshot.providerID)
-                if isExhausted {
+                if resolved.isExhausted {
                     LucideIconView(name: .circleAlert)
                         .foregroundStyle(UsageQuotaAlertLevel.error.color)
+                    Text(UsageQuotaFormatting.compactDisplayValueText(
+                        remainingPercent: resolved.window.remainingPercent,
+                        kind: resolved.kind,
+                        showUsed: showUsed
+                    ))
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(UsageQuotaAlertLevel.error.color)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                 } else {
                     switch preferences.meterStyle {
                     case .line:
-                        let reading = UsageQuotaPace.reading(
-                            for: display.window,
-                            showUsed: preferences.valueStyle == .used,
-                            thresholds: [],
-                            workdaysPerWeek: preferences.workdaysPerWeek,
-                            showPace: preferences.showsPace
-                        )
                         UsageQuotaLineMeter(
                             fillPercent: reading.fillPercent,
                             tint: tint,
@@ -67,66 +75,48 @@ private struct UsageQuotaSummaryItem: View {
                             compact: true
                         )
                         .frame(width: WorkbenchMetrics.quotaMeterCompactWidth)
+                        percentText(resolved: resolved, showUsed: showUsed, tint: tint)
                     case .text:
-                        Text("\(displayPercent)%")
-                            .font(WorkbenchTypography.captionStrong)
-                            .foregroundStyle(tint)
+                        percentText(resolved: resolved, showUsed: showUsed, tint: tint)
                     case .bars:
                         UsageQuotaSummaryBar(
-                            fraction: Double(displayPercent) / 100,
+                            fraction: Double(reading.fillPercent) / 100,
                             tint: tint,
                             track: WorkbenchPalette.neutralBorder(contrast: contrast)
                         )
+                        percentText(resolved: resolved, showUsed: showUsed, tint: tint)
                     case .circular:
                         UsageQuotaCircularProgress(
-                            fraction: Double(displayPercent) / 100,
+                            fraction: Double(reading.fillPercent) / 100,
                             tint: tint
                         )
                         .frame(width: WorkbenchMetrics.quotaMeterWidth, height: WorkbenchMetrics.quotaMeterWidth)
+                        percentText(resolved: resolved, showUsed: showUsed, tint: tint)
                     }
                 }
             }
             .opacity(snapshot.isStale ? 0.72 : 1)
+            .help(description)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilityLabel(display: display))
+            .accessibilityLabel(description)
         }
     }
 
-    private var displayWindow: (window: UsageWindow, kind: UsageQuotaWindowKind)? {
-        if let weekly = snapshot.weeklyWindow, weekly.remainingPercent == 0 {
-            return (weekly, .weekly)
-        }
-        if let session = snapshot.sessionWindow {
-            return (session, .session)
-        }
-        if let weekly = snapshot.weeklyWindow {
-            return (weekly, .weekly)
-        }
-        if let monthly = snapshot.tertiaryMonthlyWindow {
-            return (monthly, .model)
-        }
-        guard let model = snapshot.modelWindows.min(by: { $0.remainingPercent < $1.remainingPercent }) else {
-            return nil
-        }
-        return (model, .model)
-    }
-
-    /// The session thresholds apply when the session window drives the summary; otherwise weekly.
-    private var warningThresholds: [Int] {
-        snapshot.sessionWindow == nil ? preferences.weeklyWarningThresholds : preferences.sessionWarningThresholds
-    }
-
-    private func accessibilityLabel(display: (window: UsageWindow, kind: UsageQuotaWindowKind)) -> String {
-        let value = UsageQuotaFormatting.displayValueText(
-            remainingPercent: display.window.remainingPercent,
-            kind: display.kind,
-            showUsed: preferences.valueStyle == .used
-        )
-        let exhaustedText = display.kind == .weekly && display.window.remainingPercent == 0
-            ? "weekly quota exhausted"
-            : value
-        let staleText = snapshot.isStale ? ", stale" : ""
-        return "\(snapshot.displayName), \(exhaustedText)\(staleText)"
+    private func percentText(
+        resolved: UsageQuotaSummaryResolution,
+        showUsed: Bool,
+        tint: Color
+    ) -> some View {
+        Text(UsageQuotaFormatting.compactDisplayValueText(
+            remainingPercent: resolved.window.remainingPercent,
+            kind: resolved.kind,
+            showUsed: showUsed
+        ))
+        .font(WorkbenchTypography.captionStrong)
+        .foregroundStyle(tint)
+        .monospacedDigit()
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
     }
 }
 
@@ -299,6 +289,28 @@ extension UsageQuotaAlertLevel {
                 remainingPercent: 0,
                 resetAt: Date().addingTimeInterval(86400),
                 label: "Weekly",
+                durationSeconds: 7 * 86400
+            ),
+            isAvailable: true
+        )
+    ])
+}
+
+#Preview("Usage Quota Summary – Critical Weekly") {
+    UsageQuotaSummaryPreviewHarness(snapshots: [
+        UsageQuotaSnapshot(
+            providerID: .claudeCode,
+            displayName: "Claude Code",
+            sessionWindow: UsageWindow(
+                remainingPercent: 76,
+                resetAt: Date().addingTimeInterval(3600),
+                label: "5h",
+                durationSeconds: 5 * 3600
+            ),
+            weeklyWindow: UsageWindow(
+                remainingPercent: 22,
+                resetAt: Date().addingTimeInterval(86400),
+                label: "7d",
                 durationSeconds: 7 * 86400
             ),
             isAvailable: true
