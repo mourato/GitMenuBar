@@ -46,7 +46,8 @@ struct ProjectSidebarRowView: View {
     }
 
     private func rowContent(showsOpenCountBadges: Bool) -> some View {
-        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+        let facts = snapshot.summaryFacts
+        return HStack(spacing: WorkbenchMetrics.compactSpacing) {
             // The slot stays reserved without a dot so names keep one column.
             Circle()
                 .fill(dotColor ?? .clear)
@@ -59,11 +60,15 @@ struct ProjectSidebarRowView: View {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                Text(snapshot.statusSummary)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                // Two facts only when both fit; otherwise the most urgent alone.
+                ViewThatFits(in: .horizontal) {
+                    if facts.count > 1 {
+                        summaryLine(facts.prefix(2).joined(separator: ProjectStatusSnapshot.summaryFactSeparator))
+                            .fixedSize()
+                    }
+                    summaryLine(facts.first ?? snapshot.statusSummary)
+                        .truncationMode(.tail)
+                }
             }
             .frame(
                 minWidth: 0,
@@ -93,6 +98,14 @@ struct ProjectSidebarRowView: View {
             .layoutPriority(1)
             .fixedSize(horizontal: true, vertical: false)
         }
+        .help(snapshot.statusSummary)
+    }
+
+    private func summaryLine(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
     }
 
     private var dotColor: Color? {
@@ -158,11 +171,8 @@ struct ProjectSidebarRowView: View {
     }
 
     var accessibilityLabel: String {
-        var parts = [snapshot.project.name]
-        if let cause = snapshot.severityAccessibilityDescription, cause != snapshot.statusSummary {
-            parts.append(cause)
-        }
-        parts.append(snapshot.statusSummary)
+        // The summary leads with the status dot's cause (see `summaryFacts`).
+        var parts = [snapshot.project.name, snapshot.statusSummary]
         if showsAgentActivity, !agentActivities.isEmpty {
             parts.append(agentActivities.map(\.accessibilityDescription).joined(separator: ", "))
         }

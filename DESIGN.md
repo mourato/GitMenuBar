@@ -66,8 +66,7 @@ and [ADR 0025](docs/adr/0025-lucide-interface-icon-pack.md) (Lucide icon pack).
   Needs Action rows (untracked-only, ahead-only, unpushed branches, a pull
   request awaiting review) show no dot by design. A row whose refresh failed
   shows no dot. Failing checks come from the listed pull requests only.
-  VoiceOver reads the dot's cause before the row summary, unless the summary
-  already states it.
+  The row summary leads with the dot's cause, so VoiceOver states it first.
 - GitHub open-total markers use `WorkbenchPalette.issueMarker()` (green) for
   issues and `WorkbenchPalette.pullRequestMarker()` (purple) for pull requests.
   Color stays on the marker; the number beside it stays neutral.
@@ -181,11 +180,17 @@ corner style.
   semibold; the status stays a secondary caption. When the row is too narrow,
   the totals hide before the name column drops below
   `WorkbenchMetrics.projectsRowTextMinimumWidth` at supported sidebar widths;
-  VoiceOver still reads available totals. The row summary states the current
-  branch's own pull-request status, a foreign pull request when the current
-  branch has none, `1 unmerged branch`/`N unmerged branches`, and unpushed
-  branches beyond the current branch; a Needs Action or In Review row always
-  states at least one reason, so it never reads "Up to date".
+  VoiceOver still reads available totals. The row summary
+  (`ProjectStatusSnapshot.summaryFacts`) shows the most urgent fact first, so
+  that fact is never truncated, and the status dot's cause always leads:
+  failing checks → behind or diverged → uncommitted changes → commits to push
+  and other unpushed branches → the current branch's pull request (or a
+  foreign one) → unmerged branches → detached or unknown branch → stale.
+  Facts join with `, `; ` · ` stays inside one fact (pull-request details,
+  diverged counts). A second fact shows only when both fit. The row tooltip
+  and VoiceOver read the full summary: a non-default branch name, then every
+  fact. A Needs Action or In Review row always states at least one fact, so it
+  never reads "Up to date".
 - Repository overview strip: five cells in sidebar order. Positive counts use
   the strong value hierarchy; a known zero, `Clean`, `None`, and an unknown `—`
   share one quiet secondary weight, and an unknown value never becomes zero.
@@ -296,13 +301,6 @@ corner style.
 Target rules for the Projects sidebar redesign epic. They are not shipped
 yet; until each wave lands, the rules above stay the truth. Each delivery
 moves its rule into the sections above and deletes it here.
-
-Wave 1 (meaning):
-
-- The row summary shows one fact, the most urgent, so it never truncates:
-  failing checks → uncommitted or unpushed work → behind → current branch
-  pull request → unmerged branches. Facts join with ` · ` only when both fit.
-  The tooltip and VoiceOver keep the full summary.
 
 Wave 2 (finish):
 

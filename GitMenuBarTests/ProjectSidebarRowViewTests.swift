@@ -65,7 +65,7 @@ final class ProjectSidebarRowViewTests: XCTestCase {
         )
 
         let label = row.accessibilityLabel
-        XCTAssertTrue(label.contains("feature/editor 2 commits to push 2 branches with unpushed commits"))
+        XCTAssertTrue(label.contains("feature/editor, 2 commits to push, 2 branches with unpushed commits"))
         XCTAssertTrue(label.contains("PR #31 Changes requested · CI passed"))
         XCTAssertTrue(label.contains("1284 open issues"))
         XCTAssertTrue(label.contains("34 open pull requests"))
@@ -99,7 +99,7 @@ final class ProjectSidebarRowViewTests: XCTestCase {
             snapshot: snapshot, agentActivities: [], showsAgentActivity: true, countColumns: .guides(for: [snapshot])
         )
 
-        XCTAssertTrue(row.accessibilityLabel.hasPrefix("project, Behind remote, "))
+        XCTAssertTrue(row.accessibilityLabel.hasPrefix("project, 2 commits behind"))
     }
 
     private func makeSnapshot(

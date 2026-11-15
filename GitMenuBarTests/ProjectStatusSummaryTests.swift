@@ -28,7 +28,7 @@ final class ProjectStatusSummaryTests: XCTestCase {
         // The current branch is already stated as commits to push.
         let snapshot = makeSnapshot(branchName: "feature/editor", aheadCount: 2, unpushedBranchCount: 1)
 
-        XCTAssertEqual(snapshot.statusSummary, "feature/editor 2 commits to push")
+        XCTAssertEqual(snapshot.statusSummary, "feature/editor, 2 commits to push")
     }
 
     func testUnpushedBranchesBeyondTheCurrentBranchStayInTheSummary() {
@@ -36,7 +36,7 @@ final class ProjectStatusSummaryTests: XCTestCase {
 
         XCTAssertEqual(
             snapshot.statusSummary,
-            "feature/editor 2 commits to push 2 branches with unpushed commits"
+            "feature/editor, 2 commits to push, 2 branches with unpushed commits"
         )
     }
 
@@ -48,7 +48,7 @@ final class ProjectStatusSummaryTests: XCTestCase {
             ]
         )
 
-        XCTAssertEqual(snapshot.statusSummary, "3 unmerged branches PR #31 Changes requested · CI passed")
+        XCTAssertEqual(snapshot.statusSummary, "PR #31 Changes requested · CI passed, 3 unmerged branches")
     }
 
     func testAheadWithoutAnUpstreamFlagStillStatesTheReason() {
@@ -75,7 +75,7 @@ final class ProjectStatusSummaryTests: XCTestCase {
         )
 
         XCTAssertTrue(snapshot.isStale)
-        XCTAssertEqual(snapshot.statusSummary, "3 unmerged branches Stale work")
+        XCTAssertEqual(snapshot.statusSummary, "3 unmerged branches, Stale work")
     }
 
     func testCurrentBranchPullRequestKeepsItsStatusInTheSummary() {
@@ -86,7 +86,7 @@ final class ProjectStatusSummaryTests: XCTestCase {
             ]
         )
 
-        XCTAssertEqual(snapshot.statusSummary, "feature/editor PR #31 Review required · CI passed")
+        XCTAssertEqual(snapshot.statusSummary, "feature/editor, PR #31 Review required · CI passed")
     }
 
     // MARK: - Wording
@@ -103,10 +103,20 @@ final class ProjectStatusSummaryTests: XCTestCase {
             unmergedBranchCount: 3
         )
 
-        XCTAssertEqual(snapshot.statusSummary, "feature/cleanup 2 commits to push 3 unmerged branches")
+        XCTAssertEqual(snapshot.statusSummary, "feature/cleanup, 2 commits to push, 3 unmerged branches")
     }
 
     // MARK: - Clean rows keep the old summaries
+
+    func testDotCauseLeadsForDivergedAndBehindWithLocalWork() {
+        XCTAssertEqual(makeSnapshot(aheadCount: 3, behindCount: 1).summaryFacts.first, "Diverged (3 ahead · 1 behind)")
+        XCTAssertEqual(makeSnapshot(stagedCount: 1, behindCount: 1).summaryFacts.first, "1 commit behind")
+    }
+
+    func testMostUrgentFactLeadsTheVisibleLine() {
+        let snapshot = makeSnapshot(behindCount: 1, unmergedBranchCount: 3)
+        XCTAssertEqual(snapshot.summaryFacts, ["1 commit behind", "3 unmerged branches"])
+    }
 
     func testCleanDefaultBranchReadsUpToDate() {
         let snapshot = makeSnapshot()

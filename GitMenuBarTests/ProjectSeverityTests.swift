@@ -82,7 +82,7 @@ final class ProjectSeverityTests: XCTestCase {
     func testFailingChecksAreCriticalAndNamed() {
         let snapshot = makeSnapshot(unmergedBranchCount: 1, pullRequests: [failingPullRequest])
         XCTAssertEqual(snapshot.severity, .critical)
-        XCTAssertEqual(snapshot.severityAccessibilityDescription, "Failing checks")
+        XCTAssertTrue(snapshot.summaryFacts.first?.hasSuffix("CI failing") == true)
     }
 
     func testFailingChecksWinOverUncommittedChanges() {

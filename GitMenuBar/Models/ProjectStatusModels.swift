@@ -237,21 +237,6 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         pullRequests.contains(where: { $0.checksState == .failing })
     }
 
-    /// The cause behind the dot, for VoiceOver.
-    var severityAccessibilityDescription: String? {
-        switch severity {
-        case .critical:
-            var causes: [String] = []
-            if hasFailingChecks { causes.append("Failing checks") }
-            if behindCount > 0 { causes.append(aheadCount > 0 ? "Diverged from remote" : "Behind remote") }
-            return causes.joined(separator: ", ")
-        case .uncommittedChanges:
-            return "Uncommitted changes"
-        case nil:
-            return nil
-        }
-    }
-
     var hasWorkingTreeChanges: Bool {
         stagedCount + unstagedCount + untrackedCount > 0
     }
@@ -352,65 +337,66 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         return result
     }
 
-    /// One line under the project name. Every Needs Action or In Review row
-    /// states at least one reason for its group, so a project never reads
-    /// "Up to date" while it sits in one of those groups.
-    var statusSummary: String {
-        if lastErrorDescription != nil {
-            return "Unavailable"
-        }
+    /// Separates facts. Pull-request details use " · " inside one fact, so
+    /// facts need a different separator to keep their boundaries visible.
+    static let summaryFactSeparator = ", "
 
-        var parts: [String] = []
-        if let branchSummary {
-            parts.append(branchSummary)
+    /// Full row summary for the tooltip and VoiceOver: the branch, when it is
+    /// not the default, then every fact in urgency order.
+    var statusSummary: String {
+        let parts = [branchSummary].compactMap(\.self) + summaryFacts
+        return parts.isEmpty ? "Up to date" : parts.joined(separator: Self.summaryFactSeparator)
+    }
+
+    /// Row facts, most urgent first, so the visible line never truncates the
+    /// fact that matters. The status dot's cause always leads: failing checks,
+    /// then behind or diverged, then uncommitted changes. Every Needs Action
+    /// or In Review row states at least one fact, so it never reads
+    /// "Up to date".
+    var summaryFacts: [String] {
+        guard lastErrorDescription == nil else { return ["Unavailable"] }
+        var facts: [String] = []
+        let failing = pullRequests.first { $0.headBranch == branchName && $0.checksState == .failing }
+            ?? pullRequests.first { $0.checksState == .failing }
+        if let failing {
+            facts.append(Self.pullRequestSummary(failing))
         }
-        parts.append(contentsOf: upstreamSummary)
-        if let unpushedBranchSummary {
-            parts.append(unpushedBranchSummary)
-        }
-        if let unmergedBranchSummary {
-            parts.append(unmergedBranchSummary)
-        }
-        if let currentPullRequestSummary {
-            parts.append(currentPullRequestSummary)
-        } else if let otherPullRequestSummary {
-            parts.append(otherPullRequestSummary)
-        }
-        if isStale {
-            parts.append("Stale work")
-        }
-        if !parts.isEmpty {
-            return parts.joined(separator: " ")
+        if behindCount > 0, aheadCount > 0 {
+            facts.append("Diverged (\(aheadCount) ahead · \(behindCount) behind)")
+        } else if behindCount > 0 {
+            facts.append("\(behindCount) commit\(behindCount == 1 ? "" : "s") behind")
         }
         if hasWorkingTreeChanges {
-            return "Uncommitted changes"
+            facts.append("Uncommitted changes")
         }
-        return "Up to date"
-    }
-
-    /// Detached and unknown states stay explicit; the default branch name is
-    /// omitted because it carries no information.
-    var branchSummary: String? {
+        if aheadCount > 0, behindCount == 0 {
+            facts.append("\(aheadCount) commit\(aheadCount == 1 ? "" : "s") to push")
+        }
+        if let unpushedBranchSummary {
+            facts.append(unpushedBranchSummary)
+        }
+        if let pullRequest = currentPullRequest ?? otherPullRequest, pullRequest != failing {
+            facts.append(Self.pullRequestSummary(pullRequest))
+        }
+        if let unmergedBranchSummary {
+            facts.append(unmergedBranchSummary)
+        }
         if isDetachedHead {
-            return "Detached"
+            facts.append("Detached")
+        } else if branchName.isEmpty {
+            facts.append("Unknown branch")
         }
-        if branchName.isEmpty {
-            return "Unknown branch"
+        if isStale {
+            facts.append("Stale work")
         }
-        return isDefaultBranch ? nil : branchName
+        return facts
     }
 
-    /// Ahead and behind stay explicit even if the snapshot has no upstream
-    /// flag, so a Needs Action or In Review row cannot fall through to "Up to date".
-    var upstreamSummary: [String] {
-        var parts: [String] = []
-        if aheadCount > 0 {
-            parts.append("\(aheadCount) commit\(aheadCount == 1 ? "" : "s") to push")
-        }
-        if behindCount > 0 {
-            parts.append("\(behindCount) commit\(behindCount == 1 ? "" : "s") behind")
-        }
-        return parts
+    /// The current branch name for the tooltip and VoiceOver. The default
+    /// branch carries no information; detached and unknown are facts.
+    var branchSummary: String? {
+        guard !isDetachedHead, !branchName.isEmpty, !isDefaultBranch else { return nil }
+        return branchName
     }
 
     /// Branches with unpushed commits beyond the current branch. The current
@@ -426,20 +412,16 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         return "\(unmergedBranchCount) unmerged branch\(unmergedBranchCount == 1 ? "" : "es")"
     }
 
-    /// Review state of the current branch's own pull request. Repository totals
-    /// live in the badges, so this never restates them from the limited list.
-    var currentPullRequestSummary: String? {
-        guard let pullRequest = pullRequests.first(where: { $0.headBranch == branchName }) else {
-            return nil
-        }
-        return Self.pullRequestSummary(pullRequest)
+    /// The current branch's own pull request. Repository totals live in the
+    /// badges, so the summary never restates them from the limited list.
+    private var currentPullRequest: GitHubPullRequestSummary? {
+        pullRequests.first(where: { $0.headBranch == branchName })
     }
 
-    /// One pull request when the current branch has none. Repository totals stay
-    /// in the badges, so this states a reason instead of repeating a count.
-    private var otherPullRequestSummary: String? {
-        let pullRequest = pullRequests.first(where: \.needsAction) ?? pullRequests.first
-        return pullRequest.map(Self.pullRequestSummary)
+    /// One pull request when the current branch has none: the one needing
+    /// action first, so the row states a reason instead of a count.
+    private var otherPullRequest: GitHubPullRequestSummary? {
+        pullRequests.first(where: \.needsAction) ?? pullRequests.first
     }
 
     private static func pullRequestSummary(_ pullRequest: GitHubPullRequestSummary) -> String {
