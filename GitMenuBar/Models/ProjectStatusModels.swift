@@ -66,7 +66,8 @@ enum ProjectAttentionReason: Equatable {
 enum ProjectAttentionSeverity: Equatable, Hashable, Sendable {
     /// Failing checks, or the branch is behind or diverged.
     case critical
-    case uncommittedChanges
+    /// Uncommitted changes or commits not yet pushed: local work at risk.
+    case localWork
 }
 
 enum GitHubStatusUnavailableReason: Equatable, Sendable {
@@ -225,8 +226,8 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         if behindCount > 0 || hasFailingChecks {
             return .critical
         }
-        if stagedCount > 0 || unstagedCount > 0 {
-            return .uncommittedChanges
+        if stagedCount > 0 || unstagedCount > 0 || aheadCount > 0 || unpushedBranchCount > 0 {
+            return .localWork
         }
         return nil
     }

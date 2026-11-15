@@ -41,6 +41,9 @@ enum WorkbenchMetrics {
     static let largeCornerRadius: CGFloat = 14
     static let overlayCornerRadius: CGFloat = 16
     static let iconHitTarget: CGFloat = 28
+    /// Inline icons in the Projects sidebar (count markers, group chevron),
+    /// sized to `WorkbenchTypography.sidebarCount`.
+    static let sidebarInlineIconSize: CGFloat = 12
     /// Minimum interactive height for text chips, toggles, and buttons (DESIGN.md hit areas).
     static let minimumHitTarget: CGFloat = 32
     static let quotaMeterWidth: CGFloat = 20
@@ -96,6 +99,16 @@ enum WorkbenchTypography {
 
     static var caption: Font {
         .caption
+    }
+
+    /// Every number in a Projects sidebar row: issue, pull-request, and agent counts.
+    static var sidebarCount: Font {
+        .subheadline
+    }
+
+    /// AppKit twin of `sidebarCount` for ranking count widths; change both together.
+    static var sidebarCountMeasurementFont: NSFont {
+        .monospacedDigitSystemFont(ofSize: NSFont.preferredFont(forTextStyle: .subheadline).pointSize, weight: .regular)
     }
 
     static var captionStrong: Font {

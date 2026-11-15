@@ -134,18 +134,37 @@ struct ProjectsSidebarView: View {
 
     @ViewBuilder
     private func groupSection(_ group: ProjectSidebarGroup, snapshots: [ProjectStatusSnapshot]) -> some View {
-        let title = group.title
         if group == .upToDate {
-            Section(isExpanded: cleanGroupExpanded) {
-                projectRows(snapshots)
+            // A visible chevron, not the hover-only native disclosure, so a
+            // collapsed group still shows that it holds projects.
+            Section {
+                if !isCleanGroupCollapsed {
+                    projectRows(snapshots)
+                }
             } header: {
-                groupHeader(title: title, count: snapshots.count)
+                Button {
+                    isCleanGroupCollapsed.toggle()
+                } label: {
+                    HStack(spacing: WorkbenchMetrics.microSpacing) {
+                        Text(group.title)
+                        LucideIconView(
+                            name: isCleanGroupCollapsed ? .chevronRight : .chevronDown,
+                            size: WorkbenchMetrics.sidebarInlineIconSize
+                        )
+                    }
+                    .font(WorkbenchTypography.sectionLabel)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(group.title), \(snapshots.count == 1 ? "1 project" : "\(snapshots.count) projects")")
+                .accessibilityValue(isCleanGroupCollapsed ? "Collapsed" : "Expanded")
             }
         } else {
             Section {
                 projectRows(snapshots)
             } header: {
-                groupHeader(title: title, count: snapshots.count)
+                Text(group.title)
+                    .font(WorkbenchTypography.sectionLabel)
             }
         }
     }
@@ -155,19 +174,6 @@ struct ProjectsSidebarView: View {
             projectRow(snapshot)
                 .tag(snapshot.project.path)
         }
-    }
-
-    private func groupHeader(title: String, count: Int) -> some View {
-        HStack {
-            Text(title)
-            Spacer(minLength: 0)
-            Text("\(count)")
-                .monospacedDigit()
-                .accessibilityLabel(count == 1 ? "1 project" : "\(count) projects")
-        }
-        .font(WorkbenchTypography.sectionLabel)
-        // Align the count with the row badge column instead of the section's trailing edge.
-        .padding(.trailing, WorkbenchMetrics.compactSpacing)
     }
 
     private func projectRow(_ snapshot: ProjectStatusSnapshot) -> some View {
@@ -188,13 +194,6 @@ struct ProjectsSidebarView: View {
             Button("Stop Monitoring") { onStopMonitoring(snapshot.project.path) }
             Button("Remove Project", role: .destructive) { onRemove(snapshot.project.path) }
         }
-    }
-
-    private var cleanGroupExpanded: Binding<Bool> {
-        Binding(
-            get: { !isCleanGroupCollapsed },
-            set: { isCleanGroupCollapsed = !$0 }
-        )
     }
 
     private var normalizedCurrentPath: String {

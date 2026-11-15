@@ -18,7 +18,7 @@ struct ProjectSidebarCountColumns: Equatable {
     private static func widestText(_ badges: [GitHubOpenCountBadge]) -> String? {
         // Ranking only: the hidden guide view owns the actual column width, so
         // a near-tie between two strings cannot change the rendered size.
-        let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
+        let font = WorkbenchTypography.sidebarCountMeasurementFont
         return Set(badges.map(\.text)).max {
             ($0 as NSString).size(withAttributes: [.font: font]).width
                 < ($1 as NSString).size(withAttributes: [.font: font]).width
@@ -78,17 +78,17 @@ struct ProjectSidebarRowView: View {
             )
 
             HStack(spacing: WorkbenchMetrics.microSpacing) {
-                if showsAgentActivity, !agentActivities.isEmpty {
+                // One agent indicator: the most relevant agent, plus how many
+                // more. The tooltip and VoiceOver list every agent.
+                if showsAgentActivity, let lead = leadAgentActivity {
                     HStack(spacing: WorkbenchMetrics.microSpacing) {
-                        ForEach(agentActivities) { activity in
-                            AgentBadgeIconView(activity: activity)
+                        AgentBadgeIconView(activity: lead, size: WorkbenchMetrics.sidebarInlineIconSize)
+                        if agentActivities.count > 1 {
+                            countText("+\(agentActivities.count - 1)")
                         }
                     }
+                    .help(agentActivities.map(\.accessibilityDescription).joined(separator: "\n"))
                     .fixedSize(horizontal: true, vertical: false)
-                }
-
-                if snapshot.hasWorkingTreeChanges {
-                    changeCountBadge
                 }
 
                 if showsOpenCountBadges {
@@ -111,15 +111,22 @@ struct ProjectSidebarRowView: View {
     private var dotColor: Color? {
         switch snapshot.severity {
         case .critical: .red
-        case .uncommittedChanges: .orange
+        case .localWork: .orange
         case nil: nil
         }
     }
 
-    private var changeCountBadge: some View {
-        let count = snapshot.stagedCount + snapshot.unstagedCount + snapshot.untrackedCount
-        return Text("\(count)")
-            .sidebarCountChip()
+    private var leadAgentActivity: AgentProjectActivity? {
+        AgentProjectActivity.lead(in: agentActivities)
+    }
+
+    /// Every number in the row shares one size, weight, and digit width.
+    private func countText(_ text: String) -> some View {
+        Text(text)
+            .font(WorkbenchTypography.sidebarCount)
+            .foregroundStyle(.secondary)
+            .monospacedDigit()
+            .lineLimit(1)
     }
 
     /// Both columns stay in place whenever either total exists, so a pull request
@@ -154,19 +161,15 @@ struct ProjectSidebarRowView: View {
                     .help(badge.accessibilityDescription(singularNoun: role.noun))
             }
         }
-        .font(WorkbenchTypography.caption)
         .accessibilityHidden(true)
     }
 
     private func openCountLabel(role: GitHubCountRole, text: String) -> some View {
         HStack(spacing: WorkbenchMetrics.microSpacing) {
-            LucideIconView(name: role.symbol)
+            LucideIconView(name: role.symbol, size: WorkbenchMetrics.sidebarInlineIconSize)
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
-            Text(text)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-                .lineLimit(1)
+            countText(text)
         }
     }
 
@@ -213,35 +216,6 @@ private enum GitHubCountRole {
         case .issues: "issue"
         case .pullRequests: "pull request"
         }
-    }
-}
-
-/// Shared capsule for the local change count. GitHub totals keep a plain
-/// neutral marker and number instead.
-private struct SidebarCountChipStyle: ViewModifier {
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-
-    func body(content: Content) -> some View {
-        content
-            .font(WorkbenchTypography.caption)
-            .monospacedDigit()
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, WorkbenchMetrics.chipSpacing)
-            .padding(.vertical, WorkbenchMetrics.headerVerticalPadding)
-            .background(
-                Capsule()
-                    .fill(WorkbenchPalette.hoverFill())
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(WorkbenchPalette.neutralBorder(contrast: colorSchemeContrast), lineWidth: 1)
-            )
-    }
-}
-
-private extension View {
-    func sidebarCountChip() -> some View {
-        modifier(SidebarCountChipStyle())
     }
 }
 

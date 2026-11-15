@@ -19,7 +19,6 @@ struct AgentBadgeIconView: View {
                     .offset(x: 1, y: 1)
             }
         }
-        .help(tooltipText)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
     }
@@ -39,19 +38,9 @@ struct AgentBadgeIconView: View {
         }
     }
 
+    /// Neutral like the sidebar counts; the green dot alone marks a running agent.
     private var iconTint: Color {
-        guard activity.status.isRunning else { return .secondary }
-        guard let hex = activity.harness.brandColorHex else { return .primary }
-        return Color(hex: hex)
-    }
-
-    private var tooltipText: String {
-        switch activity.status {
-        case .running:
-            "\(activity.harness.displayName): active now"
-        case let .recent(date):
-            "\(activity.harness.displayName): active \(Self.formatRelativeDate(date))"
-        }
+        .secondary
     }
 
     private var accessibilityLabel: String {
@@ -67,16 +56,6 @@ struct AgentBadgeIconView: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: date, relativeTo: Date())
-    }
-}
-
-private extension Color {
-    init(hex: UInt32) {
-        self.init(
-            red: Double((hex >> 16) & 0xFF) / 255,
-            green: Double((hex >> 8) & 0xFF) / 255,
-            blue: Double(hex & 0xFF) / 255
-        )
     }
 }
 

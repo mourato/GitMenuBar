@@ -60,26 +60,28 @@ and [ADR 0025](docs/adr/0025-lucide-interface-icon-pack.md) (Lucide icon pack).
   meaning, never decoration.
 - Sidebar status dots appear only when they carry meaning
   (`ProjectStatusSnapshot.severity`): red for failing checks, diverged, or
-  behind; orange for uncommitted changes. Any other project shows no dot,
+  behind; orange for local work at risk (uncommitted changes, or commits not
+  yet pushed on any branch). Any other project shows no dot,
   never a neutral or green one; the dot slot stays reserved so names align.
   Unmerged branches and untracked files alone are not a warning, so some
-  Needs Action rows (untracked-only, ahead-only, unpushed branches, a pull
-  request awaiting review) show no dot by design. A row whose refresh failed
+  rows (untracked-only, a pull request awaiting review) show no dot by
+  design. A row whose refresh failed
   shows no dot. Failing checks come from the listed pull requests only.
   The row summary leads with the dot's cause, so VoiceOver states it first.
 - GitHub open-total markers in the repository overview strip use
   `WorkbenchPalette.issueMarker()` (green) for issues and
   `WorkbenchPalette.pullRequestMarker()` (purple) for pull requests; the
   number beside them stays neutral. Projects sidebar markers and numbers both
-  use `.secondary`; color in a row signals state (the status dot, and the
-  agent activity badge when an agent runs), never a count.
+  use `.secondary`. The status dot and the running agent's green presence
+  dot are the row's only colors; harness icons stay `.secondary`.
 - The status-item strip uses template or semantic AppKit label color so it
   follows the menu bar's appearance.
 
 ## Typography
 
 - Text roles come from `WorkbenchTypography` (`windowTitle`, `sectionLabel`,
-  `body`, `projectName`, `detail`, `caption`, `captionStrong`, `field`), built
+  `body`, `projectName`, `detail`, `caption`, `captionStrong`, `field`,
+  `sidebarCount`), built
   on native text styles. `WorkbenchTypography.tracking(for:)` owns tracking per style.
 - Short commit hashes use the monospaced caption.
 
@@ -167,12 +169,19 @@ corner style.
   that is behind with an open pull request sits in In Review. Working exists
   only while Show Agent Activity is on, and a running agent outranks every
   other group. Up to Date reuses the `isCleanProjectsGroupCollapsed` key.
-  Empty groups are hidden; each header count reads "N projects" to VoiceOver.
-  Projects sidebar group headers (title and count) use Title Case at
-  `WorkbenchTypography.sectionLabel`, never uppercase.
-  The list hides its own background so the native sidebar column
-  material shows through; there is no custom plate. The collapsible group
-  uses the native section disclosure.
+  Empty groups are hidden. Projects sidebar group headers show only their
+  title, in Title Case at `WorkbenchTypography.sectionLabel`, never
+  uppercase; they carry no count, so no number sits outside the row count
+  columns. The list hides its own background so the native sidebar column
+  material shows through; there is no custom plate. Up to Date shows an
+  always-visible chevron after its title (not the hover-only native
+  disclosure), and VoiceOver reads its project count and state.
+- Projects sidebar row numbers (issue, pull-request, and extra-agent counts)
+  share `WorkbenchTypography.sidebarCount` with monospaced digits, and their
+  icons use `WorkbenchMetrics.sidebarInlineIconSize`. Rows show no change
+  count; the orange dot and the summary state local work. Agents show as one
+  indicator: the running (else most recent) agent's icon with its presence
+  dot, plus `+N` for the others; the tooltip and VoiceOver list every agent.
 - Projects sidebar rows: every GitHub project can show trailing Issue and Pull
   Request totals in aligned Issues → Pull Requests columns, whether or not it
   is selected. Each column reserves the widest total it shows; a column with no

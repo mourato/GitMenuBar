@@ -12,6 +12,7 @@ final class ProjectSeverityTests: XCTestCase {
         behindCount: Int = 0,
         hasUpstream: Bool = true,
         unmergedBranchCount: Int = 0,
+        unpushedBranchCount: Int = 0,
         pullRequests: [GitHubPullRequestSummary] = [],
         lastErrorDescription: String? = nil
     ) -> ProjectStatusSnapshot {
@@ -29,7 +30,7 @@ final class ProjectSeverityTests: XCTestCase {
             lastRefreshedAt: Date(),
             lastErrorDescription: lastErrorDescription,
             branchesWithoutUpstreamCount: 0,
-            unpushedBranchCount: 0,
+            unpushedBranchCount: unpushedBranchCount,
             unmergedBranchCount: unmergedBranchCount,
             stashCount: 0,
             lastActivityAt: Date(),
@@ -53,21 +54,27 @@ final class ProjectSeverityTests: XCTestCase {
     func testUncommittedChangesSeverity() {
         // Staged changes only
         let stagedSnapshot = makeSnapshot(stagedCount: 1)
-        XCTAssertEqual(stagedSnapshot.severity, .uncommittedChanges)
+        XCTAssertEqual(stagedSnapshot.severity, .localWork)
 
         // Unstaged changes only
         let unstagedSnapshot = makeSnapshot(unstagedCount: 2)
-        XCTAssertEqual(unstagedSnapshot.severity, .uncommittedChanges)
+        XCTAssertEqual(unstagedSnapshot.severity, .localWork)
 
         // Both staged and unstaged changes
         let bothSnapshot = makeSnapshot(stagedCount: 1, unstagedCount: 1)
-        XCTAssertEqual(bothSnapshot.severity, .uncommittedChanges)
+        XCTAssertEqual(bothSnapshot.severity, .localWork)
     }
 
     func testUntrackedFilesAloneAreNotAWarning() {
-        // Untracked files alone must not produce uncommittedChanges severity or a warning dot
+        // Untracked files alone must not produce localWork severity or a warning dot
         let untrackedSnapshot = makeSnapshot(untrackedCount: 4)
         XCTAssertNil(untrackedSnapshot.severity)
+    }
+
+    func testCommitsToPushAreLocalWork() {
+        XCTAssertEqual(makeSnapshot(aheadCount: 2).severity, .localWork)
+        XCTAssertEqual(makeSnapshot(unpushedBranchCount: 2).severity, .localWork)
+        XCTAssertEqual(makeSnapshot(behindCount: 1, unpushedBranchCount: 2).severity, .critical)
     }
 
     func testUnmergedBranchesAloneShowNoDot() {
@@ -100,7 +107,7 @@ final class ProjectSeverityTests: XCTestCase {
 
         // Uncommitted changes take precedence over unmerged branches
         let dirtyAndUnmergedSnapshot = makeSnapshot(stagedCount: 1, unmergedBranchCount: 3)
-        XCTAssertEqual(dirtyAndUnmergedSnapshot.severity, .uncommittedChanges)
+        XCTAssertEqual(dirtyAndUnmergedSnapshot.severity, .localWork)
 
         // Diverged/behind takes precedence over unmerged branches
         let behindAndUnmergedSnapshot = makeSnapshot(behindCount: 1, unmergedBranchCount: 3)
