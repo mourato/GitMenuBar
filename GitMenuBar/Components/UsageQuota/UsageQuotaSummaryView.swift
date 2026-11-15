@@ -162,14 +162,39 @@ struct UsageQuotaSummaryResolution: Equatable, Sendable {
         sessionThresholds: [Int],
         weeklyThresholds: [Int]
     ) -> Self? {
-        if let weekly = snapshot.weeklyWindow, weekly.remainingPercent == 0 {
-            return Self(
-                window: weekly,
-                kind: .weekly,
-                thresholds: weeklyThresholds,
-                title: UsageQuotaPace.rowTitle(isSessionWindow: false, window: weekly)
-            )
+        if let exhausted = exhaustedWeeklyResolution(snapshot: snapshot, weeklyThresholds: weeklyThresholds) {
+            return exhausted
         }
+        let candidates = orderedCandidates(
+            snapshot: snapshot,
+            sessionThresholds: sessionThresholds,
+            weeklyThresholds: weeklyThresholds
+        )
+        guard !candidates.isEmpty else { return nil }
+        if let critical = alertedMinimum(candidates: candidates) {
+            return critical
+        }
+        return quietFallback(candidates: candidates)
+    }
+
+    private static func exhaustedWeeklyResolution(
+        snapshot: UsageQuotaSnapshot,
+        weeklyThresholds: [Int]
+    ) -> Self? {
+        guard let weekly = snapshot.weeklyWindow, weekly.remainingPercent == 0 else { return nil }
+        return Self(
+            window: weekly,
+            kind: .weekly,
+            thresholds: weeklyThresholds,
+            title: UsageQuotaPace.rowTitle(isSessionWindow: false, window: weekly)
+        )
+    }
+
+    private static func orderedCandidates(
+        snapshot: UsageQuotaSnapshot,
+        sessionThresholds: [Int],
+        weeklyThresholds: [Int]
+    ) -> [Self] {
         var candidates: [Self] = []
         if let session = snapshot.sessionWindow {
             candidates.append(Self(
@@ -203,14 +228,18 @@ struct UsageQuotaSummaryResolution: Equatable, Sendable {
                 title: model.label
             ))
         }
-        guard !candidates.isEmpty else { return nil }
-        // `min(by:)` keeps the first minimum, so ties honor the declared order
-        // and models keep their provided order.
-        let alerted = candidates.filter { $0.alertLevel != .normal }
-        if let critical = alerted.min(by: { $0.window.remainingPercent < $1.window.remainingPercent }) {
-            return critical
-        }
-        // Quiet fallback: Session → Weekly → Monthly → the tightest model.
+        return candidates
+    }
+
+    /// `min(by:)` keeps the first minimum, so ties honor the declared order
+    /// and models keep their provided order.
+    private static func alertedMinimum(candidates: [Self]) -> Self? {
+        candidates.filter { $0.alertLevel != .normal }
+            .min(by: { $0.window.remainingPercent < $1.window.remainingPercent })
+    }
+
+    /// Quiet fallback: Session → Weekly → Monthly → the tightest model.
+    private static func quietFallback(candidates: [Self]) -> Self? {
         if let first = candidates.first(where: { $0.kind != .model }) {
             return first
         }
