@@ -95,3 +95,11 @@ Never delete `main`, unmerged branches, or worktrees containing other work.
 - Run `make check-preview` before closing UI work. It checks changed Swift UI candidates under `GitMenuBar/Components` and `GitMenuBar/Pages`; use `./scripts/check-preview.sh --all` for a full project audit.
 - Main-window previews must mirror the transparent full-size titlebar setup. Use `MainMenuPreviewHarness(showsTransparentTitlebar: true)` for previews that render `MainMenuView`, main menu chrome, or other top-of-window surfaces so header controls do not overlap the macOS traffic-light area.
 - Component-only previews should not simulate the full window/titlebar unless they render main-window chrome.
+
+## Release preview-touch rule (issue #41)
+
+Born from the `UsageQuotaStripPreview` + `InMemoryAIAPIKeyStore` incident (#19, fix b6fd04f): Debug gates pass while Release breaks when a preview uses a `#if DEBUG` type without its own guard.
+
+- PRs touching `*Preview*.swift`, `PreviewDoubles.swift`, or references to `InMemory*` doubles must run `make build-release` before merge.
+- Run `make validate-release-touch` on those PRs; it flags the touch and points here. Skip only consciously with `SKIP_RELEASE_TOUCH_CHECK=1`.
+- Do not make `build-release` a gate for every PR; Debug gates stay unchanged.

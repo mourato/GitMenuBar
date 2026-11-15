@@ -1,4 +1,4 @@
-.PHONY: help build build-release runtime-smoke test test-focused test-runner lint test-hygiene lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command guidance-check install-app dmg setup-self-signed-cert clean setup
+.PHONY: help build build-release runtime-smoke test test-focused test-runner lint test-hygiene lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command validate-release-touch guidance-check install-app dmg setup-self-signed-cert clean setup
 
 PROJECT_DIR := $(shell pwd)
 AGENT_CONFIG_HOME ?= $(HOME)/.agents
@@ -25,6 +25,7 @@ help:
 	@echo "make agent-check   Lint changed Swift files and build Debug app"
 	@echo "make validate      Canonical changed-surface validation"
 	@echo "make validate-lane Run target through the global baseline/artifact gate"
+	@echo "make validate-release-touch Flag preview/doubles touch needing Release build"
 	@echo "make guidance-check Validate agent guidance, plans, and skill references"
 	@echo "make install-app   Build Release and replace the installed app interactively"
 	@echo "make dmg           Build and package DMG"
@@ -95,6 +96,9 @@ validate-lane-command:
 		cleanup() { rm -rf "$$derived_data"; }; \
 		trap cleanup EXIT; \
 		VALIDATE_DERIVED_DATA_PATH="$$derived_data" TEST_PARALLEL="$(TEST_PARALLEL)" TEST_WORKERS="$(TEST_WORKERS)" $(MAKE) "$(VALIDATE_TARGET)" TEST_FILTER="$(TEST_FILTER)"
+
+validate-release-touch:
+	@./scripts/check-release-preview-touch.sh
 
 guidance-check:
 	@./scripts/validate-agent-guidance.sh
