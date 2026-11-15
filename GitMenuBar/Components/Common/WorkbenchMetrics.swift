@@ -141,12 +141,12 @@ enum WorkbenchPalette {
         Color.secondary.opacity(contrast == .increased ? 0.45 : 0.2)
     }
 
-    /// GitHub issue markers keep one semantic green across the workbench.
+    /// GitHub issue marker green, used in the repository overview strip.
     static func issueMarker() -> Color {
         .green
     }
 
-    /// GitHub pull-request markers keep one semantic purple across the workbench.
+    /// GitHub pull-request marker purple, used in the repository overview strip.
     static func pullRequestMarker() -> Color {
         Color(nsColor: pullRequestMarkerColor)
     }

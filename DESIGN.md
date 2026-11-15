@@ -67,9 +67,12 @@ and [ADR 0025](docs/adr/0025-lucide-interface-icon-pack.md) (Lucide icon pack).
   request awaiting review) show no dot by design. A row whose refresh failed
   shows no dot. Failing checks come from the listed pull requests only.
   The row summary leads with the dot's cause, so VoiceOver states it first.
-- GitHub open-total markers use `WorkbenchPalette.issueMarker()` (green) for
-  issues and `WorkbenchPalette.pullRequestMarker()` (purple) for pull requests.
-  Color stays on the marker; the number beside it stays neutral.
+- GitHub open-total markers in the repository overview strip use
+  `WorkbenchPalette.issueMarker()` (green) for issues and
+  `WorkbenchPalette.pullRequestMarker()` (purple) for pull requests; the
+  number beside them stays neutral. Projects sidebar markers and numbers both
+  use `.secondary`; color in a row signals state (the status dot, and the
+  agent activity badge when an agent runs), never a count.
 - The status-item strip uses template or semantic AppKit label color so it
   follows the menu bar's appearance.
 
@@ -165,8 +168,8 @@ corner style.
   only while Show Agent Activity is on, and a running agent outranks every
   other group. Up to Date reuses the `isCleanProjectsGroupCollapsed` key.
   Empty groups are hidden; each header count reads "N projects" to VoiceOver.
-  Group headers use Title Case at `WorkbenchTypography.sectionLabel`, never
-  uppercase. The list hides its own background so the native sidebar column
+  Projects sidebar group headers (title and count) use Title Case at
+  `WorkbenchTypography.sectionLabel`, never uppercase. The list hides its own background so the native sidebar column
   material shows through; there is no custom plate. The collapsible group
   uses the native section disclosure.
 - Projects sidebar rows: every GitHub project can show trailing Issue and Pull
@@ -178,15 +181,15 @@ corner style.
   or group. Known positive totals show a marker and number; a known zero hides
   that total. Large totals use the locale's compact notation (`1.3K`). An
   unread or failed count, or the last totals of a row whose refresh failed,
-  shows a neutral `—`; non-GitHub remotes show no totals. Color stays on the
-  marker (`WorkbenchPalette.issueMarker()`, `pullRequestMarker()`) and the
-  number stays neutral. The project name uses the native body text style at
+  shows a neutral `—`; non-GitHub remotes show no totals. Markers and numbers
+  both use `.secondary`. The project name uses the native body text style at
   semibold; the status stays a secondary caption. When the row is too narrow,
   the totals hide before the name column drops below
   `WorkbenchMetrics.projectsRowTextMinimumWidth` at supported sidebar widths;
   VoiceOver still reads available totals. The row summary
   (`ProjectStatusSnapshot.summaryFacts`) shows the most urgent fact first, so
-  that fact is never truncated, and the status dot's cause always leads:
+  truncation never hides which fact matters, and the status dot's cause
+  always leads:
   failing checks → behind or diverged → uncommitted changes → commits to push
   and other unpushed branches → the current branch's pull request (or a
   foreign one) → unmerged branches → detached or unknown branch → stale.
@@ -198,8 +201,8 @@ corner style.
 - Repository overview strip: five cells in sidebar order. Positive counts use
   the strong value hierarchy; a known zero, `Clean`, `None`, and an unknown `—`
   share one quiet secondary weight, and an unknown value never becomes zero.
-  The Issues and Pull Requests cells reuse the Projects sidebar marker roles
-  (`issueMarker()`, `pullRequestMarker()`) while their numbers stay neutral;
+  The Issues and Pull Requests cells color their markers with
+  `issueMarker()` and `pullRequestMarker()` while their numbers stay neutral;
   GitHub-unavailable cells stay neutral and never use error styling. Cells with
   an action keep the shared hover fill and add a small chevron on hover or
   while active; a cell without an action shows neither. The cell whose side
@@ -308,9 +311,6 @@ moves its rule into the sections above and deletes it here.
 
 Wave 2 (finish):
 
-- Sidebar Issue and Pull Request markers use `.secondary`, like their
-  numbers. The row's only color is its status dot. The repository overview
-  strip keeps its marker colors.
 - The footer quota summary uses a thinner bar and a neutral fill. Color
   appears only when a window crosses its alert threshold.
 

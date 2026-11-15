@@ -348,8 +348,8 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         return parts.isEmpty ? "Up to date" : parts.joined(separator: Self.summaryFactSeparator)
     }
 
-    /// Row facts, most urgent first, so the visible line never truncates the
-    /// fact that matters. The status dot's cause always leads: failing checks,
+    /// Row facts, most urgent first, so truncation never hides which fact
+    /// matters. The status dot's cause always leads: failing checks,
     /// then behind or diverged, then uncommitted changes. Every Needs Action
     /// or In Review row states at least one fact, so it never reads
     /// "Up to date".

@@ -419,8 +419,8 @@ private struct RepositoryOverviewColumnView: View {
     private func titleRow(_ title: String) -> some View {
         HStack(spacing: WorkbenchMetrics.microSpacing) {
             if let marker = metric.marker {
-                // The GitHub markers keep the Projects sidebar's roles; the
-                // number beside them stays neutral.
+                // The strip keeps its own GitHub marker colors; the number
+                // beside them stays neutral.
                 LucideIconView(name: metric.symbol, size: 11)
                     .foregroundStyle(marker.color)
             }

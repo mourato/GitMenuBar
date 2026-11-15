@@ -113,6 +113,35 @@ final class ProjectStatusSummaryTests: XCTestCase {
         XCTAssertEqual(makeSnapshot(stagedCount: 1, behindCount: 1).summaryFacts.first, "1 commit behind")
     }
 
+    // MARK: - Facts
+
+    func testForeignFailingPullRequestKeepsTheCurrentBranchPullRequest() {
+        let snapshot = makeSnapshot(
+            branchName: "feature/editor",
+            pullRequests: [
+                Self.pullRequest(number: 7, headBranch: "feature/other", reviewState: .reviewRequired, checksState: .failing),
+                Self.pullRequest(number: 31, headBranch: "feature/editor", reviewState: .approved)
+            ]
+        )
+        XCTAssertEqual(snapshot.summaryFacts.count, 2)
+        XCTAssertTrue(snapshot.summaryFacts[0].hasPrefix("PR #7"))
+        XCTAssertTrue(snapshot.summaryFacts[1].hasPrefix("PR #31"))
+    }
+
+    func testFailingCurrentPullRequestIsStatedOnce() {
+        let snapshot = makeSnapshot(
+            branchName: "feature/editor",
+            pullRequests: [
+                Self.pullRequest(number: 31, headBranch: "feature/editor", reviewState: .approved, checksState: .failing)
+            ]
+        )
+        XCTAssertEqual(snapshot.summaryFacts, ["PR #31 Approved · CI failing"])
+    }
+
+    func testEmptyBranchNameIsAnUnknownBranchFact() {
+        XCTAssertEqual(makeSnapshot(branchName: "").summaryFacts, ["Unknown branch"])
+    }
+
     func testMostUrgentFactLeadsTheVisibleLine() {
         let snapshot = makeSnapshot(behindCount: 1, unmergedBranchCount: 3)
         XCTAssertEqual(snapshot.summaryFacts, ["1 commit behind", "3 unmerged branches"])
@@ -184,7 +213,8 @@ final class ProjectStatusSummaryTests: XCTestCase {
     private static func pullRequest(
         number: Int,
         headBranch: String,
-        reviewState: GitHubPullRequestReviewState
+        reviewState: GitHubPullRequestReviewState,
+        checksState: GitHubChecksState = .passed
     ) -> GitHubPullRequestSummary {
         GitHubPullRequestSummary(
             number: number,
@@ -192,7 +222,7 @@ final class ProjectStatusSummaryTests: XCTestCase {
             headBranch: headBranch,
             isDraft: false,
             reviewState: reviewState,
-            checksState: .passed,
+            checksState: checksState,
             url: "https://github.com/example/project/pull/\(number)"
         )
     }

@@ -161,7 +161,7 @@ struct ProjectSidebarRowView: View {
     private func openCountLabel(role: GitHubCountRole, text: String) -> some View {
         HStack(spacing: WorkbenchMetrics.microSpacing) {
             LucideIconView(name: role.symbol)
-                .foregroundStyle(role.marker)
+                .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
             Text(text)
                 .foregroundStyle(.secondary)
@@ -195,8 +195,8 @@ struct ProjectSidebarRowView: View {
     }
 }
 
-/// Icons and colors for the two GitHub totals, kept in one place so the marker
-/// roles match the repository overview strip.
+/// Icons for the two GitHub totals. Sidebar markers stay neutral so row color
+/// signals state, never a count; the repository overview strip keeps its colors.
 private enum GitHubCountRole {
     case issues
     case pullRequests
@@ -214,17 +214,10 @@ private enum GitHubCountRole {
         case .pullRequests: "pull request"
         }
     }
-
-    var marker: Color {
-        switch self {
-        case .issues: WorkbenchPalette.issueMarker()
-        case .pullRequests: WorkbenchPalette.pullRequestMarker()
-        }
-    }
 }
 
-/// Shared capsule for the local change count. GitHub totals keep plain neutral
-/// numbers beside their colored marker instead.
+/// Shared capsule for the local change count. GitHub totals keep a plain
+/// neutral marker and number instead.
 private struct SidebarCountChipStyle: ViewModifier {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
