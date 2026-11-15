@@ -11,7 +11,9 @@ final class ProjectSeverityTests: XCTestCase {
         aheadCount: Int = 0,
         behindCount: Int = 0,
         hasUpstream: Bool = true,
-        unmergedBranchCount: Int = 0
+        unmergedBranchCount: Int = 0,
+        pullRequests: [GitHubPullRequestSummary] = [],
+        lastErrorDescription: String? = nil
     ) -> ProjectStatusSnapshot {
         ProjectStatusSnapshot(
             project: ProjectReference(path: "/tmp/test-project", name: "TestProject"),
@@ -25,24 +27,27 @@ final class ProjectSeverityTests: XCTestCase {
             behindCount: behindCount,
             hasUpstream: hasUpstream,
             lastRefreshedAt: Date(),
-            lastErrorDescription: nil,
+            lastErrorDescription: lastErrorDescription,
             branchesWithoutUpstreamCount: 0,
             unpushedBranchCount: 0,
             unmergedBranchCount: unmergedBranchCount,
             stashCount: 0,
             lastActivityAt: Date(),
-            gitHubStatus: .empty
+            gitHubStatus: GitHubProjectStatus(
+                pullRequests: pullRequests, openPullRequestCount: pullRequests.count,
+                openIssueCount: 0, unavailableReason: nil
+            )
         )
     }
 
-    func testDivergedOrBehindSeverity() {
+    func testBehindOrDivergedIsCritical() {
         // Behind only
         let behindSnapshot = makeSnapshot(behindCount: 2)
-        XCTAssertEqual(behindSnapshot.severity, .divergedOrBehind)
+        XCTAssertEqual(behindSnapshot.severity, .critical)
 
         // Diverged (ahead and behind)
         let divergedSnapshot = makeSnapshot(aheadCount: 3, behindCount: 1)
-        XCTAssertEqual(divergedSnapshot.severity, .divergedOrBehind)
+        XCTAssertEqual(divergedSnapshot.severity, .critical)
     }
 
     func testUncommittedChangesSeverity() {
@@ -65,15 +70,33 @@ final class ProjectSeverityTests: XCTestCase {
         XCTAssertNil(untrackedSnapshot.severity)
     }
 
-    func testUnmergedBranchesOnlySeverity() {
-        let unmergedSnapshot = makeSnapshot(unmergedBranchCount: 2)
-        XCTAssertEqual(unmergedSnapshot.severity, .unmergedOnly)
+    func testUnmergedBranchesAloneShowNoDot() {
+        XCTAssertNil(makeSnapshot(unmergedBranchCount: 2).severity)
+    }
+
+    private let failingPullRequest = GitHubPullRequestSummary(
+        number: 1, title: "Change", headBranch: "feature/change", isDraft: false,
+        reviewState: .reviewRequired, checksState: .failing, url: "https://github.com/example/project/pull/1"
+    )
+
+    func testFailingChecksAreCriticalAndNamed() {
+        let snapshot = makeSnapshot(unmergedBranchCount: 1, pullRequests: [failingPullRequest])
+        XCTAssertEqual(snapshot.severity, .critical)
+        XCTAssertEqual(snapshot.severityAccessibilityDescription, "Failing checks")
+    }
+
+    func testFailingChecksWinOverUncommittedChanges() {
+        XCTAssertEqual(makeSnapshot(stagedCount: 1, pullRequests: [failingPullRequest]).severity, .critical)
+    }
+
+    func testRefreshErrorShowsNoDot() {
+        XCTAssertNil(makeSnapshot(behindCount: 2, lastErrorDescription: "failed").severity)
     }
 
     func testSeverityPrecedence() {
         // Diverged/behind takes precedence over uncommitted changes
         let behindAndDirtySnapshot = makeSnapshot(stagedCount: 2, behindCount: 1)
-        XCTAssertEqual(behindAndDirtySnapshot.severity, .divergedOrBehind)
+        XCTAssertEqual(behindAndDirtySnapshot.severity, .critical)
 
         // Uncommitted changes take precedence over unmerged branches
         let dirtyAndUnmergedSnapshot = makeSnapshot(stagedCount: 1, unmergedBranchCount: 3)
@@ -81,7 +104,7 @@ final class ProjectSeverityTests: XCTestCase {
 
         // Diverged/behind takes precedence over unmerged branches
         let behindAndUnmergedSnapshot = makeSnapshot(behindCount: 1, unmergedBranchCount: 3)
-        XCTAssertEqual(behindAndUnmergedSnapshot.severity, .divergedOrBehind)
+        XCTAssertEqual(behindAndUnmergedSnapshot.severity, .critical)
     }
 
     func testCleanSnapshotHasNoSeverity() {

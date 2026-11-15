@@ -164,6 +164,7 @@ struct ProjectsSidebarView: View {
             Spacer(minLength: 0)
             Text("\(count)")
                 .monospacedDigit()
+                .accessibilityLabel(count == 1 ? "1 project" : "\(count) projects")
         }
         // Align the count with the row badge column instead of the section's trailing edge.
         .padding(.trailing, WorkbenchMetrics.compactSpacing)

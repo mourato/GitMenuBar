@@ -9,6 +9,9 @@
 > do not widen scope. Leave merge and push to the operator. The UI owner
 > reviews the diff and screenshots before merge.
 
+> **Superseded in part:** severity scope changed in issue #45 (no
+> "unmerged only" severity; no neutral dot). DESIGN.md is the current rule.
+
 ## Status
 
 - **Priority**: P2

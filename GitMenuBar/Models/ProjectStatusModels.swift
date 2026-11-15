@@ -62,10 +62,11 @@ enum ProjectAttentionReason: Equatable {
     case error
 }
 
+/// Status dot severity. A project without one shows no dot.
 enum ProjectAttentionSeverity: Equatable, Hashable, Sendable {
-    case divergedOrBehind
+    /// Failing checks, or the branch is behind or diverged.
+    case critical
     case uncommittedChanges
-    case unmergedOnly
 }
 
 enum GitHubStatusUnavailableReason: Equatable, Sendable {
@@ -219,16 +220,36 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
     }
 
     var severity: ProjectAttentionSeverity? {
-        if behindCount > 0 {
-            return .divergedOrBehind
+        // Stale data from a failed refresh never raises a dot.
+        guard lastErrorDescription == nil else { return nil }
+        if behindCount > 0 || hasFailingChecks {
+            return .critical
         }
         if stagedCount > 0 || unstagedCount > 0 {
             return .uncommittedChanges
         }
-        if unmergedBranchCount > 0 {
-            return .unmergedOnly
-        }
         return nil
+    }
+
+    /// Reads the pull-request detail list, so it sees only the listed pull
+    /// requests, never the repository total.
+    var hasFailingChecks: Bool {
+        pullRequests.contains(where: { $0.checksState == .failing })
+    }
+
+    /// The cause behind the dot, for VoiceOver.
+    var severityAccessibilityDescription: String? {
+        switch severity {
+        case .critical:
+            var causes: [String] = []
+            if hasFailingChecks { causes.append("Failing checks") }
+            if behindCount > 0 { causes.append(aheadCount > 0 ? "Diverged from remote" : "Behind remote") }
+            return causes.joined(separator: ", ")
+        case .uncommittedChanges:
+            return "Uncommitted changes"
+        case nil:
+            return nil
+        }
     }
 
     var hasWorkingTreeChanges: Bool {

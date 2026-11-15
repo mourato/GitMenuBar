@@ -58,9 +58,16 @@ and [ADR 0025](docs/adr/0025-lucide-interface-icon-pack.md) (Lucide icon pack).
   these functions, never local opacity values.
 - Diff, warning, error, success, and quota colors are semantic. Color carries
   meaning, never decoration.
-- Sidebar status dots use severity: red for diverged or behind, orange for
-  uncommitted changes, `.secondary` for unmerged branches only. Untracked files
-  alone are not a warning.
+- Sidebar status dots appear only when they carry meaning
+  (`ProjectStatusSnapshot.severity`): red for failing checks, diverged, or
+  behind; orange for uncommitted changes. Any other project shows no dot,
+  never a neutral or green one; the dot slot stays reserved so names align.
+  Unmerged branches and untracked files alone are not a warning, so some
+  Needs Action rows (untracked-only, ahead-only, unpushed branches, a pull
+  request awaiting review) show no dot by design. A row whose refresh failed
+  shows no dot. Failing checks come from the listed pull requests only.
+  VoiceOver reads the dot's cause before the row summary, unless the summary
+  already states it.
 - GitHub open-total markers use `WorkbenchPalette.issueMarker()` (green) for
   issues and `WorkbenchPalette.pullRequestMarker()` (purple) for pull requests.
   Color stays on the marker; the number beside it stays neutral.
@@ -154,7 +161,11 @@ corner style.
   (running agent), Needs Action (`requiresAction` and `updateAvailable`), In
   Review (`review`: open pull requests, unmerged branches, detached HEAD), Up
   to Date (`clean`, collapsible), and Unavailable. Unmerged branches alone
-  never put a project in Needs Action. Empty groups are hidden.
+  never put a project in Needs Action. Review wins over behind, so a project
+  that is behind with an open pull request sits in In Review. Working exists
+  only while Show Agent Activity is on, and a running agent outranks every
+  other group. Up to Date reuses the `isCleanProjectsGroupCollapsed` key.
+  Empty groups are hidden; each header count reads "N projects" to VoiceOver.
 - Projects sidebar rows: every GitHub project can show trailing Issue and Pull
   Request totals in aligned Issues → Pull Requests columns, whether or not it
   is selected. Each column reserves the widest total it shows; a column with no
@@ -288,9 +299,6 @@ moves its rule into the sections above and deletes it here.
 
 Wave 1 (meaning):
 
-- The leading status dot appears only when it carries meaning: red for
-  failing checks, diverged, or behind; orange for uncommitted changes. A
-  project with no action shows no dot, never a neutral one.
 - The row summary shows one fact, the most urgent, so it never truncates:
   failing checks → uncommitted or unpushed work → behind → current branch
   pull request → unmerged branches. Facts join with ` · ` only when both fit.

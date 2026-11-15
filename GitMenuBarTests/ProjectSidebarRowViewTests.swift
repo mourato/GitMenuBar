@@ -93,9 +93,19 @@ final class ProjectSidebarRowViewTests: XCTestCase {
 
     // MARK: - Fixtures
 
+    func testRowLabelStatesDotCauseBeforeSummary() {
+        let snapshot = makeSnapshot(behindCount: 2)
+        let row = ProjectSidebarRowView(
+            snapshot: snapshot, agentActivities: [], showsAgentActivity: true, countColumns: .guides(for: [snapshot])
+        )
+
+        XCTAssertTrue(row.accessibilityLabel.hasPrefix("project, Behind remote, "))
+    }
+
     private func makeSnapshot(
         branchName: String = "main",
         aheadCount: Int = 0,
+        behindCount: Int = 0,
         unpushedBranchCount: Int = 0,
         unmergedBranchCount: Int = 0,
         openIssueCount: Int? = 0,
@@ -112,7 +122,7 @@ final class ProjectSidebarRowViewTests: XCTestCase {
             untrackedCount: 0,
             lineDiff: .zero,
             aheadCount: aheadCount,
-            behindCount: 0,
+            behindCount: behindCount,
             hasUpstream: true,
             lastRefreshedAt: nil,
             lastErrorDescription: nil,

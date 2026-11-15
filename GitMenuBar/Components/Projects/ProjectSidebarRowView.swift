@@ -47,8 +47,9 @@ struct ProjectSidebarRowView: View {
 
     private func rowContent(showsOpenCountBadges: Bool) -> some View {
         HStack(spacing: WorkbenchMetrics.compactSpacing) {
+            // The slot stays reserved without a dot so names keep one column.
             Circle()
-                .fill(dotColor)
+                .fill(dotColor ?? .clear)
                 .frame(width: 7, height: 7)
                 .fixedSize()
 
@@ -94,17 +95,11 @@ struct ProjectSidebarRowView: View {
         }
     }
 
-    private var dotColor: Color {
-        guard snapshot.classification != .clean else {
-            return .green
-        }
+    private var dotColor: Color? {
         switch snapshot.severity {
-        case .divergedOrBehind:
-            return .red
-        case .uncommittedChanges:
-            return .orange
-        case .unmergedOnly, .none:
-            return .secondary
+        case .critical: .red
+        case .uncommittedChanges: .orange
+        case nil: nil
         }
     }
 
@@ -163,7 +158,11 @@ struct ProjectSidebarRowView: View {
     }
 
     var accessibilityLabel: String {
-        var parts = [snapshot.project.name, snapshot.statusSummary]
+        var parts = [snapshot.project.name]
+        if let cause = snapshot.severityAccessibilityDescription, cause != snapshot.statusSummary {
+            parts.append(cause)
+        }
+        parts.append(snapshot.statusSummary)
         if showsAgentActivity, !agentActivities.isEmpty {
             parts.append(agentActivities.map(\.accessibilityDescription).joined(separator: ", "))
         }
