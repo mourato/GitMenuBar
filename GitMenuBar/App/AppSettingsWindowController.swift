@@ -13,9 +13,11 @@ private extension Settings.PaneIdentifier {
 final class AppSettingsWindowController {
     private enum Constants {
         static let minimumContentSize = NSSize(width: 560, height: 440)
-        /// Settings `.toolbarItems` panes render icons at 32pt (SF Symbols are
-        /// vector; the Lucide raster must match to avoid a 2x upscale blur).
-        static let toolbarIconSize: CGFloat = 32
+        /// Settings `.toolbarItems` items fill a ~32pt box with non-symbol
+        /// images, while SF Symbols draw at ~17-20pt. Keep the canvas at 32
+        /// and the glyph near the symbol optical size; calibrate 17-20.
+        static let toolbarIconCanvas: CGFloat = 32
+        static let toolbarIconGlyph: CGFloat = 18
     }
 
     /// Catalog icon for a Settings pane, keeping the VoiceOver description
@@ -24,7 +26,11 @@ final class AppSettingsWindowController {
         _ name: LucideIconName,
         accessibilityDescription: String
     ) -> NSImage? {
-        guard let image = NSImage(lucide: name, size: Constants.toolbarIconSize) else { return nil }
+        guard let image = NSImage(
+            lucide: name,
+            canvas: Constants.toolbarIconCanvas,
+            glyph: Constants.toolbarIconGlyph
+        ) else { return nil }
         image.accessibilityDescription = accessibilityDescription
         return image
     }

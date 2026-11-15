@@ -39,21 +39,24 @@ enum LucideIconRenderer {
         return Bundle.main.url(forResource: file, withExtension: "svg", subdirectory: "Resources/LucideIcons")
     }
 
-    /// Size-aware render for surfaces that need larger than 16pt (ex.: Settings
-    /// `.toolbarItems` panes at 32pt). SVG source stays vector; setting `size`
-    /// keeps AppKit tinting via `isTemplate`. Cached per name+size.
-    static func image(for name: LucideIconName, size: CGFloat) -> NSImage? {
-        let key = "\(name.rawValue)@\(Int(size))" as NSString
+    /// Canvas render for hosts that stretch non-symbol images to fill the box
+    /// (ex.: Settings `.toolbarItems` items use a ~32pt box, while SF Symbols
+    /// draw their glyph at ~17-20pt). Draws the catalog glyph inset and
+    /// centered on a fixed canvas; the drawing handler re-renders per screen
+    /// scale, so it stays sharp @1x/@2x. Cached per name+canvas+glyph.
+    static func image(for name: LucideIconName, canvas: CGFloat, glyph: CGFloat) -> NSImage? {
+        let key = "\(name.rawValue)@\(Int(canvas))/\(Int(glyph))" as NSString
         if let cached = cache.object(forKey: key) {
             return cached
         }
-        guard let url = resourceURL(for: name),
-              let data = try? Data(contentsOf: url),
-              let image = NSImage(data: data)
-        else {
+        guard let source = image(for: name) else {
             return nil
         }
-        image.size = NSSize(width: size, height: size)
+        let inset = (canvas - glyph) / 2
+        let image = NSImage(size: NSSize(width: canvas, height: canvas), flipped: false) { rect in
+            source.draw(in: rect.insetBy(dx: inset, dy: inset))
+            return true
+        }
         image.isTemplate = true
         cache.setObject(image, forKey: key)
         return image
@@ -71,9 +74,9 @@ extension NSImage {
         isTemplate = true
     }
 
-    /// Size-aware variant for surfaces above 16pt (ex.: Settings toolbar at 32pt).
-    convenience init?(lucide name: LucideIconName, size: CGFloat) {
-        guard let image = LucideIconRenderer.image(for: name, size: size) else {
+    /// Canvas variant for hosts that fill the box (ex.: Settings toolbar).
+    convenience init?(lucide name: LucideIconName, canvas: CGFloat, glyph: CGFloat) {
+        guard let image = LucideIconRenderer.image(for: name, canvas: canvas, glyph: glyph) else {
             return nil
         }
         self.init(size: image.size)
