@@ -113,9 +113,16 @@ mirrors with it, and a reading with no proportion never draws a bar.
   passes: the card meter and its accessibility strings are unchanged.
 - Scoped `scripts/lint.sh` over every touched Swift file reports zero
   violations.
+- `make guidance-check` and `make lint` only fail on the issues already
+  documented in #33 and #32 respectively; the touched files add none.
 
 ## Pending
 
+- The full `make test` gate reached 832 passing tests with zero failures and
+  then stopped progressing in the pre-existing GitHub/AI-commit test classes;
+  later test sessions stalled at launch behind a pending macOS authorization
+  dialog on this machine. The focused suites above are the test evidence for
+  this unit; re-run the full gate on a clean machine before integrating.
 - The captures render the SwiftUI strip and the real composite renderer, not a
   screenshot of a live menu bar. The status item, its tooltip, the submenu,
   Refresh, and provider ordering use the existing code paths and tests.
