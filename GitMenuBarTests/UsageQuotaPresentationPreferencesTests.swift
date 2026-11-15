@@ -66,13 +66,55 @@ final class UsageQuotaPresentationPreferencesTests: XCTestCase {
         XCTAssertEqual(restored.meterStyle, .circular)
     }
 
-    func testUnknownMeterStyleKeepsTextCompatibilityDefault() {
+    func testAbsentMeterStyleDefaultsToLine() {
+        XCTAssertEqual(
+            UsageQuotaPresentationPreferences(defaults: defaults, keyStore: InMemoryAIAPIKeyStore()).meterStyle,
+            .line
+        )
+    }
+
+    func testUnknownMeterStyleFallsBackToLineWithoutOverwritingStoredValue() {
         defaults.set("future-style", forKey: AppPreferences.Keys.usageQuotaMenuBarStyle)
 
         XCTAssertEqual(
-            UsageQuotaPresentationPreferences(defaults: defaults).meterStyle,
-            .text
+            UsageQuotaPresentationPreferences(defaults: defaults, keyStore: InMemoryAIAPIKeyStore()).meterStyle,
+            .line
         )
+        XCTAssertEqual(
+            defaults.string(forKey: AppPreferences.Keys.usageQuotaMenuBarStyle),
+            "future-style"
+        )
+    }
+
+    func testEverySavedMeterStyleRawValueKeepsItsChoice() {
+        for style in UsageQuotaPresentationPreferences.MeterStyle.allCases {
+            defaults.set(style.rawValue, forKey: AppPreferences.Keys.usageQuotaMenuBarStyle)
+
+            let restored = UsageQuotaPresentationPreferences(
+                defaults: defaults,
+                keyStore: InMemoryAIAPIKeyStore()
+            )
+
+            XCTAssertEqual(restored.meterStyle, style, "raw value \(style.rawValue) must survive a reload")
+        }
+    }
+
+    func testFreshPreferencesDoNotWriteTheDefaultMeterStyle() {
+        let preferences = UsageQuotaPresentationPreferences(
+            defaults: defaults,
+            keyStore: InMemoryAIAPIKeyStore()
+        )
+
+        XCTAssertEqual(preferences.meterStyle, .line)
+        XCTAssertNil(defaults.string(forKey: AppPreferences.Keys.usageQuotaMenuBarStyle))
+    }
+
+    func testMeterStyleRawValuesAndLineTitleStayStable() {
+        XCTAssertEqual(UsageQuotaPresentationPreferences.MeterStyle.text.rawValue, "text")
+        XCTAssertEqual(UsageQuotaPresentationPreferences.MeterStyle.bars.rawValue, "bars")
+        XCTAssertEqual(UsageQuotaPresentationPreferences.MeterStyle.circular.rawValue, "circular")
+        XCTAssertEqual(UsageQuotaPresentationPreferences.MeterStyle.line.rawValue, "line")
+        XCTAssertEqual(UsageQuotaPresentationPreferences.MeterStyle.line.title, "Line")
     }
 
     func testPersistsMenuBarVisibility() {

@@ -175,6 +175,7 @@ final class StatusBarController: NSObject {
             _ = usageQuotaStore.showOpenCodeGoUsageQuota
             _ = usageQuotaPresentationPreferences.valueStyle
             _ = usageQuotaPresentationPreferences.meterStyle
+            _ = usageQuotaPresentationPreferences.showsPace
             _ = usageQuotaPresentationPreferences.menuBarVisibility
             _ = usageQuotaPresentationPreferences.providerOrder
             for providerID in UsageProviderID.allCases {

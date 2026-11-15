@@ -6,9 +6,19 @@ import Observation
 @Observable
 final class UsageQuotaPresentationPreferences {
     enum MeterStyle: String, CaseIterable, Identifiable {
-        case text
+        case line
         case bars
         case circular
+        case text
+
+        /// Line is the default compact style: a stored raw value that is absent
+        /// or no longer known falls back to it, while every valid stored value
+        /// keeps its earlier choice.
+        static let fallback = MeterStyle.line
+
+        static func resolved(from rawValue: String?) -> MeterStyle {
+            rawValue.flatMap(MeterStyle.init(rawValue:)) ?? fallback
+        }
 
         var id: String {
             rawValue
@@ -16,6 +26,8 @@ final class UsageQuotaPresentationPreferences {
 
         var title: String {
             switch self {
+            case .line:
+                "Line"
             case .text:
                 "Text"
             case .bars:
@@ -153,8 +165,9 @@ final class UsageQuotaPresentationPreferences {
     ) {
         self.defaults = defaults
         self.keyStore = keyStore
-        meterStyle = defaults.string(forKey: AppPreferences.Keys.usageQuotaMenuBarStyle)
-            .flatMap(MeterStyle.init(rawValue:)) ?? .text
+        meterStyle = MeterStyle.resolved(
+            from: defaults.string(forKey: AppPreferences.Keys.usageQuotaMenuBarStyle)
+        )
         valueStyle = defaults.string(forKey: AppPreferences.Keys.usageQuotaValueStyle)
             .flatMap(ValueStyle.init(rawValue:)) ?? .left
         menuBarVisibility = defaults.string(forKey: AppPreferences.Keys.usageQuotaMenuBarVisibility)

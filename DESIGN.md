@@ -214,8 +214,11 @@ corner style.
   commit composer sits fixed above the working tree, which is the workspace's
   single scroll owner. The composer owns the primary Commit action.
 - Quota detail cards in the submenu and the footer popover always use the
-  continuous Line meter. The `Menu bar` Style preference changes only the
-  status-item strip. Value style (Remaining or Used) applies to both cards: a
+  continuous Line meter. The `Menu bar` Style preference (Line, Bars, Circular,
+  Text) changes both compact surfaces: the status-item strip and the footer
+  quota summary. Line is the default for a missing or unknown saved value, and
+  every stored Text, Bars, or Circular value keeps that earlier choice. Value
+  style (Remaining or Used) applies to both cards and the compact strip: a
   surface states `% remaining` or `% used` once, rows show only `%`, and each
   row's VoiceOver value keeps the direction plus the provider and window name.
 - A quota row is the window title with a compact `↻` reset countdown, a
@@ -246,9 +249,16 @@ corner style.
 - Status-item quota strip: the user chooses whether the status item always
   shows up to two selected quota figures per provider or keeps them only in
   the quota submenu. The submenu keeps the provider cards and the refresh
-  action in both modes. Providers with an exhausted weekly reading are hidden
-  from the strip until a refreshed reading has remaining weekly quota. Providers
-  without a weekly reading keep their selected figures.
+  action in both modes. Line stacks up to two readings per provider with the
+  real provider icon, a token-sized continuous bar per reading, and the pace
+  marker from that reading's own window; a figure without a proportion, such as
+  a reset count or a credit balance, stays text with no invented bar or pace.
+  The compact meter hides the hatch, warning ticks, and workday ticks that stop
+  being legible at menu-bar size, and the status item renders as a template
+  image so the menu bar's own appearance sets the ink. Providers with an
+  exhausted weekly reading are hidden from the strip until a refreshed reading
+  has remaining weekly quota. Providers without a weekly reading keep their
+  selected figures.
 
 ## Icons
 

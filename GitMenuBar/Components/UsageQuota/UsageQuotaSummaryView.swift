@@ -49,6 +49,24 @@ private struct UsageQuotaSummaryItem: View {
                         .foregroundStyle(UsageQuotaAlertLevel.error.color)
                 } else {
                     switch preferences.meterStyle {
+                    case .line:
+                        let reading = UsageQuotaPace.reading(
+                            for: display.window,
+                            showUsed: preferences.valueStyle == .used,
+                            thresholds: [],
+                            workdaysPerWeek: preferences.workdaysPerWeek,
+                            showPace: preferences.showsPace
+                        )
+                        UsageQuotaLineMeter(
+                            fillPercent: reading.fillPercent,
+                            tint: tint,
+                            pacePercent: reading.pacePercent,
+                            paceDeficit: reading.paceDeficit,
+                            warningMarkerPercents: [],
+                            workdayMarkerPercents: [],
+                            compact: true
+                        )
+                        .frame(width: WorkbenchMetrics.quotaMeterCompactWidth)
                     case .text:
                         Text("\(displayPercent)%")
                             .font(WorkbenchTypography.captionStrong)

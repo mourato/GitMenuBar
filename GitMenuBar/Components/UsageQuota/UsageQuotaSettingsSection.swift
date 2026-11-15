@@ -61,6 +61,10 @@ struct UsageQuotaSettingsSection: View {
                 .pickerStyle(.segmented)
                 .disabled(preferences.menuBarVisibility != .always)
 
+                Text("Also sets the footer summary. Quota details always use Line.")
+                    .font(WorkbenchTypography.caption)
+                    .foregroundStyle(.secondary)
+
                 Picker(
                     "Show",
                     selection: Binding(
