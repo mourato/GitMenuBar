@@ -66,5 +66,5 @@ measurements in the handoff.
 
 ## Related skills
 
-Reference-app study → global `reference-apps` + `docs/agents/reference-apps.md`.
+Reference-app study → global `study-reference-apps` + `docs/agents/reference-apps.md`.
 Deep Instruments sessions stay here; delivery gates → `ship`.
