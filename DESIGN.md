@@ -169,7 +169,8 @@ corner style.
   other group. Up to Date reuses the `isCleanProjectsGroupCollapsed` key.
   Empty groups are hidden; each header count reads "N projects" to VoiceOver.
   Projects sidebar group headers (title and count) use Title Case at
-  `WorkbenchTypography.sectionLabel`, never uppercase. The list hides its own background so the native sidebar column
+  `WorkbenchTypography.sectionLabel`, never uppercase.
+  The list hides its own background so the native sidebar column
   material shows through; there is no custom plate. The collapsible group
   uses the native section disclosure.
 - Projects sidebar rows: every GitHub project can show trailing Issue and Pull
@@ -294,25 +295,17 @@ corner style.
   thresholds for Session, weekly thresholds for every other window) with the
   least remaining quota wins, and a quiet snapshot falls back to Session →
   Weekly → Monthly → the tightest model window. The choice ignores the
-  Remaining/Used style. Every meter style pairs its meter with the explicit
+  Remaining/Used style. A quiet window draws its meter in `.secondary`
+  and its percent at regular weight; only a window past its alert threshold
+  gets color (orange or red) and a semibold percent. The `.bars` style keeps
+  the larger `quotaMeterWidth` capsule. Every meter style pairs its meter with the explicit
   percent (`22%` remaining, `78%` used); Line keeps its compact bar and pace
   marker, and Text keeps a single percent with no duplication. The tooltip and
   VoiceOver name the provider, the resolved window, the value, the pace state
   when shown, and Outdated from that same resolution, so the footer never
   announces Session with a Weekly value. The footer adds no window width and
-  the percent never compresses: it keeps its size while the Settings control
+  the percent never compresses: it keeps its intrinsic width and never truncates while the Settings control
   and the project names keep theirs.
-
-## Planned: Projects Sidebar Redesign
-
-Target rules for the Projects sidebar redesign epic. They are not shipped
-yet; until each wave lands, the rules above stay the truth. Each delivery
-moves its rule into the sections above and deletes it here.
-
-Wave 2 (finish):
-
-- The footer quota summary uses a thinner bar and a neutral fill. Color
-  appears only when a window crosses its alert threshold.
 
 ## Icons
 

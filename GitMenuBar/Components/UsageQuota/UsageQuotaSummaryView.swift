@@ -112,7 +112,8 @@ private struct UsageQuotaSummaryItem: View {
             kind: resolved.kind,
             showUsed: showUsed
         ))
-        .font(WorkbenchTypography.captionStrong)
+        // Weight joins color as an alert signal; a quiet window stays regular.
+        .font(resolved.alertLevel == .normal ? WorkbenchTypography.caption : WorkbenchTypography.captionStrong)
         .foregroundStyle(tint)
         .monospacedDigit()
         .lineLimit(1)

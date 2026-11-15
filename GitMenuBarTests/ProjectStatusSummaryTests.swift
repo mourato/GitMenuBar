@@ -106,14 +106,12 @@ final class ProjectStatusSummaryTests: XCTestCase {
         XCTAssertEqual(snapshot.statusSummary, "feature/cleanup, 2 commits to push, 3 unmerged branches")
     }
 
-    // MARK: - Clean rows keep the old summaries
+    // MARK: - Facts
 
     func testDotCauseLeadsForDivergedAndBehindWithLocalWork() {
         XCTAssertEqual(makeSnapshot(aheadCount: 3, behindCount: 1).summaryFacts.first, "Diverged (3 ahead · 1 behind)")
         XCTAssertEqual(makeSnapshot(stagedCount: 1, behindCount: 1).summaryFacts.first, "1 commit behind")
     }
-
-    // MARK: - Facts
 
     func testForeignFailingPullRequestKeepsTheCurrentBranchPullRequest() {
         let snapshot = makeSnapshot(
@@ -146,6 +144,8 @@ final class ProjectStatusSummaryTests: XCTestCase {
         let snapshot = makeSnapshot(behindCount: 1, unmergedBranchCount: 3)
         XCTAssertEqual(snapshot.summaryFacts, ["1 commit behind", "3 unmerged branches"])
     }
+
+    // MARK: - Clean rows keep the old summaries
 
     func testCleanDefaultBranchReadsUpToDate() {
         let snapshot = makeSnapshot()
