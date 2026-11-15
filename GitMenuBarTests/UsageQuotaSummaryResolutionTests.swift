@@ -113,7 +113,7 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
         let resolved = try XCTUnwrap(resolve(snapshot(session: 90, weekly: 85, monthly: 15)))
 
         XCTAssertEqual(resolved.window.remainingPercent, 15)
-        XCTAssertEqual(resolved.kind, .model)
+        XCTAssertEqual(resolved.kind, .monthly)
         XCTAssertEqual(resolved.title, "30-day")
         XCTAssertEqual(resolved.thresholds, weeklyThresholds)
         XCTAssertEqual(resolved.alertLevel, .error)
@@ -153,7 +153,7 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
         XCTAssertEqual(weeklyFallback.kind, .weekly)
 
         let monthlyFallback = try XCTUnwrap(resolve(snapshot(monthly: 70)))
-        XCTAssertEqual(monthlyFallback.kind, .model)
+        XCTAssertEqual(monthlyFallback.kind, .monthly)
         XCTAssertEqual(monthlyFallback.title, "30-day")
 
         let modelFallback = try XCTUnwrap(resolve(snapshot(models: [70, 60])))
@@ -163,6 +163,12 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
         // Quiet model ties keep the provided order.
         let modelTieFallback = try XCTUnwrap(resolve(snapshot(models: [70, 70])))
         XCTAssertEqual(modelTieFallback.title, "Model0")
+
+        // Monthly keeps its own fallback slot ahead of the tightest model.
+        let monthlyOverModel = try XCTUnwrap(resolve(snapshot(monthly: 70, models: [60])))
+        XCTAssertEqual(monthlyOverModel.kind, .monthly)
+        XCTAssertEqual(monthlyOverModel.title, "30-day")
+        XCTAssertEqual(monthlyOverModel.window.remainingPercent, 70)
     }
 
     // MARK: - Per-window thresholds

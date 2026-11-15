@@ -95,7 +95,7 @@ struct UsageQuotaSummaryResolution: Equatable, Sendable {
         if let monthly = snapshot.tertiaryMonthlyWindow {
             candidates.append(Self(
                 window: monthly,
-                kind: .model,
+                kind: .monthly,
                 thresholds: weeklyThresholds,
                 title: monthly.label
             ))
