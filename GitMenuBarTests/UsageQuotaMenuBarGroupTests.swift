@@ -53,33 +53,69 @@ final class UsageQuotaMenuBarGroupTests: XCTestCase {
     }
 
     @MainActor
-    func testMenuBarHidesWeeklyExhaustionAndRestoresProviderAfterRefresh() throws {
-        let suiteName = "UsageQuotaMenuBarGroupTests.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-        let preferences = UsageQuotaPresentationPreferences(defaults: defaults, keyStore: InMemoryAIAPIKeyStore())
+    func testMenuBarHidesProviderWhenWeeklyIsExhausted() throws {
+        let preferences = try isolatedPreferences()
         preferences.setSelectedMetrics([.session], for: .codex)
-
         for style in UsageQuotaPresentationPreferences.ValueStyle.allCases {
             preferences.valueStyle = style
-            for weeklyRemaining in [0, 1, 100] {
+            let snapshot = codexSnapshot(sessionRemaining: 75, weeklyRemaining: 0)
+            let groups = UsageQuotaMenuPresentation.groups(snapshots: [snapshot], preferences: preferences)
+            XCTAssertEqual(groups.map(\.providerID), [])
+            let value = try XCTUnwrap(
+                UsageQuotaMenuPresentation.value(for: .weekly, snapshot: snapshot, valueStyle: style)
+            )
+            XCTAssertEqual(value.compactValue, "Exhausted")
+        }
+    }
+
+    @MainActor
+    func testMenuBarRestoresProviderWhenWeeklyHasQuota() throws {
+        let preferences = try isolatedPreferences()
+        preferences.setSelectedMetrics([.session], for: .codex)
+        for style in UsageQuotaPresentationPreferences.ValueStyle.allCases {
+            preferences.valueStyle = style
+            for weeklyRemaining in [1, 100] {
                 for sessionRemaining in [0, 75] {
-                    let snapshot = UsageQuotaSnapshot(
-                        providerID: .codex,
-                        displayName: "Codex",
-                        sessionWindow: UsageWindow(remainingPercent: sessionRemaining, resetAt: nil, label: "5h"),
-                        weeklyWindow: UsageWindow(remainingPercent: weeklyRemaining, resetAt: nil, label: "7d"),
-                        isAvailable: true
-                    )
+                    let snapshot = codexSnapshot(sessionRemaining: sessionRemaining, weeklyRemaining: weeklyRemaining)
                     let groups = UsageQuotaMenuPresentation.groups(snapshots: [snapshot], preferences: preferences)
-                    XCTAssertEqual(groups.map(\.providerID), weeklyRemaining == 0 ? [] : [.codex])
-                    XCTAssertEqual(
-                        UsageQuotaMenuPresentation.value(for: .weekly, snapshot: snapshot, valueStyle: style)?.compactValue,
-                        weeklyRemaining == 0 ? "Exhausted" : (style == .used ? "\(100 - weeklyRemaining)%" : "\(weeklyRemaining)%")
-                    )
+                    XCTAssertEqual(groups.map(\.providerID), [.codex])
                 }
             }
         }
+    }
+
+    @MainActor
+    func testWeeklyCompactValueFollowsValueStyle() throws {
+        let preferences = try isolatedPreferences()
+        preferences.setSelectedMetrics([.session], for: .codex)
+        for style in UsageQuotaPresentationPreferences.ValueStyle.allCases {
+            preferences.valueStyle = style
+            for weeklyRemaining in [0, 1, 100] {
+                let snapshot = codexSnapshot(sessionRemaining: 75, weeklyRemaining: weeklyRemaining)
+                let value = try XCTUnwrap(
+                    UsageQuotaMenuPresentation.value(for: .weekly, snapshot: snapshot, valueStyle: style)
+                )
+                XCTAssertEqual(value.compactValue, expectedWeeklyCompactValue(weeklyRemaining: weeklyRemaining, style: style))
+            }
+        }
+    }
+
+    private func codexSnapshot(sessionRemaining: Int, weeklyRemaining: Int) -> UsageQuotaSnapshot {
+        UsageQuotaSnapshot(
+            providerID: .codex,
+            displayName: "Codex",
+            sessionWindow: UsageWindow(remainingPercent: sessionRemaining, resetAt: nil, label: "5h"),
+            weeklyWindow: UsageWindow(remainingPercent: weeklyRemaining, resetAt: nil, label: "7d"),
+            isAvailable: true
+        )
+    }
+
+    private func expectedWeeklyCompactValue(
+        weeklyRemaining: Int,
+        style: UsageQuotaPresentationPreferences.ValueStyle
+    ) -> String {
+        guard weeklyRemaining > 0 else { return "Exhausted" }
+        return style == .used ? "\(100 - weeklyRemaining)%" : "\(weeklyRemaining)%"
     }
 
     @MainActor
