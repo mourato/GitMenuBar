@@ -160,7 +160,7 @@ struct ProjectsSidebarView: View {
     private func groupHeader(title: String, count: Int) -> some View {
         HStack {
             Text(title)
-                .textCase(.uppercase)
+                .font(WorkbenchTypography.sectionLabel)
             Spacer(minLength: 0)
             Text("\(count)")
                 .monospacedDigit()

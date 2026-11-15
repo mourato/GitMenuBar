@@ -165,6 +165,10 @@ corner style.
   only while Show Agent Activity is on, and a running agent outranks every
   other group. Up to Date reuses the `isCleanProjectsGroupCollapsed` key.
   Empty groups are hidden; each header count reads "N projects" to VoiceOver.
+  Group headers use Title Case at `WorkbenchTypography.sectionLabel`, never
+  uppercase. The list hides its own background so the native sidebar column
+  material shows through; there is no custom plate. The collapsible group
+  uses the native section disclosure.
 - Projects sidebar rows: every GitHub project can show trailing Issue and Pull
   Request totals in aligned Issues → Pull Requests columns, whether or not it
   is selected. Each column reserves the widest total it shows; a column with no
@@ -307,9 +311,6 @@ Wave 2 (finish):
 - Sidebar Issue and Pull Request markers use `.secondary`, like their
   numbers. The row's only color is its status dot. The repository overview
   strip keeps its marker colors.
-- Section headers use Title Case at `WorkbenchTypography.sectionLabel`,
-  without `.textCase(.uppercase)`. The sidebar keeps the native sidebar list
-  material; no custom plate.
 - The footer quota summary uses a thinner bar and a neutral fill. Color
   appears only when a window crosses its alert threshold.
 
