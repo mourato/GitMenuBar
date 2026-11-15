@@ -27,36 +27,44 @@ private struct UsageQuotaSummaryItem: View {
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
-        if let display = displayWindow {
-            let displayPercent = UsageQuotaFormatting.displayPercent(
-                remainingPercent: display.window.remainingPercent,
-                showUsed: preferences.valueStyle == .used
+        if let resolved = UsageQuotaSummaryResolution.resolve(
+            snapshot: snapshot,
+            sessionThresholds: preferences.sessionWarningThresholds,
+            weeklyThresholds: preferences.weeklyWarningThresholds
+        ) {
+            let showUsed = preferences.valueStyle == .used
+            let reading = UsageQuotaPace.reading(
+                for: resolved.window,
+                showUsed: showUsed,
+                thresholds: [],
+                workdaysPerWeek: preferences.workdaysPerWeek,
+                showPace: preferences.showsPace
             )
-            let isExhausted = UsageQuotaFormatting.isWeeklyExhausted(
-                remainingPercent: display.window.remainingPercent,
-                kind: display.kind
+            let tint = resolved.alertLevel.color
+            let description = UsageQuotaSummaryResolution.describe(
+                displayName: snapshot.displayName,
+                resolution: resolved,
+                reading: reading,
+                isStale: snapshot.isStale
             )
-            let tint = isExhausted
-                ? UsageQuotaAlertLevel.error.color
-                : UsageQuotaFormatting.alertLevel(
-                    remainingPercent: display.window.remainingPercent,
-                    thresholds: warningThresholds
-                ).color
             HStack(spacing: WorkbenchMetrics.microSpacing) {
                 ProviderIconView(providerID: snapshot.providerID)
-                if isExhausted {
+                if resolved.isExhausted {
                     LucideIconView(name: .circleAlert)
                         .foregroundStyle(UsageQuotaAlertLevel.error.color)
+                    Text(UsageQuotaFormatting.compactDisplayValueText(
+                        remainingPercent: resolved.window.remainingPercent,
+                        kind: resolved.kind,
+                        showUsed: showUsed
+                    ))
+                    .font(WorkbenchTypography.captionStrong)
+                    .foregroundStyle(UsageQuotaAlertLevel.error.color)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                 } else {
                     switch preferences.meterStyle {
                     case .line:
-                        let reading = UsageQuotaPace.reading(
-                            for: display.window,
-                            showUsed: preferences.valueStyle == .used,
-                            thresholds: [],
-                            workdaysPerWeek: preferences.workdaysPerWeek,
-                            showPace: preferences.showsPace
-                        )
                         UsageQuotaLineMeter(
                             fillPercent: reading.fillPercent,
                             tint: tint,
@@ -67,66 +75,172 @@ private struct UsageQuotaSummaryItem: View {
                             compact: true
                         )
                         .frame(width: WorkbenchMetrics.quotaMeterCompactWidth)
+                        percentText(resolved: resolved, showUsed: showUsed, tint: tint)
                     case .text:
-                        Text("\(displayPercent)%")
-                            .font(WorkbenchTypography.captionStrong)
-                            .foregroundStyle(tint)
+                        percentText(resolved: resolved, showUsed: showUsed, tint: tint)
                     case .bars:
                         UsageQuotaSummaryBar(
-                            fraction: Double(displayPercent) / 100,
+                            fraction: Double(reading.fillPercent) / 100,
                             tint: tint,
                             track: WorkbenchPalette.neutralBorder(contrast: contrast)
                         )
+                        percentText(resolved: resolved, showUsed: showUsed, tint: tint)
                     case .circular:
                         UsageQuotaCircularProgress(
-                            fraction: Double(displayPercent) / 100,
+                            fraction: Double(reading.fillPercent) / 100,
                             tint: tint
                         )
                         .frame(width: WorkbenchMetrics.quotaMeterWidth, height: WorkbenchMetrics.quotaMeterWidth)
+                        percentText(resolved: resolved, showUsed: showUsed, tint: tint)
                     }
                 }
             }
             .opacity(snapshot.isStale ? 0.72 : 1)
+            .help(description)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilityLabel(display: display))
+            .accessibilityLabel(description)
         }
     }
 
-    private var displayWindow: (window: UsageWindow, kind: UsageQuotaWindowKind)? {
-        if let weekly = snapshot.weeklyWindow, weekly.remainingPercent == 0 {
-            return (weekly, .weekly)
+    private func percentText(
+        resolved: UsageQuotaSummaryResolution,
+        showUsed: Bool,
+        tint: Color
+    ) -> some View {
+        Text(UsageQuotaFormatting.compactDisplayValueText(
+            remainingPercent: resolved.window.remainingPercent,
+            kind: resolved.kind,
+            showUsed: showUsed
+        ))
+        .font(WorkbenchTypography.captionStrong)
+        .foregroundStyle(tint)
+        .monospacedDigit()
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
+    }
+}
+
+/// Deterministic critical-window resolution for the sidebar footer summary.
+///
+/// Footer-only: the menu-bar strip keeps the user's selected metrics and its
+/// own exhausted-weekly rule (`UsageQuotaMenuPresentation`). One resolution
+/// drives the meter, the percent, the tooltip, and VoiceOver, so the footer
+/// never names one window while drawing another.
+struct UsageQuotaSummaryResolution: Equatable, Sendable {
+    let window: UsageWindow
+    let kind: UsageQuotaWindowKind
+    /// Thresholds belonging to the resolved window: the session thresholds for
+    /// Session, the weekly thresholds for every other window.
+    let thresholds: [Int]
+    /// Window name for the tooltip and VoiceOver, matching the detail card row.
+    let title: String
+
+    var isExhausted: Bool {
+        UsageQuotaFormatting.isWeeklyExhausted(
+            remainingPercent: window.remainingPercent,
+            kind: kind
+        )
+    }
+
+    var alertLevel: UsageQuotaAlertLevel {
+        if isExhausted {
+            return .error
         }
+        return UsageQuotaFormatting.alertLevel(
+            remainingPercent: window.remainingPercent,
+            thresholds: thresholds
+        )
+    }
+
+    /// Session, Weekly, Monthly, then the provided model order. An exhausted
+    /// weekly window keeps its special state ahead of every alert; otherwise
+    /// the alerting window with the least remaining quota wins, and a quiet
+    /// snapshot falls back to the first declared window. The Remaining/Used
+    /// style never changes the choice.
+    static func resolve(
+        snapshot: UsageQuotaSnapshot,
+        sessionThresholds: [Int],
+        weeklyThresholds: [Int]
+    ) -> Self? {
+        if let weekly = snapshot.weeklyWindow, weekly.remainingPercent == 0 {
+            return Self(
+                window: weekly,
+                kind: .weekly,
+                thresholds: weeklyThresholds,
+                title: UsageQuotaPace.rowTitle(isSessionWindow: false, window: weekly)
+            )
+        }
+        var candidates: [Self] = []
         if let session = snapshot.sessionWindow {
-            return (session, .session)
+            candidates.append(Self(
+                window: session,
+                kind: .session,
+                thresholds: sessionThresholds,
+                title: UsageQuotaPace.rowTitle(isSessionWindow: true, window: session)
+            ))
         }
         if let weekly = snapshot.weeklyWindow {
-            return (weekly, .weekly)
+            candidates.append(Self(
+                window: weekly,
+                kind: .weekly,
+                thresholds: weeklyThresholds,
+                title: UsageQuotaPace.rowTitle(isSessionWindow: false, window: weekly)
+            ))
         }
         if let monthly = snapshot.tertiaryMonthlyWindow {
-            return (monthly, .model)
+            candidates.append(Self(
+                window: monthly,
+                kind: .model,
+                thresholds: weeklyThresholds,
+                title: monthly.label
+            ))
         }
-        guard let model = snapshot.modelWindows.min(by: { $0.remainingPercent < $1.remainingPercent }) else {
-            return nil
+        for model in snapshot.modelWindows {
+            candidates.append(Self(
+                window: model,
+                kind: .model,
+                thresholds: weeklyThresholds,
+                title: model.label
+            ))
         }
-        return (model, .model)
+        guard !candidates.isEmpty else { return nil }
+        // `min(by:)` keeps the first minimum, so ties honor the declared order
+        // and models keep their provided order.
+        let alerted = candidates.filter { $0.alertLevel != .normal }
+        if let critical = alerted.min(by: { $0.window.remainingPercent < $1.window.remainingPercent }) {
+            return critical
+        }
+        // Quiet fallback: Session → Weekly → Monthly → the tightest model.
+        if let first = candidates.first(where: { $0.kind != .model }) {
+            return first
+        }
+        return candidates.min(by: { $0.window.remainingPercent < $1.window.remainingPercent })
     }
 
-    /// The session thresholds apply when the session window drives the summary; otherwise weekly.
-    private var warningThresholds: [Int] {
-        snapshot.sessionWindow == nil ? preferences.weeklyWarningThresholds : preferences.sessionWarningThresholds
-    }
-
-    private func accessibilityLabel(display: (window: UsageWindow, kind: UsageQuotaWindowKind)) -> String {
-        let value = UsageQuotaFormatting.displayValueText(
-            remainingPercent: display.window.remainingPercent,
-            kind: display.kind,
-            showUsed: preferences.valueStyle == .used
-        )
-        let exhaustedText = display.kind == .weekly && display.window.remainingPercent == 0
-            ? "weekly quota exhausted"
-            : value
-        let staleText = snapshot.isStale ? ", stale" : ""
-        return "\(snapshot.displayName), \(exhaustedText)\(staleText)"
+    /// Provider, window, remaining or used percent, pace state when the reading
+    /// carries one, and the stale marker. The tooltip and VoiceOver share it.
+    static func describe(
+        displayName: String,
+        resolution: Self,
+        reading: UsageQuotaPace.Reading,
+        isStale: Bool
+    ) -> String {
+        var parts = [displayName, resolution.title]
+        if resolution.isExhausted {
+            parts.append("quota exhausted")
+        } else {
+            parts.append(reading.percentText)
+            if let paceLeft = reading.paceLeftText {
+                parts.append(paceLeft)
+            }
+            if let paceRight = reading.paceRightText {
+                parts.append(paceRight)
+            }
+        }
+        if isStale {
+            parts.append("Outdated")
+        }
+        return parts.joined(separator: ", ")
     }
 }
 
@@ -299,6 +413,28 @@ extension UsageQuotaAlertLevel {
                 remainingPercent: 0,
                 resetAt: Date().addingTimeInterval(86400),
                 label: "Weekly",
+                durationSeconds: 7 * 86400
+            ),
+            isAvailable: true
+        )
+    ])
+}
+
+#Preview("Usage Quota Summary – Critical Weekly") {
+    UsageQuotaSummaryPreviewHarness(snapshots: [
+        UsageQuotaSnapshot(
+            providerID: .claudeCode,
+            displayName: "Claude Code",
+            sessionWindow: UsageWindow(
+                remainingPercent: 76,
+                resetAt: Date().addingTimeInterval(3600),
+                label: "5h",
+                durationSeconds: 5 * 3600
+            ),
+            weeklyWindow: UsageWindow(
+                remainingPercent: 22,
+                resetAt: Date().addingTimeInterval(86400),
+                label: "7d",
                 durationSeconds: 7 * 86400
             ),
             isAvailable: true
