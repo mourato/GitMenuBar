@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 
 #Preview("Usage Quota Strip") {
@@ -306,3 +307,4 @@ struct PreviewUsageQuotaProvider: UsageQuotaProviding {
         snapshot
     }
 }
+#endif
