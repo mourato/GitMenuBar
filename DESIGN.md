@@ -297,15 +297,16 @@ corner style.
   Weekly → Monthly → the tightest model window. The choice ignores the
   Remaining/Used style. A quiet window draws its meter in `.secondary`
   and its percent at regular weight; only a window past its alert threshold
-  gets color (orange or red) and a semibold percent. The `.bars` style keeps
-  the larger `quotaMeterWidth` capsule. Every meter style pairs its meter with the explicit
-  percent (`22%` remaining, `78%` used); Line keeps its compact bar and pace
+  gets color (orange or red) and a semibold percent. The `.bars` capsule
+  keeps `quotaMeterWidth` and `quotaMeterHeight`, taller than Line's compact
+  bar. Every meter style pairs its meter with the explicit percent (`22%`
+  remaining, `78%` used); Line keeps its compact bar and pace
   marker, and Text keeps a single percent with no duplication. The tooltip and
   VoiceOver name the provider, the resolved window, the value, the pace state
   when shown, and Outdated from that same resolution, so the footer never
   announces Session with a Weekly value. The footer adds no window width and
-  the percent never compresses: it keeps its intrinsic width and never truncates while the Settings control
-  and the project names keep theirs.
+  the percent never compresses: it keeps its intrinsic width and never
+  truncates. The Settings control and the project names keep their widths.
 
 ## Icons
 
