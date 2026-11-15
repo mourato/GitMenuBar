@@ -24,8 +24,8 @@ struct ProjectsSidebarView: View {
             sidebarControls
 
             List(selection: selectionBinding) {
-                ForEach(groupedProjects, id: \.0) { title, snapshots in
-                    groupSection(title: title, snapshots: snapshots)
+                ForEach(groupedProjects, id: \.0) { group, snapshots in
+                    groupSection(group, snapshots: snapshots)
                 }
             }
             .listStyle(.sidebar)
@@ -133,8 +133,9 @@ struct ProjectsSidebarView: View {
     }
 
     @ViewBuilder
-    private func groupSection(title: String, snapshots: [ProjectStatusSnapshot]) -> some View {
-        if title == "Clean" {
+    private func groupSection(_ group: ProjectSidebarGroup, snapshots: [ProjectStatusSnapshot]) -> some View {
+        let title = group.title
+        if group == .upToDate {
             Section(isExpanded: cleanGroupExpanded) {
                 projectRows(snapshots)
             } header: {
@@ -200,23 +201,22 @@ struct ProjectsSidebarView: View {
     }
 
     private var countColumns: ProjectSidebarCountColumns {
-        let visible = groupedProjects.flatMap { title, snapshots in
-            title == "Clean" && isCleanGroupCollapsed ? [] : snapshots
+        let visible = groupedProjects.flatMap { group, snapshots in
+            group == .upToDate && isCleanGroupCollapsed ? [] : snapshots
         }
         return .guides(for: visible)
     }
 
-    private var groupedProjects: [(String, [ProjectStatusSnapshot])] {
+    private var groupedProjects: [(ProjectSidebarGroup, [ProjectStatusSnapshot])] {
         let values = monitor.monitoredProjects.compactMap { monitor.snapshots[$0.path] }
         let working = showAgentActivity ? values.filter(hasRunningAgent) : []
         let workingPaths = Set(working.map(\.project.path))
         let others = values.filter { !workingPaths.contains($0.project.path) }
-        return [
-            ("Working", working.sorted(by: projectNameSort)),
-            ("Needs Attention", others.filter { $0.classification == .needsAttention }.sorted(by: attentionSort)),
-            ("Clean", others.filter { $0.classification == .clean }.sorted(by: projectNameSort)),
-            ("Unavailable", others.filter { $0.classification == .unavailable }.sorted(by: projectNameSort))
-        ].filter { !$0.1.isEmpty }
+        return ProjectSidebarGroup.allCases.map { group in
+            let members = group == .working ? working : others.filter { $0.sidebarGroup == group }
+            return (group, members.sorted(by: group == .needsAction || group == .inReview ? attentionSort : projectNameSort))
+        }
+        .filter { !$0.1.isEmpty }
     }
 
     private func hasRunningAgent(_ snapshot: ProjectStatusSnapshot) -> Bool {

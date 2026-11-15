@@ -23,6 +23,26 @@ enum ProjectAttentionPriority: Equatable {
     }
 }
 
+/// Projects sidebar groups, ordered by the next action the operator takes.
+/// Working (a running agent) is assigned by the sidebar, not by Git state.
+enum ProjectSidebarGroup: CaseIterable, Equatable {
+    case working
+    case needsAction
+    case inReview
+    case upToDate
+    case unavailable
+
+    var title: String {
+        switch self {
+        case .working: "Working"
+        case .needsAction: "Needs Action"
+        case .inReview: "In Review"
+        case .upToDate: "Up to Date"
+        case .unavailable: "Unavailable"
+        }
+    }
+}
+
 enum ProjectAttentionReason: Equatable {
     case dirty
     case ahead
@@ -243,6 +263,19 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         return .clean
     }
 
+    /// Git-state group for the sidebar. Unmerged branches alone are review
+    /// work, never Needs Action.
+    var sidebarGroup: ProjectSidebarGroup {
+        if classification == .unavailable {
+            return .unavailable
+        }
+        switch attentionPriority {
+        case .requiresAction, .updateAvailable: return .needsAction
+        case .review: return .inReview
+        case .clean: return .upToDate
+        }
+    }
+
     var attentionPriority: ProjectAttentionPriority {
         if hasWorkingTreeChanges || aheadCount > 0 || unpushedBranchCount > 0 {
             return .requiresAction
@@ -298,9 +331,9 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         return result
     }
 
-    /// One line under the project name. Every Needs Attention row states at
-    /// least one reason for its group, so a project never reads "Up to date"
-    /// while it sits under Needs Attention.
+    /// One line under the project name. Every Needs Action or In Review row
+    /// states at least one reason for its group, so a project never reads
+    /// "Up to date" while it sits in one of those groups.
     var statusSummary: String {
         if lastErrorDescription != nil {
             return "Unavailable"
@@ -347,7 +380,7 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
     }
 
     /// Ahead and behind stay explicit even if the snapshot has no upstream
-    /// flag, so a Needs Attention row cannot fall through to "Up to date".
+    /// flag, so a Needs Action or In Review row cannot fall through to "Up to date".
     var upstreamSummary: [String] {
         var parts: [String] = []
         if aheadCount > 0 {

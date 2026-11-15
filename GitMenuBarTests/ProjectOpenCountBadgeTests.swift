@@ -90,7 +90,7 @@ final class ProjectOpenCountBadgeTests: XCTestCase {
 
     func testOpenTotalsDoNotChangeGitHealthClassification() {
         // Counts are GitHub facts; they never move a repository between the
-        // sidebar's Working, Needs Attention, Clean, or Unavailable groups.
+        // sidebar's Working, Needs Action, In Review, Up to Date, or Unavailable groups.
         let known = makeSnapshot(
             gitHubStatus: GitHubProjectStatus(
                 pullRequests: [], openPullRequestCount: 34, openIssueCount: 128, unavailableReason: nil

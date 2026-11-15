@@ -149,6 +149,12 @@ corner style.
   scaling, pointer, or scrollbar behavior to them.
 - Filter chips: single selection. The selected chip is accent-tinted and
   carries the only count for its filter.
+- Projects sidebar groups follow the next action, from
+  `ProjectStatusSnapshot.sidebarGroup` (`ProjectAttentionPriority`): Working
+  (running agent), Needs Action (`requiresAction` and `updateAvailable`), In
+  Review (`review`: open pull requests, unmerged branches, detached HEAD), Up
+  to Date (`clean`, collapsible), and Unavailable. Unmerged branches alone
+  never put a project in Needs Action. Empty groups are hidden.
 - Projects sidebar rows: every GitHub project can show trailing Issue and Pull
   Request totals in aligned Issues → Pull Requests columns, whether or not it
   is selected. Each column reserves the widest total it shows; a column with no
@@ -167,8 +173,8 @@ corner style.
   VoiceOver still reads available totals. The row summary states the current
   branch's own pull-request status, a foreign pull request when the current
   branch has none, `1 unmerged branch`/`N unmerged branches`, and unpushed
-  branches beyond the current branch; a Needs Attention row always states at
-  least one reason, so it never reads "Up to date".
+  branches beyond the current branch; a Needs Action or In Review row always
+  states at least one reason, so it never reads "Up to date".
 - Repository overview strip: five cells in sidebar order. Positive counts use
   the strong value hierarchy; a known zero, `Clean`, `None`, and an unknown `—`
   share one quiet secondary weight, and an unknown value never becomes zero.
@@ -273,6 +279,33 @@ corner style.
   announces Session with a Weekly value. The footer adds no window width and
   the percent never compresses: it keeps its size while the Settings control
   and the project names keep theirs.
+
+## Planned: Projects Sidebar Redesign
+
+Target rules for the Projects sidebar redesign epic. They are not shipped
+yet; until each wave lands, the rules above stay the truth. Each delivery
+moves its rule into the sections above and deletes it here.
+
+Wave 1 (meaning):
+
+- The leading status dot appears only when it carries meaning: red for
+  failing checks, diverged, or behind; orange for uncommitted changes. A
+  project with no action shows no dot, never a neutral one.
+- The row summary shows one fact, the most urgent, so it never truncates:
+  failing checks → uncommitted or unpushed work → behind → current branch
+  pull request → unmerged branches. Facts join with ` · ` only when both fit.
+  The tooltip and VoiceOver keep the full summary.
+
+Wave 2 (finish):
+
+- Sidebar Issue and Pull Request markers use `.secondary`, like their
+  numbers. The row's only color is its status dot. The repository overview
+  strip keeps its marker colors.
+- Section headers use Title Case at `WorkbenchTypography.sectionLabel`,
+  without `.textCase(.uppercase)`. The sidebar keeps the native sidebar list
+  material; no custom plate.
+- The footer quota summary uses a thinner bar and a neutral fill. Color
+  appears only when a window crosses its alert threshold.
 
 ## Icons
 

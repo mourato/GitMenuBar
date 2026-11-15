@@ -2,7 +2,7 @@
 import XCTest
 
 final class ProjectStatusSummaryTests: XCTestCase {
-    // MARK: - Needs Attention always states a reason
+    // MARK: - Needs Action and In Review always state a reason
 
     func testOpenPullRequestFromAnotherBranchExplainsNeedsAttention() {
         // GitHub detail list has a pull request, but it is not the current
