@@ -63,7 +63,7 @@ struct ProjectSidebarRowView: View {
                         .truncationMode(.tail)
                     // Only private repositories carry a marker; public is the quiet default.
                     if snapshot.gitHubStatus.isPrivate == true {
-                        LucideIconView(name: .lock, size: WorkbenchMetrics.sidebarInlineIconSize - 2)
+                        LucideIconView(name: .lock, size: WorkbenchMetrics.sidebarInlineIconSize)
                             .foregroundStyle(.secondary)
                             .fixedSize()
                             .help("Private repository")
