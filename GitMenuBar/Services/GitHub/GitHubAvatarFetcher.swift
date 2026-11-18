@@ -7,19 +7,40 @@ enum GitHubAvatarFetcher {
     private static let cache = CommitAvatarCache()
 
     static func avatarURL(owner: String, repo: String, commitHash: String, authorEmail: String?) async -> URL? {
-        let commitKey = "commit:\(owner.lowercased())/\(repo.lowercased())/\(commitHash.lowercased())"
-        var authorKeys: [String] = []
-        if let emailKey = authorEmailKey(owner: owner, repo: repo, email: authorEmail) {
-            authorKeys.append(emailKey)
-        }
+        let commitKey = commitKey(owner: owner, repo: repo, commitHash: commitHash)
+        var authorKeys = initialAuthorKeys(owner: owner, repo: repo, email: authorEmail)
 
-        switch await cache.lookup(commitKey: commitKey, authorKeys: authorKeys) {
-        case let .hit(cachedAvatar):
+        if case let .hit(cachedAvatar) = await cache.lookup(commitKey: commitKey, authorKeys: authorKeys) {
             return cachedAvatar
-        case .miss:
-            break
         }
 
+        guard let payload = await fetchDetails(owner: owner, repo: repo, commitHash: commitHash) else {
+            await cache.store(commitKey: commitKey, authorKeys: authorKeys, avatarURL: nil)
+            return nil
+        }
+
+        authorKeys += payload.authorKeys(owner: owner, repo: repo)
+        guard let avatarURL = payload.avatarURL else {
+            await cache.store(commitKey: commitKey, authorKeys: authorKeys, avatarURL: nil)
+            return nil
+        }
+
+        await cache.store(commitKey: commitKey, authorKeys: authorKeys, avatarURL: avatarURL)
+        return avatarURL
+    }
+
+    private static func commitKey(owner: String, repo: String, commitHash: String) -> String {
+        "commit:\(owner.lowercased())/\(repo.lowercased())/\(commitHash.lowercased())"
+    }
+
+    private static func initialAuthorKeys(owner: String, repo: String, email: String?) -> [String] {
+        guard let key = authorEmailKey(owner: owner, repo: repo, email: email) else {
+            return []
+        }
+        return [key]
+    }
+
+    private static func fetchDetails(owner: String, repo: String, commitHash: String) async -> GitHubCommitDetailsResponse? {
         guard let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)/commits/\(commitHash)") else {
             return nil
         }
@@ -29,39 +50,15 @@ enum GitHubAvatarFetcher {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                await cache.store(commitKey: commitKey, authorKeys: authorKeys, avatarURL: nil)
                 return nil
             }
-
-            let decoder = JSONDecoder()
-            let payload = try decoder.decode(GitHubCommitDetailsResponse.self, from: data)
-
-            if let emailKey = authorEmailKey(
-                owner: owner,
-                repo: repo,
-                email: payload.commit?.author?.email
-            ) {
-                authorKeys.append(emailKey)
-            }
-
-            if let loginKey = authorLoginKey(payload.author?.login) {
-                authorKeys.append(loginKey)
-            }
-
-            guard let avatarUrl = payload.author?.avatarUrl, let avatarURL = URL(string: avatarUrl) else {
-                await cache.store(commitKey: commitKey, authorKeys: authorKeys, avatarURL: nil)
-                return nil
-            }
-
-            await cache.store(commitKey: commitKey, authorKeys: authorKeys, avatarURL: avatarURL)
-            return avatarURL
+            return try JSONDecoder().decode(GitHubCommitDetailsResponse.self, from: data)
         } catch {
-            await cache.store(commitKey: commitKey, authorKeys: authorKeys, avatarURL: nil)
             return nil
         }
     }
 
-    private static func authorEmailKey(owner: String, repo: String, email: String?) -> String? {
+    fileprivate static func authorEmailKey(owner: String, repo: String, email: String?) -> String? {
         guard let email else {
             return nil
         }
@@ -74,7 +71,7 @@ enum GitHubAvatarFetcher {
         return "author-email:\(owner.lowercased())/\(repo.lowercased())/\(normalized)"
     }
 
-    private static func authorLoginKey(_ login: String?) -> String? {
+    fileprivate static func authorLoginKey(_ login: String?) -> String? {
         guard let login else {
             return nil
         }
@@ -127,6 +124,24 @@ private enum CommitAvatarCacheLookup {
 private struct GitHubCommitDetailsResponse: Decodable {
     let author: GitHubCommitAuthor?
     let commit: GitHubCommitPayload?
+
+    var avatarURL: URL? {
+        guard let avatarUrl = author?.avatarUrl else {
+            return nil
+        }
+        return URL(string: avatarUrl)
+    }
+
+    func authorKeys(owner: String, repo: String) -> [String] {
+        var keys: [String] = []
+        if let key = GitHubAvatarFetcher.authorEmailKey(owner: owner, repo: repo, email: commit?.author?.email) {
+            keys.append(key)
+        }
+        if let key = GitHubAvatarFetcher.authorLoginKey(author?.login) {
+            keys.append(key)
+        }
+        return keys
+    }
 }
 
 private struct GitHubCommitPayload: Decodable {
