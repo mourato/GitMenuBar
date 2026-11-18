@@ -114,6 +114,8 @@ struct GitHubProjectStatus: Equatable, Sendable {
     let openPullRequestCount: Int?
     let openIssueCount: Int?
     let unavailableReason: GitHubStatusUnavailableReason?
+    /// True for a private GitHub repository; nil when visibility is unknown.
+    var isPrivate: Bool?
 
     static let empty = GitHubProjectStatus(
         pullRequests: [],

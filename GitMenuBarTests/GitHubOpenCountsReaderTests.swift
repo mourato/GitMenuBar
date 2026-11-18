@@ -11,6 +11,14 @@ final class GitHubOpenCountsReaderTests: XCTestCase {
         XCTAssertEqual(result.openPullRequestCount, 7)
         XCTAssertEqual(result.openIssueCount, 11)
         XCTAssertNil(result.unavailableReason)
+        XCTAssertNil(result.isPrivate)
+        let privateRepository = "{\"data\":{\"repository\":{\"isPrivate\":true,"
+            + "\"pullRequests\":{\"totalCount\":0},\"issues\":{\"totalCount\":0}}}}"
+        XCTAssertEqual(GitHubOpenCountsReader.parse(Data(privateRepository.utf8))?.isPrivate, true)
+        let publicRepository = "{\"data\":{\"repository\":{\"isPrivate\":false,"
+            + "\"pullRequests\":{\"totalCount\":0},\"issues\":{\"totalCount\":0}}}}"
+        XCTAssertEqual(GitHubOpenCountsReader.parse(Data(publicRepository.utf8))?.isPrivate, false)
+        XCTAssertNil(GitHubOpenCountsReadResult.unavailable(.commandFailed).isPrivate)
         let withWarnings = "{\"errors\":[{\"message\":\"notice\"}],\"data\":{\"repository\":"
             + "{\"pullRequests\":{\"totalCount\":2},\"issues\":{\"totalCount\":3}}}}"
         XCTAssertEqual(GitHubOpenCountsReader.parse(Data(withWarnings.utf8))?.openIssueCount, 3)
@@ -49,6 +57,13 @@ final class GitHubOpenCountsReaderTests: XCTestCase {
         XCTAssertEqual(counts.openPullRequestCount, 7)
         XCTAssertEqual(counts.openIssueCount, 11)
         XCTAssertNil(counts.unavailableReason)
+        let privateCounts = ProjectStatusReader.combine(
+            pullRequestStatus: GitHubPullRequestReadResult(pullRequests: [], unavailableReason: nil),
+            countsStatus: GitHubOpenCountsReadResult(
+                openPullRequestCount: 0, openIssueCount: 0, unavailableReason: nil, isPrivate: true
+            )
+        )
+        XCTAssertEqual(privateCounts.isPrivate, true)
     }
 
     func testOpenCountsArgumentsKeepNamesAsStringsAndTargetEnterpriseHost() {

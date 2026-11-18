@@ -4,6 +4,8 @@ struct GitHubOpenCountsReadResult: Equatable, Sendable {
     let openPullRequestCount: Int?
     let openIssueCount: Int?
     let unavailableReason: GitHubStatusUnavailableReason?
+    /// Repository visibility from the same read; nil when unknown.
+    var isPrivate: Bool?
 
     static func unavailable(_ reason: GitHubStatusUnavailableReason) -> Self {
         Self(openPullRequestCount: nil, openIssueCount: nil, unavailableReason: reason)
@@ -21,6 +23,7 @@ struct GitHubOpenCountsReader {
     }
 
     private struct RawRepository: Decodable {
+        let isPrivate: Bool?
         let pullRequests: RawCount
         let issues: RawCount
     }
@@ -31,7 +34,7 @@ struct GitHubOpenCountsReader {
 
     private struct RawGraphQLError: Decodable {}
 
-    private static let query = "query($owner:String!,$name:String!){repository(owner:$owner,name:$name){pullRequests(states:OPEN){totalCount} issues(states:OPEN){totalCount}}}"
+    private static let query = "query($owner:String!,$name:String!){repository(owner:$owner,name:$name){isPrivate pullRequests(states:OPEN){totalCount} issues(states:OPEN){totalCount}}}"
 
     let runner: GitCommandRunner
 
@@ -84,7 +87,8 @@ struct GitHubOpenCountsReader {
         return GitHubOpenCountsReadResult(
             openPullRequestCount: repository.pullRequests.totalCount,
             openIssueCount: repository.issues.totalCount,
-            unavailableReason: nil
+            unavailableReason: nil,
+            isPrivate: repository.isPrivate
         )
     }
 }

@@ -182,7 +182,12 @@ corner style.
   count; the orange dot and the summary state local work. Agents show as one
   indicator: the running (else most recent) agent's icon with its presence
   dot, plus `+N` for the others; the tooltip and VoiceOver list every agent.
-- Projects sidebar rows: every GitHub project can show trailing Issue and Pull
+- Projects sidebar rows: a private GitHub repository shows a secondary lock
+  after its name (tooltip "Private repository"; VoiceOver reads "private
+  repository" right after the name). Public or unknown visibility shows
+  nothing. Visibility comes from the same `gh` totals read, so the lock
+  clears when that read fails, together with the totals.
+  Every GitHub project can also show trailing Issue and Pull
   Request totals in aligned Issues → Pull Requests columns, whether or not it
   is selected. Each column reserves the widest total it shows; a column with no
   totals disappears. A pull request alone keeps its own column. Counts come from the

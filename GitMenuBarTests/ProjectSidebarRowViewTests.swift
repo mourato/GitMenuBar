@@ -102,6 +102,16 @@ final class ProjectSidebarRowViewTests: XCTestCase {
         XCTAssertTrue(row.accessibilityLabel.hasPrefix("project, 2 commits behind"))
     }
 
+    func testRowLabelNamesPrivateRepositoryOnlyWhenKnownPrivate() {
+        for (isPrivate, expected) in [(true, true), (false, false), (nil, false)] as [(Bool?, Bool)] {
+            let snapshot = makeSnapshot(isPrivate: isPrivate)
+            let row = ProjectSidebarRowView(
+                snapshot: snapshot, agentActivities: [], showsAgentActivity: true, countColumns: .guides(for: [snapshot])
+            )
+            XCTAssertEqual(row.accessibilityLabel.hasPrefix("project, private repository, "), expected)
+        }
+    }
+
     private func makeSnapshot(
         branchName: String = "main",
         aheadCount: Int = 0,
@@ -111,6 +121,7 @@ final class ProjectSidebarRowViewTests: XCTestCase {
         openIssueCount: Int? = 0,
         openPullRequestCount: Int? = 0,
         unavailableReason: GitHubStatusUnavailableReason? = nil,
+        isPrivate: Bool? = nil,
         pullRequests: [GitHubPullRequestSummary] = []
     ) -> ProjectStatusSnapshot {
         ProjectStatusSnapshot(
@@ -135,7 +146,8 @@ final class ProjectSidebarRowViewTests: XCTestCase {
                 pullRequests: pullRequests,
                 openPullRequestCount: openPullRequestCount,
                 openIssueCount: openIssueCount,
-                unavailableReason: unavailableReason
+                unavailableReason: unavailableReason,
+                isPrivate: isPrivate
             )
         )
     }
