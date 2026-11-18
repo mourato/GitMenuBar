@@ -3,8 +3,6 @@ import SwiftUI
 @Observable
 @MainActor
 final class MainMenuErrorCenter {
-    var deleteRepository: String?
-    var toggleVisibility: String?
     var discard: String?
     var sync: String?
     var branchSwitch: String?
@@ -14,14 +12,9 @@ final class MainMenuErrorCenter {
     var restart: String?
     var push: String?
 
-    // Ten flat cases by design: one clear site per error domain.
-    // swiftlint:disable:next cyclomatic_complexity
+    /// Eight flat cases by design: one clear site per error domain.
     func clear(_ source: MainMenuInlineBannerSource) {
         switch source {
-        case .deleteRepository:
-            deleteRepository = nil
-        case .toggleVisibility:
-            toggleVisibility = nil
         case .discard:
             discard = nil
         case .sync:
@@ -46,8 +39,6 @@ final class MainMenuErrorCenter {
     /// Pending errors in banner priority order, with their banner titles.
     private var entries: [(source: MainMenuInlineBannerSource, banner: (title: String, message: String?))] {
         [
-            (.deleteRepository, ("Delete Failed", deleteRepository)),
-            (.toggleVisibility, ("Visibility Update Failed", toggleVisibility)),
             (.discard, ("Discard Failed", discard)),
             (.sync, ("Sync Failed", sync)),
             (.branchSwitch, ("Branch Switch Failed", branchSwitch)),

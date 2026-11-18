@@ -3,7 +3,6 @@ import Observation
 
 enum MainMenuRoute: Equatable {
     case main
-    case createRepo(path: String)
     case projectCleanup
 }
 
@@ -21,13 +20,6 @@ enum RefreshState: Equatable {
     }
 }
 
-enum RemoteExistenceState: Equatable {
-    case unknown
-    case checking
-    case exists
-    case missing
-}
-
 @MainActor
 @Observable
 final class MainMenuPresentationModel {
@@ -37,16 +29,10 @@ final class MainMenuPresentationModel {
     private(set) var isDetailLoading = false
     private(set) var focusCommitFieldToken = 0
     private(set) var showCommandPaletteToken = 0
-    private(set) var showRepositoryOptionsToken = 0
-    private(set) var createRepoSuggestionPath: String?
     private(set) var quotaInfoSnapshot: UsageQuotaSnapshot?
 
     func prepareForPresentation(route: MainMenuRoute, requestCommitFocus: Bool) {
         self.route = route
-
-        if case .createRepo = route {
-            createRepoSuggestionPath = nil
-        }
 
         if requestCommitFocus, route == .main {
             self.requestCommitFocus()
@@ -59,11 +45,6 @@ final class MainMenuPresentationModel {
         if requestCommitFocus {
             self.requestCommitFocus()
         }
-    }
-
-    func showCreateRepo(path: String) {
-        route = .createRepo(path: path)
-        createRepoSuggestionPath = nil
     }
 
     func showProjectCleanup() {
@@ -105,24 +86,12 @@ final class MainMenuPresentationModel {
 
     @ObservationIgnored private var refreshGeneration = 0
 
-    func suggestCreateRepo(path: String) {
-        createRepoSuggestionPath = path
-    }
-
-    func clearCreateRepoSuggestion() {
-        createRepoSuggestionPath = nil
-    }
-
     func requestCommitFocus() {
         focusCommitFieldToken += 1
     }
 
     func requestCommandPalettePresentation() {
         showCommandPaletteToken += 1
-    }
-
-    func requestRepositoryOptionsPresentation() {
-        showRepositoryOptionsToken += 1
     }
 
     func requestQuotaInfo(snapshot: UsageQuotaSnapshot) {

@@ -3,7 +3,6 @@ import AppKit
 @MainActor
 final class AppCommandRouter {
     private let gitManager: GitManager
-    private let githubAuthManager: GitHubAuthManager
     private let actionCoordinator: MainMenuActionCoordinator
     private let repositorySelectionCoordinator: RepositorySelectionCoordinator
     private let projectMonitor: ProjectMonitorStore
@@ -13,13 +12,10 @@ final class AppCommandRouter {
     private let openSettingsWindow: () -> Void
     private let handleCommandPaletteShortcut: () -> Void
     private let presentMainWindowForActionFeedback: () -> Void
-    private let openMainWindowWithCreateRepo: (String) -> Void
     private let refreshAppCommands: () -> Void
-    private let openMainWindowForRoute: (MainMenuRoute, String?, Bool, Bool, MainWindowController.WindowOpenTrace) -> Void
 
     init(
         gitManager: GitManager,
-        githubAuthManager: GitHubAuthManager,
         actionCoordinator: MainMenuActionCoordinator,
         repositorySelectionCoordinator: RepositorySelectionCoordinator,
         projectMonitor: ProjectMonitorStore,
@@ -29,12 +25,9 @@ final class AppCommandRouter {
         openSettingsWindow: @escaping () -> Void,
         handleCommandPaletteShortcut: @escaping () -> Void,
         presentMainWindowForActionFeedback: @escaping () -> Void,
-        openMainWindowWithCreateRepo: @escaping (String) -> Void,
-        refreshAppCommands: @escaping () -> Void,
-        openMainWindowForRoute: @escaping (MainMenuRoute, String?, Bool, Bool, MainWindowController.WindowOpenTrace) -> Void
+        refreshAppCommands: @escaping () -> Void
     ) {
         self.gitManager = gitManager
-        self.githubAuthManager = githubAuthManager
         self.actionCoordinator = actionCoordinator
         self.repositorySelectionCoordinator = repositorySelectionCoordinator
         self.projectMonitor = projectMonitor
@@ -44,9 +37,7 @@ final class AppCommandRouter {
         self.openSettingsWindow = openSettingsWindow
         self.handleCommandPaletteShortcut = handleCommandPaletteShortcut
         self.presentMainWindowForActionFeedback = presentMainWindowForActionFeedback
-        self.openMainWindowWithCreateRepo = openMainWindowWithCreateRepo
         self.refreshAppCommands = refreshAppCommands
-        self.openMainWindowForRoute = openMainWindowForRoute
     }
 
     func performAppCommand(_ invocation: AppCommandInvocation) {
@@ -73,7 +64,6 @@ final class AppCommandRouter {
             .fetchAllProjects: projectMonitor.fetchAll,
             .revealRepositoryInFinder: revealCurrentRepositoryInFinder,
             .openRepositoryOnGitHub: openCurrentRepositoryOnGitHub,
-            .showRepositoryOptions: presentRepositoryOptions,
             .atomicCommits: openMainWindow,
             .branchManagement: openMainWindow,
             .createBranch: openMainWindow,
@@ -159,18 +149,10 @@ final class AppCommandRouter {
         guard actionCoordinator.canSwitchRepository(to: path) else { return }
 
         let wasVisible = mainWindowController().isMainWindowVisible
-        let result = repositorySelectionCoordinator.select(
-            path: path,
-            allowsNonGitSelection: !githubAuthManager.isAuthenticated
-        )
+        let result = repositorySelectionCoordinator.select(path: path)
         refreshAppCommands()
 
-        guard case .selected = result else {
-            if case let .requiresRepositoryCreation(candidatePath) = result {
-                openMainWindowWithCreateRepo(candidatePath)
-            }
-            return
-        }
+        guard case .selected = result else { return }
 
         actionCoordinator.resetForRepositorySwitch()
         openMainWindow()
@@ -199,24 +181,6 @@ final class AppCommandRouter {
         }
 
         open(urlString: "https://github.com/\(reference.owner)/\(reference.repository)")
-    }
-
-    private func presentRepositoryOptions() {
-        if mainWindowController().isMainWindowVisible {
-            presentationModel.showMain(requestCommitFocus: false)
-            presentationModel.requestRepositoryOptionsPresentation()
-            NSApp.activate(ignoringOtherApps: true)
-            mainWindowController().focus()
-            return
-        }
-
-        let trace = mainWindowController().beginWindowOpenTrace(trigger: "repository_options")
-        let repositoryPath = currentRepositoryPath()
-        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
-        openMainWindowForRoute(.main, repositoryPath, isGitRepo, true, trace)
-        Task { @MainActor [weak self] in
-            self?.presentationModel.requestRepositoryOptionsPresentation()
-        }
     }
 
     private func open(urlString: String) {

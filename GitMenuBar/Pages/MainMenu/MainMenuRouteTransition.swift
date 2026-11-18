@@ -7,11 +7,6 @@ enum MainMenuRouteTransition {
         switch route {
         case .main:
             return .opacity
-        case .createRepo:
-            return .asymmetric(
-                insertion: .opacity.combined(with: .move(edge: .bottom)),
-                removal: .opacity.combined(with: .move(edge: .bottom))
-            )
         case .projectCleanup:
             return .opacity
         }

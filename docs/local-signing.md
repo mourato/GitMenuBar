@@ -88,14 +88,12 @@ Without a Team ID the access group is inert, not wrong:
 
 ## Cached credentials
 
-`GitHubKeychainTokenStore` and `AIKeychainStore` read the keychain once per unlock
-and keep the result in memory behind an `NSLock`. Writes and deletes update the
+`AIKeychainStore` reads the keychain once per unlock
+and keeps the result in memory behind an `NSLock`. Writes and deletes update the
 memory copy, so a save does not trigger a read.
 
 The keychain is read again only when a credential is rejected:
 
-- `GitHubAuthManager` invalidates the cached token when `/user` answers `401`, then
-  retries once with a fresh read.
 - `OpenRouterUsageProvider` and `OpenCodeGoUsageProvider` invalidate the cached AI
   keys on `401`/`403` before the next refresh.
 

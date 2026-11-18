@@ -35,14 +35,12 @@ enum GitExecution {
     static func executeGitCommand(
         in directory: String,
         args: [String],
-        useAuth: Bool = false,
         additionalEnvironment: [String: String] = [:],
         using runner: GitCommandRunner
     ) -> (output: String, failure: Bool) {
         runner.runGitCommand(
             in: directory,
             args: args,
-            useAuth: useAuth,
             additionalEnvironment: additionalEnvironment
         )
     }

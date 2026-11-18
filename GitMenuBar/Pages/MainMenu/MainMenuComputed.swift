@@ -294,8 +294,6 @@ struct MainMenuRenderSnapshot: Equatable {
 enum MainMenuInlineBannerSource: Equatable {
     case coordinatorAlert
     case coordinatorSuccess
-    case deleteRepository
-    case toggleVisibility
     case discard
     case sync
     case branchSwitch
@@ -327,7 +325,7 @@ enum MainMenuSyncLabelState: Equatable {
     }
 
     static func resolve(hasLocalSyncWork: Bool, hasRemoteSyncWork: Bool) -> MainMenuSyncLabelState {
-        if hasLocalSyncWork && !hasRemoteSyncWork {
+        if hasLocalSyncWork, !hasRemoteSyncWork {
             return .pushOnly
         }
 
@@ -501,19 +499,6 @@ extension MainMenuView {
         snapshotModel.renderSnapshot.currentProjectName
     }
 
-    var repositoryActionSet: RepositoryActionSet {
-        RepositoryActionSet(
-            currentRepoPath: currentRepoPath,
-            remoteUrl: gitManager.remoteUrl,
-            isGitHubAuthenticated: githubAuthManager.isAuthenticated,
-            isPrivate: gitManager.isPrivate
-        )
-    }
-
-    var canPresentRepositoryOptions: Bool {
-        repositoryActionSet.canShowRepositoryOptions
-    }
-
     var branchMenuRows: [BranchMenuRowAdapter] {
         snapshotModel.renderSnapshot.branchMenuRows
     }
@@ -545,7 +530,6 @@ extension MainMenuView {
                 currentRepoPath: currentRepoPath,
                 remoteUrl: gitManager.remoteUrl,
                 recentProjects: recentProjects,
-                isGitHubAuthenticated: githubAuthManager.isAuthenticated,
                 hasWorkingTreeChanges: hasWorkingTreeChanges,
                 canDoAtomicCommits: canShowAtomicCommits,
                 isBehindRemote: gitManager.isBehindRemote,

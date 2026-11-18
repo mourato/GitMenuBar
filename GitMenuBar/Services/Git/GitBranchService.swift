@@ -59,13 +59,11 @@ final class GitBranchService {
 
     nonisolated func executeGitCommand(
         in directory: String,
-        args: [String],
-        useAuth: Bool = false
+        args: [String]
     ) -> (output: String, failure: Bool) {
         GitExecution.executeGitCommand(
             in: directory,
             args: args,
-            useAuth: useAuth,
             using: commandRunner
         )
     }

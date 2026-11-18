@@ -150,44 +150,17 @@ struct BranchConfirmationDialogsModifier: ViewModifier {
     }
 }
 
-/// Repository delete/visibility, discard, and restart confirmations.
+/// Discard and restart confirmations.
 /// Owns the actions behind each confirmation; reports failures to `errorCenter`.
-struct RepositoryConfirmationDialogsModifier: ViewModifier {
-    @Bindable var confirmations: MainMenuRepositoryConfirmations
+struct WorkspaceConfirmationDialogsModifier: ViewModifier {
+    @Bindable var confirmations: MainMenuRestartConfirmation
     @Bindable var workspace: MainMenuWorkspaceState
     let errorCenter: MainMenuErrorCenter
-    let repositoryActionSet: RepositoryActionSet
-    let closeWindow: () -> Void
     @Environment(GitManager.self) private var gitManager
-    @Environment(GitHubAuthManager.self) private var githubAuthManager
     @Environment(MainMenuActionCoordinator.self) private var actionCoordinator
-    @Environment(MainMenuPresentationModel.self) private var presentationModel
 
     func body(content: Content) -> some View {
         content
-            .alert("Delete Repository?", isPresented: $confirmations.showDeleteConfirmation) {
-                Button("Cancel", role: .cancel) {}
-                Button("Delete", role: .destructive) {
-                    confirmations.deleteRepository(using: gitManager, authManager: githubAuthManager, errorCenter: errorCenter) {
-                        presentationModel.clearCreateRepoSuggestion()
-                        closeWindow()
-                    }
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(confirmations.isDeleting)
-            } message: {
-                Text("This will permanently delete the repository from GitHub. This action cannot be undone.")
-            }
-            .alert(repositoryActionSet.visibilityConfirmationTitle, isPresented: $confirmations.showVisibilityConfirmation) {
-                Button("Cancel", role: .cancel) {}
-                Button(repositoryActionSet.visibilityActionTitle) {
-                    confirmations.toggleRepoVisibility(using: gitManager, authManager: githubAuthManager, errorCenter: errorCenter)
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(confirmations.isTogglingVisibility)
-            } message: {
-                Text(repositoryActionSet.visibilityConfirmationMessage)
-            }
             .alert("Discard Changes?", isPresented: $workspace.showDiscardConfirmation) {
                 Button("Cancel", role: .cancel) {}
                 Button("Discard", role: .destructive) { workspace.discardFile(using: actionCoordinator) }

@@ -17,7 +17,6 @@ final class AppCommandResolverTests: XCTestCase {
                 currentRepoPath: "/tmp/current/../current",
                 remoteUrl: "git@github.com:saihgupr/GitMenuBar.git",
                 recentProjects: [],
-                isGitHubAuthenticated: true,
                 hasWorkingTreeChanges: true,
                 canDoAtomicCommits: false,
                 isBehindRemote: false,
@@ -30,10 +29,6 @@ final class AppCommandResolverTests: XCTestCase {
 
         XCTAssertEqual(snapshot.states[AppCommandID.commit], AppCommandState(title: "Commit", isEnabled: false))
         XCTAssertEqual(snapshot.states[AppCommandID.sync], AppCommandState(title: "Sync Changes", isEnabled: true))
-        XCTAssertEqual(
-            snapshot.states[AppCommandID.showRepositoryOptions],
-            AppCommandState(title: "Repository Options", isEnabled: true)
-        )
         XCTAssertEqual(
             snapshot.states[AppCommandID.revealRepositoryInFinder],
             AppCommandState(title: "Reveal in Finder", isEnabled: true)
@@ -61,7 +56,6 @@ final class AppCommandResolverTests: XCTestCase {
                     ProjectReference(path: "/tmp/e", name: "Client E"),
                     ProjectReference(path: "/tmp/f", name: "Client F")
                 ],
-                isGitHubAuthenticated: false,
                 hasWorkingTreeChanges: false,
                 canDoAtomicCommits: false,
                 isBehindRemote: false,
@@ -80,10 +74,6 @@ final class AppCommandResolverTests: XCTestCase {
         XCTAssertEqual(
             snapshot.recentProjects.map(\.title),
             ["Client A", "Client B", "Client C", "Client D", "Client E"]
-        )
-        XCTAssertEqual(
-            snapshot.states[AppCommandID.showRepositoryOptions],
-            AppCommandState(title: "Repository Options", isEnabled: false)
         )
         XCTAssertEqual(
             snapshot.states[AppCommandID.openRepositoryOnGitHub],

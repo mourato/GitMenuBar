@@ -222,14 +222,9 @@ corner style.
 - Cleanup review banner: one summary line (`N ready to clean`, `M blocked`)
   and one Review action. Review opens the shared cleanup sheet with Ready and
   Blocked sections and a checked subset of ready units.
-- Issues side panel: rows open the issue on GitHub and show its label chips.
-  A trailing tag menu lists every repository label with the applied ones
-  checked. The menu appears only when the account can change labels; a lock
-  caption explains read-only access. One change runs at a time, with progress
-  on the affected row and a retry action after a failure. The menu ends with
-  `New Label in Repository`, which opens a sheet with name, color, and optional
-  description. The sheet names the repository and states that creating a label
-  does not apply it to the issue; applying stays the existing toggle action.
+- GitHub metrics: the Issues and Pull Requests cells show open totals when the
+  `gh` CLI is installed and signed in. Both cells open the matching page on
+  GitHub; neither opens an in-app panel.
 - Side Panel Branches
   ([ADR 0022](docs/adr/0022-unified-branch-list-and-cleanup-review.md)): one
   unified local branch list; each branch appears once, and its linked worktree

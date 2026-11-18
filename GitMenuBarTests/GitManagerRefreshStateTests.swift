@@ -49,7 +49,6 @@ final class GitManagerRefreshStateTests: XCTestCase {
         manager.isBehindRemote = true
         manager.remoteBranchName = "origin/feature"
         manager.behindCount = 2
-        manager.isPrivate = true
         manager.commitCount = 3
 
         manager.resetSelectedRepositoryState()
@@ -72,7 +71,6 @@ final class GitManagerRefreshStateTests: XCTestCase {
         XCTAssertTrue(manager.availableBranches.isEmpty)
         XCTAssertTrue(manager.branchInfos.isEmpty)
         XCTAssertNil(manager.worktreeSnapshot)
-        XCTAssertFalse(manager.isPrivate)
         XCTAssertEqual(manager.commitCount, 0)
     }
 }

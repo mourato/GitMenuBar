@@ -109,12 +109,6 @@ import SwiftUI
                 onEditCommitMessage: { _ in },
                 onGenerateCommitMessage: { _ in }
             )
-            .environment(
-                GitHubAuthManager(
-                    tokenStore: InMemoryGitHubTokenStore(),
-                    preloadStoredToken: false
-                )
-            )
             .padding(WorkbenchMetrics.panelPadding)
             .frame(width: WorkbenchMetrics.sidePanelWidth, height: 580)
         }

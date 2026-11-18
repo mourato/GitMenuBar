@@ -3,7 +3,6 @@ import SwiftUI
 struct MainMenuPreviewHarness<Content: View>: View {
     @State private var gitManager: GitManager
     @State private var loginItemManager = LoginItemManager()
-    @State private var githubAuthManager: GitHubAuthManager
     @State private var aiProviderStore: AIProviderStore
     @State private var aiCommitCoordinator: AICommitCoordinator
     @State private var actionCoordinator: MainMenuActionCoordinator
@@ -26,14 +25,9 @@ struct MainMenuPreviewHarness<Content: View>: View {
         let previewGitManager = GitManager(repositoryPathOverride: NSHomeDirectory())
         let previewProjectMonitor = ProjectMonitorStore()
         #if DEBUG
-            let previewGitHubAuthManager = GitHubAuthManager(
-                tokenStore: InMemoryGitHubTokenStore(),
-                preloadStoredToken: false
-            )
             let previewProviderStore = AIProviderStore()
             let previewKeychainStore = InMemoryAIAPIKeyStore()
         #else
-            let previewGitHubAuthManager = GitHubAuthManager()
             let previewProviderStore = AIProviderStore()
             let previewKeychainStore = AIKeychainStore()
         #endif
@@ -52,7 +46,6 @@ struct MainMenuPreviewHarness<Content: View>: View {
                 projectMonitor: previewProjectMonitor
             )
         )
-        _githubAuthManager = State(wrappedValue: previewGitHubAuthManager)
         _aiProviderStore = State(wrappedValue: previewProviderStore)
         _aiCommitCoordinator = State(wrappedValue: previewCoordinator)
         _actionCoordinator = State(
@@ -77,7 +70,6 @@ struct MainMenuPreviewHarness<Content: View>: View {
         content
             .environment(gitManager)
             .environment(loginItemManager)
-            .environment(githubAuthManager)
             .environment(aiProviderStore)
             .environment(aiCommitCoordinator)
             .environment(actionCoordinator)

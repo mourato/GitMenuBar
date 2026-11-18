@@ -16,8 +16,6 @@ final class MainMenuErrorCenterTests: XCTestCase {
 
     func testClearCoversEveryErrorDomain() {
         let center = MainMenuErrorCenter()
-        center.deleteRepository = "a"
-        center.toggleVisibility = "b"
         center.discard = "c"
         center.sync = "d"
         center.branchSwitch = "e"
@@ -28,15 +26,13 @@ final class MainMenuErrorCenterTests: XCTestCase {
         center.push = "j"
 
         let sources: [MainMenuInlineBannerSource] = [
-            .deleteRepository, .toggleVisibility, .discard, .sync, .branchSwitch,
+            .discard, .sync, .branchSwitch,
             .merge, .deleteBranch, .renameBranch, .restart, .push
         ]
         for source in sources {
             center.clear(source)
         }
 
-        XCTAssertNil(center.deleteRepository)
-        XCTAssertNil(center.toggleVisibility)
         XCTAssertNil(center.discard)
         XCTAssertNil(center.sync)
         XCTAssertNil(center.branchSwitch)

@@ -31,7 +31,7 @@ while IFS= read -r file; do
         touched+=("$file")
         continue
     fi
-    if grep -q "InMemoryAIAPIKeyStore\|InMemoryGitHubTokenStore\|InMemoryAIProviderStoreDataStore" "$file" 2>/dev/null; then
+    if grep -q "InMemoryAIAPIKeyStore\|InMemoryAIProviderStoreDataStore" "$file" 2>/dev/null; then
         touched+=("$file")
     fi
 done <<< "$changed"

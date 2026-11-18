@@ -425,7 +425,7 @@ struct GitCleanupRepository {
         let remoteName = info.reference.remoteName ?? "origin"
         let ref = "refs/remotes/\(remoteName)/\(info.reference.name)"
         guard refHash(ref, in: repositoryPath) == info.reference.headHash else { return .skipped(reason: "The remote-tracking branch changed since analysis; it was skipped.") }
-        let result = execute(repositoryPath, ["push", remoteName, "--delete", info.reference.name], useAuth: true)
+        let result = execute(repositoryPath, ["push", remoteName, "--delete", info.reference.name])
         return result.failure ? .failed(reason: "Failed to delete remote branch '\(remoteName)/\(info.reference.name)': \(result.output)") : .succeeded
     }
 
@@ -480,8 +480,8 @@ struct GitCleanupRepository {
         return result.output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    func execute(_ path: String, _ args: [String], useAuth: Bool = false) -> (output: String, failure: Bool) {
-        runner.runGitCommand(in: path, args: args, useAuth: useAuth)
+    func execute(_ path: String, _ args: [String]) -> (output: String, failure: Bool) {
+        runner.runGitCommand(in: path, args: args)
     }
 
     private func error(_ message: String) -> GitOperationError {

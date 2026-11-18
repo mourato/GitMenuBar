@@ -159,7 +159,6 @@ final class MainWindowController: NSWindowController {
         )
         .environment(statusBarController.gitManager)
         .environment(statusBarController.loginItemManager)
-        .environment(statusBarController.githubAuthManager)
         .environment(statusBarController.aiProviderStore)
         .environment(statusBarController.aiCommitCoordinator)
         .environment(statusBarController.actionCoordinator)

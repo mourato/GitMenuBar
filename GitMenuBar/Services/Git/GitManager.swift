@@ -105,26 +105,12 @@ class GitManager {
         set { branchService.behindCount = newValue }
     }
 
-    var isPrivate: Bool = false
     var commitHistoryLimit: Int {
         commitHistoryService.commitHistoryLimit
     }
 
     var stashes: [GitStashInfo] = []
     var unmergedIntoDefaultBranches: [String] = []
-
-    /// Token provider for authenticated git operations (push/pull)
-    @ObservationIgnored var tokenProvider: (@Sendable () -> String?)? {
-        didSet {
-            commandRunner.tokenProvider = tokenProvider
-        }
-    }
-
-    /// GitHub API client for checking repo existence
-    var githubAPIClient: GitHubAPIClient? {
-        get { repositoryInitService.githubAPIClient }
-        set { repositoryInitService.githubAPIClient = newValue }
-    }
 
     private let repositoryContext: GitRepositoryContext
     private nonisolated(unsafe) let commandRunner: GitCommandRunner
@@ -231,7 +217,6 @@ class GitManager {
         isBehindRemote = false
         remoteBranchName = ""
         behindCount = 0
-        isPrivate = false
         commitCount = 0
         stashes = []
         unmergedIntoDefaultBranches = []
@@ -567,10 +552,6 @@ class GitManager {
         repositoryInitService.hasRemoteConfigured(at: path)
     }
 
-    func remoteRepositoryExists(at path: String, completion: @escaping (Bool) -> Void) {
-        repositoryInitService.remoteRepositoryExists(at: path, completion: completion)
-    }
-
     func initializeRepository(at path: String) -> Bool {
         repositoryInitService.initializeRepository(at: path)
     }
@@ -589,10 +570,6 @@ class GitManager {
 
     func updateRemoteURL(at path: String, newURL: String) -> Bool {
         repositoryInitService.updateRemoteURL(at: path, newURL: newURL)
-    }
-
-    func pushToNewRemote(at path: String) -> Bool {
-        repositoryInitService.pushToNewRemote(at: path)
     }
 
     func pushToRemoteAsync() async -> Result<Void, Error> {
@@ -641,13 +618,13 @@ class GitManager {
                 force ? ["push", "--force", "origin", "HEAD:\(branchName)"] : ["push", "origin", "HEAD:\(branchName)"]
             }
 
-            let pushResult = self.executeGitCommand(in: repositoryPath, args: pushArgs, useAuth: true)
+            let pushResult = self.executeGitCommand(in: repositoryPath, args: pushArgs)
             if pushResult.failure {
                 if pushResult.output.contains("rejected") || pushResult.output.contains("diverged") || pushResult.output.contains("non-fast-forward") {
                     let forcePushArgs = branchName == currentBranchName
                         ? ["push", "--force", "-u", "origin", branchName]
                         : ["push", "--force", "origin", "HEAD:\(branchName)"]
-                    let forcePushResult = self.executeGitCommand(in: repositoryPath, args: forcePushArgs, useAuth: true)
+                    let forcePushResult = self.executeGitCommand(in: repositoryPath, args: forcePushArgs)
 
                     guard !forcePushResult.failure else {
                         let error = GitOperationError.commandFailed("Error force pushing: \(forcePushResult.output)")
@@ -1187,13 +1164,11 @@ class GitManager {
     private nonisolated func executeGitCommand(
         in directory: String,
         args: [String],
-        useAuth: Bool = false,
         additionalEnvironment: [String: String] = [:]
     ) -> (output: String, failure: Bool) {
         GitExecution.executeGitCommand(
             in: directory,
             args: args,
-            useAuth: useAuth,
             additionalEnvironment: additionalEnvironment,
             using: commandRunner
         )
@@ -1279,8 +1254,7 @@ class GitManager {
         return await runOnBackground {
             let result = self.executeGitCommand(
                 in: context.repositoryPath,
-                args: ["push", "-u", "origin", trimmed],
-                useAuth: true
+                args: ["push", "-u", "origin", trimmed]
             )
             guard !result.failure else {
                 return .failure(GitOperationError.commandFailed(GitStashService.userFacingMessage(from: result.output)))
@@ -1323,42 +1297,6 @@ class GitManager {
         await branchService.checkRemoteStatusAsync(session: session)
     }
 
-    func checkRepoVisibilityAsync() async {
-        await checkRepoVisibilityAsync(session: nil)
-    }
-
-    private func checkRepoVisibilityAsync(session: GitRefreshSession?) async {
-        let repositoryPath = session?.repositoryPath ?? storedRepoPath
-        guard !repositoryPath.isEmpty else {
-            await GitExecution.publishOnMainActor(ifCurrent: session) {
-                self.isPrivate = false
-            }
-            return
-        }
-
-        let remoteURL = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["config", "--get", "remote.origin.url"])
-                .output
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-
-        guard let reference = GitHubRemoteURLParser.parse(remoteURL), let apiClient = githubAPIClient else {
-            return
-        }
-
-        do {
-            let repository = try await apiClient.getRepository(
-                owner: reference.owner,
-                name: reference.repository
-            )
-            await GitExecution.publishOnMainActor(ifCurrent: session) {
-                self.isPrivate = repository.private
-            }
-        } catch {
-            print("Error checking repo visibility: \(error)")
-        }
-    }
-
     func pullFromRemoteAsync(rebase: Bool) async -> Result<Void, Error> {
         let repositoryPath = storedRepoPath
         guard !repositoryPath.isEmpty else {
@@ -1367,7 +1305,7 @@ class GitManager {
 
         return await runOnBackground {
             let args = rebase ? ["pull", "--rebase"] : ["pull"]
-            let result = self.executeGitCommand(in: repositoryPath, args: args, useAuth: true)
+            let result = self.executeGitCommand(in: repositoryPath, args: args)
 
             guard !result.failure else {
                 if result.output.contains("CONFLICT") || result.output.contains("conflict") {
@@ -1392,8 +1330,7 @@ class GitManager {
         return await runOnBackground {
             let result = self.executeGitCommand(
                 in: context.repositoryPath,
-                args: rebase ? ["pull", "--rebase"] : ["pull"],
-                useAuth: true
+                args: rebase ? ["pull", "--rebase"] : ["pull"]
             )
             guard !result.failure else {
                 if result.output.contains("CONFLICT") || result.output.contains("conflict") {

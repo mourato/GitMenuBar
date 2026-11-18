@@ -39,16 +39,13 @@ final class AppSettingsWindowController {
     private var cancellables = Set<AnyCancellable>()
 
     init(
-        gitManager: GitManager,
         loginItemManager: LoginItemManager,
-        githubAuthManager: GitHubAuthManager,
         aiProviderStore: AIProviderStore,
         aiCommitCoordinator: AICommitCoordinator,
         chatGPTSubscription: ChatGPTSubscriptionManager,
         usageQuotaStore: UsageQuotaStore,
         usageQuotaPresentationPreferences: UsageQuotaPresentationPreferences,
         shortcutManager: GlobalShortcutManager,
-        onSetAutoHideSuspended: @escaping (Bool) -> Void,
         onFetchNow: @escaping () -> Void
     ) {
         let generalPane = Settings.Pane(
@@ -68,12 +65,8 @@ final class AppSettingsWindowController {
                 ?? NSImage(),
             contentView: {
                 GitSettingsPaneView(
-                    gitManager: gitManager,
-                    githubAuthManager: githubAuthManager,
-                    onSetAutoHideSuspended: onSetAutoHideSuspended,
                     onFetchNow: onFetchNow
                 )
-                .environment(githubAuthManager)
             }
         )
         let aiPane = Settings.Pane(

@@ -68,7 +68,6 @@ enum MainMenuSidePanelSelection: Hashable, Identifiable {
     case unpushedCommits
     case stashes
     case history
-    case issues
     case stagedFile(path: String)
     case unstagedFile(path: String)
     case branch(name: String)
@@ -82,7 +81,6 @@ enum MainMenuSidePanelSelection: Hashable, Identifiable {
         case .unpushedCommits: "unpushed-commits"
         case .stashes: "stashes"
         case .history: "history"
-        case .issues: "issues"
         case let .stagedFile(path): "staged-file:\(path)"
         case let .unstagedFile(path): "unstaged-file:\(path)"
         case let .branch(name): "branch:\(name)"
@@ -106,7 +104,6 @@ enum MainMenuSidePanelSelection: Hashable, Identifiable {
         case .unpushedCommits: "Unpushed Commits"
         case .stashes: "Stashes"
         case .history: "History"
-        case .issues: "Issues"
         case let .stagedFile(path), let .unstagedFile(path): path
         case let .branch(name): name
         case let .stash(id), let .commit(id): id

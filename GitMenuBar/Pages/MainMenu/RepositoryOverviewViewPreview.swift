@@ -198,15 +198,3 @@ private enum RepositoryOverviewPreviewState: String, CaseIterable, Identifiable 
 #Preview("Tier C · State matrix") {
     RepositoryOverviewPreviewMatrix(width: 280)
 }
-
-#Preview("Tier A · Issues open") {
-    RepositoryOverviewPreviewMatrix(width: 1040, selection: .issues)
-}
-
-#Preview("Tier B · Issues open") {
-    RepositoryOverviewPreviewMatrix(width: 520, selection: .issues)
-}
-
-#Preview("Tier C · Issues open") {
-    RepositoryOverviewPreviewMatrix(width: 280, selection: .issues)
-}

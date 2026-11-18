@@ -30,21 +30,8 @@ final class GitRepositoryInitServiceTests: XCTestCase {
         XCTAssertTrue(service.hasRemoteConfigured(at: repository.path))
         XCTAssertTrue(service.updateRemoteURL(at: repository.path, newURL: remote.path))
         XCTAssertEqual(try runGit(["remote", "get-url", "origin"], in: repository).trimmingCharacters(in: .whitespacesAndNewlines), remote.path)
-        XCTAssertTrue(service.pushToNewRemote(at: repository.path))
+        try runGit(["push", "-u", "origin", "main"], in: repository)
         XCTAssertEqual(try runGit(["rev-parse", "refs/heads/main"], in: remote), try runGit(["rev-parse", "HEAD"], in: repository))
-    }
-
-    func testRemoteExistenceWithoutLiveGitHub() async throws {
-        let repository = try createTemporaryGitRepository(testName: #function)
-        let service = GitRepositoryInitService(commandRunner: GitCommandRunner())
-        let missing = await remoteExists(service, at: repository.path)
-        XCTAssertFalse(missing)
-        XCTAssertTrue(service.addRemote(at: repository.path, url: "https://example.com/owner/repo.git"))
-        let nonGitHub = await remoteExists(service, at: repository.path)
-        XCTAssertTrue(nonGitHub)
-        XCTAssertTrue(service.updateRemoteURL(at: repository.path, newURL: "https://github.com/owner/repo.git"))
-        let unavailableClient = await remoteExists(service, at: repository.path)
-        XCTAssertTrue(unavailableClient)
     }
 
     func testInvalidPathReturnsFailure() throws {
@@ -55,14 +42,7 @@ final class GitRepositoryInitServiceTests: XCTestCase {
         XCTAssertFalse(service.createInitialCommit(at: missing, message: "Initial"))
         XCTAssertFalse(service.addRemote(at: missing, url: "/unused"))
         XCTAssertFalse(service.updateRemoteURL(at: missing, newURL: "/unused"))
-        XCTAssertFalse(service.pushToNewRemote(at: missing))
         XCTAssertFalse(service.hasRemoteConfigured(at: missing))
         XCTAssertFalse(service.hasUncommittedChanges(at: missing))
-    }
-
-    private func remoteExists(_ service: GitRepositoryInitService, at path: String) async -> Bool {
-        await withCheckedContinuation { continuation in
-            service.remoteRepositoryExists(at: path) { continuation.resume(returning: $0) }
-        }
     }
 }

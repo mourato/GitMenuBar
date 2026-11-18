@@ -2,7 +2,6 @@ import AppKit
 import SwiftUI
 
 struct CommitDetailPageView: View {
-    @Environment(GitHubAuthManager.self) var githubAuthManager
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     let commit: Commit?
@@ -294,8 +293,7 @@ struct CommitDetailPageView: View {
             return
         }
 
-        let client = GitHubAPIClient(authManager: githubAuthManager)
-        authorAvatarURL = await client.fetchCommitAuthorAvatarURL(
+        authorAvatarURL = await GitHubAvatarFetcher.avatarURL(
             owner: reference.owner,
             repo: reference.repository,
             commitHash: commit.id,
