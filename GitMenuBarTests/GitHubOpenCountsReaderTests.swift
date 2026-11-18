@@ -15,8 +15,10 @@ final class GitHubOpenCountsReaderTests: XCTestCase {
         let privateRepository = "{\"data\":{\"repository\":{\"isPrivate\":true,"
             + "\"pullRequests\":{\"totalCount\":0},\"issues\":{\"totalCount\":0}}}}"
         XCTAssertEqual(GitHubOpenCountsReader.parse(Data(privateRepository.utf8))?.isPrivate, true)
-        let publicRepository = privateRepository.replacingOccurrences(of: "true", with: "false")
+        let publicRepository = "{\"data\":{\"repository\":{\"isPrivate\":false,"
+            + "\"pullRequests\":{\"totalCount\":0},\"issues\":{\"totalCount\":0}}}}"
         XCTAssertEqual(GitHubOpenCountsReader.parse(Data(publicRepository.utf8))?.isPrivate, false)
+        XCTAssertNil(GitHubOpenCountsReadResult.unavailable(.commandFailed).isPrivate)
         let withWarnings = "{\"errors\":[{\"message\":\"notice\"}],\"data\":{\"repository\":"
             + "{\"pullRequests\":{\"totalCount\":2},\"issues\":{\"totalCount\":3}}}}"
         XCTAssertEqual(GitHubOpenCountsReader.parse(Data(withWarnings.utf8))?.openIssueCount, 3)
