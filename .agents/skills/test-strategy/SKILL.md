@@ -1,45 +1,22 @@
 ---
 name: test-strategy
-description: Test design guidance for GitMenuBar with emphasis on XCTest coverage, async behavior, seams, doubles, and regression-focused verification.
+description: Test design for GitMenuBar — XCTest priorities, seams and fakes, the scope matrix, and path-switch concurrency regressions.
 ---
 
 # Test Strategy
 
-Use this skill when adding behavior, refactoring logic, or deciding how to verify edge cases beyond the default build gate.
+## When to use
 
-## Testing Priorities
+Adding behavior, refactoring logic, or deciding how to verify edge cases beyond the default build gate.
 
-- Prefer unit coverage for parsing, state derivation, command resolution, and action coordination.
-- Test behavior around Git failures, empty states, pagination, and cancellation.
-- Add regression tests for bugs that were user-visible or easy to reintroduce.
-- Keep UI previews and test fixtures separate; previews are not verification.
+## Project specifics
 
-## Design Rules
+- Prioritize parsing, state derivation, command resolution, and action coordination; cover Git failures, empty states, pagination, and cancellation. Add a regression test for each user-visible bug.
+- Inject seams around Git, networking, time, and persistence. Prefer deterministic fakes over broad mocks; async tests cover success, failure, and cancellation; assert observable outcomes, not internal details.
+- Scope: pure transformation logic and coordinators expect unit tests; lifecycle-sensitive menu/window behavior is manual plus targeted tests where seams exist; packaging is manual through `release-management`.
+- Commands: focused `make test-focused TEST_FILTER='GitMenuBarTests/Name'`; full `make test`.
+- Path-switch concurrency regression (`docs/adr/0009-path-bound-git-operations.md`): use two distinct canonical repository paths, block A's operation with `CheckedContinuation` rather than a sleep, switch through the same selection/reset transaction the app uses, and assert command context, push path, completion callback, and visible status. Keep a negative case proving an unbound or atomic flow still blocks B. A test that only mutates a double's selected path proves nothing.
 
-- Inject seams around Git, networking, time, and persistence.
-- Favor deterministic fakes over broad mocks.
-- Async tests should cover success, failure, and cancellation when concurrency is involved.
-- Assert observable outcomes, not internal implementation details.
+## Follows global test-hygiene
 
-## Scope Matrix
-
-- Pure transformation logic: unit tests expected.
-- Coordinator/action logic: unit tests strongly preferred.
-- Lifecycle-sensitive menu/window behavior: manual verification plus targeted tests where seams exist.
-- Packaging and release flow: manual verification through `release-management`.
-
-## Path-switch concurrency regression
-
-For a Git action that may finish after project selection changes, follow
-[`ADR 0009`](../../docs/adr/0009-path-bound-git-operations.md):
-
-- use two distinct canonical repository paths, A and B;
-- block A's operation with `CheckedContinuation`, not a sleep;
-- switch through the same selection/reset transaction used by the app;
-- assert the command context, push path, completion callback, and visible
-  status all remain correct; and
-- keep a negative case proving an unbound or atomic flow still blocks B.
-
-Prefer observable outcomes over fake-manager state. A test that only mutates a
-double's selected path does not prove that the production selection transaction
-clears stale UI state.
+`test-hygiene` owns test value, independent oracles, isolation, cleanup, and evidence. Related: `performance-profiling` for latency-sensitive Git work, `release-management` for packaging gates.

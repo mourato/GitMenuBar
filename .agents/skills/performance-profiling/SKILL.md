@@ -1,24 +1,19 @@
 ---
 name: performance-profiling
-description: Performance review workflow for GitMenuBar, focused on startup, menu responsiveness, rendering churn, expensive Git operations, latency budgets, and regression detection.
+description: Performance review for GitMenuBar — startup, menu responsiveness, Git command cost, rendering churn, latency budgets, and regression detection.
 ---
 
 # Performance Profiling
 
-Use this skill when the change can affect latency, memory, rendering cost, or repeated Git work.
+## When to use
 
-## Hot Paths
+A change can affect latency, memory, rendering cost, or repeated Git work.
 
-- App launch and status item registration
-- Opening the menu or main window
-- Repository switching
-- Working tree refresh and diff parsing
-- History loading, pagination, and branch operations
-- AI-assisted commit generation
+## Project specifics
 
-## Latency budgets
+Hot paths: app launch and status item registration, menu/main window open, repository switching, working tree refresh and diff parsing, history loading and branch operations, AI-assisted commit generation.
 
-p95 targets on Apple Silicon with real-world repository sizes:
+p95 budgets on Apple Silicon with real repository sizes:
 
 | Operation | Target (p95) | Measurement point |
 |-----------|--------------|-------------------|
@@ -29,42 +24,12 @@ p95 targets on Apple Silicon with real-world repository sizes:
 | Commit history initial load (25 entries) | < 200 ms | `CommitHistoryParser` / `git log` parse |
 | Per-file diff for AI commit gen | < 50 ms/file | each `git diff -- <file>` |
 
-Refine with measured hardware and repo sizes. Warn via `os_log` when a budget is exceeded by > 2×.
+Warn via `os_log` when a budget is exceeded by more than 2×, and refine the numbers with measured hardware and repository sizes.
 
-## Review heuristics
+For commit, push, or project-switch changes, use the runtime scenarios and signpost names in `docs/adr/0009-path-bound-git-operations.md`. Builds and tests prove path binding; only Instruments on a real repository establishes phase latency, Git process count, and main-actor cost. Keep traces outside the repository.
 
-- Avoid repeated Git commands for the same visible state.
-- Cache only when invalidation is explicit and cheap to reason about.
-- Keep popover and menu rendering work proportional to visible content.
-- Prefer measuring before adding memoization or background complexity.
-- If a change adds polling, repeated filesystem scans, or repeated parsing, justify it.
-- Extend `WindowOpenTrace` / `CFAbsoluteTime` / `os_signpost` for hot-path timing; use XCTest `measure` for CI-sensitive Git operations when a harness exists.
+Also watch memory delta on window open, working-tree cache size after parse, and concurrent `git` process count during a full refresh. Before merging performance-sensitive changes: `make test`, then measure window open and branch switch on a real repository.
 
-## Resource checks
+## Follows global performance
 
-- Memory footprint delta on window open
-- Working-tree cache size after parse
-- Concurrent `git` process count during full refresh (prefer serialized per operation)
-
-## Validation
-
-- Compare before/after menu-open behavior on a real repository.
-- Watch for extra work on every `body` recomputation or every repo-state refresh.
-- Check that background work does not block main-actor updates or app activation.
-- If a performance fix changes behavior, pair it with regression tests where possible.
-- Before merging performance-sensitive changes: `make test`, measure window open on a real repo, switch branches within budget, and exercise `git status` on a large working tree when relevant.
-
-## Path-bound commit/push evidence
-
-For commit, push, or project-switch changes, use the runtime scenarios and
-signpost names in [`ADR 0009`](../../docs/adr/0009-path-bound-git-operations.md#runtime-evidence).
-Separate implementation evidence from runtime evidence: builds and tests can
-prove path binding and publication guards, but only Instruments on a real
-repository can establish phase latency, Git process count, and main-actor
-cost. Keep trace files outside the repository and record only summarized
-measurements in the handoff.
-
-## Related skills
-
-Reference-app study → global `study-reference-apps` + `docs/agents/reference-apps.md`.
-Deep Instruments sessions stay here; delivery gates → `ship`.
+`performance` owns claim binding, baselines, workload parity, and bounded claims; deep Instruments sessions stay here. Related: global `study-reference-apps` with `docs/agents/reference-apps.md`, delivery gates → global `ship`.

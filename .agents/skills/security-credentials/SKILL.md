@@ -1,29 +1,22 @@
 ---
 name: security-credentials
-description: Security review guidance for GitMenuBar credentials, including Keychain, token handling, migrations, and sensitive logging.
+description: GitMenuBar credential handling — Keychain storage, GitHub tokens, AI provider keys, migrations, and sensitive logging.
 ---
 
 # Security Credentials
 
-Use this skill when touching GitHub auth, AI provider keys, persistence of secrets, migrations, or error/logging paths that might expose sensitive data.
+## When to use
 
-## Core Rules
+Touching GitHub auth, AI provider keys, secret persistence, migrations, or error and logging paths that could expose sensitive data.
 
-- Store secrets in Keychain, not UserDefaults or plaintext files.
-- Never log tokens, API keys, authorization headers, or raw secret payloads.
-- Migrations must be idempotent and safe to rerun.
-- Error messages shown to users should explain the action needed without exposing the secret value or transport details.
-- Deletes and overwrites of credentials should leave no stale in-memory mirrors beyond the owning cache.
+## Project specifics
 
-## Review Checklist
+- Secrets live in Keychain under `GitMenuBar/Services/Credentials/` (`AIKeychainStore`, `KeychainItemClient`), never UserDefaults or plaintext files.
+- Provider configuration and the selected default provider are non-secret metadata; API keys and GitHub tokens stay secret at every layer.
+- Migrations are idempotent and safe to rerun: they preserve access while cleaning up legacy locations.
+- Never log tokens, API keys, authorization headers, or raw secret payloads. User-facing errors explain the action needed without exposing the value or transport details.
+- Deletes and overwrites leave no stale in-memory mirror beyond the owning cache. Tests cover save, load, delete, migration, and cache invalidation (`GitMenuBarTests/AIKeychainStoreTests.swift`).
 
-- Where does the credential enter memory?
-- Where is it persisted, cached, rotated, or deleted?
-- Can debug prints or thrown errors leak values?
-- Does migration preserve access while cleaning up legacy locations?
-- Are tests covering save, load, delete, migration, and cache invalidation paths?
+## Follows global security-best-practices
 
-## GitMenuBar Focus
-
-- Review `Services/Credentials/` and AI provider settings together; they are one security surface.
-- Treat provider configuration and selected default provider as non-secret metadata, but keep API keys and GitHub tokens secret at every layer.
+Global `security-best-practices` ships guidance for Python, JavaScript/TypeScript, and Go only, so it has no Swift or Keychain material — this file keeps the Swift parts. Project-level facts stay in `AGENTS.md`.
