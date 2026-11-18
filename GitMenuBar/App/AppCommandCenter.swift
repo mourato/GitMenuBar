@@ -20,7 +20,6 @@ enum AppCommandID: Hashable {
     case syncAllProjects
     case revealRepositoryInFinder
     case openRepositoryOnGitHub
-    case showRepositoryOptions
     case helpRepository
     case reportIssue
     case quit
@@ -97,7 +96,6 @@ enum AppCommandCatalog {
         .syncAllProjects: .init(title: "Sync All Projects", paletteSubtitle: "Fast-forward projects that are only behind", paletteKeywords: ["project", "sync", "all", "pull"]),
         .revealRepositoryInFinder: .init(title: "Reveal in Finder", paletteSubtitle: nil, paletteKeywords: ["finder", "repository"]),
         .openRepositoryOnGitHub: .init(title: "Open on GitHub", paletteSubtitle: nil, paletteKeywords: ["github", "remote"]),
-        .showRepositoryOptions: .init(title: "Repository Options", paletteSubtitle: nil, paletteKeywords: ["repository", "options"]),
         .helpRepository: .init(title: "GitMenuBar on GitHub", paletteSubtitle: nil, paletteKeywords: ["help", "github"]),
         .reportIssue: .init(title: "Report Issue", paletteSubtitle: nil, paletteKeywords: ["issue", "bug"]),
         .quit: .init(
@@ -140,7 +138,6 @@ struct AppCommandContext: Equatable {
     let currentRepoPath: String
     let remoteUrl: String
     let recentProjects: [ProjectReference]
-    let isGitHubAuthenticated: Bool
     let hasWorkingTreeChanges: Bool
     let canDoAtomicCommits: Bool
     let isBehindRemote: Bool
@@ -157,7 +154,6 @@ struct AppCommandContext: Equatable {
         currentRepoPath: String,
         remoteUrl: String,
         recentProjects: [ProjectReference],
-        isGitHubAuthenticated: Bool,
         hasWorkingTreeChanges: Bool,
         canDoAtomicCommits: Bool,
         isBehindRemote: Bool,
@@ -173,7 +169,6 @@ struct AppCommandContext: Equatable {
         self.currentRepoPath = currentRepoPath
         self.remoteUrl = remoteUrl
         self.recentProjects = recentProjects
-        self.isGitHubAuthenticated = isGitHubAuthenticated
         self.hasWorkingTreeChanges = hasWorkingTreeChanges
         self.canDoAtomicCommits = canDoAtomicCommits
         self.isBehindRemote = isBehindRemote
@@ -190,7 +185,6 @@ enum AppCommandResolver {
     static func resolveSnapshot(context: AppCommandContext) -> AppCommandSnapshot {
         let hasCurrentRepository = !context.currentRepoPath.isEmpty
         let canOpenRemoteRepository = GitHubRemoteURLParser.parse(context.remoteUrl) != nil
-        let canShowRepositoryOptions = context.isGitHubAuthenticated && canOpenRemoteRepository
 
         let isOnDefaultBranch = context.currentBranch == context.defaultBranchName
         let canMergeToDefault = hasCurrentRepository && !context.currentBranch.isEmpty
@@ -216,7 +210,6 @@ enum AppCommandResolver {
             .syncAllProjects: state(.syncAllProjects, isEnabled: context.canSyncAll),
             .revealRepositoryInFinder: state(.revealRepositoryInFinder, isEnabled: hasCurrentRepository),
             .openRepositoryOnGitHub: state(.openRepositoryOnGitHub, isEnabled: canOpenRemoteRepository),
-            .showRepositoryOptions: state(.showRepositoryOptions, isEnabled: canShowRepositoryOptions),
             .helpRepository: state(.helpRepository, isEnabled: true),
             .reportIssue: state(.reportIssue, isEnabled: true),
             .quit: state(.quit, isEnabled: true)
@@ -373,11 +366,6 @@ struct GitMenuBarCommandMenus: Commands {
                 commandCenter.perform(.revealRepositoryInFinder)
             }
             .disabled(!commandCenter.state(for: .revealRepositoryInFinder).isEnabled)
-
-            Button(commandCenter.state(for: .showRepositoryOptions).title) {
-                commandCenter.perform(.showRepositoryOptions)
-            }
-            .disabled(!commandCenter.state(for: .showRepositoryOptions).isEnabled)
 
             Divider()
 

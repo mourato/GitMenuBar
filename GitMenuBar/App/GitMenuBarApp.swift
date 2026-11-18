@@ -4,6 +4,7 @@
 //
 
 import AppKit
+import Security
 import SwiftUI
 
 @main
@@ -27,7 +28,6 @@ struct GitMenuBarApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     let appCommandCenter = AppCommandCenter()
     var statusBarController: StatusBarController?
-    var githubAuthManager: GitHubAuthManager?
 
     @MainActor
     func showSettingsWindow() {
@@ -43,13 +43,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let showDockIcon = MainWindowPreferences.isShowDockIconEnabled()
         NSApp.setActivationPolicy(showDockIcon ? .regular : .accessory)
 
-        // Create GitHub auth manager
-        let authManager = GitHubAuthManager()
-        githubAuthManager = authManager
+        deleteLegacyGitHubToken()
 
         // Create and show status bar controller - keep strong reference
         statusBarController = StatusBarController(
-            githubAuthManager: authManager,
             appCommandCenter: appCommandCenter
         )
 
@@ -86,47 +83,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        // Check if this is a git repository
-        let gitPath = (path as NSString).appendingPathComponent(".git")
-        let isGitRepo = FileManager.default.fileExists(atPath: gitPath)
+        // Only git repositories can be selected.
         guard canSwitchRepository(to: path) else { return }
 
-        if isGitRepo, githubAuthManager?.isAuthenticated == true {
-            // Check if remote repo actually exists on GitHub
-            statusBarController?.gitManager.remoteRepositoryExists(at: path) { [weak self] exists in
-                guard let self, canSwitchRepository(to: path), let selection = statusBarController?.repositorySelectionCoordinator.select(path: path), case let .selected(selectedPath) = selection else { return }
-                statusBarController?.actionCoordinator.resetForRepositorySwitch()
-
-                if exists {
-                    Task { @MainActor in
-                        self.statusBarController?.openMainWindow()
-                    }
-                } else {
-                    // Remote doesn't exist (either no remote or 404) - show create repo UI
-                    Task { @MainActor in
-                        self.statusBarController?.openMainWindowWithCreateRepo(path: selectedPath)
-                    }
-                }
-            }
-        } else {
-            guard let selection = statusBarController?.repositorySelectionCoordinator.select(
-                path: path,
-                allowsNonGitSelection: githubAuthManager?.isAuthenticated != true
-            ) else { return }
-
-            if case .selected = selection {
-                statusBarController?.actionCoordinator.resetForRepositorySwitch()
-            }
-            if case let .requiresRepositoryCreation(candidatePath) = selection {
-                Task { @MainActor in
-                    self.statusBarController?.openMainWindowWithCreateRepo(path: candidatePath)
-                }
-            } else if case .selected = selection {
-                Task { @MainActor in
-                    self.statusBarController?.openMainWindow()
-                }
-            }
+        guard case .selected = statusBarController?.repositorySelectionCoordinator.select(path: path) else { return }
+        statusBarController?.actionCoordinator.resetForRepositorySwitch()
+        Task { @MainActor in
+            self.statusBarController?.openMainWindow()
         }
+    }
+
+    /// Removes the GitHub OAuth token the app stored before the login was
+    /// removed. The item is useless without the login UI, so it is deleted
+    /// once instead of lingering in the keychain.
+    private func deleteLegacyGitHubToken() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "com.mourato.GitMenuBar",
+            kSecAttrAccount as String: "github-access-token"
+        ]
+        SecItemDelete(query as CFDictionary)
     }
 
     private func canSwitchRepository(to path: String) -> Bool {

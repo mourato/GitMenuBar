@@ -59,29 +59,14 @@ extension MainMenuView {
     }
 
     var hasTransientPresentation: Bool {
-        repoOptions.showRepositoryOptionsPopover || presentationModel.quotaInfoSnapshot != nil
+        presentationModel.quotaInfoSnapshot != nil
     }
 
     func dismissTransientPresentations() {
-        repoOptions.showRepositoryOptionsPopover = false
         branchDialogs.showBranchSelector = false
         presentationModel.clearQuotaInfo()
-        repoOptions.pendingPresentation = false
         isCommentFieldFocused = false
         NSApp.keyWindow?.makeFirstResponder(nil)
-    }
-
-    func toggleProjectSelectorPresentation() {
-        guard presentationModel.route == .main else {
-            return
-        }
-
-        let shouldPresent = !repoOptions.showProjectSelector
-        if palette.isPresented {
-            closeCommandPalette()
-        }
-        dismissTransientPresentations()
-        repoOptions.showProjectSelector = shouldPresent
     }
 
     func toggleBranchSelectorPresentation() {
@@ -129,14 +114,8 @@ extension MainMenuView {
             return
         }
 
-        let result = repositorySelectionCoordinator.select(
-            path: path,
-            allowsNonGitSelection: !githubAuthManager.isAuthenticated
-        )
+        let result = repositorySelectionCoordinator.select(path: path)
         guard case .selected = result else {
-            if case let .requiresRepositoryCreation(candidatePath) = result {
-                presentationModel.showCreateRepo(path: candidatePath)
-            }
             GitPerformanceTrace.event("selection.rejected_invalid", id: trace)
             GitPerformanceTrace.end("selection.request", id: trace)
             return
@@ -144,7 +123,6 @@ extension MainMenuView {
 
         actionCoordinator.resetForRepositorySwitch()
         GitPerformanceTrace.event("selection.accepted", id: trace)
-        repoOptions.showProjectSelector = false
         dismissTransientPresentations()
         presentationModel.showMain()
         // With auto-fetch on, the selected repository's behind state would
@@ -210,31 +188,6 @@ extension MainMenuView {
         }
 
         presentCommandPaletteIfPossible()
-    }
-
-    func handleRepositoryOptionsPresentationRequest(_ token: Int) {
-        guard repoOptions.claimPresentationRequest(token),
-              presentationModel.route == .main,
-              canPresentRepositoryOptions
-        else {
-            return
-        }
-
-        let hadTransientPresentation = hasTransientPresentation || palette.isPresented
-        if palette.isPresented {
-            closeCommandPalette()
-        }
-        dismissTransientPresentations()
-        repoOptions.requestPresentation(deferred: hadTransientPresentation)
-    }
-
-    func presentPendingRepositoryOptionsIfPossible() {
-        repoOptions.presentPendingIfPossible(
-            isUnobstructed: presentationModel.route == .main
-                && canPresentRepositoryOptions
-                && !branchDialogs.showBranchSelector
-                && !palette.isPresented
-        )
     }
 
     func closeCommandPalette() {

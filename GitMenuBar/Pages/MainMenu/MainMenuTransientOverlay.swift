@@ -2,12 +2,7 @@ import SwiftUI
 
 struct MainMenuTransientOverlay: View {
     let isPresented: Bool
-    let showsRepositoryOptions: Bool
-    let visibilityStatusDescription: String
-    let visibilityActionTitle: String
     let quotaSnapshot: UsageQuotaSnapshot?
-    let onToggleVisibility: () -> Void
-    let onDeleteRepository: () -> Void
     let onDismiss: () -> Void
     let onRetryQuota: () -> Void
 
@@ -37,22 +32,9 @@ struct MainMenuTransientOverlay: View {
 
     @ViewBuilder
     private var transientPanelContent: some View {
-        if showsRepositoryOptions {
-            topCenteredOverlay(repositoryOptionsOverlay)
-        } else if let snapshot = quotaSnapshot {
+        if let snapshot = quotaSnapshot {
             quotaInfoOverlay(snapshot)
         }
-    }
-
-    private func topCenteredOverlay(_ overlay: some View) -> some View {
-        HStack {
-            Spacer(minLength: 0)
-            overlay
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .padding(.top, WorkbenchMetrics.sectionSpacing)
-        .padding(.horizontal, WorkbenchMetrics.windowPadding)
     }
 
     private func quotaInfoOverlay(_ snapshot: UsageQuotaSnapshot) -> some View {
@@ -68,16 +50,6 @@ struct MainMenuTransientOverlay: View {
         .padding(.trailing, WorkbenchMetrics.windowPadding)
         .padding(.bottom, WorkbenchMetrics.windowPadding * 2)
         .modifier(TransientPanelChrome(origin: .bottomLeading, reduceMotion: reduceMotion))
-    }
-
-    private var repositoryOptionsOverlay: some View {
-        RepositoryOptionsPopoverView(
-            visibilityStatusDescription: visibilityStatusDescription,
-            visibilityActionTitle: visibilityActionTitle,
-            onToggleVisibility: onToggleVisibility,
-            onDeleteRepository: onDeleteRepository
-        )
-        .modifier(TransientPanelChrome(origin: .topCenter, reduceMotion: reduceMotion))
     }
 
     @ViewBuilder
@@ -100,4 +72,24 @@ struct MainMenuTransientOverlay: View {
                 .transition(WorkbenchMotion.transientPanelTransition(from: origin, usesReducedMotion: reduceMotion))
         }
     }
+}
+
+#Preview("Transient Quota Overlay") {
+    MainMenuTransientOverlay(
+        isPresented: true,
+        quotaSnapshot: UsageQuotaSnapshot(
+            providerID: .openrouter,
+            displayName: "OpenRouter",
+            sessionWindow: UsageWindow(remainingPercent: 42, resetAt: nil, label: "Credits"),
+            weeklyWindow: nil,
+            creditValueText: "$12.50 left",
+            isAvailable: true,
+            isStale: true,
+            statusNote: "openrouter credits api",
+            fetchedAt: Date().addingTimeInterval(-7200)
+        ),
+        onDismiss: {},
+        onRetryQuota: {}
+    )
+    .frame(width: 420, height: 200)
 }

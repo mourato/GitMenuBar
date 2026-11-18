@@ -126,9 +126,6 @@ struct GitSettingsPaneView: View {
     @AppStorage(AppPreferences.Keys.autoFetchEnabled) private var autoFetchEnabled = true
     @AppStorage(AppPreferences.Keys.appearanceMode) private var appearanceMode = AppPreferences.AppearanceMode.defaultMode.rawValue
 
-    let gitManager: GitManager
-    let githubAuthManager: GitHubAuthManager
-    let onSetAutoHideSuspended: (Bool) -> Void
     let onFetchNow: () -> Void
 
     var body: some View {
@@ -172,12 +169,6 @@ struct GitSettingsPaneView: View {
                 Text(
                     "When enabled, GitMenuBar fetches in the background and the Fetch button stays hidden."
                 )
-            }
-
-            Section {
-                GitHubConnectionSection(setAutoHideSuspended: onSetAutoHideSuspended)
-            } header: {
-                SettingsFormSectionHeader(title: "GitHub", icon: .globe)
             }
         }
         .preferredColorScheme(preferredColorScheme)
@@ -242,19 +233,9 @@ private enum SettingsAppearance {
 
 #if DEBUG
     #Preview("Git Settings Pane") {
-        let gitManager = GitManager(repositoryPathOverride: "/Users/usuario/Documents/Projects/gitmenubar")
-        let githubAuthManager = GitHubAuthManager(
-            tokenStore: InMemoryGitHubTokenStore(),
-            preloadStoredToken: false
-        )
-
-        return GitSettingsPaneView(
-            gitManager: gitManager,
-            githubAuthManager: githubAuthManager,
-            onSetAutoHideSuspended: { _ in },
+        GitSettingsPaneView(
             onFetchNow: {}
         )
-        .environment(githubAuthManager)
     }
 
     #Preview("AI Settings Pane") {

@@ -136,8 +136,7 @@ extension GitBranchService {
             let remoteResult = await runOnBackground {
                 self.executeGitCommand(
                     in: repositoryPath,
-                    args: ["push", "origin", "--delete", featureBranch],
-                    useAuth: true
+                    args: ["push", "origin", "--delete", featureBranch]
                 )
             }
             guard !remoteResult.failure else {

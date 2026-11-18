@@ -8,7 +8,6 @@ import Foundation
 final class AppDependencies {
     let gitManager = GitManager()
     let loginItemManager = LoginItemManager()
-    let githubAuthManager: GitHubAuthManager
     let appCommandCenter: AppCommandCenter
     let aiProviderStore = AIProviderStore()
     let aiKeychainStore: any AIAPIKeyStore
@@ -22,8 +21,7 @@ final class AppDependencies {
     let projectMonitor = ProjectMonitorStore()
     let repositorySelectionCoordinator: RepositorySelectionCoordinator
 
-    init(githubAuthManager: GitHubAuthManager, appCommandCenter: AppCommandCenter) {
-        self.githubAuthManager = githubAuthManager
+    init(appCommandCenter: AppCommandCenter) {
         self.appCommandCenter = appCommandCenter
 
         #if DEBUG
@@ -54,11 +52,6 @@ final class AppDependencies {
             gitManager: gitManager,
             projectMonitor: projectMonitor
         )
-
-        gitManager.tokenProvider = { [weak githubAuthManager] in
-            githubAuthManager?.storedTokenSnapshot()
-        }
-        gitManager.githubAPIClient = GitHubAPIClient(authManager: githubAuthManager)
     }
 
     func makeAICommitCoordinator() -> AICommitCoordinator {
@@ -102,20 +95,16 @@ final class AppDependencies {
 
     func makeSettingsWindowController(
         aiCommitCoordinator: AICommitCoordinator,
-        onSetAutoHideSuspended: @escaping (Bool) -> Void,
         onFetchNow: @escaping () -> Void
     ) -> AppSettingsWindowController {
         AppSettingsWindowController(
-            gitManager: gitManager,
             loginItemManager: loginItemManager,
-            githubAuthManager: githubAuthManager,
             aiProviderStore: aiProviderStore,
             aiCommitCoordinator: aiCommitCoordinator,
             chatGPTSubscription: chatGPTSubscription,
             usageQuotaStore: usageQuotaStore,
             usageQuotaPresentationPreferences: usageQuotaPresentationPreferences,
             shortcutManager: shortcutManager,
-            onSetAutoHideSuspended: onSetAutoHideSuspended,
             onFetchNow: onFetchNow
         )
     }

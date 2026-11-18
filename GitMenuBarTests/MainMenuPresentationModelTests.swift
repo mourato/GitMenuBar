@@ -12,16 +12,6 @@ final class MainMenuPresentationModelTests: XCTestCase {
         XCTAssertEqual(model.focusCommitFieldToken, 1)
     }
 
-    func testPrepareForPresentationClearsCreateRepoSuggestionWhenShowingCreateRepo() {
-        let model = MainMenuPresentationModel()
-
-        model.suggestCreateRepo(path: "/tmp/repo")
-        model.prepareForPresentation(route: .createRepo(path: "/tmp/repo"), requestCommitFocus: false)
-
-        XCTAssertEqual(model.route, .createRepo(path: "/tmp/repo"))
-        XCTAssertNil(model.createRepoSuggestionPath)
-    }
-
     func testShowMainCanRequestFocus() {
         let model = MainMenuPresentationModel()
 
@@ -67,15 +57,6 @@ final class MainMenuPresentationModelTests: XCTestCase {
         XCTAssertEqual(model.showCommandPaletteToken, 2)
     }
 
-    func testRequestRepositoryOptionsPresentationIncrementsToken() {
-        let model = MainMenuPresentationModel()
-
-        model.requestRepositoryOptionsPresentation()
-        model.requestRepositoryOptionsPresentation()
-
-        XCTAssertEqual(model.showRepositoryOptionsToken, 2)
-    }
-
     func testRefreshStateTransitions() {
         let model = MainMenuPresentationModel()
 
@@ -113,15 +94,5 @@ final class MainMenuPresentationModelTests: XCTestCase {
         model.markFastPhaseReady(generation: secondGeneration)
         model.finishRefresh(generation: secondGeneration)
         XCTAssertEqual(model.refreshState, .idle)
-    }
-
-    func testCreateRepoSuggestionRoundTrip() {
-        let model = MainMenuPresentationModel()
-
-        model.suggestCreateRepo(path: "/tmp/repo")
-        XCTAssertEqual(model.createRepoSuggestionPath, "/tmp/repo")
-
-        model.clearCreateRepoSuggestion()
-        XCTAssertNil(model.createRepoSuggestionPath)
     }
 }

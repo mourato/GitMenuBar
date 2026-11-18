@@ -13,7 +13,7 @@ extension MainMenuView {
             executeCommandPaletteItemImmediately(item)
         case .requiresConfirmation:
             closeCommandPalette()
-            repoConfirm.showRestartConfirmation = true
+            restartConfirm.showRestartConfirmation = true
         }
     }
 
@@ -34,7 +34,7 @@ extension MainMenuView {
         case .syncAllProjects:
             syncAllProjects()
         case .restartApp:
-            repoConfirm.showRestartConfirmation = true
+            restartConfirm.showRestartConfirmation = true
         case .quitApp:
             NSApplication.shared.terminate(nil)
         }

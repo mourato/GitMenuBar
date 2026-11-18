@@ -1,16 +1,11 @@
 import SwiftUI
 
-/// Window-level overlay combining the transient presentation overlay
-/// (repository options / quota info) with the command palette overlay.
+/// Window-level overlay combining the transient quota info presentation
+/// with the command palette overlay.
 /// Receives plain values and closures; reads no environment.
 struct MainMenuWindowOverlayView: View {
     let isTransientPresented: Bool
-    let showsRepositoryOptions: Bool
-    let visibilityStatusDescription: String
-    let visibilityActionTitle: String
     let quotaSnapshot: UsageQuotaSnapshot?
-    let onToggleVisibility: () -> Void
-    let onDeleteRepository: () -> Void
     let onDismissTransient: () -> Void
     let onRetryQuota: () -> Void
 
@@ -25,12 +20,7 @@ struct MainMenuWindowOverlayView: View {
         ZStack {
             MainMenuTransientOverlay(
                 isPresented: isTransientPresented,
-                showsRepositoryOptions: showsRepositoryOptions,
-                visibilityStatusDescription: visibilityStatusDescription,
-                visibilityActionTitle: visibilityActionTitle,
                 quotaSnapshot: quotaSnapshot,
-                onToggleVisibility: onToggleVisibility,
-                onDeleteRepository: onDeleteRepository,
                 onDismiss: onDismissTransient,
                 onRetryQuota: onRetryQuota
             )

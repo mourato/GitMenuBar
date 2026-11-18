@@ -205,7 +205,7 @@ extension GitBranchService {
         }
 
         let snapshot = await runOnBackground {
-            _ = self.executeGitCommand(in: repositoryPath, args: ["fetch"], useAuth: true)
+            _ = self.executeGitCommand(in: repositoryPath, args: ["fetch"])
             let result = self.executeGitCommand(in: repositoryPath, args: ["rev-list", "--left-right", "--count", "@{u}...HEAD"])
 
             guard !result.failure else {

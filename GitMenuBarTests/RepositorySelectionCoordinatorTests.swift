@@ -30,7 +30,7 @@ final class RepositorySelectionCoordinatorTests: XCTestCase {
         XCTAssertEqual(fixture.monitor.monitoredProjects.map(\.path), [fixture.normalizedPath])
     }
 
-    func testDefersAuthenticatedNonGitCandidateWithoutMutatingSelection() throws {
+    func testRejectsNonGitCandidateWithoutMutatingSelection() throws {
         let fixture = try Fixture(isGitRepository: false)
         defer { fixture.remove() }
         fixture.defaults.set("/previous", forKey: AppPreferences.Keys.gitRepoPath)
@@ -40,27 +40,15 @@ final class RepositorySelectionCoordinatorTests: XCTestCase {
 
         let result = fixture.coordinator.select(path: fixture.path)
 
-        XCTAssertEqual(result, .requiresRepositoryCreation(path: fixture.normalizedPath))
+        XCTAssertEqual(result, .rejected)
         XCTAssertEqual(fixture.defaults.string(forKey: AppPreferences.Keys.gitRepoPath), "/previous")
         XCTAssertEqual(fixture.recentStore.recentPaths(), ["/previous"])
         XCTAssertEqual(fixture.monitor.monitoredProjects.map(\.path), ["/previous"])
         XCTAssertEqual(fixture.gitManager.currentBranch, "stale")
     }
 
-    func testAllowsNonGitSelectionWhenCreationIsNotActive() throws {
-        let fixture = try Fixture(isGitRepository: false)
-        defer { fixture.remove() }
-
-        let result = fixture.coordinator.select(path: fixture.path, allowsNonGitSelection: true)
-
-        XCTAssertEqual(result, .selected(path: fixture.normalizedPath))
-        XCTAssertEqual(fixture.defaults.string(forKey: AppPreferences.Keys.gitRepoPath), fixture.normalizedPath)
-        XCTAssertEqual(fixture.recentStore.recentPaths(), [fixture.normalizedPath])
-        XCTAssertTrue(fixture.monitor.monitoredProjects.isEmpty)
-    }
-
     func testSelectionPublishesOnlyActualPathChanges() throws {
-        let fixture = try Fixture(isGitRepository: false)
+        let fixture = try Fixture(isGitRepository: true)
         defer { fixture.remove() }
 
         let changes = Mutex(0)
@@ -69,7 +57,7 @@ final class RepositorySelectionCoordinatorTests: XCTestCase {
         } onChange: {
             changes.withLock { $0 += 1 }
         }
-        _ = fixture.coordinator.select(path: fixture.path, allowsNonGitSelection: true)
+        _ = fixture.coordinator.select(path: fixture.path)
         XCTAssertEqual(fixture.coordinator.selectedPath, fixture.normalizedPath)
         XCTAssertEqual(changes.withLock { $0 }, 1)
 
@@ -78,10 +66,10 @@ final class RepositorySelectionCoordinatorTests: XCTestCase {
         } onChange: {
             changes.withLock { $0 += 1 }
         }
-        _ = fixture.coordinator.select(path: fixture.path + "/.", allowsNonGitSelection: true)
+        _ = fixture.coordinator.select(path: fixture.path + "/.")
         XCTAssertEqual(changes.withLock { $0 }, 1)
 
-        _ = fixture.coordinator.select(path: fixture.secondPath, allowsNonGitSelection: true)
+        _ = fixture.coordinator.select(path: fixture.secondPath)
         XCTAssertEqual(fixture.coordinator.selectedPath, fixture.normalizedSecondPath)
         XCTAssertEqual(changes.withLock { $0 }, 2)
     }

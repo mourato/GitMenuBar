@@ -9,13 +9,11 @@ struct MainMenuView: View {
     @State var errorCenter: MainMenuErrorCenter
     @State var branchDialogs: MainMenuBranchDialogs
     @State var workspace = MainMenuWorkspaceState()
-    @State var repoOptions = MainMenuRepositoryOptionsState()
     @State var sync: MainMenuSyncSheetState
-    @State var repoConfirm = MainMenuRepositoryConfirmations()
+    @State var restartConfirm = MainMenuRestartConfirmation()
     @FocusState var isCommentFieldFocused: Bool
     @FocusState var isMainKeyboardNavigationFocused: Bool
     @Environment(GitManager.self) var gitManager
-    @Environment(GitHubAuthManager.self) var githubAuthManager
     @Environment(AICommitCoordinator.self) var aiCommitCoordinator
     @Environment(MainMenuActionCoordinator.self) var actionCoordinator
     @Environment(CommitHistoryEditCoordinator.self) var commitHistoryEditCoordinator
@@ -67,13 +65,8 @@ struct MainMenuView: View {
 
     var body: some View {
         VStack(spacing: WorkbenchMetrics.compactSpacing) {
-            switch presentationModel.route {
-            case let .createRepo(path):
-                MainMenuCreateRepoHost(folderPath: path)
-            case .main, .projectCleanup:
-                mainView
-                    .transition(routeTransition)
-            }
+            mainView
+                .transition(routeTransition)
         }
         .adaptiveMotion()
         .animation(
@@ -85,12 +78,10 @@ struct MainMenuView: View {
             value: palette.isPresented
         )
         .modifier(BranchConfirmationDialogsModifier(dialogs: branchDialogs, errorCenter: errorCenter))
-        .modifier(RepositoryConfirmationDialogsModifier(
-            confirmations: repoConfirm,
+        .modifier(WorkspaceConfirmationDialogsModifier(
+            confirmations: restartConfirm,
             workspace: workspace,
-            errorCenter: errorCenter,
-            repositoryActionSet: repositoryActionSet,
-            closeWindow: closeWindow
+            errorCenter: errorCenter
         ))
         .preferredColorScheme(AppPreferences.AppearanceMode.resolve(rawValue: appearanceMode).preferredColorScheme)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -108,26 +99,13 @@ struct MainMenuView: View {
             refreshRenderSnapshot()
             synchronizeMainKeyboardNavigationFocus()
             handleCommandPalettePresentationRequest(presentationModel.showCommandPaletteToken)
-            handleRepositoryOptionsPresentationRequest(presentationModel.showRepositoryOptionsToken)
             workspace.synchronizeSelectedMainItem(with: keyboardSelectableItems)
         }
         .onChange(of: presentationModel.showCommandPaletteToken) { _, token in
             handleCommandPalettePresentationRequest(token)
         }
-        .onChange(of: presentationModel.showRepositoryOptionsToken) { _, token in
-            handleRepositoryOptionsPresentationRequest(token)
-        }
-        .onChange(of: repoOptions.showProjectSelector) {
-            presentPendingRepositoryOptionsIfPossible()
-        }
         .onChange(of: branchDialogs.showBranchSelector) {
             onBranchSelectorPresentationChanged(branchDialogs.showBranchSelector)
-            presentPendingRepositoryOptionsIfPossible()
-        }
-        .onChange(of: palette.isPresented) { _, isPresented in
-            if !isPresented {
-                presentPendingRepositoryOptionsIfPossible()
-            }
         }
         .onChange(of: presentationModel.route) { _, route in
             if route != .main {
@@ -218,18 +196,7 @@ extension MainMenuView {
     private var windowOverlayContent: some View {
         MainMenuWindowOverlayView(
             isTransientPresented: presentationModel.route == .main && hasTransientPresentation,
-            showsRepositoryOptions: repoOptions.showRepositoryOptionsPopover,
-            visibilityStatusDescription: repositoryActionSet.visibilityStatusDescription,
-            visibilityActionTitle: repositoryActionSet.visibilityActionTitle,
             quotaSnapshot: presentationModel.quotaInfoSnapshot,
-            onToggleVisibility: {
-                dismissTransientPresentations()
-                repoConfirm.showVisibilityConfirmation = true
-            },
-            onDeleteRepository: {
-                dismissTransientPresentations()
-                repoConfirm.showDeleteConfirmation = true
-            },
             onDismissTransient: dismissTransientPresentations,
             onRetryQuota: {
                 dismissTransientPresentations()

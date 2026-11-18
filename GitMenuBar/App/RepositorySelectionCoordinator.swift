@@ -6,7 +6,7 @@ import Observation
 final class RepositorySelectionCoordinator {
     enum Result: Equatable {
         case selected(path: String)
-        case requiresRepositoryCreation(path: String)
+        case rejected
     }
 
     private let gitManager: GitManager
@@ -29,12 +29,12 @@ final class RepositorySelectionCoordinator {
         selectedPath = storedPath.isEmpty ? "" : RecentProjectsStore.normalize(storedPath)
     }
 
-    func select(path: String, allowsNonGitSelection: Bool = false) -> Result {
+    func select(path: String) -> Result {
         let normalizedPath = RecentProjectsStore.normalize(path)
         let isGitRepository = gitManager.isGitRepository(at: normalizedPath)
 
-        guard isGitRepository || allowsNonGitSelection else {
-            return .requiresRepositoryCreation(path: normalizedPath)
+        guard isGitRepository else {
+            return .rejected
         }
 
         let isAlreadySelected = selectedPath == normalizedPath
@@ -42,7 +42,7 @@ final class RepositorySelectionCoordinator {
             defaults.set(normalizedPath, forKey: AppPreferences.Keys.gitRepoPath)
             recentProjectsStore.add(normalizedPath)
         }
-        if isGitRepository, !projectMonitor.contains(path: normalizedPath) {
+        if !projectMonitor.contains(path: normalizedPath) {
             projectMonitor.add(path: normalizedPath)
         }
         guard !isAlreadySelected else { return .selected(path: normalizedPath) }

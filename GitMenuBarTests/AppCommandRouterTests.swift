@@ -19,7 +19,6 @@ final class AppCommandRouterTests: XCTestCase {
         let feedback = expectation(description: "sync options feedback")
         let router = AppCommandRouter(
             gitManager: gitManager,
-            githubAuthManager: GitHubAuthManager(tokenStore: InMemoryGitHubTokenStore(), preloadStoredToken: false),
             actionCoordinator: coordinator,
             repositorySelectionCoordinator: RepositorySelectionCoordinator(
                 gitManager: gitManager,
@@ -33,9 +32,7 @@ final class AppCommandRouterTests: XCTestCase {
             openSettingsWindow: { XCTFail("Unexpected settings command") },
             handleCommandPaletteShortcut: { XCTFail("Unexpected palette command") },
             presentMainWindowForActionFeedback: { feedback.fulfill() },
-            openMainWindowWithCreateRepo: { _ in XCTFail("Unexpected repository creation") },
-            refreshAppCommands: { XCTFail("Unexpected command refresh") },
-            openMainWindowForRoute: { _, _, _, _, _ in XCTFail("Unexpected route presentation") }
+            refreshAppCommands: { XCTFail("Unexpected command refresh") }
         )
 
         router.performAppCommand(.command(.sync))

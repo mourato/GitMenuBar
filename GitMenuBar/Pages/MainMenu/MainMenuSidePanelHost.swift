@@ -38,21 +38,8 @@ struct MainMenuSidePanelHost: View {
     let onCreateBranch: () -> Void
     let onRenameBranch: (String) -> Void
 
-    @Environment(GitHubAuthManager.self) private var githubAuthManager
-
     var body: some View {
         switch selection {
-        case .issues:
-            IssuesSidePanelView(
-                projectName: projectName,
-                remoteURL: remoteURL,
-                isAuthenticated: githubAuthManager.isAuthenticated,
-                model: IssueListModel(
-                    service: GitHubIssueListService(authManager: githubAuthManager),
-                    labelService: GitHubIssueLabelService(authManager: githubAuthManager)
-                ),
-                onClose: onClose
-            )
         case .workingTree:
             SidePanelCommitWorkspaceView(
                 projectName: projectName,
@@ -164,6 +151,5 @@ private struct SidePanelHostPreviewContent: View {
         )
         .frame(width: 360)
         .padding()
-        .environment(GitHubAuthManager(preloadStoredToken: false))
     }
 }

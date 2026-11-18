@@ -77,7 +77,6 @@ struct RepositoryOverviewView: View {
         case .workingTree, .stagedFile, .unstagedFile: .changes
         case .branches, .branch, .unpushedCommits: .branches
         case .stashes, .stash: .stashes
-        case .issues: .issues
         case .history, .commit, nil: nil
         }
     }
@@ -107,10 +106,10 @@ struct RepositoryOverviewView: View {
             ),
             makeGitHubMetric(
                 .issues,
-                panel: .issues,
+                panel: nil,
                 state: overview.openIssues,
                 requiresKnownCount: false,
-                action: { onSelectSection(.issues) }
+                action: { onOpenGitHubPage(.issues) }
             ),
             makeGitHubMetric(
                 .pullRequests,

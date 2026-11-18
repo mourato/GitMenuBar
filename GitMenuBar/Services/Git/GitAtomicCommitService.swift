@@ -33,13 +33,11 @@ final class GitAtomicCommitService {
     private nonisolated func executeGitCommand(
         in directory: String,
         args: [String],
-        useAuth: Bool = false,
         additionalEnvironment: [String: String] = [:]
     ) -> (output: String, failure: Bool) {
         GitExecution.executeGitCommand(
             in: directory,
             args: args,
-            useAuth: useAuth,
             additionalEnvironment: additionalEnvironment,
             using: commandRunner
         )

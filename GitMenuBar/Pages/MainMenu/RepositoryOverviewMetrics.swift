@@ -16,13 +16,12 @@ enum RepositoryOverviewMetricGroup {
     case github
 }
 
-/// The side panel a metric opens. Pull Requests open on GitHub instead, so
-/// that cell never owns the panel's active state.
+/// The side panel a metric opens. GitHub metrics open on GitHub instead,
+/// so those cells never own the panel's active state.
 enum RepositoryOverviewMetricPanel {
     case changes
     case branches
     case stashes
-    case issues
 }
 
 enum RepositoryOverviewMetricEmphasis {
@@ -75,7 +74,7 @@ struct RepositoryOverviewMetricDefinition {
         .circleDot,
         group: .github,
         marker: .issue,
-        "Opens Issues in the side panel"
+        "Opens issues on GitHub"
     )
 
     static let pullRequests = Self(

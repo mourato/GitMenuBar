@@ -7,13 +7,11 @@ extension MainMenuView {
               // owns arrow/enter/escape via onKeyPress on its focused search field.
               // This guard prevents the main list handler from competing with it.
               !palette.isPresented,
-              !repoOptions.showProjectSelector,
               !branchDialogs.showBranchSelector,
               !branchDialogs.showCreateBranch,
               !sync.showPullToNewBranch,
               !branchDialogs.showRenameBranch,
-              !commitHistoryEditCoordinator.isEditorPresented,
-              !repoOptions.showRepositoryOptionsPopover
+              !commitHistoryEditCoordinator.isEditorPresented
         else {
             return false
         }
@@ -34,13 +32,11 @@ extension MainMenuView {
         [
             presentationModel.route == .main ? "main" : "other",
             palette.isPresented ? "1" : "0",
-            repoOptions.showProjectSelector ? "1" : "0",
             branchDialogs.showBranchSelector ? "1" : "0",
             branchDialogs.showCreateBranch ? "1" : "0",
             sync.showPullToNewBranch ? "1" : "0",
             branchDialogs.showRenameBranch ? "1" : "0",
             commitHistoryEditCoordinator.isEditorPresented ? "1" : "0",
-            repoOptions.showRepositoryOptionsPopover ? "1" : "0",
             isCommentFieldFocused ? "1" : "0"
         ].joined(separator: "|")
     }

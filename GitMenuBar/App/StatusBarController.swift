@@ -23,7 +23,6 @@ final class StatusBarController: NSObject {
     private lazy var mainWindowController = MainWindowController(statusBarController: self)
     private lazy var appCommandRouter = AppCommandRouter(
         gitManager: gitManager,
-        githubAuthManager: githubAuthManager,
         actionCoordinator: actionCoordinator,
         repositorySelectionCoordinator: repositorySelectionCoordinator,
         projectMonitor: projectMonitor,
@@ -33,30 +32,18 @@ final class StatusBarController: NSObject {
         openSettingsWindow: { [weak self] in self?.openSettingsWindow() },
         handleCommandPaletteShortcut: { [weak self] in self?.handleCommandPaletteShortcut() },
         presentMainWindowForActionFeedback: { [weak self] in self?.presentMainWindowForActionFeedback() },
-        openMainWindowWithCreateRepo: { [weak self] in self?.openMainWindowWithCreateRepo(path: $0) },
-        refreshAppCommands: { [weak self] in self?.refreshAppCommands() },
-        openMainWindowForRoute: { [weak self] route, path, isGitRepo, shouldRefresh, trace in
-            self?.openMainWindow(
-                route: route,
-                repositoryPath: path,
-                isGitRepo: isGitRepo,
-                shouldRefreshAfterPresentation: shouldRefresh,
-                trace: trace
-            )
-        }
+        refreshAppCommands: { [weak self] in self?.refreshAppCommands() }
     )
     var contextMenu: NSMenu?
     private var cancellables = Set<AnyCancellable>()
     private var autoFetchTimer: Timer?
     private var lastAutoFetchEnabled = AppPreferences.isAutoFetchEnabled
     var baseStatusImage: NSImage?
-    private var remoteExistenceByPath: [String: RemoteExistenceState] = [:]
     private var shortcutQueue = MainWindowShortcutQueue()
 
     let dependencies: AppDependencies
     let gitManager: GitManager
     let loginItemManager: LoginItemManager
-    let githubAuthManager: GitHubAuthManager
     let appCommandCenter: AppCommandCenter
     let aiProviderStore: AIProviderStore
     let aiKeychainStore: any AIAPIKeyStore
@@ -89,21 +76,16 @@ final class StatusBarController: NSObject {
     )
     private lazy var settingsWindowController = dependencies.makeSettingsWindowController(
         aiCommitCoordinator: aiCommitCoordinator,
-        onSetAutoHideSuspended: { [weak self] suspended in
-            self?.mainWindowController.setAutoHideSuspended(suspended)
-        },
         onFetchNow: { [weak self] in self?.fetchAllNow() }
     )
 
-    init(githubAuthManager: GitHubAuthManager, appCommandCenter: AppCommandCenter) {
+    init(appCommandCenter: AppCommandCenter) {
         let dependencies = AppDependencies(
-            githubAuthManager: githubAuthManager,
             appCommandCenter: appCommandCenter
         )
         self.dependencies = dependencies
         gitManager = dependencies.gitManager
         loginItemManager = dependencies.loginItemManager
-        self.githubAuthManager = dependencies.githubAuthManager
         self.appCommandCenter = dependencies.appCommandCenter
         aiProviderStore = dependencies.aiProviderStore
         aiKeychainStore = dependencies.aiKeychainStore
@@ -130,7 +112,6 @@ final class StatusBarController: NSObject {
         setupContextMenu()
         updateMainWindowToolbar()
         setupStatusItemObservation()
-        setupAuthenticationObservation()
         setupAppCommandObservation()
 
         Task { @MainActor [weak self] in
@@ -281,23 +262,6 @@ final class StatusBarController: NSObject {
         shortcutManager.setEnabled(isAppActive, for: Constants.appFocusedShortcutIDs)
     }
 
-    private func setupAuthenticationObservation() {
-        mainWindowController.setAutoHideSuspended(githubAuthManager.isAuthenticating)
-        observeAuthenticatingState()
-    }
-
-    private func observeAuthenticatingState() {
-        withObservationTracking {
-            _ = githubAuthManager.isAuthenticating
-        } onChange: { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                mainWindowController.setAutoHideSuspended(githubAuthManager.isAuthenticating)
-                observeAuthenticatingState()
-            }
-        }
-    }
-
     private func setupAppCommandObservation() {
         NotificationCenter.default.publisher(
             for: UserDefaults.didChangeNotification,
@@ -381,7 +345,6 @@ final class StatusBarController: NSObject {
             _ = gitManager.currentBranch
             _ = gitManager.defaultBranchName
             _ = gitManager.isBehindRemote
-            _ = githubAuthManager.isAuthenticated
             _ = projectMonitor.snapshots
             _ = repositorySelectionCoordinator.selectedPath
             _ = actionCoordinator.isBusy
@@ -402,18 +365,8 @@ final class StatusBarController: NSObject {
     }
 
     private func updateMainWindowToolbar() {
-        let shouldShowSidebarItem = switch presentationModel.route {
-        case .createRepo:
-            false
-        case .main, .projectCleanup:
-            true
-        }
-        let needsBackItem = switch presentationModel.route {
-        case .projectCleanup:
-            true
-        case .main, .createRepo:
-            false
-        }
+        let shouldShowSidebarItem = presentationModel.route != .projectCleanup
+        let needsBackItem = presentationModel.route == .projectCleanup
         let repositoryState: MainWindowToolbarRepositoryState?
         if MainWindowToolbarRepositoryState.isAvailable(
             isMainRoute: presentationModel.route == .main,
@@ -463,8 +416,6 @@ final class StatusBarController: NSObject {
             let normalizedPath = RecentProjectsStore.normalize(path)
             return RecentProjectsStore().recentProjects().first { $0.path == normalizedPath }?.name
                 ?? PathDisplayFormatter.defaultProjectName(for: path)
-        case .createRepo:
-            return "Create Repository"
         case .projectCleanup:
             return "Project Cleanup"
         }
@@ -500,13 +451,8 @@ final class StatusBarController: NSObject {
         }
 
         let trace = mainWindowController.beginWindowOpenTrace(trigger: "shortcut_\(describe(shortcutAction: action))")
-        let repositoryPath = currentRepositoryPath()
-        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
-
         openMainWindow(
             route: .main,
-            repositoryPath: repositoryPath,
-            isGitRepo: isGitRepo,
             shouldRefreshAfterPresentation: true,
             trace: trace
         )
@@ -524,13 +470,8 @@ final class StatusBarController: NSObject {
         }
 
         let trace = mainWindowController.beginWindowOpenTrace(trigger: "shortcut_commandPalette")
-        let repositoryPath = currentRepositoryPath()
-        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
-
         openMainWindow(
             route: .main,
-            repositoryPath: repositoryPath,
-            isGitRepo: isGitRepo,
             shouldRefreshAfterPresentation: true,
             trace: trace
         )
@@ -600,15 +541,9 @@ final class StatusBarController: NSObject {
         }
 
         let trace = mainWindowController.beginWindowOpenTrace(trigger: "toggle")
-        let repositoryPath = currentRepositoryPath()
-        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
-        let initialRoute = initialRoute(for: repositoryPath, isGitRepo: isGitRepo)
-
         openMainWindow(
-            route: initialRoute,
-            repositoryPath: repositoryPath,
-            isGitRepo: isGitRepo,
-            shouldRefreshAfterPresentation: shouldRefreshAfterPresenting(route: initialRoute),
+            route: .main,
+            shouldRefreshAfterPresentation: true,
             trace: trace,
             placementStrategy: placementStrategy
         )
@@ -616,16 +551,11 @@ final class StatusBarController: NSObject {
 
     private func openMainWindow(
         route: MainMenuRoute,
-        repositoryPath: String?,
-        isGitRepo: Bool,
         shouldRefreshAfterPresentation: Bool,
         trace: MainWindowController.WindowOpenTrace,
         placementStrategy: MainWindowController.WindowPlacementStrategy = .statusItemAnchor
     ) {
         presentationModel.prepareForPresentation(route: route, requestCommitFocus: route == .main)
-        if route != .main {
-            presentationModel.clearCreateRepoSuggestion()
-        }
 
         mainWindowController.logWindowOpen(trace, message: "route resolved to \(describe(route: route))")
         mainWindowController.open(trace: trace, placementStrategy: placementStrategy)
@@ -636,8 +566,6 @@ final class StatusBarController: NSObject {
             presentationModel.finishRefresh()
             flushPendingShortcutActionsIfReady()
         }
-
-        validateRemoteIfNeeded(path: repositoryPath, isGitRepo: isGitRepo, trace: trace)
     }
 
     private func openSettingsWindow() {
@@ -657,15 +585,9 @@ final class StatusBarController: NSObject {
         }
 
         let trace = mainWindowController.beginWindowOpenTrace(trigger: "programmatic")
-        let repositoryPath = currentRepositoryPath()
-        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
-        let initialRoute = initialRoute(for: repositoryPath, isGitRepo: isGitRepo)
-
         openMainWindow(
-            route: initialRoute,
-            repositoryPath: repositoryPath,
-            isGitRepo: isGitRepo,
-            shouldRefreshAfterPresentation: shouldRefreshAfterPresenting(route: initialRoute),
+            route: .main,
+            shouldRefreshAfterPresentation: true,
             trace: trace
         )
     }
@@ -680,26 +602,9 @@ final class StatusBarController: NSObject {
         }
 
         let trace = mainWindowController.beginWindowOpenTrace(trigger: "context_action")
-        let repositoryPath = currentRepositoryPath()
-        let isGitRepo = repositoryPath.map { gitManager.isGitRepository(at: $0) } ?? false
-
         openMainWindow(
             route: .main,
-            repositoryPath: repositoryPath,
-            isGitRepo: isGitRepo,
             shouldRefreshAfterPresentation: true,
-            trace: trace
-        )
-    }
-
-    /// Opens the main window directly showing the create repo view (used when opening a non-git folder)
-    func openMainWindowWithCreateRepo(path: String) {
-        let trace = mainWindowController.beginWindowOpenTrace(trigger: "create_repo")
-        openMainWindow(
-            route: .createRepo(path: path),
-            repositoryPath: path,
-            isGitRepo: gitManager.isGitRepository(at: path),
-            shouldRefreshAfterPresentation: false,
             trace: trace
         )
     }
@@ -724,7 +629,6 @@ final class StatusBarController: NSObject {
                 currentRepoPath: currentRepositoryPath() ?? "",
                 remoteUrl: gitManager.remoteUrl,
                 recentProjects: RecentProjectsStore().recentProjects(),
-                isGitHubAuthenticated: githubAuthManager.isAuthenticated,
                 hasWorkingTreeChanges: hasWorkingTreeChanges,
                 canDoAtomicCommits: hasWorkingTreeChanges && aiCommitCoordinator.isReadyForGeneration,
                 isBehindRemote: gitManager.isBehindRemote,
@@ -738,27 +642,6 @@ final class StatusBarController: NSObject {
         )
 
         appCommandCenter.apply(snapshot)
-    }
-
-    private func initialRoute(for repositoryPath: String?, isGitRepo: Bool) -> MainMenuRoute {
-        guard let repositoryPath, isGitRepo, githubAuthManager.isAuthenticated else {
-            return .main
-        }
-
-        switch remoteExistenceByPath[repositoryPath] ?? .unknown {
-        case .missing:
-            return .createRepo(path: repositoryPath)
-        case .unknown, .checking, .exists:
-            return .main
-        }
-    }
-
-    private func shouldRefreshAfterPresenting(route: MainMenuRoute) -> Bool {
-        if case .createRepo = route {
-            return false
-        }
-
-        return true
     }
 
     private func refreshMainWindowData(trace: MainWindowController.WindowOpenTrace) {
@@ -779,51 +662,10 @@ final class StatusBarController: NSObject {
         )
     }
 
-    private func validateRemoteIfNeeded(path: String?, isGitRepo: Bool, trace: MainWindowController.WindowOpenTrace) {
-        guard let path, isGitRepo, githubAuthManager.isAuthenticated else {
-            presentationModel.clearCreateRepoSuggestion()
-            return
-        }
-
-        let cachedState = remoteExistenceByPath[path] ?? .unknown
-        guard cachedState == .unknown else {
-            if cachedState == .exists {
-                presentationModel.clearCreateRepoSuggestion()
-            } else if cachedState == .missing, presentationModel.route == .main {
-                presentationModel.suggestCreateRepo(path: path)
-            }
-            return
-        }
-
-        remoteExistenceByPath[path] = .checking
-        mainWindowController.logWindowOpen(trace, message: "remote validation started")
-
-        gitManager.remoteRepositoryExists(at: path) { [weak self] exists in
-            guard let self else { return }
-
-            remoteExistenceByPath[path] = exists ? .exists : .missing
-            mainWindowController.logWindowOpen(trace, message: "remote validation completed (\(exists ? "exists" : "missing"))")
-
-            guard let currentPath = currentRepositoryPath(),
-                  RecentProjectsStore.normalize(currentPath) == RecentProjectsStore.normalize(path) else { return }
-
-            if exists {
-                presentationModel.clearCreateRepoSuggestion()
-                return
-            }
-
-            if presentationModel.route == .main {
-                presentationModel.suggestCreateRepo(path: path)
-            }
-        }
-    }
-
     private func describe(route: MainMenuRoute) -> String {
         switch route {
         case .main:
             "main"
-        case let .createRepo(path):
-            "createRepo(\(path))"
         case .projectCleanup:
             "projectCleanup"
         }

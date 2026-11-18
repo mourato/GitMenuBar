@@ -47,7 +47,7 @@ full Git control available while making the consequences visible.
 - **Branches and worktrees**: Create, switch, rename, merge, push, and delete branches; inspect linked worktrees and clean up safely merged local work.
 - **Remote sync**: Push and pull changes, choose merge or rebase when syncing, or pull changes into a new branch.
 - **History and recovery**: Browse grouped commit history, inspect changed files, edit commit messages, and reset to a selected commit when needed.
-- **GitHub integration**: Authenticate with GitHub to create repositories, change visibility, delete repositories, and work with remote operations without leaving the app.
+- **GitHub integration**: Open repositories, commits, pull requests, and issues on GitHub, and see open pull request and issue counts when the `gh` CLI is installed and signed in. Push, pull, and fetch use your local Git credentials.
 - **AI usage quotas**: Monitor provider usage in the menu bar. Providers with an exhausted weekly quota stay hidden there until a refreshed reading shows available quota; their cards remain in the quota submenu.
 - **Command palette**: Search and run project, Git, branch, history, and settings actions from the keyboard.
 
@@ -67,7 +67,7 @@ full Git control available while making the consequences visible.
 
 - macOS 15.5 or later
 - Git installed on your system
-- A GitHub account, only if you want GitHub features
+- A GitHub account and the `gh` CLI signed in (`gh auth login`), only if you want open pull request and issue counts
 - An AI provider and API key, only if you want AI-assisted commit features
 
 To build from source, use Xcode 27 or later.
@@ -110,7 +110,7 @@ Self-Signed`. Details, including the keychain access group status:
 
 1. **Add a project**: Open GitMenuBar and choose a local repository folder. Add other repositories from the Projects sidebar when you want to monitor them too.
 2. **Review the workbench**: Select a project to inspect its branch, working tree, history, and remote status.
-3. **Choose your integrations**: Connect GitHub in Settings for remote repository features. Configure an AI provider in Settings → AI when you want generated commit messages or atomic commits.
+3. **Choose your integrations**: Install the `gh` CLI and sign in (`gh auth login`) for open pull request and issue counts. Configure an AI provider in Settings → AI when you want generated commit messages or atomic commits.
 
 ## Using GitMenuBar
 

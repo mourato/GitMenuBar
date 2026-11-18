@@ -48,7 +48,7 @@ private enum ChangedFilesSummaryPreviewData {
         CommitFileChange(path: "GitMenuBar/Pages/MainMenu/SidePanelDetailView.swift", lineDiff: LineDiffStats(added: 40, removed: 16)),
         CommitFileChange(path: "GitMenuBar/Pages/Settings/SettingsView.swift", lineDiff: LineDiffStats(added: 6, removed: 2)),
         CommitFileChange(path: "GitMenuBar/Services/Git/GitManager.swift", lineDiff: LineDiffStats(added: 27, removed: 11)),
-        CommitFileChange(path: "GitMenuBar/Services/GitHub/GitHubAuthManager.swift", lineDiff: LineDiffStats(added: 0, removed: 9)),
+        CommitFileChange(path: "GitMenuBar/Services/GitHub/GitHubAvatarFetcher.swift", lineDiff: LineDiffStats(added: 0, removed: 9)),
         CommitFileChange(path: "GitMenuBar/Utils/DiffTree/DiffTreeBuilder.swift", lineDiff: LineDiffStats(added: 4, removed: 1)),
         CommitFileChange(path: "GitMenuBarTests/ChangedFilesPresentationTests.swift", lineDiff: LineDiffStats(added: 88, removed: 12)),
         CommitFileChange(path: "GitMenuBarTests/CommitDetailPresentationTests.swift", lineDiff: LineDiffStats(added: 9, removed: 0)),

@@ -27,8 +27,7 @@ extension GitBranchService {
 
             let result = self.executeGitCommand(
                 in: repositoryPath,
-                args: ["push", "origin", "refs/heads/\(trimmedName):refs/heads/\(trimmedName)"],
-                useAuth: true
+                args: ["push", "origin", "refs/heads/\(trimmedName):refs/heads/\(trimmedName)"]
             )
             guard !result.failure else {
                 return .failure(GitOperationError.commandFailed(GitStashService.userFacingMessage(from: result.output)))
@@ -44,7 +43,7 @@ extension GitBranchService {
         }
 
         let result = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["push", "-u", "origin", branchName], useAuth: true)
+            self.executeGitCommand(in: repositoryPath, args: ["push", "-u", "origin", branchName])
         }
 
         guard !result.failure else {
@@ -60,7 +59,7 @@ extension GitBranchService {
         }
 
         let result = await runOnBackground {
-            self.executeGitCommand(in: repositoryPath, args: ["push", remoteName, "--delete", branchName], useAuth: true)
+            self.executeGitCommand(in: repositoryPath, args: ["push", remoteName, "--delete", branchName])
         }
 
         guard !result.failure else {

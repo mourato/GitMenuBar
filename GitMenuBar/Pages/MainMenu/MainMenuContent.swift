@@ -21,7 +21,7 @@ extension MainMenuView {
     @ViewBuilder
     private var routeContent: some View {
         switch presentationModel.route {
-        case .main, .createRepo:
+        case .main:
             mainRouteContent
         case .projectCleanup:
             ProjectCleanupPage()
@@ -35,9 +35,7 @@ extension MainMenuView {
                 MainMenuOverviewSection(
                     banner: inlineStatusBanner,
                     onDismissBanner: dismissInlineStatusBanner,
-                    suggestionPath: presentationModel.createRepoSuggestionPath,
                     currentRepoPath: currentRepoPath,
-                    onCreateRepo: { presentationModel.showCreateRepo(path: $0) },
                     overview: snapshotModel.renderSnapshot.overview,
                     selection: workspace.selectedSidePanelSelection,
                     onSelectSection: { workspace.selectedSidePanelSelection = $0 },
@@ -229,10 +227,6 @@ extension MainMenuView {
             return
         }
         if branchDialogs.showBranchSelector {
-            dismissTransientPresentations()
-            return
-        }
-        if repoOptions.showRepositoryOptionsPopover {
             dismissTransientPresentations()
             return
         }
