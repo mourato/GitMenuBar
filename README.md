@@ -47,7 +47,7 @@ full Git control available while making the consequences visible.
 - **Branches and worktrees**: Create, switch, rename, merge, push, and delete branches; inspect linked worktrees and clean up safely merged local work.
 - **Remote sync**: Push and pull changes, choose merge or rebase when syncing, or pull changes into a new branch.
 - **History and recovery**: Browse grouped commit history, inspect changed files, edit commit messages, and reset to a selected commit when needed.
-- **GitHub integration**: Open repositories, commits, pull requests, and issues on GitHub, and see open pull request and issue counts when the `gh` CLI is installed and signed in. Push, pull, and fetch use your local Git credentials.
+- **GitHub integration**: Open repositories, commits, pull requests, and issues on GitHub, and see open pull request and issue counts and a lock on private repositories when the `gh` CLI is installed and signed in. Push, pull, and fetch use your local Git credentials.
 - **AI usage quotas**: Monitor provider usage in the menu bar. Providers with an exhausted weekly quota stay hidden there until a refreshed reading shows available quota; their cards remain in the quota submenu.
 - **Command palette**: Search and run project, Git, branch, history, and settings actions from the keyboard.
 

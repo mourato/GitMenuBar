@@ -232,7 +232,8 @@ struct ProjectStatusReader {
             pullRequests: pullRequestStatus.pullRequests,
             openPullRequestCount: countsStatus.openPullRequestCount,
             openIssueCount: countsStatus.openIssueCount,
-            unavailableReason: countsStatus.unavailableReason
+            unavailableReason: countsStatus.unavailableReason,
+            isPrivate: countsStatus.isPrivate
         )
     }
 

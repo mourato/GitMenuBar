@@ -55,11 +55,20 @@ struct ProjectSidebarRowView: View {
                 .fixedSize()
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(snapshot.project.name)
-                    .font(WorkbenchTypography.projectName)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                HStack(spacing: WorkbenchMetrics.microSpacing) {
+                    Text(snapshot.project.name)
+                        .font(WorkbenchTypography.projectName)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    // Only private repositories carry a marker; public is the quiet default.
+                    if snapshot.gitHubStatus.isPrivate == true {
+                        LucideIconView(name: .lock, size: WorkbenchMetrics.sidebarInlineIconSize - 2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize()
+                            .help("Private repository")
+                    }
+                }
                 // Two facts only when both fit; otherwise the most urgent alone.
                 ViewThatFits(in: .horizontal) {
                     if facts.count > 1 {
@@ -175,7 +184,11 @@ struct ProjectSidebarRowView: View {
 
     var accessibilityLabel: String {
         // The summary leads with the status dot's cause (see `summaryFacts`).
-        var parts = [snapshot.project.name, snapshot.statusSummary]
+        var parts = [snapshot.project.name]
+        if snapshot.gitHubStatus.isPrivate == true {
+            parts.append("private repository")
+        }
+        parts.append(snapshot.statusSummary)
         if showsAgentActivity, !agentActivities.isEmpty {
             parts.append(agentActivities.map(\.accessibilityDescription).joined(separator: ", "))
         }
@@ -232,6 +245,7 @@ private enum ProjectSidebarRowPreviewData {
         openIssueCount: Int? = 0,
         openPullRequestCount: Int? = 0,
         unavailableReason: GitHubStatusUnavailableReason? = nil,
+        isPrivate: Bool? = nil,
         pullRequests: [GitHubPullRequestSummary] = []
     ) -> ProjectStatusSnapshot {
         ProjectStatusSnapshot(
@@ -256,14 +270,15 @@ private enum ProjectSidebarRowPreviewData {
                 pullRequests: pullRequests,
                 openPullRequestCount: openPullRequestCount,
                 openIssueCount: openIssueCount,
-                unavailableReason: unavailableReason
+                unavailableReason: unavailableReason,
+                isPrivate: isPrivate
             )
         )
     }
 
     static let rows: [ProjectStatusSnapshot] = [
         snapshot(name: "sample-app", unmergedBranchCount: 1, openIssueCount: 9, openPullRequestCount: 2),
-        snapshot(name: "notes", unmergedBranchCount: 1, openIssueCount: 0, openPullRequestCount: 1),
+        snapshot(name: "notes", unmergedBranchCount: 1, openIssueCount: 0, openPullRequestCount: 1, isPrivate: true),
         snapshot(name: "budget", unmergedBranchCount: 18, openIssueCount: 6, openPullRequestCount: 0),
         snapshot(name: "website", aheadCount: 2, openIssueCount: 0, openPullRequestCount: 2),
         snapshot(name: "tools", unmergedBranchCount: 8, stagedCount: 3, openIssueCount: 6, openPullRequestCount: 1),
