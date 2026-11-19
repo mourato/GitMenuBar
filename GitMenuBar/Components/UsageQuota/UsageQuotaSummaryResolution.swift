@@ -1,11 +1,11 @@
 import Foundation
 
-/// Deterministic critical-window resolution for the sidebar footer summary.
+/// Window resolution for the sidebar footer summary.
 ///
-/// Footer-only: the menu-bar strip keeps the user's selected metrics and its
-/// own exhausted-weekly rule (`UsageQuotaMenuPresentation`). One resolution
-/// drives the meter, the percent, the tooltip, and VoiceOver, so the footer
-/// never names one window while drawing another.
+/// The footer shows the same metrics the user selected for the menu bar
+/// (`resolveSelected`). One resolution drives the meter, the percent, the
+/// tooltip, and VoiceOver, so the footer never names one window while drawing
+/// another.
 struct UsageQuotaSummaryResolution: Equatable, Sendable {
     let window: UsageWindow
     let kind: UsageQuotaWindowKind
@@ -30,6 +30,45 @@ struct UsageQuotaSummaryResolution: Equatable, Sendable {
             remainingPercent: window.remainingPercent,
             thresholds: thresholds
         )
+    }
+
+    /// The user's selected metrics, in their order, for the footer. An
+    /// exhausted weekly window replaces them so its alert stays visible.
+    /// Credits have no window to draw and are skipped; when no selected
+    /// metric resolves, the footer falls back to the critical window so the
+    /// provider stays visible.
+    static func resolveSelected(
+        snapshot: UsageQuotaSnapshot,
+        metrics: [UsageQuotaPresentationPreferences.Metric],
+        sessionThresholds: [Int],
+        weeklyThresholds: [Int]
+    ) -> [Self] {
+        if let exhausted = exhaustedWeeklyResolution(snapshot: snapshot, weeklyThresholds: weeklyThresholds) {
+            return [exhausted]
+        }
+        let candidates = orderedCandidates(
+            snapshot: snapshot,
+            sessionThresholds: sessionThresholds,
+            weeklyThresholds: weeklyThresholds
+        )
+        let selected = metrics.compactMap { metric -> Self? in
+            let kind: UsageQuotaWindowKind
+            switch metric {
+            case .session: kind = .session
+            case .weekly: kind = .weekly
+            case .monthly: kind = .monthly
+            case .credits: return nil
+            }
+            return candidates.first { $0.kind == kind }
+        }
+        if !selected.isEmpty {
+            return selected
+        }
+        return resolve(
+            snapshot: snapshot,
+            sessionThresholds: sessionThresholds,
+            weeklyThresholds: weeklyThresholds
+        ).map { [$0] } ?? []
     }
 
     /// Session, Weekly, Monthly, then the provided model order. An exhausted

@@ -31,7 +31,7 @@ struct QuotaProviderDetailView: View {
             }
 
             Picker(
-                "Menu bar shows",
+                "Main metric",
                 selection: Binding(
                     get: { primaryMetric },
                     set: { preferences.setPrimaryMetric($0, for: providerID) }

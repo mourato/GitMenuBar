@@ -298,12 +298,14 @@ corner style.
   exhausted weekly reading are hidden from the strip until a refreshed reading
   has remaining weekly quota. Providers without a weekly reading keep their
   selected figures.
-- Sidebar footer quota summary: one figure per provider, always the critical
-  window for that provider. An exhausted weekly window keeps its alert icon
-  plus `Exhausted` with no bar; otherwise the alerting window (session
-  thresholds for Session, weekly thresholds for every other window) with the
-  least remaining quota wins, and a quiet snapshot falls back to Session →
-  Weekly → Monthly → the tightest model window. The choice ignores the
+- Sidebar footer quota summary: per provider, the same metrics the user
+  selects for the menu bar (Main metric, then Second metric), in that order.
+  Credits have no window and are skipped. An exhausted weekly window replaces
+  the selection and keeps its alert icon plus `Exhausted` with no bar. When no
+  selected metric resolves, the footer falls back to the critical window: the
+  alerting window (session thresholds for Session, weekly thresholds for every
+  other window) with the least remaining quota, else Session → Weekly →
+  Monthly → the tightest model window. The choice ignores the
   Remaining/Used style. A quiet window draws its meter in `.secondary`
   and its percent at regular weight; only a window past its alert threshold
   gets color (orange or red) and a semibold percent. The `.bars` capsule

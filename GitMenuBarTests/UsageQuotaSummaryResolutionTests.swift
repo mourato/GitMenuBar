@@ -321,4 +321,36 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
 
         XCTAssertEqual(description, "Claude Code, Weekly, 22% left")
     }
+
+    // MARK: - Selected metrics
+
+    private func resolveSelected(
+        _ snapshot: UsageQuotaSnapshot,
+        _ metrics: [UsageQuotaPresentationPreferences.Metric]
+    ) -> [UsageQuotaWindowKind] {
+        UsageQuotaSummaryResolution.resolveSelected(
+            snapshot: snapshot,
+            metrics: metrics,
+            sessionThresholds: sessionThresholds,
+            weeklyThresholds: weeklyThresholds
+        ).map(\.kind)
+    }
+
+    func testSelectedMetricsKeepUserOrderOverCriticalWindow() {
+        XCTAssertEqual(resolveSelected(snapshot(session: 90, weekly: 10), [.session]), [.session])
+        XCTAssertEqual(resolveSelected(snapshot(session: 90, weekly: 10), [.weekly, .session]), [.weekly, .session])
+    }
+
+    func testSelectedMetricsSkipMissingWindowsAndCredits() {
+        XCTAssertEqual(resolveSelected(snapshot(session: 90), [.credits, .weekly, .session]), [.session])
+    }
+
+    func testUnresolvedSelectionFallsBackToCriticalWindow() {
+        XCTAssertEqual(resolveSelected(snapshot(models: [60, 12]), [.session, .weekly]), [.model])
+        XCTAssertEqual(resolveSelected(snapshot(session: 90, weekly: 10), []), [.weekly])
+    }
+
+    func testExhaustedWeeklyReplacesSelection() {
+        XCTAssertEqual(resolveSelected(snapshot(session: 90, weekly: 0), [.session]), [.weekly])
+    }
 }

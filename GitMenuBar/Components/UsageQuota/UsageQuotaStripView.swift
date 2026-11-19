@@ -34,11 +34,12 @@ struct UsageQuotaStripView: View {
     }
 
     private func accessibilityValue(for snapshots: [UsageQuotaSnapshot]) -> String {
-        // Same critical-window resolution as the footer summary items, so the
+        // Same window resolution as the footer summary items, so the
         // strip value never names a different window than the drawn meter.
-        snapshots.compactMap { snapshot in
-            UsageQuotaSummaryResolution.resolve(
+        snapshots.flatMap { snapshot in
+            UsageQuotaSummaryResolution.resolveSelected(
                 snapshot: snapshot,
+                metrics: preferences.selectedMetrics(for: snapshot.providerID),
                 sessionThresholds: preferences.sessionWarningThresholds,
                 weeklyThresholds: preferences.weeklyWarningThresholds
             ).map { resolved in

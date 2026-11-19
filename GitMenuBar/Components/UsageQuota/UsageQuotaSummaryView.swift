@@ -27,79 +27,90 @@ private struct UsageQuotaSummaryItem: View {
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
-        if let resolved = UsageQuotaSummaryResolution.resolve(
+        let resolutions = UsageQuotaSummaryResolution.resolveSelected(
             snapshot: snapshot,
+            metrics: preferences.selectedMetrics(for: snapshot.providerID),
             sessionThresholds: preferences.sessionWarningThresholds,
             weeklyThresholds: preferences.weeklyWarningThresholds
-        ) {
-            let showUsed = preferences.valueStyle == .used
-            let reading = UsageQuotaPace.reading(
-                for: resolved.window,
-                showUsed: showUsed,
-                thresholds: [],
-                workdaysPerWeek: preferences.workdaysPerWeek,
-                showPace: preferences.showsPace
-            )
-            let tint = resolved.alertLevel.color
-            let description = UsageQuotaSummaryResolution.describe(
-                displayName: snapshot.displayName,
-                resolution: resolved,
-                reading: reading,
-                isStale: snapshot.isStale
-            )
+        )
+        if !resolutions.isEmpty {
             HStack(spacing: WorkbenchMetrics.microSpacing) {
                 ProviderIconView(providerID: snapshot.providerID)
-                if resolved.isExhausted {
-                    LucideIconView(name: .circleAlert)
-                        .foregroundStyle(UsageQuotaAlertLevel.error.color)
-                    Text(UsageQuotaFormatting.compactDisplayValueText(
-                        remainingPercent: resolved.window.remainingPercent,
-                        kind: resolved.kind,
-                        showUsed: showUsed
-                    ))
-                    .font(WorkbenchTypography.captionStrong)
-                    .foregroundStyle(UsageQuotaAlertLevel.error.color)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                } else {
-                    switch preferences.meterStyle {
-                    case .line:
-                        UsageQuotaLineMeter(
-                            fillPercent: reading.fillPercent,
-                            tint: tint,
-                            pacePercent: reading.pacePercent,
-                            paceDeficit: reading.paceDeficit,
-                            warningMarkerPercents: [],
-                            workdayMarkerPercents: [],
-                            compact: true
-                        )
-                        .frame(width: WorkbenchMetrics.quotaMeterCompactWidth)
-                        percentText(resolved: resolved, showUsed: showUsed, tint: tint)
-                    case .text:
-                        percentText(resolved: resolved, showUsed: showUsed, tint: tint)
-                    case .bars:
-                        UsageQuotaSummaryBar(
-                            fraction: Double(reading.fillPercent) / 100,
-                            tint: tint,
-                            track: WorkbenchPalette.neutralBorder(contrast: contrast)
-                        )
-                        percentText(resolved: resolved, showUsed: showUsed, tint: tint)
-                    case .circular:
-                        UsageQuotaCircularProgress(
-                            fraction: Double(reading.fillPercent) / 100,
-                            tint: tint
-                        )
-                        .frame(width: WorkbenchMetrics.quotaMeterWidth, height: WorkbenchMetrics.quotaMeterWidth)
-                        percentText(resolved: resolved, showUsed: showUsed, tint: tint)
-                    }
+                ForEach(resolutions, id: \.kind) { resolved in
+                    reading(resolved)
                 }
             }
             .opacity(snapshot.isStale ? 0.72 : 1)
-            .help(description)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(description)
         }
+    }
+
+    @ViewBuilder
+    private func reading(_ resolved: UsageQuotaSummaryResolution) -> some View {
+        let showUsed = preferences.valueStyle == .used
+        let reading = UsageQuotaPace.reading(
+            for: resolved.window,
+            showUsed: showUsed,
+            thresholds: [],
+            workdaysPerWeek: preferences.workdaysPerWeek,
+            showPace: preferences.showsPace
+        )
+        let tint = resolved.alertLevel.color
+        let description = UsageQuotaSummaryResolution.describe(
+            displayName: snapshot.displayName,
+            resolution: resolved,
+            reading: reading,
+            isStale: snapshot.isStale
+        )
+        HStack(spacing: WorkbenchMetrics.microSpacing) {
+            if resolved.isExhausted {
+                LucideIconView(name: .circleAlert)
+                    .foregroundStyle(UsageQuotaAlertLevel.error.color)
+                Text(UsageQuotaFormatting.compactDisplayValueText(
+                    remainingPercent: resolved.window.remainingPercent,
+                    kind: resolved.kind,
+                    showUsed: showUsed
+                ))
+                .font(WorkbenchTypography.captionStrong)
+                .foregroundStyle(UsageQuotaAlertLevel.error.color)
+                .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+            } else {
+                switch preferences.meterStyle {
+                case .line:
+                    UsageQuotaLineMeter(
+                        fillPercent: reading.fillPercent,
+                        tint: tint,
+                        pacePercent: reading.pacePercent,
+                        paceDeficit: reading.paceDeficit,
+                        warningMarkerPercents: [],
+                        workdayMarkerPercents: [],
+                        compact: true
+                    )
+                    .frame(width: WorkbenchMetrics.quotaMeterCompactWidth)
+                    percentText(resolved: resolved, showUsed: showUsed, tint: tint)
+                case .text:
+                    percentText(resolved: resolved, showUsed: showUsed, tint: tint)
+                case .bars:
+                    UsageQuotaSummaryBar(
+                        fraction: Double(reading.fillPercent) / 100,
+                        tint: tint,
+                        track: WorkbenchPalette.neutralBorder(contrast: contrast)
+                    )
+                    percentText(resolved: resolved, showUsed: showUsed, tint: tint)
+                case .circular:
+                    UsageQuotaCircularProgress(
+                        fraction: Double(reading.fillPercent) / 100,
+                        tint: tint
+                    )
+                    .frame(width: WorkbenchMetrics.quotaMeterWidth, height: WorkbenchMetrics.quotaMeterWidth)
+                    percentText(resolved: resolved, showUsed: showUsed, tint: tint)
+                }
+            }
+        }
+        .help(description)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(description)
     }
 
     private func percentText(
