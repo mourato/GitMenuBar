@@ -256,6 +256,15 @@ own ADR.
 
 - `GitMenuBar/Services/UsageQuota/UsageQuotaModelsDev.swift`: Direct pricing sources must both be present and priceable; this rejects empty or partial responses before they replace a cache.
 
+### Recovered in review
+
+- `GitMenuBar/Pages/MainMenu/MainMenuSnapshotModel.swift`: A commit is "future" when it appears before the current HEAD in the history list, which happens after a reset backwards. This holds only while `commitHistory` is newest-first.
+- `GitMenuBar/Components/Common/HapticFeedback.swift`: AppKit's default performer selects the current input device and may suppress feedback when hardware or user settings do not support it. Silence is expected, not a defect.
+- `GitMenuBar/App/GitMenuBarApp.swift`: The app delegate keeps a strong reference to the status bar controller; AppKit retains neither the controller nor its status item.
+- `GitMenuBar/App/GitMenuBarApp.swift`: Check the login item status only after the controller is created; the call is optional-chained and silently does nothing before.
+- `GitMenuBar/Services/Platform/UpdateChecker.swift`: The update check fails silently on launch so it never interrupts the user.
+- `GitMenuBarTests/TestSupport.swift`: `PromptCapture` and `PromptListCapture` are `@unchecked Sendable` because `MockURLProtocol` handlers run on background `URLSession` threads; their `NSLock` is what makes that true.
+
 ## Consequences
 
 - Readers find the reason for a non-obvious line here, not beside the line.
