@@ -68,7 +68,8 @@ and [ADR 0025](docs/adr/0025-lucide-interface-icon-pack.md) (Lucide icon pack).
   untracked files alone are not a warning, so some rows (untracked-only, a
   pull request awaiting review) show no dot by design. A row whose refresh failed
   shows no dot. Failing checks come from the listed pull requests only.
-  The row summary leads with the dot's cause, so VoiceOver states it first.
+  The row summary leads with the most urgent fact, so VoiceOver states it
+  first; failing checks and diverged are also the red dot's causes.
 - GitHub open-total markers in the repository overview strip use
   `WorkbenchPalette.issueMarker()` (green) for issues and
   `WorkbenchPalette.pullRequestMarker()` (purple) for pull requests; the
@@ -210,20 +211,20 @@ corner style.
   `WorkbenchMetrics.projectsRowTextMinimumWidth` at supported sidebar widths;
   VoiceOver still reads available totals. The row summary
   (`ProjectStatusSnapshot.summaryFacts`) shows the most urgent fact first, so
-  truncation never hides which fact matters, and the status dot's cause
-  always leads:
+  truncation never hides which fact matters:
   failing checks → behind or diverged → uncommitted changes → commits to push
   and other unpushed branches → the current branch's pull request (or a
   foreign one) → unmerged branches → detached or unknown branch → stale.
   Unmerged branches show in their count column, not in the visible line. A
-  pull request with passing checks shows a green check after its number
-  instead of `CI passed`; failing checks lead with a red cross and keep the
+  pull request with passing checks shows a green check after its number and
+  review state instead of `CI passed`; failing checks lead with a red cross and keep the
   words.
   Facts join with `, `; ` · ` stays inside one fact (pull-request details,
   diverged counts). A second fact shows only when both fit. The row tooltip
   and VoiceOver read the full summary: a non-default branch name, then every
   fact. A row with no visible fact shows its branch and last activity
-  (`main · 19h ago`).
+  (`main · 19h ago`), and its tooltip and VoiceOver start with that line.
+  Unmerged-branch counts use the same compact notation as the totals.
 - Repository overview strip: five cells in sidebar order. Positive counts use
   the strong value hierarchy; a known zero, `Clean`, `None`, and an unknown `—`
   share one quiet secondary weight, and an unknown value never becomes zero.

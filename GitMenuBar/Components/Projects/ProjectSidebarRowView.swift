@@ -8,10 +8,14 @@ struct ProjectSidebarCountColumns: Equatable {
 
     static func guides(for snapshots: [ProjectStatusSnapshot]) -> Self {
         Self(
-            branches: widestText(snapshots.compactMap(\.unmergedBranchBadge).map { "\($0)" }),
+            branches: widestText(snapshots.compactMap(\.unmergedBranchBadge).map(compactCount)),
             issues: widestText(snapshots.compactMap(\.openIssueBadge).map(\.text)),
             pullRequests: widestText(snapshots.compactMap(\.openPullRequestBadge).map(\.text))
         )
+    }
+
+    static func compactCount(_ count: Int) -> String {
+        count.formatted(.number.notation(.compactName))
     }
 
     private static func widestText(_ texts: [String]) -> String? {
@@ -40,9 +44,15 @@ struct ProjectSidebarRowView: View {
             summaryLine
                 .padding(.leading, Self.dotSize + WorkbenchMetrics.compactSpacing)
         }
-        .help(snapshot.statusSummary)
+        .help(fullSummary)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var fullSummary: String {
+        guard snapshot.visibleFacts.isEmpty else { return snapshot.statusSummary }
+        return ([snapshot.idleSummary(now: Date())] + snapshot.summaryFacts)
+            .joined(separator: ProjectStatusSnapshot.summaryFactSeparator)
     }
 
     private func titleLine(showsCounts: Bool) -> some View {
@@ -66,7 +76,7 @@ struct ProjectSidebarRowView: View {
                 }
             }
             .frame(
-                minWidth: 0,
+                minWidth: showsCounts ? WorkbenchMetrics.projectsRowTextMinimumWidth : 0,
                 idealWidth: WorkbenchMetrics.projectsRowTextMinimumWidth,
                 maxWidth: .infinity,
                 alignment: .leading
@@ -176,38 +186,43 @@ struct ProjectSidebarRowView: View {
             HStack(spacing: WorkbenchMetrics.microSpacing) {
                 if let guide = countColumns.branches {
                     countSlot(
-                        text: snapshot.unmergedBranchBadge.map { "\($0)" },
-                        help: snapshot.unmergedBranchBadge.map { ProjectSummaryFact.unmergedBranches($0).spokenText },
+                        content: snapshot.unmergedBranchBadge.map {
+                            (ProjectSidebarCountColumns.compactCount($0), ProjectSummaryFact.unmergedBranches($0).spokenText)
+                        },
                         role: .branches,
                         guide: guide
                     )
                 }
                 if let guide = countColumns.issues {
-                    countSlot(snapshot.openIssueBadge, role: .issues, guide: guide)
+                    countSlot(snapshot.openIssueBadge, role: .issues, noun: "issue", guide: guide)
                 }
                 if let guide = countColumns.pullRequests {
-                    countSlot(snapshot.openPullRequestBadge, role: .pullRequests, guide: guide)
+                    countSlot(snapshot.openPullRequestBadge, role: .pullRequests, noun: "pull request", guide: guide)
                 }
             }
         }
     }
 
-    private func countSlot(_ badge: GitHubOpenCountBadge?, role: SidebarCountRole, guide: String) -> some View {
+    private func countSlot(
+        _ badge: GitHubOpenCountBadge?,
+        role: SidebarCountRole,
+        noun: String,
+        guide: String
+    ) -> some View {
         countSlot(
-            text: badge?.text,
-            help: badge?.accessibilityDescription(singularNoun: role.noun),
+            content: badge.map { ($0.text, $0.accessibilityDescription(singularNoun: noun)) },
             role: role,
             guide: guide
         )
     }
 
-    private func countSlot(text: String?, help: String?, role: SidebarCountRole, guide: String) -> some View {
+    private func countSlot(content: (text: String, help: String)?, role: SidebarCountRole, guide: String) -> some View {
         ZStack(alignment: .leading) {
             countLabel(role: role, text: guide)
                 .hidden()
-            if let text {
-                countLabel(role: role, text: text)
-                    .help(help ?? "")
+            if let content {
+                countLabel(role: role, text: content.text)
+                    .help(content.help)
             }
         }
         .accessibilityHidden(true)
@@ -259,14 +274,6 @@ private enum SidebarCountRole {
         case .branches: .gitBranch
         case .issues: .circleDot
         case .pullRequests: .gitPullRequest
-        }
-    }
-
-    var noun: String {
-        switch self {
-        case .branches: "unmerged branch"
-        case .issues: "issue"
-        case .pullRequests: "pull request"
         }
     }
 }

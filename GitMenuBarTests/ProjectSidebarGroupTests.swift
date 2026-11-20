@@ -2,6 +2,13 @@
 import XCTest
 
 final class ProjectSidebarGroupTests: XCTestCase {
+    func testGroupTitlesFollowTheNextAction() {
+        XCTAssertEqual(
+            ProjectSidebarGroup.allCases.map(\.title),
+            ["Working", "Needs Action", "In Progress", "Up to Date", "Unavailable"]
+        )
+    }
+
     func testUnmergedBranchesAloneAreInReview() {
         XCTAssertEqual(snapshot(unmergedBranchCount: 4).sidebarGroup, .inReview)
     }

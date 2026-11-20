@@ -164,7 +164,7 @@ own ADR.
 - `GitMenuBar/Models/ProjectStatusModels.swift`: Stale data from a failed refresh never raises a dot.
 - `GitMenuBar/Models/ProjectStatusModels.swift`: Reads the pull-request detail list, so it sees only the listed pull requests, never the repository total.
 - `GitMenuBar/Models/ProjectStatusModels.swift`: Local-only branches (no upstream) and stashes are intentional in agent workflows; they do not drive project attention or sidebar state.
-- `GitMenuBar/Models/ProjectStatusModels.swift`: Row facts, most urgent first, so truncation never hides which fact matters. The status dot's cause always leads: failing checks, then behind or diverged, then uncommitted changes. Unmerged branches stay spoken but leave the visible line for their count column; a row with no visible fact shows its branch and last activity.
+- `GitMenuBar/Models/ProjectStatusModels.swift`: Row facts, most urgent first, so truncation never hides which fact matters. Failing checks lead, then behind or diverged, then uncommitted changes; only failing checks and diverged color the dot red. Unmerged branches stay spoken but leave the visible line for their count column; a row with no visible fact shows its branch and last activity.
 - `GitMenuBar/Services/Git/ProjectStatusReader.swift`: Counts come only from the GraphQL read, so a failed PR detail list does not hide them; the reason describes the counts the overview shows.
 
 ### Project status refresh modes

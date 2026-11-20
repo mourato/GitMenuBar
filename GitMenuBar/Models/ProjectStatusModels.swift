@@ -411,10 +411,9 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
 
     func idleSummary(now: Date) -> String {
         let age = lastActivityAt.map {
-            min($0, now).formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
+            min($0, now).formatted(.relative(presentation: .named, unitsStyle: .narrow))
         }
-        let parts = [branchName.isEmpty ? nil : branchName, age].compactMap(\.self)
-        return parts.isEmpty ? "Up to date" : parts.joined(separator: " · ")
+        return [branchName.isEmpty ? nil : branchName, age].compactMap(\.self).joined(separator: " · ")
     }
 
     var unmergedBranchBadge: Int? {
