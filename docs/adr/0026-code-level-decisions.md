@@ -29,6 +29,11 @@ own ADR.
 
 - `GitMenuBar/Services/UsageQuota/AntigravityUsageParsing.swift`: Antigravity's model-config endpoints report per-model remaining quota, not a weekly window. Keep those readings model-scoped unless the provider explicitly identifies a five-hour or weekly bucket.
 
+### App delegate lifecycle
+
+- `GitMenuBar/App/GitMenuBarApp.swift`: The app delegate keeps a strong reference to the status bar controller; AppKit retains neither the controller nor its status item.
+- `GitMenuBar/App/GitMenuBarApp.swift`: Check the login item status only after the controller is created; the call is optional-chained and silently does nothing before.
+
 ### AppKit tooltip behavior
 
 - `GitMenuBar/Components/Branches/BranchManagementRowView.swift`: An empty `.help("")` still registers an AppKit tooltip, so attach it only when there is a reason. Hover state lives in this view, not the branch.
@@ -64,6 +69,10 @@ own ADR.
 - `GitMenuBar/Services/UsageQuota/CodexUsageParsing.swift`: Network, proxy, or unexpected response. ChatGPT may still have applied the reset.
 - `GitMenuBar/Services/UsageQuota/CodexUsageProvider.swift`: Redeems one reset credit. Each call is one user action: it sends a fresh idempotency key and retries only after a 401 (the server did not process that attempt).
 
+### Commit history ordering
+
+- `GitMenuBar/Pages/MainMenu/MainMenuSnapshotModel.swift`: A commit is "future" when it appears before the current HEAD in the history list, which happens after a reset backwards. This holds only while `commitHistory` is newest-first.
+
 ### Cost scan refresh gating
 
 - `GitMenuBar/Services/UsageQuota/UsageQuotaStore.swift`: Monthly spend estimate rides along without holding provider-refresh timing hostage. The scan gate is time-based for every reason: while the last scan is still fresh, a manual quota refresh only re-queries providers instead of also enumerating the JSONL sessions again.
@@ -90,6 +99,10 @@ own ADR.
 
 - `GitMenuBar/Services/GitHub/GitHubOpenCountsReader.swift`: Uses raw `-f` fields so numeric or `@`-prefixed names stay strings, and targets the remote's host so GitHub Enterprise remotes are not sent to github.com.
 - `GitMenuBar/Services/GitHub/GitHubOpenCountsReader.swift`: Accepts counts even when GraphQL also reports non-fatal `errors`.
+
+### Haptic feedback
+
+- `GitMenuBar/Components/Common/HapticFeedback.swift`: AppKit's default performer selects the current input device and may suppress feedback when hardware or user settings do not support it. Silence is expected, not a defect.
 
 ### Independent reimplementation constraint
 
@@ -217,6 +230,11 @@ own ADR.
 
 - `GitMenuBar/Services/Git/GitRepositoryContext.swift`: Unchecked: wraps UserDefaults, which is thread-safe but not Sendable.
 - `GitMenuBar/Services/UsageQuota/OpenRouterUsageParsing.swift`: Unchecked: wraps UserDefaults, which is thread-safe but not Sendable.
+- `GitMenuBarTests/TestSupport.swift`: `PromptCapture` and `PromptListCapture` are `@unchecked Sendable` because `MockURLProtocol` handlers run on background `URLSession` threads; their `NSLock` is what makes that true.
+
+### Update check failures
+
+- `GitMenuBar/Services/Platform/UpdateChecker.swift`: The update check fails silently on launch so it never interrupts the user.
 
 ### Usage cost scan dedupe
 
@@ -255,15 +273,6 @@ own ADR.
 ### models.dev pricing cache
 
 - `GitMenuBar/Services/UsageQuota/UsageQuotaModelsDev.swift`: Direct pricing sources must both be present and priceable; this rejects empty or partial responses before they replace a cache.
-
-### Recovered in review
-
-- `GitMenuBar/Pages/MainMenu/MainMenuSnapshotModel.swift`: A commit is "future" when it appears before the current HEAD in the history list, which happens after a reset backwards. This holds only while `commitHistory` is newest-first.
-- `GitMenuBar/Components/Common/HapticFeedback.swift`: AppKit's default performer selects the current input device and may suppress feedback when hardware or user settings do not support it. Silence is expected, not a defect.
-- `GitMenuBar/App/GitMenuBarApp.swift`: The app delegate keeps a strong reference to the status bar controller; AppKit retains neither the controller nor its status item.
-- `GitMenuBar/App/GitMenuBarApp.swift`: Check the login item status only after the controller is created; the call is optional-chained and silently does nothing before.
-- `GitMenuBar/Services/Platform/UpdateChecker.swift`: The update check fails silently on launch so it never interrupts the user.
-- `GitMenuBarTests/TestSupport.swift`: `PromptCapture` and `PromptListCapture` are `@unchecked Sendable` because `MockURLProtocol` handlers run on background `URLSession` threads; their `NSLock` is what makes that true.
 
 ## Consequences
 
