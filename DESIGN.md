@@ -223,7 +223,7 @@ corner style.
   diverged counts). A second fact shows only when both fit. The row tooltip
   and VoiceOver read the full summary: a non-default branch name, then every
   fact. A row with no visible fact shows its branch and last activity
-  (`main · 19h ago`), and its tooltip and VoiceOver start with that line.
+  (`main · 19 hr ago`), and its tooltip and VoiceOver start with that line.
   Unmerged-branch counts use the same compact notation as the totals.
 - Repository overview strip: five cells in sidebar order. Positive counts use
   the strong value hierarchy; a known zero, `Clean`, `None`, and an unknown `—`

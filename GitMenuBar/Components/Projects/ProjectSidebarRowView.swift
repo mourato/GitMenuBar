@@ -15,7 +15,7 @@ struct ProjectSidebarCountColumns: Equatable {
     }
 
     static func compactCount(_ count: Int) -> String {
-        count.formatted(.number.notation(.compactName))
+        GitHubOpenCountBadge.known(count).text
     }
 
     private static func widestText(_ texts: [String]) -> String? {
@@ -241,7 +241,7 @@ struct ProjectSidebarRowView: View {
         if snapshot.gitHubStatus.isPrivate == true {
             parts.append("private repository")
         }
-        parts.append(snapshot.statusSummary)
+        parts.append(fullSummary)
         if showsAgentActivity, !agentActivities.isEmpty {
             parts.append(agentActivities.map(\.accessibilityDescription).joined(separator: ", "))
         }

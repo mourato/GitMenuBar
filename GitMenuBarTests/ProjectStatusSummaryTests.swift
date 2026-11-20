@@ -165,9 +165,15 @@ final class ProjectStatusSummaryTests: XCTestCase {
         let now = Date()
         let snapshot = makeSnapshot(unmergedBranchCount: 2, lastActivityAt: now.addingTimeInterval(-3600))
         XCTAssertTrue(snapshot.visibleFacts.isEmpty)
-        let summary = snapshot.idleSummary(now: now)
-        XCTAssertTrue(summary.hasPrefix("main · "))
-        XCTAssertGreaterThan(summary.count, "main · ".count)
+        let named = Date.RelativeFormatStyle(presentation: .named, unitsStyle: .narrow)
+        XCTAssertEqual(snapshot.idleSummary(now: now), "main · \(named.format(now.addingTimeInterval(-3600)))")
+
+        let justNow = makeSnapshot(lastActivityAt: now)
+        XCTAssertEqual(justNow.idleSummary(now: now), "main · \(named.format(now))")
+        XCTAssertNotEqual(
+            justNow.idleSummary(now: now),
+            "main · \(now.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
+        )
     }
 
     func testIdleSummaryWithoutActivityNamesTheBranch() {

@@ -40,6 +40,18 @@ final class ProjectSidebarRowViewTests: XCTestCase {
         XCTAssertEqual(some.branches, "12")
     }
 
+    func testRowLabelLeadsWithTheIdleLineWhenNoFactIsVisible() {
+        let snapshot = makeSnapshot(unmergedBranchCount: 2)
+        let row = ProjectSidebarRowView(
+            snapshot: snapshot,
+            agentActivities: [],
+            showsAgentActivity: true,
+            countColumns: .guides(for: [snapshot])
+        )
+
+        XCTAssertTrue(row.accessibilityLabel.contains("main, 2 unmerged branches"))
+    }
+
     func testZeroHidesAColumnWhileUnavailableKeepsANeutralGuide() {
         let zero = ProjectSidebarCountColumns.guides(for: [makeSnapshot(openIssueCount: 0, openPullRequestCount: 0)])
         XCTAssertNil(zero.issues)
