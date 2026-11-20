@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Attaches the main-menu sheets (branch dialogs, commit editor, sync
-/// options, atomic commits) to the content view. Feature models own sheet
-/// state and actions; stores arrive from the environment.
 struct MainMenuSheetsModifier: ViewModifier {
     @Bindable var branchDialogs: MainMenuBranchDialogs
     let errorCenter: MainMenuErrorCenter

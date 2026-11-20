@@ -1,6 +1,5 @@
 import Foundation
 
-/// Owns local repository creation and remote setup for an explicit repository path.
 @MainActor
 final class GitRepositoryInitService {
     private let commandRunner: GitCommandRunner
@@ -41,14 +40,12 @@ final class GitRepositoryInitService {
     }
 
     func createInitialCommit(at path: String, message: String) -> Bool {
-        // Stage all files
         let addResult = executeGitCommand(in: path, args: ["add", "."])
         if addResult.failure {
             print("Error staging files: \(addResult.output)")
             return false
         }
 
-        // Create initial commit
         let commitResult = executeGitCommand(in: path, args: ["commit", "--no-gpg-sign", "-m", message])
         if commitResult.failure {
             print("Error creating initial commit: \(commitResult.output)")

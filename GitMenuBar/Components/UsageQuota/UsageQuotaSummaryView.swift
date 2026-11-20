@@ -123,7 +123,6 @@ private struct UsageQuotaSummaryItem: View {
             kind: resolved.kind,
             showUsed: showUsed
         ))
-        // Weight joins color as an alert signal; a quiet window stays regular.
         .font(resolved.alertLevel == .normal ? WorkbenchTypography.caption : WorkbenchTypography.captionStrong)
         .foregroundStyle(tint)
         .monospacedDigit()
@@ -132,7 +131,6 @@ private struct UsageQuotaSummaryItem: View {
     }
 }
 
-/// Compact fill bar for the summary's `.bars` meter style; sized by the quota meter metrics.
 private struct UsageQuotaSummaryBar: View {
     let fraction: Double
     let tint: Color
@@ -227,7 +225,6 @@ private enum ProviderIconRenderer {
     }
 }
 
-/// Shared quota severity tint for the summary and the cards; `normal` stays neutral.
 extension UsageQuotaAlertLevel {
     var color: Color {
         switch self {

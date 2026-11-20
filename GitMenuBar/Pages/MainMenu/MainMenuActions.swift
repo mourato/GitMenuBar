@@ -1,8 +1,3 @@
-//
-//  MainMenuActions.swift
-//  GitMenuBar
-//
-
 import AppKit
 import Foundation
 import SwiftUI
@@ -125,8 +120,6 @@ extension MainMenuView {
         GitPerformanceTrace.event("selection.accepted", id: trace)
         dismissTransientPresentations()
         presentationModel.showMain()
-        // With auto-fetch on, the selected repository's behind state would
-        // otherwise stay stale until the next background tick, hiding Sync.
         if AppPreferences.isAutoFetchEnabled, !actionCoordinator.isBusy {
             Task {
                 _ = await actionCoordinator.refreshRemoteStatus()

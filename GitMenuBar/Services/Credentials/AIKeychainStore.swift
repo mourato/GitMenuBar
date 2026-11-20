@@ -11,7 +11,6 @@ protocol AIAPIKeyStore: Sendable {
     func fetchAllAPIKeys() throws -> [AIProviderCredentialID: String]
     func replaceAPIKeys(_ values: [AIProviderCredentialID: String]) throws
     func deleteAPIKey(for credentialID: AIProviderCredentialID) throws
-    /// Drops the in-memory copy so the next read consults the keychain again.
     func invalidateCachedCredentials()
 }
 
@@ -73,7 +72,6 @@ final class AIKeychainStore: AIAPIKeyStore, @unchecked Sendable {
         cachedValues = nil
     }
 
-    /// Reads the single keychain blob once per unlock; later calls reuse the copy.
     private func readValues() throws -> [AIProviderCredentialID: String] {
         if let cachedValues {
             return cachedValues

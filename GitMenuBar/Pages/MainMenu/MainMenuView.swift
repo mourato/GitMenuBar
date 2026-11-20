@@ -1,8 +1,3 @@
-//
-//  MainMenuView.swift
-//  GitMenuBar
-//
-
 import SwiftUI
 
 struct MainMenuView: View {

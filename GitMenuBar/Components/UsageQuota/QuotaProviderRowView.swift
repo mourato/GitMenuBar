@@ -1,7 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Header row for one quota provider: icon, name, strip status, toggle, disclosure.
 struct QuotaProviderRowView: View {
     @Environment(UsageQuotaStore.self) private var usageQuotaStore
     @Environment(UsageQuotaPresentationPreferences.self) private var preferences
@@ -29,8 +28,6 @@ struct QuotaProviderRowView: View {
         }
     }
 
-    /// Row content without reorder actions. The grip drags the provider onto
-    /// another row; keyboard and VoiceOver reorder actions wrap it in `body`.
     private var row: some View {
         VStack(alignment: .leading, spacing: WorkbenchMetrics.compactSpacing) {
             HStack(spacing: WorkbenchMetrics.compactSpacing) {
@@ -60,8 +57,6 @@ struct QuotaProviderRowView: View {
             }
 
             if isExpanded {
-                // Hidden copies of the grip and icon keep the options aligned
-                // with the provider name.
                 HStack(spacing: WorkbenchMetrics.compactSpacing) {
                     dragHandleGlyph.hidden()
                     ProviderIconView(providerID: providerID).hidden()
@@ -126,8 +121,6 @@ struct QuotaProviderRowView: View {
     }
 }
 
-/// App-private drag payload, so only provider rows accept a dragged provider.
-/// Text fields ignore it, unlike a plain-string payload.
 extension UTType {
     static let quotaProvider = UTType(exportedAs: "com.mourato.GitMenuBar.quota-provider")
 }

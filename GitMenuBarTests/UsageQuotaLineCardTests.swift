@@ -44,7 +44,6 @@ final class UsageQuotaLineCardTests: XCTestCase {
                 kind: .session
             ).alertLevel
         }
-        // Remaining 55% is 45% used, 40% is 60% used, 15% is 85% used.
         XCTAssertEqual(level(remaining: 55), .normal)
         XCTAssertEqual(level(remaining: 40), .warning)
         XCTAssertEqual(level(remaining: 15), .error)
@@ -95,7 +94,6 @@ final class UsageQuotaLineCardTests: XCTestCase {
     }
 
     func testReserveAndOnTrackHaveNoHatch() {
-        // 76% left with 54% expected left: consumption is behind pace, not a deficit.
         let reserve = reading(remainingPercent: 76, elapsedFraction: 0.46, showUsed: false)
         XCTAssertEqual(reserve.fillPercent, 76, accuracy: 0.001)
         XCTAssertEqual(reserve.pacePercent ?? -1, 54, accuracy: 0.001)
@@ -106,7 +104,6 @@ final class UsageQuotaLineCardTests: XCTestCase {
             paceDeficit: reserve.paceDeficit
         ))
 
-        // On-track readings hide the marker entirely, so a stale deficit flag cannot hatch.
         let onTrack = reading(remainingPercent: 51, elapsedFraction: 0.5, showUsed: false)
         XCTAssertNil(onTrack.pacePercent)
         XCTAssertNil(UsageQuotaLineMeter.hatchRange(

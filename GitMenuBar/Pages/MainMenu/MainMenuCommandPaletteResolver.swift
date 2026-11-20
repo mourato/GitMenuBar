@@ -47,7 +47,6 @@ enum MainMenuCommandPaletteResolver {
             items.append(item(commandID: .pull, kind: .pull, section: .actions, isEnabled: true))
         }
 
-        // Branch section
         items.append(item(
             commandID: .branchManagement,
             kind: .branchManagement,

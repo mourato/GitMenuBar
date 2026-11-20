@@ -25,7 +25,6 @@ struct UserDefaultsAIProviderStoreDataStore: AIProviderStoreDataStore {
 @MainActor
 @Observable
 final class AIProviderStore {
-    /// App AI prefs use the app suite (same plist as `.standard` in the app).
     nonisolated(unsafe) static let sharedDefaults = UserDefaults(suiteName: "com.mourato.GitMenuBar") ?? .standard
 
     private(set) var providers: [AIProviderConfig] = []

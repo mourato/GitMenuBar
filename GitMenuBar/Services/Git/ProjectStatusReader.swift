@@ -92,8 +92,6 @@ enum ProjectStatusReadMode {
     case local(gitHubStatus: GitHubProjectStatus, branchHealth: ProjectStatusReader.BranchHealth)
     case remote
 
-    /// Values captured from the last known snapshot that a local read carries
-    /// forward instead of re-reading branch health and GitHub status.
     var localRead: (gitHubStatus: GitHubProjectStatus, branchHealth: ProjectStatusReader.BranchHealth)? {
         if case let .local(gitHubStatus, branchHealth) = self {
             return (gitHubStatus, branchHealth)
@@ -197,8 +195,6 @@ struct ProjectStatusReader {
         }
 
         let parsed = ProjectStatusPorcelainParser.parse(status.output)
-        // Local reads carry the last known snapshot data through the mode, so
-        // branch health and GitHub status are not re-read on file events.
         let branchHealth = lastKnown?.branchHealth
             ?? readBranchHealth(projectPath: project.path, currentBranch: parsed.branchName)
         let gitHubStatus = lastKnown?.gitHubStatus
@@ -226,8 +222,6 @@ struct ProjectStatusReader {
         pullRequestStatus: GitHubPullRequestReadResult,
         countsStatus: GitHubOpenCountsReadResult
     ) -> GitHubProjectStatus {
-        // Counts come only from the GraphQL read, so a failed PR detail list
-        // does not hide them; the reason describes the counts the overview shows.
         GitHubProjectStatus(
             pullRequests: pullRequestStatus.pullRequests,
             openPullRequestCount: countsStatus.openPullRequestCount,

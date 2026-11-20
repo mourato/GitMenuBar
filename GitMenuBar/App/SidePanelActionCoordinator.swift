@@ -24,8 +24,6 @@ final class SidePanelActionCoordinator {
         }
     }
 
-    /// Refreshes the branch list and worktree snapshot backing the inspector's
-    /// Branch Health section. Runs sessionless so it always publishes.
     func reloadSidePanelBranchData() async {
         _ = await gitManager.branchService.resolveBranchInfoAsync()
         _ = await gitManager.branchService.resolveWorktreeSnapshotAsync()
@@ -278,9 +276,6 @@ final class SidePanelActionCoordinator {
         }
     }
 
-    /// Hard-resets the captured repository to `hash`. Blocks project switching for
-    /// the full operation because the underlying reset path is not yet a fully
-    /// selected-refresh-generation-bound UI transaction.
     func resetSidePanelCommit(hash: String) async -> MainMenuSidePanelActionResult {
         guard let host else { return .skipped }
         return await host.executeContextualMutation(allowsRepositorySwitch: false) { context in

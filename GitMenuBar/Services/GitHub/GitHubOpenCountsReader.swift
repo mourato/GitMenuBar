@@ -4,7 +4,6 @@ struct GitHubOpenCountsReadResult: Equatable, Sendable {
     let openPullRequestCount: Int?
     let openIssueCount: Int?
     let unavailableReason: GitHubStatusUnavailableReason?
-    /// Repository visibility from the same read; nil when unknown.
     var isPrivate: Bool?
 
     static func unavailable(_ reason: GitHubStatusUnavailableReason) -> Self {
@@ -61,8 +60,6 @@ struct GitHubOpenCountsReader {
         return parsed
     }
 
-    /// Uses raw `-f` fields so numeric or `@`-prefixed names stay strings, and
-    /// targets the remote's host so GitHub Enterprise remotes are not sent to github.com.
     static func arguments(for reference: GitHubRemoteReference, host: String?) -> [String] {
         var args = ["api", "graphql"]
         if let host, host != "github.com" {
@@ -75,7 +72,6 @@ struct GitHubOpenCountsReader {
         ]
     }
 
-    /// Accepts counts even when GraphQL also reports non-fatal `errors`.
     static func parse(_ data: Data) -> GitHubOpenCountsReadResult? {
         guard let response = try? JSONDecoder().decode(RawGraphQLResponse.self, from: data),
               let repository = response.data?.repository,

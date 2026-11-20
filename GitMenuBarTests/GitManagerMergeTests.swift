@@ -32,7 +32,6 @@ final class GitManagerMergeTests: XCTestCase {
             XCTFail("Merge should succeed: \(error.localizedDescription)")
         }
 
-        // The feature branch should still exist on the local repo.
         let remaining = try runGit(["branch", "--format=%(refname:short)"], in: repoURL)
         XCTAssertTrue(remaining.contains("feature/keep"))
     }
@@ -62,7 +61,6 @@ final class GitManagerMergeTests: XCTestCase {
     func testMergeToDefaultBranchConflictReturnsFailure() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
 
-        // Create a feature branch that edits the same file as main, causing a conflict.
         try "main content\n".write(
             to: repoURL.appendingPathComponent("shared.txt"),
             atomically: true,
@@ -124,8 +122,6 @@ final class GitManagerMergeTests: XCTestCase {
         }
     }
 
-    /// Uses a bare clone as a local remote so the push/delete of the remote
-    /// branch is reliable under concurrent test execution (no object transfer).
     func testMergeToDefaultBranchDeleteLocalAndRemote() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         try "base\n".write(

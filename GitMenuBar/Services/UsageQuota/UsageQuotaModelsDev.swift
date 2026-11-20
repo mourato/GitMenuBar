@@ -1,13 +1,6 @@
 import CryptoKit
 import Foundation
 
-// models.dev catalog types and the on-disk pricing cache used by the monthly
-// spend estimate. Ported from CodexBar's `ModelsDevPricing.swift` (MIT,
-// Peter Steinberger — see THIRD-PARTY-NOTICES.md), simplified: no custom
-// pricing overlay, no historical pricing, no fallback merging. models.dev
-// publishes USD per 1M tokens; consumers divide by 1M.
-
-/// A rate block, optionally associated with an explicit context tier.
 struct ModelsDevContextCost: Codable, Equatable, Sendable {
     struct Tier: Codable, Equatable, Sendable {
         let type: String
@@ -34,7 +27,6 @@ struct ModelsDevContextCost: Codable, Equatable, Sendable {
     }
 }
 
-/// USD per 1M tokens, straight from a catalog `cost` block.
 struct ModelsDevCost: Codable, Equatable, Sendable {
     let input: Double?
     let output: Double?
@@ -95,8 +87,6 @@ struct ModelsDevProvider: Codable, Equatable, Sendable {
         self.models = models
     }
 
-    /// Models are keyed arbitrarily in the live catalog, so decode them
-    /// tolerantly and skip entries that do not fit the shape.
     init(from decoder: any Decoder) throws { // justified: Swift protocol existential, not a type-check suppression.
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(String.self, forKey: .id)
@@ -118,8 +108,6 @@ struct ModelsDevProvider: Codable, Equatable, Sendable {
 struct ModelsDevCatalog: Codable, Equatable, Sendable {
     let providers: [String: ModelsDevProvider]
 
-    /// The live api.json is a flat provider-key map; a `{"providers": …}`
-    /// wrapper is tolerated the same way CodexBar does.
     init(providers: [String: ModelsDevProvider]) {
         self.providers = providers
     }
@@ -154,8 +142,6 @@ struct ModelsDevCatalog: Codable, Equatable, Sendable {
         return nil
     }
 
-    /// Direct pricing sources must both be present and priceable; this
-    /// rejects empty or partial responses before they replace a cache.
     func isPlausibleRefresh() -> Bool {
         ["anthropic", "openai"].allSatisfy { providerID in
             providers[providerID]?.models.values.contains(where: \.isPriceable) == true
@@ -179,10 +165,6 @@ private struct ModelsDevAnyCodingKey: CodingKey {
 }
 
 enum UsageQuotaModelsDev {
-    /// Model-ID lookup candidates, ported from CodexBar's
-    /// `ModelsDevModelIDNormalizer.candidates`: provider prefixes, Claude
-    /// aliases, dated snapshots, and `-vN:N` suffixes all collapse toward a
-    /// base ID that the catalog may key.
     static func modelIDCandidates(_ raw: String) -> [String] {
         var candidates: [String] = []
 
@@ -248,7 +230,6 @@ enum UsageQuotaModelsDev {
     }
 }
 
-/// Owns one cache location and shares in-flight refreshes between cost scans.
 actor UsageQuotaModelsDevStore {
     struct PricingSource: Equatable, Sendable {
         let catalog: ModelsDevCatalog?
@@ -261,7 +242,6 @@ actor UsageQuotaModelsDevStore {
             token = "bundled"
         }
 
-        /// The catalog and its content identity travel together through each scan.
         init(catalog: ModelsDevCatalog) throws {
             let encoder = JSONEncoder()
             encoder.outputFormatting = .sortedKeys
@@ -328,14 +308,10 @@ actor UsageQuotaModelsDevStore {
             memo = (stamp, decoded)
             return decoded
         }
-        // Legacy metadata can change independently of its payload. Read both
-        // until a successful refresh replaces them with the atomic artifact.
         memo = nil
         return loadLegacyCache()
     }
 
-    /// Retain offline access to the previous two-file cache. New writes use
-    /// one atomic artifact, so payload and fetch date cannot be torn apart.
     private func loadLegacyCache() -> CacheArtifacts? {
         let payloadURL = directory.appendingPathComponent("models-dev-v1.json")
         let metaURL = directory.appendingPathComponent("models-dev-v1.meta.json")

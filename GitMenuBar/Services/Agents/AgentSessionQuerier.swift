@@ -2,13 +2,9 @@ import Foundation
 import OSLog
 import SQLite3
 
-// MARK: - Session Querying Protocol
-
 protocol AgentSessionQuerying: Sendable {
     func recentActivities(for projectPaths: [String], now: Date) async -> [String: [AgentProjectActivity]]
 }
-
-// MARK: - System Agent Session Querier
 
 struct SystemAgentSessionQuerier: AgentSessionQuerying {
     let claudeProjectsDirectory: URL

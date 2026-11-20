@@ -8,7 +8,6 @@ enum AppPreferences {
         static let monitoredProjectsSeeded = "monitoredProjectsSeeded"
         static let showAgentActivity = "showAgentActivity"
         static let isProjectsSidebarCollapsed = "isProjectsSidebarCollapsed"
-        // Legacy split-width preference; unused after side-panel overlay (Plan 081).
         static let inspectorColumnWidth = "inspectorColumnWidth"
         static let isCleanProjectsGroupCollapsed = "isCleanProjectsGroupCollapsed"
         static let isStagedSectionCollapsed = "isStagedSectionCollapsed"
@@ -44,8 +43,6 @@ enum AppPreferences {
         static let autoFetchEnabled = "autoFetchEnabled"
     }
 
-    /// Automatic background fetch. Defaults to true so the sidebar and sync
-    /// state stay fresh without a manual Fetch; a missing value means enabled.
     static var isAutoFetchEnabled: Bool {
         UserDefaults.standard.object(forKey: Keys.autoFetchEnabled) as? Bool ?? true
     }

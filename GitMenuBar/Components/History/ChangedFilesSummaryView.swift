@@ -2,13 +2,10 @@ import AppKit
 import SwiftUI
 
 private enum ChangedFilesListMetrics {
-    /// Changed-file row height floor from the commit inspector contract.
     static let rowMinHeight: CGFloat = 24
-    /// Summary proportion bar: 40 x 5 pt, radius 2.5.
     static let proportionBarWidth: CGFloat = 40
     static let proportionBarHeight: CGFloat = 5
     static let proportionBarCornerRadius: CGFloat = 2.5
-    /// Files shown before the list asks to reveal the rest.
     static let collapsedFileLimit = 8
 }
 
@@ -222,9 +219,6 @@ struct ChangedFilesSummaryView: View {
             / CGFloat(totalChangedLines)
     }
 
-    /// Nearest directory under the group label. The group already names the
-    /// top-level folder, so the row keeps the shortest distinguishing context
-    /// and the full path stays in the row tooltip.
     private func relativeDirectory(for file: CommitFileChange, in group: ChangedFilesGroup) -> String {
         let directory = file.directoryPath
         guard !directory.isEmpty, directory != group.label else {
@@ -295,8 +289,6 @@ private struct ChangedFilesFileRow: View {
             HStack(spacing: WorkbenchMetrics.chipSpacing) {
                 FileTypeIconView(path: file.path)
 
-                // Directory context appears only when it fits whole; the
-                // row tooltip always carries the full path.
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: WorkbenchMetrics.chipSpacing) {
                         fileNameLabel

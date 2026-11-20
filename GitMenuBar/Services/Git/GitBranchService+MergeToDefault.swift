@@ -1,16 +1,6 @@
-//
-//  GitBranchService+MergeToDefault.swift
-//  GitMenuBar
-//
-
 import Foundation
 
 extension GitBranchService {
-    /// Merges `featureBranch` into the detected default branch *without* deleting
-    /// anything. Stashes uncommitted work, switches to the default branch, merges,
-    /// then restores the stash. Cleanup is a separate, explicit step via
-    /// ``cleanupMergedBranchAsync(featureBranch:cleanupOption:repositoryPath:)``
-    /// so the user is never forced to pick a destructive option just to merge.
     func mergeFeatureIntoDefaultAsync(
         featureBranch: String,
         repositoryPath: String? = nil
@@ -20,10 +10,8 @@ extension GitBranchService {
             return .failure(GitExecution.missingRepositoryError())
         }
 
-        // 1. Detect default branch
         let defaultBranch = await getDefaultBranchNameAsync()
 
-        // 2. Check for uncommitted changes and stash if needed
         let hasChanges = hasUncommittedChanges(in: repositoryPath)
         var stashed = false
         if hasChanges {
@@ -39,7 +27,6 @@ extension GitBranchService {
             stashed = true
         }
 
-        // 3. Switch to default branch
         let currentWasDefault = currentBranch == defaultBranch
         if !currentWasDefault {
             _ = await runOnBackground {
@@ -47,12 +34,10 @@ extension GitBranchService {
             }
         }
 
-        // 4. Merge feature branch
         let mergeResult = await runOnBackground {
             self.executeGitCommand(in: repositoryPath, args: ["merge", featureBranch])
         }
         guard !mergeResult.failure else {
-            // On failure, switch back and restore the stash.
             if !currentWasDefault {
                 let restoreBranch = currentBranch
                 _ = await runOnBackground {
@@ -69,7 +54,6 @@ extension GitBranchService {
             return .failure(isConflict ? GitOperationError.conflict("Merge conflict! Please resolve manually.") : GitOperationError.commandFailed("Merge failed: \(mergeResult.output)"))
         }
 
-        // 5. Restore stash if needed
         if stashed {
             _ = await runOnBackground {
                 self.executeGitCommand(in: repositoryPath, args: ["stash", "pop"])
@@ -86,10 +70,6 @@ extension GitBranchService {
         ))
     }
 
-    /// Deletes an *already merged* feature branch locally and/or remotely per
-    /// `cleanupOption`. Intended to run after ``mergeFeatureIntoDefaultAsync``,
-    /// when the current branch is the default and the feature branch is safely
-    /// merged. Never re-merges.
     func cleanupMergedBranchAsync(
         featureBranch: String,
         cleanupOption: BranchCleanupOption,

@@ -188,7 +188,6 @@ final class UsageQuotaStoreTests: XCTestCase {
         let provider = FakeUsageQuotaProvider(snapshot: Self.sampleSnapshot())
         let store = makeStore(provider: provider)
 
-        // refresh() returns before starting any task while the feature is disabled.
         store.refresh(reason: .manual)
 
         XCTAssertEqual(provider.fetchCount, 0)
@@ -231,7 +230,6 @@ final class UsageQuotaStoreTests: XCTestCase {
         )
         store.showAIUsageQuotas = true
 
-        // Store uses an 8s provider timeout; wait slightly beyond that.
         await waitUntil(timeout: 10) {
             store.snapshots.contains { $0.statusNote == "refresh timed out" }
         }
@@ -264,28 +262,22 @@ final class UsageQuotaStoreTests: XCTestCase {
             cursorProvider.onFetch = nil
             store.showAIUsageQuotas = false
         }
-        // Enabling the feature starts the settingsEnabled refresh, which blocks inside the fetch.
         let firstFetch = expectation(description: "in-flight fetch started")
         provider.onFetch = { firstFetch.fulfill() }
         store.showAIUsageQuotas = true
         await fulfillment(of: [firstFetch], timeout: 2)
 
-        // Automatic requests coalesce: no second query before or after publish.
         store.refresh(reason: .timer)
         store.refresh(reason: .contentAppeared)
         store.refresh(reason: .windowPresented)
         XCTAssertEqual(provider.fetchCount, 1)
 
-        // A provider enabled during the cycle is fetched once before that
-        // same cycle publishes; the in-flight cycle is not restarted.
         let cursorFetch = expectation(description: "incremental provider fetch started")
         cursorProvider.onFetch = { cursorFetch.fulfill() }
         store.showCursorUsageQuota = true
         provider.openGate()
         await fulfillment(of: [cursorFetch], timeout: 2)
 
-        // A second preference change during that incremental fetch is also
-        // reconciled before publication.
         store.showGeminiUsageQuota = true
         cursorProvider.openGate()
         await waitUntil {
@@ -312,7 +304,6 @@ final class UsageQuotaStoreTests: XCTestCase {
         store.showAIUsageQuotas = true
         await fulfillment(of: [firstFetch], timeout: 2)
 
-        // Manual remains forced: it supersedes the in-flight cycle with a new fetch.
         let manualFetch = expectation(description: "manual refresh starts a new fetch")
         provider.onFetch = { manualFetch.fulfill() }
         store.refresh(reason: .manual)
@@ -338,7 +329,6 @@ final class UsageQuotaStoreTests: XCTestCase {
         await fulfillment(of: [firstScan], timeout: 2)
         await waitUntil { store.visibleSnapshots.first?.sessionWindow?.remainingPercent == 70 }
 
-        // Inside the 600 s interval: manual force-refreshes quota counts only.
         provider.snapshot = Self.sampleSnapshot(remainingPercent: 55)
         store.refresh(reason: .manual)
         await waitUntil {
@@ -350,7 +340,6 @@ final class UsageQuotaStoreTests: XCTestCase {
         pricingLoader.onLoad = { noRescan.fulfill() }
         await fulfillment(of: [noRescan], timeout: 0.1)
         XCTAssertEqual(pricingLoader.loadCount, 1)
-        // After the interval passes, manual prices again while still fetching quotas.
         let rescan = expectation(description: "post-interval manual refresh loads pricing again")
         pricingLoader.onLoad = { rescan.fulfill() }
         currentDate = currentDate.addingTimeInterval(601)
@@ -489,7 +478,6 @@ private final class FakeUsageQuotaProvider: UsageQuotaProviding {
 
 private struct HangingUsageQuotaProvider: UsageQuotaProviding {
     let id: UsageProviderID = .codex
-    /// Never yields; the store's timeout group cancels the fetch, which ends the loop.
     private let neverYields = AsyncStream<Void> { _ in }
 
     func fetchSnapshot() async -> UsageQuotaSnapshot {

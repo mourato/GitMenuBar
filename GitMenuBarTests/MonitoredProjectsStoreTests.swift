@@ -326,7 +326,6 @@ final class MonitoredProjectsStoreTests: XCTestCase {
             _ = monitor.snapshots
         } onChange: {
             Task { @MainActor in
-                // Observation fires before mutation; inspect the completed batch on the actor.
                 XCTAssertEqual(monitor.snapshots.count, 2)
                 allProjectsPublished.fulfill()
             }

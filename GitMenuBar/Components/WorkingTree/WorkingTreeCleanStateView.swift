@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Calm empty state for a working tree with nothing to commit.
 struct WorkingTreeCleanStateView: View {
     let lastCommitSubject: String?
     let lastCommitRelativeDate: String?

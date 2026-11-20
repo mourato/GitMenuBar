@@ -29,7 +29,6 @@ struct ProjectsSidebarView: View {
                 }
             }
             .listStyle(.sidebar)
-            // Navigation stays neutral while the focused content owns the accent selection.
             .environment(\.controlActiveState, .inactive)
             .scrollContentBackground(.hidden)
             Divider()
@@ -135,8 +134,6 @@ struct ProjectsSidebarView: View {
     @ViewBuilder
     private func groupSection(_ group: ProjectSidebarGroup, snapshots: [ProjectStatusSnapshot]) -> some View {
         if group == .upToDate {
-            // A visible chevron, not the hover-only native disclosure, so a
-            // collapsed group still shows that it holds projects.
             Section {
                 if !isCleanGroupCollapsed {
                     projectRows(snapshots)

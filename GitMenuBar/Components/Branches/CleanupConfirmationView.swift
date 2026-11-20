@@ -284,7 +284,6 @@ struct CleanupConfirmationView: View {
     }
 }
 
-/// Uppercase, tracked section label with a trailing count; shared with the Projects cleanup sheet.
 struct CleanupSectionHeader: View {
     let title: String
     let count: Int

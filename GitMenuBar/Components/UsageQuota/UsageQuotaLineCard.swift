@@ -1,14 +1,9 @@
 import SwiftUI
 
-/// Quota card shared by the menu submenu and the strip popover: header
-/// (icon + name + optional plan/reset chip) plus one continuous Line row per
-/// limit window. Both surfaces always use this card; the compact meter style
-/// preference only changes the status-item strip.
 struct UsageQuotaLineCard: View {
     struct RowData {
         let title: String
         let window: UsageWindow
-        /// Consumed-percent warning thresholds for this row's window (session or weekly).
         let thresholds: [Int]
         let kind: UsageQuotaWindowKind
 
@@ -29,7 +24,6 @@ struct UsageQuotaLineCard: View {
             )
         }
 
-        /// Display reading from the pace owner; the card never computes pace itself.
         func reading(
             showUsed: Bool,
             showsPace: Bool,
@@ -55,13 +49,10 @@ struct UsageQuotaLineCard: View {
 
     let providerID: UsageProviderID
     let displayName: String
-    /// Plan and reset-credit chip (e.g. `Pro · 3 resets`); nil hides the chip.
     let pillText: String?
     let staleStyle: StaleStyle
     let rows: [RowData]
-    /// Small secondary line under the header (e.g. OpenRouter credit balance).
     let footnote: String?
-    /// When true rows read used percentages instead of remaining.
     let showUsed: Bool
     let showsPace: Bool
     let workdaysPerWeek: Int
@@ -121,8 +112,6 @@ struct UsageQuotaLineCard: View {
         }
     }
 
-    /// One icon, one name, at most one plan/reset chip, and the stale marker.
-    /// The name keeps its width; the chip wraps before the name loses legibility.
     private var header: some View {
         HStack(alignment: .center, spacing: WorkbenchMetrics.chipSpacing) {
             ProviderIconView(providerID: providerID)
@@ -178,8 +167,6 @@ struct UsageQuotaLineCard: View {
         )
     }
 
-    /// Window title plus the compact reset countdown; the tooltip and
-    /// VoiceOver keep the full "Resets in …" sentence.
     private func rowLabel(row: RowData, reading: UsageQuotaPace.Reading) -> some View {
         HStack(spacing: WorkbenchMetrics.microSpacing) {
             Text(row.title)
@@ -222,8 +209,6 @@ struct UsageQuotaLineCard: View {
         return true
     }
 
-    /// VoiceOver hears provider, plan, resets, and stale state once, instead of
-    /// relying on the visually hidden chip.
     static func headerAccessibilityText(displayName: String, pillText: String?, isStale: Bool) -> String {
         var parts = [displayName]
         if let pillText {
@@ -235,7 +220,6 @@ struct UsageQuotaLineCard: View {
         return parts.joined(separator: ", ")
     }
 
-    /// Row reading order: percentage direction, reset, then the pace captions.
     static func rowAccessibilityValue(reading: UsageQuotaPace.Reading, isExhausted: Bool) -> String {
         var parts = [isExhausted ? "quota exhausted" : reading.percentText]
         for text in [reading.resetText, reading.paceLeftText, reading.paceRightText] {
@@ -246,8 +230,6 @@ struct UsageQuotaLineCard: View {
         return parts.joined(separator: ", ")
     }
 
-    /// Header chip: plan and redeemable resets only. The interval already lives
-    /// in the row title, so it is not repeated here.
     static func pillText(plan: String?, resetCredits: Int?) -> String? {
         guard let credits = resetCredits, credits > 0 else {
             return plan
@@ -260,8 +242,6 @@ struct UsageQuotaLineCard: View {
     }
 }
 
-/// One legend per visible surface: rows show only `%`, so the percentage
-/// direction is stated once here and each row's VoiceOver value keeps it.
 struct UsageQuotaValueStyleCaption: View {
     let showUsed: Bool
 
@@ -273,7 +253,6 @@ struct UsageQuotaValueStyleCaption: View {
     }
 }
 
-/// Trailing estimate card: what current-month subscription tokens would cost via API.
 struct UsageQuotaCostCard: View {
     let estimates: UsageQuotaCostEstimate
 
@@ -319,7 +298,6 @@ struct UsageQuotaCostCard: View {
         }
     }
 
-    /// The month is stated once for the card instead of once per provider row.
     private var periodLabel: String? {
         estimates.rows.first?.monthLabel
     }

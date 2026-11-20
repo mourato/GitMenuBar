@@ -188,9 +188,6 @@ struct WorkingTreeSectionHeaderView: View {
         }
         .pickerStyle(.segmented)
         .controlSize(.small)
-        // Keeps the selected segment neutral: macOS 26 tints it with the system
-        // accent by default, which competes with the prominent Commit action.
-        // A secondary fill still marks the selected segment clearly.
         .tint(.secondary)
         .labelsHidden()
         .accessibilityLabel("Working tree view mode")

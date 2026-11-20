@@ -26,7 +26,6 @@ enum AntigravityProcessDetector {
         }
     }
 
-    /// Finds running Antigravity instances (IDE, App, or CLI) and their listening localhost ports.
     static func detectRunningServers() -> [DetectedServer] {
         #if canImport(Darwin)
             let pids = allPIDs()

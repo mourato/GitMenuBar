@@ -1,9 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// The widest badge text the visible sidebar shows in each GitHub total column.
-/// Every row reserves the same column width, while a column with no totals
-/// disappears instead of holding an empty slot.
 struct ProjectSidebarCountColumns: Equatable {
     let issues: String?
     let pullRequests: String?
@@ -16,8 +13,6 @@ struct ProjectSidebarCountColumns: Equatable {
     }
 
     private static func widestText(_ badges: [GitHubOpenCountBadge]) -> String? {
-        // Ranking only: the hidden guide view owns the actual column width, so
-        // a near-tie between two strings cannot change the rendered size.
         let font = WorkbenchTypography.sidebarCountMeasurementFont
         return Set(badges.map(\.text)).max {
             ($0 as NSString).size(withAttributes: [.font: font]).width
@@ -26,10 +21,6 @@ struct ProjectSidebarCountColumns: Equatable {
     }
 }
 
-/// One Projects sidebar row. GitHub totals sit in aligned Issues → Pull Requests
-/// columns so names and counts line up across rows. When the row is narrower than
-/// the name column's minimum plus both columns, the totals hide instead of
-/// squeezing the name; VoiceOver still reads the totals from the row label.
 struct ProjectSidebarRowView: View {
     let snapshot: ProjectStatusSnapshot
     let agentActivities: [AgentProjectActivity]
@@ -48,7 +39,6 @@ struct ProjectSidebarRowView: View {
     private func rowContent(showsOpenCountBadges: Bool) -> some View {
         let facts = snapshot.summaryFacts
         return HStack(spacing: WorkbenchMetrics.compactSpacing) {
-            // The slot stays reserved without a dot so names keep one column.
             Circle()
                 .fill(dotColor ?? .clear)
                 .frame(width: 7, height: 7)
@@ -61,7 +51,6 @@ struct ProjectSidebarRowView: View {
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                         .truncationMode(.tail)
-                    // Only private repositories carry a marker; public is the quiet default.
                     if snapshot.gitHubStatus.isPrivate == true {
                         LucideIconView(name: .lock, size: WorkbenchMetrics.sidebarInlineIconSize)
                             .foregroundStyle(.secondary)
@@ -69,7 +58,6 @@ struct ProjectSidebarRowView: View {
                             .help("Private repository")
                     }
                 }
-                // Two facts only when both fit; otherwise the most urgent alone.
                 ViewThatFits(in: .horizontal) {
                     if facts.count > 1 {
                         summaryLine(facts.prefix(2).joined(separator: ProjectStatusSnapshot.summaryFactSeparator))
@@ -87,8 +75,6 @@ struct ProjectSidebarRowView: View {
             )
 
             HStack(spacing: WorkbenchMetrics.microSpacing) {
-                // One agent indicator: the most relevant agent, plus how many
-                // more. The tooltip and VoiceOver list every agent.
                 if showsAgentActivity, let lead = leadAgentActivity {
                     HStack(spacing: WorkbenchMetrics.microSpacing) {
                         AgentBadgeIconView(activity: lead, size: WorkbenchMetrics.sidebarInlineIconSize)
@@ -129,7 +115,6 @@ struct ProjectSidebarRowView: View {
         AgentProjectActivity.lead(in: agentActivities)
     }
 
-    /// Every number in the row shares one size, weight, and digit width.
     private func countText(_ text: String) -> some View {
         Text(text)
             .font(WorkbenchTypography.sidebarCount)
@@ -138,8 +123,6 @@ struct ProjectSidebarRowView: View {
             .lineLimit(1)
     }
 
-    /// Both columns stay in place whenever either total exists, so a pull request
-    /// alone keeps the pull-request column instead of taking the issues column.
     @ViewBuilder
     private var openCountBadges: some View {
         if countColumns.issues != nil || countColumns.pullRequests != nil {
@@ -154,8 +137,6 @@ struct ProjectSidebarRowView: View {
         }
     }
 
-    /// The hidden guide is the widest badge in this column, so every row
-    /// reserves the same width without storing measured geometry.
     private func openCountSlot(
         _ badge: GitHubOpenCountBadge?,
         role: GitHubCountRole,
@@ -183,7 +164,6 @@ struct ProjectSidebarRowView: View {
     }
 
     var accessibilityLabel: String {
-        // The summary leads with the status dot's cause (see `summaryFacts`).
         var parts = [snapshot.project.name]
         if snapshot.gitHubStatus.isPrivate == true {
             parts.append("private repository")
@@ -211,8 +191,6 @@ struct ProjectSidebarRowView: View {
     }
 }
 
-/// Icons for the two GitHub totals. Sidebar markers stay neutral so row color
-/// signals state, never a count; the repository overview strip keeps its colors.
 private enum GitHubCountRole {
     case issues
     case pullRequests
@@ -231,8 +209,6 @@ private enum GitHubCountRole {
         }
     }
 }
-
-// MARK: - Previews
 
 private enum ProjectSidebarRowPreviewData {
     static func snapshot(

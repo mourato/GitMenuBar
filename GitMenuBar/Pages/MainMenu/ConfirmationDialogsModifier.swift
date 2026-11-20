@@ -1,8 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Branch switch, delete, merge, and merge-to-default cleanup confirmations.
-/// Owns the actions behind each confirmation; reports failures to `errorCenter`.
 struct BranchConfirmationDialogsModifier: ViewModifier {
     @Bindable var dialogs: MainMenuBranchDialogs
     let errorCenter: MainMenuErrorCenter
@@ -150,8 +148,6 @@ struct BranchConfirmationDialogsModifier: ViewModifier {
     }
 }
 
-/// Discard and restart confirmations.
-/// Owns the actions behind each confirmation; reports failures to `errorCenter`.
 struct WorkspaceConfirmationDialogsModifier: ViewModifier {
     @Bindable var confirmations: MainMenuRestartConfirmation
     @Bindable var workspace: MainMenuWorkspaceState

@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Status capsule for one quota provider row.
 struct QuotaStatusPillView: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 

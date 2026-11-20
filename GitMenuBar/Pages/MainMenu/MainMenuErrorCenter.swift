@@ -12,7 +12,6 @@ final class MainMenuErrorCenter {
     var restart: String?
     var push: String?
 
-    /// Eight flat cases by design: one clear site per error domain.
     func clear(_ source: MainMenuInlineBannerSource) {
         switch source {
         case .discard:
@@ -36,7 +35,6 @@ final class MainMenuErrorCenter {
         }
     }
 
-    /// Pending errors in banner priority order, with their banner titles.
     private var entries: [(source: MainMenuInlineBannerSource, banner: (title: String, message: String?))] {
         [
             (.discard, ("Discard Failed", discard)),
@@ -50,7 +48,6 @@ final class MainMenuErrorCenter {
         ]
     }
 
-    /// First pending error in banner priority order.
     var activeSource: MainMenuInlineBannerSource? {
         entries.first { $0.banner.message != nil }?.source
     }

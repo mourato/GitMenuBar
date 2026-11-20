@@ -15,7 +15,6 @@ private struct GeminiCredentialsFile: Codable {
 
     func isExpired(at now: Date, safetyWindow: TimeInterval = 300) -> Bool {
         guard let expiryDate else { return false }
-        // expiryDate in ~/.gemini/oauth_creds.json is either ms or seconds
         let seconds = expiryDate > 10_000_000_000 ? expiryDate / 1000 : expiryDate
         return Date(timeIntervalSince1970: seconds) <= now.addingTimeInterval(safetyWindow)
     }
@@ -154,8 +153,6 @@ final class GeminiUsageProvider: UsageQuotaProviding, Sendable {
     }
 
     private func discoverProjectId(accessToken: String) async -> String? {
-        // Cloud Resource Manager is only a fallback for accounts where
-        // loadCodeAssist does not return the managed Gemini project.
         guard let url = URL(string: Self.projectsEndpoint) else { return nil }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"

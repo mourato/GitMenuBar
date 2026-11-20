@@ -1,11 +1,5 @@
 import Foundation
 
-/// Parsing for the OpenCode Go public usage API.
-///
-/// Ported from CodexBar's `OpenCodeGoUsageFetcher.parseAPIUsage` (MIT, steipete):
-/// `GET https://opencode.ai/zen/go/v1/usage` with `Authorization: Bearer <key>`
-/// answers `{"usage": {"rolling": {"percent": 0...100, "resetsAt": ISO8601},
-/// "weekly": {...}, "monthly": {...}}}`. Percents already use 0...100 units.
 enum OpenCodeGoUsageParsing {
     static func snapshot(fromAPIData data: Data, now: Date = Date()) -> UsageQuotaSnapshot? {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -32,7 +26,6 @@ enum OpenCodeGoUsageParsing {
             return nil
         }
         let weeklyWindow = weekly.flatMap { window($0, label: "7d", durationSeconds: 7 * 86400, now: now) }
-        // Weekly key present but unparsable invalidates the payload like CodexBar's buildSnapshot.
         if weekly != nil, weeklyWindow == nil {
             return nil
         }

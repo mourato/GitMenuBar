@@ -2,11 +2,7 @@
 import XCTest
 
 final class ProjectStatusSummaryTests: XCTestCase {
-    // MARK: - Needs Action and In Review always state a reason
-
     func testOpenPullRequestFromAnotherBranchExplainsNeedsAttention() {
-        // GitHub detail list has a pull request, but it is not the current
-        // branch's own: the summary used to fall through to "Up to date".
         let snapshot = makeSnapshot(
             pullRequests: [
                 Self.pullRequest(number: 31, headBranch: "feature/editor", reviewState: .changesRequested)
@@ -25,7 +21,6 @@ final class ProjectStatusSummaryTests: XCTestCase {
     }
 
     func testCurrentBranchDoesNotRepeatTheUnpushedBranchReason() {
-        // The current branch is already stated as commits to push.
         let snapshot = makeSnapshot(branchName: "feature/editor", aheadCount: 2, unpushedBranchCount: 1)
 
         XCTAssertEqual(snapshot.statusSummary, "feature/editor, 2 commits to push")
@@ -52,8 +47,6 @@ final class ProjectStatusSummaryTests: XCTestCase {
     }
 
     func testAheadWithoutAnUpstreamFlagStillStatesTheReason() {
-        // The model permits this combination even though the porcelain parser
-        // does not produce it; the summary must not fall through to Up to date.
         let snapshot = makeSnapshot(aheadCount: 2, hasUpstream: false)
 
         XCTAssertEqual(snapshot.classification, .needsAttention)
@@ -89,8 +82,6 @@ final class ProjectStatusSummaryTests: XCTestCase {
         XCTAssertEqual(snapshot.statusSummary, "feature/editor, PR #31 Review required · CI passed")
     }
 
-    // MARK: - Wording
-
     func testUnmergedBranchWordingUsesSingularAndPlural() {
         XCTAssertEqual(makeSnapshot(unmergedBranchCount: 1).statusSummary, "1 unmerged branch")
         XCTAssertEqual(makeSnapshot(unmergedBranchCount: 8).statusSummary, "8 unmerged branches")
@@ -105,8 +96,6 @@ final class ProjectStatusSummaryTests: XCTestCase {
 
         XCTAssertEqual(snapshot.statusSummary, "feature/cleanup, 2 commits to push, 3 unmerged branches")
     }
-
-    // MARK: - Facts
 
     func testDotCauseLeadsForDivergedAndBehindWithLocalWork() {
         XCTAssertEqual(makeSnapshot(aheadCount: 3, behindCount: 1).summaryFacts.first, "Diverged (3 ahead · 1 behind)")
@@ -145,8 +134,6 @@ final class ProjectStatusSummaryTests: XCTestCase {
         XCTAssertEqual(snapshot.summaryFacts, ["1 commit behind", "3 unmerged branches"])
     }
 
-    // MARK: - Clean rows keep the old summaries
-
     func testCleanDefaultBranchReadsUpToDate() {
         let snapshot = makeSnapshot()
 
@@ -167,8 +154,6 @@ final class ProjectStatusSummaryTests: XCTestCase {
         XCTAssertEqual(snapshot.classification, .unavailable)
         XCTAssertEqual(snapshot.statusSummary, "Unavailable")
     }
-
-    // MARK: - Fixtures
 
     private func makeSnapshot(
         branchName: String = "main",

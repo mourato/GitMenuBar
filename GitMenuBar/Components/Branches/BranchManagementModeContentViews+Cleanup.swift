@@ -1,6 +1,5 @@
 import Foundation
 
-/// Shared one-line cleanup explanations; used by the cleanup list and the cleanup confirmation sheet.
 enum CleanupDetailText {
     static func branchStatus(_ status: GitBranchCleanupStatus) -> String? {
         switch status {

@@ -156,8 +156,6 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
     }
 
     private func refreshCredentials(_ stored: StoredCredentials) async -> ClaudeCodeOAuthCredentials? {
-        // Claude Code owns its keychain item. Refreshing would rotate the refresh token it holds,
-        // so keychain credentials are only read; Claude Code refreshes them on its next run.
         guard stored.source == .file,
               let refreshToken = stored.credentials.refreshToken,
               let url = URL(string: Constants.tokenEndpoint)
@@ -264,8 +262,6 @@ struct ClaudeCodeUsageProvider: UsageQuotaProviding {
         return nil
     }
 
-    /// Reads through `/usr/bin/security`: Claude Code creates its item with that tool, so the item's
-    /// access list already trusts it and no keychain prompt appears, unlike `SecItemCopyMatching`.
     private static func readKeychainData(service: String) -> Data? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/security")

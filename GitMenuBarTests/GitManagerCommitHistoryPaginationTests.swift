@@ -19,7 +19,6 @@ final class GitManagerCommitHistoryPaginationTests: XCTestCase {
         XCTAssertEqual(gitManager.commitHistoryLimit, 25)
         XCTAssertEqual(gitManager.commitHistory.count, 25)
 
-        // Awaits the same fetch that loadMoreCommitHistory starts; the +25 step itself is not covered here.
         await gitManager.fetchCommitHistoryAsync(limit: 50)
         XCTAssertEqual(gitManager.commitHistoryLimit, 50)
         XCTAssertEqual(gitManager.commitHistory.count, 50)

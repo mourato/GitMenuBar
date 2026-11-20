@@ -6,15 +6,10 @@ enum KeychainItemError: Error, Equatable {
     case invalidPayload
 }
 
-/// Access group shared by every stored credential. The value must stay in sync with
-/// the `keychain-access-groups` entry in
-/// `GitMenuBar/GitMenuBar-KeychainAccessGroups.entitlements`.
 enum KeychainAccessGroup {
     static let identifier = "com.mourato.GitMenuBar"
 }
 
-/// Accessibility applied when an item is created. Each store keeps the contract it
-/// already had so existing items are not rewritten with a different policy.
 enum KeychainItemAccessibility {
     case afterFirstUnlock
     case whenUnlockedThisDeviceOnly
@@ -47,9 +42,6 @@ struct SecurityKeychainItemClient: KeychainItemClient {
         self.accessibility = accessibility
     }
 
-    /// Query for one generic-password item. The legacy file keychain ignores
-    /// `kSecAttrAccessGroup`; it becomes authoritative once the signature carries a
-    /// provisioning profile that authorizes the group.
     static func itemQuery(service: String, account: String, accessGroup: String?) -> [String: Any] {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

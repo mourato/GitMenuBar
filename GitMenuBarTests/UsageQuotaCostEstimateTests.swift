@@ -3,7 +3,6 @@ import XCTest
 
 final class UsageQuotaCostEstimateTests: XCTestCase {
     func testCodexCostSplitsCachedSubset() {
-        // gpt-5.6-luna: input 2e-7, cached-read 2e-8, output 1.2e-6.
         let cost = UsageQuotaAPIPricing.codexCostUSD(
             model: "gpt-5.6-luna",
             inputTokens: 21330,
@@ -24,7 +23,6 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
     }
 
     func testCodexModelNormalization() throws {
-        // gpt-reserve aliases gpt-5.6-luna: input 2e-7, output 1.2e-6.
         let reserve = UsageQuotaAPIPricing.codexCostUSD(
             model: "gpt-reserve",
             inputTokens: 100,
@@ -33,7 +31,6 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
         )
         XCTAssertEqual(reserve ?? -1, Double(100) * 2e-7 + Double(10) * 1.2e-6, accuracy: 1e-9)
 
-        // A dated snapshot must price like its base model.
         let base = try XCTUnwrap(UsageQuotaAPIPricing.codexCostUSD(
             model: "gpt-5.2",
             inputTokens: 100,
@@ -50,7 +47,6 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
     }
 
     func testClaudeCostSplitsHourlyCacheCreation() {
-        // claude-haiku-5-5: input 1e-7, output 5e-7, read 1e-8, 5m-create 1.25e-7, 1h-create at 2x input.
         let cost = UsageQuotaAPIPricing.claudeCostUSD(
             model: "claude-haiku-5-5",
             inputTokens: 2,
@@ -109,12 +105,10 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
         XCTAssertEqual(estimate.rows.count, 2)
 
         let openAI = try XCTUnwrap(estimate.rows.first { $0.title == "OpenAI API" })
-        // Duplicate turn_id counted once: (1000-200) * 2e-7 + 200 * 2e-8 + 100 * 1.2e-6.
         let expectedCodex = Double(800) * 2e-7 + Double(200) * 2e-8 + Double(100) * 1.2e-6
         XCTAssertEqual(openAI.amountUSD ?? -1, expectedCodex, accuracy: 1e-9)
 
         let anthropic = try XCTUnwrap(estimate.rows.first { $0.title == "Anthropic API" })
-        // Duplicate requestId counted once: 10 * 1e-7 + 20 * 5e-7.
         let expectedClaude = Double(10) * 1e-7 + Double(20) * 5e-7
         XCTAssertEqual(anthropic.amountUSD ?? -1, expectedClaude, accuracy: 1e-12)
     }
@@ -133,7 +127,6 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
         let file = claudeDir.appendingPathComponent("session.jsonl")
         try claudeRecord.write(to: file, atomically: true, encoding: .utf8)
 
-        // Modified before this month: must be skipped without being read.
         try FileManager.default.setAttributes(
             [.modificationDate: monthStart.addingTimeInterval(-86400)],
             ofItemAtPath: file.path
@@ -152,7 +145,6 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
         XCTAssertTrue(UsageQuotaCostScanner.estimate(homeDirectory: home).rows.isEmpty)
     }
 
-    /// Writes a Codex rollout with a single `gpt-6.1-sol` turn: 1000 input, 100 output.
     private func writeGpt61SolSession(home: URL, now: Date) throws {
         let monthStart = Calendar.current.date(
             from: Calendar.current.dateComponents([.year, .month], from: now)
@@ -172,15 +164,12 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
     }
 
     func testEstimatePricesCatalogOnlyModelFromBundledFallback() throws {
-        // gpt-6.1-sol is not a pre-catalog model; offline (no catalog) it must
-        // still price through the bundled fallback row instead of showing "—".
         let home = try makeTemporaryTestDirectory(testName: "CostEstimateGpt61")
         let now = Date()
         try writeGpt61SolSession(home: home, now: now)
 
         let estimate = UsageQuotaCostScanner.estimate(homeDirectory: home, now: now)
         let openAI = try XCTUnwrap(estimate.rows.first { $0.title == "OpenAI API" })
-        // Bundled row: input 2e-6, output 1e-5.
         let expected = Double(1000) * 2e-6 + Double(100) * 1e-5
         XCTAssertEqual(openAI.amountUSD ?? -1, expected, accuracy: 1e-9)
     }
@@ -210,8 +199,6 @@ final class UsageQuotaCostEstimateTests: XCTestCase {
             accuracy: 1e-9
         )
 
-        // Same file, same mtime and size: the pricing-token change alone must
-        // invalidate the cached per-file total and rescan with catalog B.
         let second = try UsageQuotaCostScanner.estimate(
             homeDirectory: home,
             now: now,

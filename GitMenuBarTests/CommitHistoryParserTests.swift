@@ -258,7 +258,6 @@ final class CommitHistoryParserTests: XCTestCase {
         let runner = GitCommandRunner()
         let fetchParser = CommitHistoryParser(runner: runner)
 
-        // Empty commits: the parser only counts history, and each git process costs time under load.
         for index in 1 ... 60 {
             try runGit(["commit", "--allow-empty", "-m", "feat: commit \(index)"], in: repoURL)
         }

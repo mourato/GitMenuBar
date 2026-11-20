@@ -1,8 +1,3 @@
-//
-//  MainMenuCommandPaletteActions.swift
-//  GitMenuBar
-//
-
 import AppKit
 
 extension MainMenuView {

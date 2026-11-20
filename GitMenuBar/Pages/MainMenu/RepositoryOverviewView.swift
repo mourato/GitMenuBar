@@ -2,8 +2,6 @@ import SwiftUI
 
 struct RepositoryOverviewView: View {
     let overview: RepositoryOverviewSnapshot
-    /// The open side panel. The matching overview cell shows the neutral
-    /// selection state; there is no separate highlight state.
     let selection: MainMenuSidePanelSelection?
     let onSelectSection: (MainMenuSidePanelSelection) -> Void
     let onOpenGitHubPage: (MainMenuGitHubDestination) -> Void
@@ -49,9 +47,6 @@ struct RepositoryOverviewView: View {
         }
     }
 
-    /// Dividers inside a group stay inset. The divider between local Git and
-    /// GitHub runs the full height with a small gap, so the two groups read
-    /// apart without adding a plate or a new surface.
     @ViewBuilder
     private func metricDivider(
         from current: RepositoryOverviewMetric,
@@ -70,8 +65,6 @@ struct RepositoryOverviewView: View {
         }
     }
 
-    /// The overview cell that mirrors the open side panel. Detail selections
-    /// highlight their parent metric; History has no cell in the strip.
     private var activePanel: RepositoryOverviewMetricPanel? {
         switch selection {
         case .workingTree, .stagedFile, .unstagedFile: .changes
@@ -250,8 +243,6 @@ struct RepositoryOverviewView: View {
         )
     }
 
-    /// Positive counts keep the strong value hierarchy. A known zero, a word
-    /// such as `None`, and unknown `—` share the quiet one.
     private func emphasis(for value: String) -> RepositoryOverviewMetricEmphasis {
         guard let count = Int(value), count > 0 else {
             return .quiet
@@ -371,9 +362,6 @@ private struct RepositoryOverviewColumnView: View {
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
-    /// A cell without an action keeps no hover fill and no chevron: it never
-    /// promises a click. The active panel keeps the chevron beside its neutral
-    /// selection fill so the selected cell still reads as the open route.
     @ViewBuilder
     private var openingHint: some View {
         if density != .compact, isActionable, isHovered || isSelected {
@@ -418,8 +406,6 @@ private struct RepositoryOverviewColumnView: View {
     private func titleRow(_ title: String) -> some View {
         HStack(spacing: WorkbenchMetrics.microSpacing) {
             if let marker = metric.marker {
-                // The strip keeps its own GitHub marker colors; the number
-                // beside them stays neutral.
                 LucideIconView(name: metric.symbol, size: 11)
                     .foregroundStyle(marker.color)
             }
@@ -434,7 +420,6 @@ private struct RepositoryOverviewColumnView: View {
     private var valueRow: some View {
         HStack(alignment: .firstTextBaseline, spacing: WorkbenchMetrics.microSpacing) {
             valueText
-            // Show the qualifier whole or not at all; the tooltip keeps the detail.
             ViewThatFits(in: .horizontal) {
                 Text(metric.qualifier).font(WorkbenchTypography.caption).foregroundStyle(qualifierForegroundStyle)
                     .lineLimit(1).fixedSize()
@@ -465,8 +450,6 @@ private struct RepositoryOverviewColumnView: View {
         }
     }
 
-    /// Compact cells keep the icon as their only label, so a GitHub metric
-    /// keeps its marker role there too.
     private var compactIconForegroundStyle: Color {
         metric.marker?.color ?? .secondary
     }

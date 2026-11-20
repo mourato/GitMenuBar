@@ -3,9 +3,6 @@ import SwiftUI
 extension MainMenuView {
     private var shouldHandleMainKeyboardShortcuts: Bool {
         guard presentationModel.route == .main,
-              // When the command palette is presented, MainMenuCommandPaletteView
-              // owns arrow/enter/escape via onKeyPress on its focused search field.
-              // This guard prevents the main list handler from competing with it.
               !palette.isPresented,
               !branchDialogs.showBranchSelector,
               !branchDialogs.showCreateBranch,
@@ -27,7 +24,6 @@ extension MainMenuView {
         isMainKeyboardNavigationFocused = true
     }
 
-    /// Collapses overlay/focus distractors so MainMenuView can resync keyboard focus in one onChange.
     var mainKeyboardFocusSyncToken: String {
         [
             presentationModel.route == .main ? "main" : "other",

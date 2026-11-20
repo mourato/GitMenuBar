@@ -24,7 +24,6 @@ final class KeychainItemClientTests: XCTestCase {
     }
 }
 
-/// Isolated stand-in for the keychain. Tests never reach the login keychain.
 final class FakeKeychainItemClient: KeychainItemClient, @unchecked Sendable {
     var data: Data?
     var readError: Error?

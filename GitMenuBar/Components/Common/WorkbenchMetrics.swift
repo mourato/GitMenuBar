@@ -2,8 +2,6 @@ import AppKit
 import CoreGraphics
 import SwiftUI
 
-// MARK: - Adaptive motion
-
 struct AdaptiveMotionModifier: ViewModifier {
     @Environment(\.accessibilityReduceMotion) var reduceMotion
 
@@ -30,8 +28,6 @@ enum WorkbenchMetrics {
     static let sectionSpacing: CGFloat = 12
     static let groupSpacing: CGFloat = 20
     static let panelPadding: CGFloat = 16
-    /// Leading edge of dense list row content (status slot). Row padding and
-    /// list section headers and captions share it so their edges line up.
     static let rowContentInset: CGFloat = sectionSpacing
     static let windowPadding: CGFloat = 12
     static let headerVerticalPadding: CGFloat = 2
@@ -41,36 +37,24 @@ enum WorkbenchMetrics {
     static let largeCornerRadius: CGFloat = 14
     static let overlayCornerRadius: CGFloat = 16
     static let iconHitTarget: CGFloat = 28
-    /// Inline icons in the Projects sidebar (count markers, group chevron),
-    /// sized to `WorkbenchTypography.sidebarCount`.
     static let sidebarInlineIconSize: CGFloat = 12
-    /// Minimum interactive height for text chips, toggles, and buttons (DESIGN.md hit areas).
     static let minimumHitTarget: CGFloat = 32
     static let quotaMeterWidth: CGFloat = 20
     static let quotaMeterHeight: CGFloat = 6
-    /// Compact meter shared by the status-item strip and the footer quota
-    /// summary; the width matches one stacked reading in the menu bar.
     static let quotaMeterCompactWidth: CGFloat = 26
     static let quotaMeterCompactHeight: CGFloat = 3
     static let projectsMinimumWidth: CGFloat = 256
     static let projectsMaximumWidth: CGFloat = 360
-    /// Preferred width for a project row's name and status column. Trailing
-    /// GitHub totals are only shown when this width still fits; at supported
-    /// sidebar widths the no-totals fallback leaves even more room.
     static let projectsRowTextMinimumWidth: CGFloat = 110
     static let centralMinimumWidth: CGFloat = 360
-    /// Fixed trailing side-panel column width (contextual details).
     static let sidePanelWidth: CGFloat = 360
     static let splitDividerThickness: CGFloat = 8
-    /// Three-column floor: Projects sidebar + central detail + side panel,
-    /// window insets, divider, and the split-column gap.
     static let mainWindowMinimumWidth: CGFloat = projectsMinimumWidth
         + centralMinimumWidth
         + sidePanelWidth
         + (windowPadding * 2)
         + splitDividerThickness
         + sectionSpacing
-    /// Start at the three-column floor so an opened panel has room immediately.
     static let mainWindowInitialWidth: CGFloat = mainWindowMinimumWidth
 }
 
@@ -87,8 +71,6 @@ enum WorkbenchTypography {
         .body
     }
 
-    /// Project names in the Projects sidebar: native body size with enough
-    /// weight to lead the secondary status line.
     static var projectName: Font {
         .body.weight(.semibold)
     }
@@ -101,12 +83,10 @@ enum WorkbenchTypography {
         .caption
     }
 
-    /// Every number in a Projects sidebar row: issue, pull-request, and agent counts.
     static var sidebarCount: Font {
         .subheadline
     }
 
-    /// AppKit twin of `sidebarCount` for ranking count widths; change both together.
     static var sidebarCountMeasurementFont: NSFont {
         .monospacedDigitSystemFont(ofSize: NSFont.preferredFont(forTextStyle: .subheadline).pointSize, weight: .regular)
     }
@@ -139,9 +119,6 @@ enum WorkbenchPalette {
         Color.primary.opacity(0.06)
     }
 
-    /// Neutral fill for a selected navigation surface, such as the repository
-    /// overview cell whose side panel is open. The accent stays on focused
-    /// content selection.
     static func neutralSelectionFill() -> Color {
         Color.primary.opacity(0.10)
     }
@@ -154,12 +131,10 @@ enum WorkbenchPalette {
         Color.secondary.opacity(contrast == .increased ? 0.45 : 0.2)
     }
 
-    /// GitHub issue marker green, used in the repository overview strip.
     static func issueMarker() -> Color {
         .green
     }
 
-    /// GitHub pull-request marker purple, used in the repository overview strip.
     static func pullRequestMarker() -> Color {
         Color(nsColor: pullRequestMarkerColor)
     }

@@ -1,12 +1,6 @@
-//
-//  MainMenuComputed.swift
-//  GitMenuBar
-//
 // swiftlint:disable file_length
 
 import Foundation
-
-// MARK: - Repository overview model
 
 enum RepositoryMetricState<T: Equatable & Sendable>: Equatable, Sendable {
     case known(T)
@@ -202,8 +196,6 @@ struct RepositoryOverviewSnapshot: Equatable, Sendable {
     )
 }
 
-// MARK: - Render snapshot
-
 struct MainMenuRenderSnapshot: Equatable {
     let stagedRowAdapters: [WorkingTreeRowAdapter]
     let unstagedRowAdapters: [WorkingTreeRowAdapter]
@@ -229,7 +221,6 @@ struct MainMenuRenderSnapshot: Equatable {
         overview: .empty
     )
 
-    // Precompute the main menu's expensive derived data from a single snapshot of source state.
     // swiftlint:disable:next function_parameter_count
     static func build(
         stagedFiles: [WorkingTreeFile],

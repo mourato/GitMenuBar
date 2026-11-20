@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Trailing contextual column for the main workbench.
-/// Independent Workbench-token reimplementation — do not copy upstream sources.
 struct SidePanelModifier<PanelContent: View>: ViewModifier {
     @Binding var isPresented: Bool
     let panelWidth: CGFloat

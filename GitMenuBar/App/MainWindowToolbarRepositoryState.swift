@@ -6,8 +6,6 @@ enum MainWindowToolbarRepositoryItem: Equatable {
 }
 
 struct MainWindowToolbarRepositoryState: Equatable {
-    /// Repository actions belong only to the main route with a selected Git repository;
-    /// a plain folder gets the create-repo banner instead.
     static func isAvailable(
         isMainRoute: Bool,
         repositoryPath: String?,
@@ -25,8 +23,6 @@ struct MainWindowToolbarRepositoryState: Equatable {
     let isBusy: Bool
     let busyItem: MainWindowToolbarRepositoryItem?
     let progressAccessibilityLabel: String?
-    /// Hides the manual Fetch item while automatic background fetch is on.
-    /// Defaults to false so existing callers keep the previous behavior.
     let autoFetchEnabled: Bool
 
     init(
@@ -53,7 +49,6 @@ struct MainWindowToolbarRepositoryState: Equatable {
 
     var repositoryItems: [MainWindowToolbarRepositoryItem] {
         var items: [MainWindowToolbarRepositoryItem] = [.branchPicker, .aheadBehind]
-        // Keep the item around while a fetch is running so its progress stays visible.
         if !autoFetchEnabled || busyItem == .fetch {
             items.append(.fetch)
         }

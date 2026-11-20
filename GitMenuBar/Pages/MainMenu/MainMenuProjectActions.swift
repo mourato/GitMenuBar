@@ -1,8 +1,3 @@
-//
-//  MainMenuProjectActions.swift
-//  GitMenuBar
-//
-
 import AppKit
 
 @MainActor

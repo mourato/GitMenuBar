@@ -1,15 +1,5 @@
 import Foundation
 
-/// OpenCode Go quota provider (Fase 1: API autoritativa + estimativa local).
-///
-/// Estratégias portadas do CodexBar (MIT, steipete), adaptadas ao modelo do
-/// GitMenuBar:
-/// - API: `GET https://opencode.ai/zen/go/v1/usage` com `Bearer OPENCODE_API_KEY`
-///   (Keychain `opencodego` primeiro, ambiente depois). Janelas 5h/semanal/mensal.
-/// - Local: agregação somente-leitura de `opencode.db` com os denominadores
-///   fixos $12/$30/$60 e status "local estimate — not account quota".
-/// Fora do escopo Fase 1: cookies web/console, login CLI, Zen balance e
-/// histórico diário de custos.
 struct OpenCodeGoUsageProvider: UsageQuotaProviding {
     let id: UsageProviderID = .opencodeGo
 
@@ -41,17 +31,12 @@ struct OpenCodeGoUsageProvider: UsageQuotaProviding {
             } catch let error as OpenCodeGoAPIError {
                 switch error {
                 case .invalidCredentials:
-                    // Chave configurada rejeitada: erro explícito, sem mascarar
-                    // com estimativa local de outra conta. A cópia em memória pode
-                    // estar defasada, então a keychain é relida na próxima consulta.
                     keyStore?.invalidateCachedCredentials()
                     return .unavailable(providerID: .opencodeGo, statusNote: "token expired — open OpenCode")
                 case .unavailable:
                     break
                 }
-            } catch {
-                // Queda para a estimativa local abaixo.
-            }
+            } catch {}
         }
 
         if let local = OpenCodeGoLocalUsage.snapshot(
@@ -74,7 +59,6 @@ struct OpenCodeGoUsageProvider: UsageQuotaProviding {
         {
             return cleaned
         }
-        // Produção usa o Keychain compartilhado; sem injeção, cai no ambiente.
         if keyStore == nil,
            let stored = try? AIKeychainStore().apiKey(for: .opencodego),
            let cleaned = cleanedKey(stored)

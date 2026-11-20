@@ -33,7 +33,6 @@ enum UsageProviderID: String, Codable, CaseIterable, Hashable, Identifiable, Sen
         }
     }
 
-    /// Brand tint for the provider logo in quota cards; the menu-bar strip stays monochrome.
     var brandColor: Color {
         switch self {
         case .claudeCode:
@@ -56,7 +55,6 @@ struct UsageWindow: Codable, Equatable, Sendable {
     let remainingPercent: Int
     let resetAt: Date?
     let label: String
-    /// Provider-reported limit duration when known (from `limit_window_seconds` / `window_minutes`).
     let durationSeconds: Int?
 
     init(remainingPercent: Int, resetAt: Date?, label: String, durationSeconds: Int? = nil) {
@@ -66,7 +64,6 @@ struct UsageWindow: Codable, Equatable, Sendable {
         self.durationSeconds = durationSeconds.flatMap { $0 > 0 ? $0 : nil }
     }
 
-    /// Compact interval chip shown in the footer strip (e.g. `5h`, `7d`, `Plan`).
     var intervalChip: String {
         if let durationSeconds {
             return UsageQuotaFormatting.intervalChip(durationSeconds: durationSeconds)
@@ -78,14 +75,10 @@ struct UsageWindow: Codable, Equatable, Sendable {
 enum UsageQuotaWindowKind: Hashable, Sendable {
     case session
     case weekly
-    /// The tertiary monthly window. Behaves like a model window for display
-    /// and exhaustion, but keeps its own slot in the quiet fallback order
-    /// (Session → Weekly → Monthly → tightest model).
     case monthly
     case model
 }
 
-/// One redeemable Codex limit reset, with the date it stops being redeemable.
 struct UsageQuotaResetCredit: Codable, Equatable, Identifiable, Sendable {
     let id: String
     let expiresAt: Date
@@ -96,15 +89,11 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
     let displayName: String
     let sessionWindow: UsageWindow?
     let weeklyWindow: UsageWindow?
-    /// Monthly quota window (OpenCode Go). Nil when the provider does not report it.
     let tertiaryMonthlyWindow: UsageWindow?
     let modelWindows: [UsageWindow]
     let creditValueText: String?
-    /// Codex limit-reset credits still available (from `wham/rate-limit-reset-credits`).
     let resetCreditsAvailable: Int?
-    /// Redeemable reset credits with expiry, soonest first. Empty when the provider does not report them.
     let resetCredits: [UsageQuotaResetCredit]
-    /// Provider-reported plan name when known (e.g. Codex `chatgpt_plan_type`, Cursor `membershipType`).
     let planText: String?
     let isAvailable: Bool
     let isStale: Bool
@@ -115,7 +104,6 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
         providerID
     }
 
-    /// The shortest available window drives the strip hero metric; weekly is the fallback.
     var primaryDisplayWindow: UsageWindow? {
         sessionWindow ?? weeklyWindow
     }
@@ -259,9 +247,7 @@ struct UsageQuotaSnapshot: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
-/// Plan display names derived from provider payloads (no new sources).
 enum UsageQuotaPlanNaming {
-    /// Capitalized raw value (`pro` → `Pro`); nil/blank stays nil.
     static func display(_ raw: String?) -> String? {
         guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
             return nil
@@ -269,7 +255,6 @@ enum UsageQuotaPlanNaming {
         return raw.prefix(1).uppercased() + raw.dropFirst()
     }
 
-    /// Cursor `membershipType` mapping (mirrors CodexBar's plan labels).
     static func cursor(_ membershipType: String?) -> String? {
         guard let type = membershipType?.trimmingCharacters(in: .whitespacesAndNewlines), !type.isEmpty else {
             return nil
@@ -350,8 +335,6 @@ enum UsageQuotaFormatting {
         return intervalChip(durationSeconds: durationSeconds)
     }
 
-    /// Locale-aware time-only string for the next quota reset (e.g. `18:27` / `6:27 PM`).
-    /// Returns an em dash when `resetAt` is nil or not in the future, matching `resetCountdown`.
     static func resetClockTime(
         until resetAt: Date?,
         locale: Locale = .current,
@@ -386,8 +369,6 @@ enum UsageQuotaFormatting {
         return "<1m"
     }
 
-    /// Locale-aware short label for when a snapshot was last successfully read
-    /// (e.g. `14:32` / `2:32 PM`). Used by stale-state explanations.
     static func fetchedAtLabel(_ date: Date, locale: Locale = .current) -> String {
         let formatter = DateFormatter()
         formatter.locale = locale
@@ -396,8 +377,6 @@ enum UsageQuotaFormatting {
         return formatter.string(from: date)
     }
 
-    /// Alert level against configured used-percent thresholds: normal until the first
-    /// threshold is reached, warning past the first, error past the second or later.
     static func alertLevel(remainingPercent: Int, thresholds: [Int]) -> UsageQuotaAlertLevel {
         let usedPercent = 100 - remainingPercent
         let crossed = thresholds.filter { usedPercent >= $0 }.count

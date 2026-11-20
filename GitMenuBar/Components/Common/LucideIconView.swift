@@ -1,13 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Catalog-backed interface icons (Lucide, ISC).
-///
-/// Call sites never name an SF Symbol or a Lucide file directly: pick a
-/// `LucideIconName` case and render it through `LucideIconView`,
-/// `Label(lucide:)`, or `NSImage(lucide:)`. New `systemName:` / `systemImage:`
-/// / `systemSymbolName:` uses outside this file fail `make lint`; the
-/// `questionmark` fallback below is the single sanctioned exception.
 enum LucideIconRenderer {
     private nonisolated(unsafe) static let cache = NSCache<NSString, NSImage>()
 
@@ -39,11 +32,6 @@ enum LucideIconRenderer {
         return Bundle.main.url(forResource: file, withExtension: "svg", subdirectory: "Resources/LucideIcons")
     }
 
-    /// Canvas render for hosts that stretch non-symbol images to fill the box
-    /// (ex.: Settings `.toolbarItems` items use a ~32pt box, while SF Symbols
-    /// draw their glyph at ~17-20pt). Draws the catalog glyph inset and
-    /// centered on a fixed canvas; the drawing handler re-renders per screen
-    /// scale, so it stays sharp @1x/@2x. Cached per name+canvas+glyph.
     static func image(for name: LucideIconName, canvas: CGFloat, glyph: CGFloat) -> NSImage? {
         let key = "\(name.rawValue)@\(Int(canvas))/\(Int(glyph))" as NSString
         if let cached = cache.object(forKey: key) {
@@ -64,7 +52,6 @@ enum LucideIconRenderer {
 }
 
 extension NSImage {
-    /// Template image for a catalog icon, tinted by its context.
     convenience init?(lucide name: LucideIconName) {
         guard let image = LucideIconRenderer.image(for: name) else {
             return nil
@@ -74,7 +61,6 @@ extension NSImage {
         isTemplate = true
     }
 
-    /// Canvas variant for hosts that fill the box (ex.: Settings toolbar).
     convenience init?(lucide name: LucideIconName, canvas: CGFloat, glyph: CGFloat) {
         guard let image = LucideIconRenderer.image(for: name, canvas: canvas, glyph: glyph) else {
             return nil
@@ -85,8 +71,6 @@ extension NSImage {
     }
 }
 
-/// Stroke-consistent interface icon. Color comes from the context
-/// (`foregroundStyle`, `.tint`, AppKit template rendering), never from here.
 struct LucideIconView: View {
     static let defaultSize: CGFloat = 16
 
@@ -109,7 +93,6 @@ struct LucideIconView: View {
 }
 
 extension Label where Title == Text, Icon == LucideIconView {
-    /// Label with a catalog icon, e.g. `Label(lucide: .search, "Search")`.
     @MainActor
     init(lucide name: LucideIconName, _ title: String, size: CGFloat = LucideIconView.defaultSize) {
         self.init(title: { Text(title) }, icon: { LucideIconView(name: name, size: size) })

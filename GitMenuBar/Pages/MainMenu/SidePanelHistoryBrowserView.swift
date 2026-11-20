@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Shared history list: one `HistorySectionView` wiring, one collapse state,
-/// one reset target. Used by both the history inspector and the commit
-/// workspace so the two surfaces cannot drift apart.
 struct SidePanelHistoryBrowserView: View {
     let history: SidePanelHistoryModel
     @Binding var pendingReset: Commit?
@@ -30,7 +27,6 @@ struct SidePanelHistoryBrowserView: View {
 }
 
 extension View {
-    /// Shared hard-reset confirmation used by every history surface.
     func sidePanelResetAlert(
         commit: Binding<Commit?>,
         onConfirm: @escaping (Commit) -> Void

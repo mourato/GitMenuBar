@@ -19,7 +19,6 @@ extension GitCleanupRepository {
         return nil
     }
 
-    /// The remote default branch, else local `main` or `master`, else `main`.
     func resolvedDefaultBranchName(in path: String) -> String {
         if let detected = defaultBranchName(in: path), !detected.isEmpty {
             return detected
@@ -30,10 +29,6 @@ extension GitCleanupRepository {
         return !local.contains("main") && local.contains("master") ? "master" : "main"
     }
 
-    /// Local branches with commits whose changes are not yet in the local default branch:
-    /// `--no-merged` reachability minus branches whose commits were all cherry-picked.
-    /// A failed `git cherry` keeps the branch, so the result errs toward "not integrated".
-    /// Returns nil when Git cannot list branches.
     func localBranchesNotIntegrated(in path: String, defaultBranchName: String) -> [String]? {
         let result = execute(path, ["branch", "--format=%(refname:short)", "--no-merged", defaultBranchName])
         guard !result.failure else { return nil }

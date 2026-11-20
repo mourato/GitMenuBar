@@ -45,9 +45,6 @@ final class AICommitGrouperService: Sendable {
         self.messagePolicy = messagePolicy
     }
 
-    /// Analyze per-file diffs and group them into logical atomic commits.
-    /// Returns groups with suggested messages, or falls back to one group per file
-    /// when the AI fails or returns invalid JSON.
     func generateAtomicGroups(
         changedFiles: [WorkingTreeFile],
         diffPerFile: [String: String],
@@ -121,7 +118,6 @@ final class AICommitGrouperService: Sendable {
         }
     }
 
-    /// Partition an existing set of groups: move `file` from `source` to `target`.
     static func moveFile(
         _ file: String,
         from source: inout AtomicCommitGroup,

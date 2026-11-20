@@ -1,6 +1,5 @@
 import Foundation
 
-// Unchecked: holds a MainActor-bound any ChatGPTCommitGenerating collaborator that cannot conform to Sendable.
 final class AICommitMessageService: @unchecked Sendable {
     struct ParsedDiffSection {
         let path: String
@@ -180,7 +179,6 @@ final class AICommitMessageService: @unchecked Sendable {
         return try await generateCommitMessage(generation: generation, payload: payload)
     }
 
-    /// Generate a raw AI response for an arbitrary prompt (no commit-message sanitizing).
     func generateRawResponse(
         prompt: String,
         provider: AIProviderConfig,

@@ -36,14 +36,11 @@ final class AgentActivityDetectorTests: XCTestCase {
         }
     }
 
-    // MARK: - Path Normalization & Matching Tests
-
     func testPathNormalization() {
         XCTAssertEqual(AgentActivityDetector.normalizePath(""), "")
         XCTAssertEqual(AgentActivityDetector.normalizePath("/Users/user/project/"), "/Users/user/project")
         XCTAssertEqual(AgentActivityDetector.normalizePath("/Users/user/project"), "/Users/user/project")
 
-        // Resolves symlinks (e.g. /var -> /private/var on macOS)
         let resolvedTmp = URL(fileURLWithPath: "/tmp").resolvingSymlinksInPath().standardized.path
         XCTAssertEqual(AgentActivityDetector.normalizePath("/tmp"), resolvedTmp)
     }
@@ -51,29 +48,22 @@ final class AgentActivityDetectorTests: XCTestCase {
     func testPathMatching() {
         let project = "/Users/test/workspace/repo"
 
-        // Exact match
         XCTAssertTrue(AgentActivityDetector.isMatchingPath(processCwd: project, projectPath: project))
         XCTAssertTrue(AgentActivityDetector.isMatchingPath(processCwd: project + "/", projectPath: project))
 
-        // Subdirectory match
         XCTAssertTrue(AgentActivityDetector.isMatchingPath(processCwd: project + "/Sources/Core", projectPath: project))
         XCTAssertTrue(AgentActivityDetector.isMatchingPath(processCwd: project + "/Deep/Nested/Dir", projectPath: project))
 
-        // Non-matching sibling directory (prefix overlap without slash boundary)
         XCTAssertFalse(AgentActivityDetector.isMatchingPath(processCwd: project + "-other", projectPath: project))
         XCTAssertFalse(AgentActivityDetector.isMatchingPath(processCwd: project + "_backup", projectPath: project))
 
-        // Parent or completely different path
         XCTAssertFalse(AgentActivityDetector.isMatchingPath(processCwd: "/Users/test/workspace", projectPath: project))
         XCTAssertFalse(AgentActivityDetector.isMatchingPath(processCwd: "/Users/test/other", projectPath: project))
         XCTAssertFalse(AgentActivityDetector.isMatchingPath(processCwd: "", projectPath: project))
         XCTAssertFalse(AgentActivityDetector.isMatchingPath(processCwd: project, projectPath: ""))
     }
 
-    // MARK: - Process Harness Identification Tests
-
     func testHarnessIdentification() {
-        // Claude Code
         XCTAssertEqual(
             AgentActivityDetector.harness(forProcessName: "claude", binaryPath: "/usr/local/bin/claude"),
             .claudeCode
@@ -83,7 +73,6 @@ final class AgentActivityDetectorTests: XCTestCase {
             .claudeCode
         )
 
-        // Codex
         XCTAssertEqual(
             AgentActivityDetector.harness(forProcessName: "codex", binaryPath: "/usr/local/bin/codex"),
             .codex
@@ -93,18 +82,15 @@ final class AgentActivityDetectorTests: XCTestCase {
             .codex
         )
 
-        // OpenCode
         XCTAssertEqual(
             AgentActivityDetector.harness(forProcessName: "opencode", binaryPath: "/opt/homebrew/bin/opencode"),
             .opencode
         )
 
-        // Cursor IDE and helpers are not agent processes.
         XCTAssertNil(AgentActivityDetector.harness(forProcessName: "Cursor", binaryPath: "/Applications/Cursor.app/Contents/MacOS/Cursor"))
         XCTAssertNil(AgentActivityDetector.harness(forProcessName: "cursor", binaryPath: "/usr/local/bin/cursor"))
         XCTAssertNil(AgentActivityDetector.harness(forProcessName: "Cursor Helper", binaryPath: ""))
 
-        // Antigravity
         XCTAssertEqual(
             AgentActivityDetector.harness(forProcessName: "agy_acp_server.par", binaryPath: "/path/agy_acp_server.par"),
             .antigravity
@@ -114,7 +100,6 @@ final class AgentActivityDetectorTests: XCTestCase {
             .antigravity
         )
 
-        // Non-agent processes
         XCTAssertNil(AgentActivityDetector.harness(forProcessName: "git", binaryPath: "/usr/bin/git"))
         XCTAssertNil(AgentActivityDetector.harness(forProcessName: "zsh", binaryPath: "/bin/zsh"))
         XCTAssertNil(AgentActivityDetector.harness(forProcessName: "Safari", binaryPath: "/Applications/Safari.app/Contents/MacOS/Safari"))
@@ -130,8 +115,6 @@ final class AgentActivityDetectorTests: XCTestCase {
         XCTAssertFalse(AgentActivityDetector.isCandidateAgentProcess(name: "bash", binaryPath: "/bin/bash"))
     }
 
-    // MARK: - Candidate Slugs Tests
-
     func testCandidateSlugs() {
         let path = "/Users/test/workspace/myproject"
         let slugs = AgentActivityDetector.candidateSlugs(for: path)
@@ -143,8 +126,6 @@ final class AgentActivityDetectorTests: XCTestCase {
         let dotSlugs = AgentActivityDetector.candidateSlugs(for: dotPath)
         XCTAssertTrue(dotSlugs.contains("-Users-test--agents"))
     }
-
-    // MARK: - Process Detection & Deduplication Tests
 
     func testProcessDetectionMatchesProjectCwd() async {
         let projectPath = "/Users/test/workspace/repoA"
@@ -177,8 +158,6 @@ final class AgentActivityDetectorTests: XCTestCase {
             XCTAssertEqual(activity.status, .running)
         }
     }
-
-    // MARK: - Priority Tests: Running Over Recent
 
     func testPriorityRunningOverRecent() async {
         let projectPath = "/Users/test/workspace/repoA"
@@ -234,8 +213,6 @@ final class AgentActivityDetectorTests: XCTestCase {
         XCTAssertEqual(count, 2)
     }
 }
-
-// MARK: - Test Doubles
 
 actor MockAgentProcessQuerier: AgentProcessQuerying {
     private let processes: [RunningAgentProcess]

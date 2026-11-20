@@ -8,8 +8,6 @@ final class OpenCodeGoUsageTests: XCTestCase {
         super.tearDown()
     }
 
-    // MARK: - API parsing (ported expectations from CodexBar's parseAPIUsage)
-
     func testAPIParsingMapsRollingWeeklyMonthly() throws {
         let json = """
         {"usage":{
@@ -63,8 +61,6 @@ final class OpenCodeGoUsageTests: XCTestCase {
             now: Date(timeIntervalSince1970: 1_786_493_600)
         ))
     }
-
-    // MARK: - Provider: API first
 
     func testProviderSendsBearerTokenToUsageEndpoint() async {
         let capturedAuth = PromptCapture()
@@ -169,8 +165,6 @@ final class OpenCodeGoUsageTests: XCTestCase {
         XCTAssertEqual(snapshot.statusNote, "sign in to OpenCode Go")
     }
 
-    // MARK: - Local aggregation
-
     func testLocalReaderAggregatesWindowsAgainstFixedLimits() throws {
         let home = try makeTemporaryTestDirectory(testName: "OpenCodeGoLocalWindows")
         let now = Date(timeIntervalSince1970: 1_786_493_600)
@@ -185,7 +179,6 @@ final class OpenCodeGoUsageTests: XCTestCase {
             now: now
         ))
 
-        // $12/$30/$60 fixed denominators, same as CodexBar.
         XCTAssertEqual(snapshot.sessionWindow?.remainingPercent, 50)
         XCTAssertEqual(snapshot.weeklyWindow?.remainingPercent, 80)
         XCTAssertEqual(snapshot.tertiaryMonthlyWindow?.remainingPercent, 90)
@@ -206,7 +199,6 @@ final class OpenCodeGoUsageTests: XCTestCase {
             now: now
         ))
 
-        // Counted once: 4/12 = 33.3% used -> 67% remaining, not 33%.
         XCTAssertEqual(snapshot.sessionWindow?.remainingPercent, 67)
     }
 
@@ -225,8 +217,6 @@ final class OpenCodeGoUsageTests: XCTestCase {
 
         XCTAssertNil(OpenCodeGoLocalUsage.snapshot(homeDirectory: home, environment: [:], now: now))
     }
-
-    // MARK: - Model compat
 
     func testSnapshotDecodesLegacyPayloadWithoutMonthly() throws {
         let json = """
@@ -249,8 +239,6 @@ final class OpenCodeGoUsageTests: XCTestCase {
         let restored = try JSONDecoder().decode(UsageQuotaSnapshot.self, from: JSONEncoder().encode(snapshot))
         XCTAssertEqual(restored, snapshot)
     }
-
-    // MARK: - Fixtures
 
     private struct LocalRow {
         let createdMs: Int64

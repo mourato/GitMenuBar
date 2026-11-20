@@ -75,7 +75,6 @@ enum ClaudeCodeUsageParsing {
         )
     }
 
-    /// Best-effort plan label; the OAuth usage payload carries no documented plan field.
     private static func planText(from root: [String: Any]) -> String? {
         for key in ["plan", "plan_type", "planType", "subscription", "subscription_type", "tier", "rate_limit_tier", "account_type"] {
             if let value = root[key] as? String, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -150,7 +149,6 @@ enum ClaudeCodeUsageParsing {
             return nil
         }
 
-        // The OAuth usage API reports utilization as a 0-100 percentage; 1.0 means 1% used.
         return UsageWindow(
             remainingPercent: UsageQuotaFormatting.remainingPercent(fromUsed: utilization),
             resetAt: resetDate(from: value["resets_at"] ?? value["resetsAt"]),
@@ -235,11 +233,6 @@ enum ClaudeCodeUsageParsing {
         return parseISO8601Date(string)
     }
 
-    /// The Claude usage endpoints report `resets_at` with microsecond precision
-    /// (`2026-10-16T18:10:00.274725+00:00`), which `[.withInternetDateTime]`
-    /// alone rejects, while the fractional formatter rejects a plain
-    /// `2030-01-20T12:00:00Z`. Both options are mutually exclusive, so try the
-    /// fractional form first and fall back to the standard one.
     private static func parseISO8601Date(_ string: String) -> Date? {
         let withFractional = ISO8601DateFormatter()
         withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

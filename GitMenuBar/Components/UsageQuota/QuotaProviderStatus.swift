@@ -1,7 +1,5 @@
 import Foundation
 
-/// Strip status for one quota provider, derived from the store snapshot and
-/// the provider toggle. Pure mapping so the pill text stays testable.
 enum QuotaProviderStatus: Equatable {
     case hidden
     case checking

@@ -236,9 +236,6 @@ final class AntigravityUsageProvider: UsageQuotaProviding, Sendable {
         return AntigravityUsageParsing.snapshot(from: quotas, now: now())
     }
 
-    /// One-shot `agy -p /usage` fallback for machines where no Antigravity
-    /// language server runs and no OAuth credentials file exists. The CLI
-    /// authenticates with its own login, so no tokens are read or logged here.
     private func fetchAgyCLISnapshot() async -> UsageQuotaSnapshot? {
         guard let binary = agyBinaryLocator(),
               let data = await agyReportRunner(binary),

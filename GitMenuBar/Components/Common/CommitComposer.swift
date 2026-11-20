@@ -337,8 +337,6 @@ private struct CommitComposerSectionPreviewContainer: View {
     )
 }
 
-/// One segment of the commit split button; the shared capsule background
-/// comes from the container so both segments read as a single control.
 private struct CommitSplitSegmentStyle: ButtonStyle {
     let isMuted: Bool
 

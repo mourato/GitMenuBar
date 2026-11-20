@@ -47,7 +47,6 @@ final class GitAtomicCommitService {
         GitExecution.missingRepositoryError()
     }
 
-    /// Returns a map of changed file path -> diff string for all changed files.
     func diffForChangedFilesAsync(changedFiles: [WorkingTreeFile]) async -> [String: String] {
         await diffForFilesAsync(files: changedFiles, scope: .unstaged)
     }
@@ -127,7 +126,6 @@ final class GitAtomicCommitService {
         return SHA256.hash(data: Data(canonical.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
-    /// Stage specific files and commit with the given message.
     func commitAtomicGroupAsync(
         files: [String],
         message: String,
@@ -230,7 +228,6 @@ final class GitAtomicCommitService {
         return .success(())
     }
 
-    /// Execute the full atomic commit sequence for a list of groups.
     func performAtomicCommitsAsync(
         groups: [AtomicCommitGroup],
         changedFiles: [WorkingTreeFile],

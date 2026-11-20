@@ -2,8 +2,6 @@
 import XCTest
 
 final class RepositoryOverviewSnapshotTests: XCTestCase {
-    // MARK: - Known zero vs unavailable
-
     func testKnownZeroIsDistinctFromUnavailable() {
         let knownZero = RepositoryOverviewSnapshot(
             stagedCount: 0, unstagedCount: 0, untrackedCount: 0,
@@ -29,8 +27,6 @@ final class RepositoryOverviewSnapshotTests: XCTestCase {
         XCTAssertEqual(unavailable.stashCount, .unavailable)
     }
 
-    // MARK: - Loading state
-
     func testLoadingState() {
         let overview = RepositoryOverviewSnapshot(
             stagedCount: 0, unstagedCount: 0, untrackedCount: 0,
@@ -49,8 +45,6 @@ final class RepositoryOverviewSnapshotTests: XCTestCase {
         XCTAssertEqual(overview.openIssues, .loading)
         XCTAssertTrue(overview.isLoading)
     }
-
-    // MARK: - Working tree counts
 
     func testDirtyWorkingTree() {
         let overview = RepositoryOverviewSnapshot.build(
@@ -102,8 +96,6 @@ final class RepositoryOverviewSnapshotTests: XCTestCase {
         XCTAssertEqual(overview.totalWorkingTreeCount, 0)
     }
 
-    // MARK: - Ahead / behind
-
     func testAheadBehindFromMonitorSnapshot() {
         let snapshot = makeMonitorSnapshot(aheadCount: 5, behindCount: 2)
         let overview = RepositoryOverviewSnapshot.build(
@@ -144,8 +136,6 @@ final class RepositoryOverviewSnapshotTests: XCTestCase {
         XCTAssertEqual(overview.behindCount, .known(0))
     }
 
-    // MARK: - Detached HEAD
-
     func testDetachedHead() {
         let overview = RepositoryOverviewSnapshot.build(
             stagedFiles: [],
@@ -164,8 +154,6 @@ final class RepositoryOverviewSnapshotTests: XCTestCase {
         XCTAssertTrue(overview.isDetachedHead)
         XCTAssertNil(overview.currentBranch)
     }
-
-    // MARK: - Branch and stash from monitor
 
     func testBranchAndStashFromMonitor() {
         let snapshot = makeMonitorSnapshot(
@@ -285,8 +273,6 @@ final class RepositoryOverviewSnapshotTests: XCTestCase {
         XCTAssertEqual(overview.openIssues, .unavailable)
     }
 
-    // MARK: - History count
-
     func testHistoryCountReflectsCommitHistory() {
         let commits = (0 ..< 5).map { index in
             Commit(
@@ -312,8 +298,6 @@ final class RepositoryOverviewSnapshotTests: XCTestCase {
 
         XCTAssertEqual(overview.historyCount, 5)
     }
-
-    // MARK: - Helpers
 
     private func makeMonitorSnapshot(
         aheadCount: Int = 0,

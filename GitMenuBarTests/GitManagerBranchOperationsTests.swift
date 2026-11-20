@@ -4,14 +4,9 @@ import XCTest
 
 @MainActor
 final class GitManagerBranchOperationsTests: XCTestCase {
-    /// Sets up a local repo that already has a remote-tracking ref for
-    /// `origin/feature/pushed` and configures the local `feature/pushed` branch to
-    /// track it. This is deterministic and avoids flaky real network pushes.
     private func prepareRepoWithRemoteTracking(testName: String) throws -> URL {
         let repoURL = try createTemporaryGitRepository(testName: testName + "-base")
         try runGit(["branch", "feature/pushed"], in: repoURL)
-        // A configured origin is required for `branch @{u}` / set-upstream-to to
-        // resolve the remote-tracking ref. The URL is irrelevant (no real fetch).
         try runGit(["remote", "add", "origin", repoURL.path], in: repoURL)
         let headSHA = try runGit(["rev-parse", "HEAD"], in: repoURL)
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -20,10 +15,6 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         return repoURL
     }
 
-    /// Prepares a repo with a committed branch, then clones it into a bare
-    /// remote. Because the remote already contains the branch's commit, the
-    /// subsequent `git push` only creates a ref (no object transfer), which is
-    /// reliable under concurrent test execution.
     private func prepareRepoWithClonedRemote(testName: String) throws -> URL {
         let repoURL = try createTemporaryGitRepository(testName: testName + "-base")
         try "change\n".write(
@@ -137,7 +128,6 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertNotNil(localPushed, "Local branch 'feature/pushed' should be present")
         XCTAssertNotEqual(localPushed?.trackingStatus, .noRemote, "Pushed branch should report an upstream status")
 
-        // The remote-only branch list should not duplicate branches that also exist locally.
         let remoteInfos = infos.filter(\.isRemote)
         XCTAssertFalse(remoteInfos.contains { $0.name == "feature/pushed" })
     }
@@ -359,7 +349,6 @@ final class GitManagerBranchOperationsTests: XCTestCase {
     }
 
     func testParseBranchInfoOutputYieldsUniqueIDsForSharedNamesAcrossRemotes() {
-        // Same shape as `for-each-ref` output: local heads first, then remote refs.
         let records = [
             ["refs/heads/main", "origin/main", "100", ""],
             ["refs/heads/feature/x", "origin/feature/x", "101", ""],
@@ -376,8 +365,6 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         let manager = GitManager(repositoryPathOverride: "")
         let infos = manager.branchService.parseBranchInfoOutput(output, currentBranch: "main")
 
-        // origin/* refs shadowed by a local branch of the same name are dropped;
-        // every other ref keeps its own id, so ids never collide.
         let expectedIDs: Set = [
             "local/main",
             "local/feature/x",
@@ -391,8 +378,6 @@ final class GitManagerBranchOperationsTests: XCTestCase {
     }
 
     func testParseBranchInfoOutputKeepsOriginSlashBranchDistinctFromRemoteNamedFeature() {
-        // origin `feature/x` and remote `feature` branch `x` both render as `feature/x`;
-        // their ids must still differ.
         let records = [
             ["refs/remotes/origin/feature/x", "", "100", ""],
             ["refs/remotes/feature/x", "", "101", ""]
@@ -445,9 +430,6 @@ final class GitManagerBranchOperationsTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [secondChange], timeout: 0), .completed)
     }
 
-    /// Locks in the facade wiring: branch state computed by `GitBranchService`
-    /// must be reflected on `GitManager`'s public branch properties via the
-    /// observable service properties.
     func testBranchServiceStatePipesToManager() async throws {
         let repoURL = try createTemporaryGitRepository(testName: #function)
         try runGit(["branch", "feature/test"], in: repoURL)

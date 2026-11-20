@@ -23,8 +23,6 @@ enum ProjectAttentionPriority: Equatable {
     }
 }
 
-/// Projects sidebar groups, ordered by the next action the operator takes.
-/// Working (a running agent) is assigned by the sidebar, not by Git state.
 enum ProjectSidebarGroup: CaseIterable, Equatable {
     case working
     case needsAction
@@ -62,11 +60,8 @@ enum ProjectAttentionReason: Equatable {
     case error
 }
 
-/// Status dot severity. A project without one shows no dot.
 enum ProjectAttentionSeverity: Equatable, Hashable, Sendable {
-    /// Failing checks, or the branch is behind or diverged.
     case critical
-    /// Uncommitted changes or commits not yet pushed: local work at risk.
     case localWork
 }
 
@@ -76,14 +71,11 @@ enum GitHubStatusUnavailableReason: Equatable, Sendable {
     case commandFailed
 }
 
-/// One GitHub open total as a sidebar badge can state it. Known positive totals
-/// render as badges; a known zero is intentionally omitted.
 enum GitHubOpenCountBadge: Equatable, Sendable {
     case known(Int)
     case pending
     case unavailable
 
-    /// Visible badge text. Unknown totals keep a neutral dash.
     var text: String {
         switch self {
         case let .known(count): count.formatted(.number.notation(.compactName))
@@ -91,8 +83,6 @@ enum GitHubOpenCountBadge: Equatable, Sendable {
         }
     }
 
-    /// One phrase per total so VoiceOver announces issues and pull requests
-    /// separately instead of as a combined count.
     func accessibilityDescription(singularNoun: String) -> String {
         switch self {
         case let .known(count):
@@ -114,7 +104,6 @@ struct GitHubProjectStatus: Equatable, Sendable {
     let openPullRequestCount: Int?
     let openIssueCount: Int?
     let unavailableReason: GitHubStatusUnavailableReason?
-    /// True for a private GitHub repository; nil when visibility is unknown.
     var isPrivate: Bool?
 
     static let empty = GitHubProjectStatus(
@@ -124,9 +113,6 @@ struct GitHubProjectStatus: Equatable, Sendable {
         unavailableReason: nil
     )
 
-    /// Non-GitHub remotes show no badge: there is no open total to compare.
-    /// Known zero totals also show no badge. Totals come only from the counts
-    /// read, never from the limited PR list.
     var openIssueBadge: GitHubOpenCountBadge? {
         badge(for: openIssueCount)
     }
@@ -183,9 +169,6 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         gitHubStatus.openIssueCount
     }
 
-    /// Sidebar badge state for the repository's open totals.
-    /// A failed refresh keeps the last GitHub status, so its totals are not
-    /// current and show as unavailable instead of as fresh readings.
     var openIssueBadge: GitHubOpenCountBadge? {
         lastErrorDescription == nil
             ? gitHubStatus.openIssueBadge
@@ -223,7 +206,6 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
     }
 
     var severity: ProjectAttentionSeverity? {
-        // Stale data from a failed refresh never raises a dot.
         guard lastErrorDescription == nil else { return nil }
         if behindCount > 0 || hasFailingChecks {
             return .critical
@@ -234,8 +216,6 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         return nil
     }
 
-    /// Reads the pull-request detail list, so it sees only the listed pull
-    /// requests, never the repository total.
     var hasFailingChecks: Bool {
         pullRequests.contains(where: { $0.checksState == .failing })
     }
@@ -244,7 +224,6 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         stagedCount + unstagedCount + untrackedCount > 0
     }
 
-    // ponytail: stale uses commit age; add working-tree mtimes only if this proxy proves insufficient.
     var isStale: Bool {
         isStale(at: Date())
     }
@@ -254,8 +233,6 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         return hasAttentionState && now.timeIntervalSince(lastActivityAt) >= Self.staleThreshold
     }
 
-    /// Local-only branches (no upstream) and stashes are intentional in agent
-    /// workflows; they do not drive project attention or sidebar state.
     private var hasAttentionState: Bool {
         hasWorkingTreeChanges || aheadCount > 0 || behindCount > 0 || isDetachedHead
             || unpushedBranchCount > 0 || unmergedBranchCount > 0
@@ -272,8 +249,6 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         return .clean
     }
 
-    /// Git-state group for the sidebar. Unmerged branches alone are review
-    /// work, never Needs Action.
     var sidebarGroup: ProjectSidebarGroup {
         if classification == .unavailable {
             return .unavailable
@@ -340,22 +315,13 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         return result
     }
 
-    /// Separates facts. Pull-request details use " · " inside one fact, so
-    /// facts need a different separator to keep their boundaries visible.
     static let summaryFactSeparator = ", "
 
-    /// Full row summary for the tooltip and VoiceOver: the branch, when it is
-    /// not the default, then every fact in urgency order.
     var statusSummary: String {
         let parts = [branchSummary].compactMap(\.self) + summaryFacts
         return parts.isEmpty ? "Up to date" : parts.joined(separator: Self.summaryFactSeparator)
     }
 
-    /// Row facts, most urgent first, so truncation never hides which fact
-    /// matters. The status dot's cause always leads: failing checks,
-    /// then behind or diverged, then uncommitted changes. Every Needs Action
-    /// or In Review row states at least one fact, so it never reads
-    /// "Up to date".
     var summaryFacts: [String] {
         guard lastErrorDescription == nil else { return ["Unavailable"] }
         var facts: [String] = []
@@ -395,15 +361,11 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         return facts
     }
 
-    /// The current branch name for the tooltip and VoiceOver. The default
-    /// branch carries no information; detached and unknown are facts.
     var branchSummary: String? {
         guard !isDetachedHead, !branchName.isEmpty, !isDefaultBranch else { return nil }
         return branchName
     }
 
-    /// Branches with unpushed commits beyond the current branch. The current
-    /// branch's own commits are already stated as commits to push.
     var unpushedBranchSummary: String? {
         let otherUnpushed = unpushedBranchCount - (aheadCount > 0 ? 1 : 0)
         guard otherUnpushed > 0 else { return nil }
@@ -415,14 +377,10 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
         return "\(unmergedBranchCount) unmerged branch\(unmergedBranchCount == 1 ? "" : "es")"
     }
 
-    /// The current branch's own pull request. Repository totals live in the
-    /// badges, so the summary never restates them from the limited list.
     private var currentPullRequest: GitHubPullRequestSummary? {
         pullRequests.first(where: { $0.headBranch == branchName })
     }
 
-    /// One pull request when the current branch has none: the one needing
-    /// action first, so the row states a reason instead of a count.
     private var otherPullRequest: GitHubPullRequestSummary? {
         pullRequests.first(where: \.needsAction) ?? pullRequests.first
     }

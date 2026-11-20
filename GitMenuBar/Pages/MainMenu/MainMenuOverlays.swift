@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Window-level overlay combining the transient quota info presentation
-/// with the command palette overlay.
-/// Receives plain values and closures; reads no environment.
 struct MainMenuWindowOverlayView: View {
     let isTransientPresented: Bool
     let quotaSnapshot: UsageQuotaSnapshot?
@@ -36,8 +33,6 @@ struct MainMenuWindowOverlayView: View {
     }
 }
 
-/// Branch selector popover wiring. Branch state arrives as plain values;
-/// selection, merge, delete, rename, and creation effects arrive as closures.
 struct MainMenuBranchSelectorContent: View {
     @Bindable var branchDialogs: MainMenuBranchDialogs
     let errorCenter: MainMenuErrorCenter

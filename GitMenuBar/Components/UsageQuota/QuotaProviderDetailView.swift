@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Expanded options for one quota provider: API key (key providers only)
-/// and the two menu-bar metric menus. The first menu picks the primary
-/// metric; the second picks an optional additional metric.
 struct QuotaProviderDetailView: View {
     @Environment(UsageQuotaStore.self) private var usageQuotaStore
     @Environment(UsageQuotaPresentationPreferences.self) private var preferences

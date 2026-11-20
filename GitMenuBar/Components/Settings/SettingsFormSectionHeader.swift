@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// A native Form Section header with shared Settings icon and title anatomy.
 struct SettingsFormSectionHeader<Accessory: View>: View {
     private let title: String
     private let icon: LucideIconName?

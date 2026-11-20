@@ -311,7 +311,6 @@ struct AtomicCommitGroup: Identifiable, Equatable, Hashable {
         files.count + hunks.count
     }
 
-    /// One-commit-per-file fallback used when grouping is unavailable.
     static func fallbackGroups(for files: [WorkingTreeFile]) -> [AtomicCommitGroup] {
         files.map { AtomicCommitGroup(files: [$0.path], message: "chore: update \($0.fileName)") }
     }

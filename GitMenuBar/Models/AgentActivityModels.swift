@@ -1,6 +1,5 @@
 import Foundation
 
-/// Canonical identifier for coding agent harnesses.
 enum AgentHarnessID: String, CaseIterable, Sendable, Identifiable {
     case codex = "Codex"
     case antigravity = "Antigravity"
@@ -37,11 +36,8 @@ enum AgentHarnessID: String, CaseIterable, Sendable, Identifiable {
     }
 }
 
-/// Activity state for an agent within a project.
 enum AgentActivityStatus: Equatable, Sendable {
-    /// Actively running process with working directory matching the project.
     case running
-    /// Recent session activity recorded within the project.
     case recent(Date)
 
     var isRunning: Bool {
@@ -59,10 +55,7 @@ enum AgentActivityStatus: Equatable, Sendable {
     }
 }
 
-/// Snapshot of an agent's presence or activity on a specific project.
 struct AgentProjectActivity: Equatable, Identifiable, Sendable {
-    /// The agent a compact indicator shows: a running agent first, otherwise
-    /// the first listed one.
     static func lead(in activities: [Self]) -> Self? {
         activities.first(where: \.status.isRunning) ?? activities.first
     }

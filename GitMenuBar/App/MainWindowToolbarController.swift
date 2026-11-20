@@ -41,8 +41,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
     func install(in window: NSWindow) {
         self.window = window
 
-        // The title is a toolbar item so branch context can sit right beside it;
-        // the window title stays set for the Window menu and accessibility.
         window.titleVisibility = .hidden
         window.toolbarStyle = .unified
         window.titlebarSeparatorStyle = .none
@@ -86,7 +84,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         }
         desiredItems.append(Self.titleIdentifier)
         if let repositoryState {
-            // Title, sync status, and branch chip stay together; actions sit on the trailing edge.
             let items = repositoryState.repositoryItems
             let leading: [MainWindowToolbarRepositoryItem] = [.aheadBehind, .branchPicker].filter(items.contains)
             let trailing = items.filter { !leading.contains($0) }
@@ -131,9 +128,7 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
 
         if identifier == Self.titleIdentifier {
             let item = NSToolbarItem(itemIdentifier: identifier)
-            // Leading inset aligns the title with the content column below the toolbar.
             item.view = Self.inset(titleLabel, leading: WorkbenchMetrics.chipSpacing, trailing: WorkbenchMetrics.compactSpacing)
-            // A plain label, not a control: keep it out of the toolbar's glass item background.
             item.isBordered = false
             return item
         }
@@ -265,7 +260,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         return Self.inset(label, leading: 0, trailing: WorkbenchMetrics.compactSpacing)
     }
 
-    /// Wraps a toolbar view with horizontal insets; toolbar items add no spacing around custom views.
     private static func inset(_ view: NSView, leading: CGFloat, trailing: CGFloat) -> NSView {
         let stack = NSStackView(views: [view])
         stack.edgeInsets = NSEdgeInsets(top: 0, left: leading, bottom: 0, right: trailing)
@@ -342,8 +336,6 @@ final class MainWindowToolbarController: NSObject, NSToolbarDelegate {
         return Self.lucideImage(name, accessibilityDescription: accessibilityLabel)
     }
 
-    /// Catalog image for a toolbar item, keeping the VoiceOver description
-    /// the SF Symbol initializer used to take as a parameter.
     private static func lucideImage(
         _ name: LucideIconName,
         accessibilityDescription: String

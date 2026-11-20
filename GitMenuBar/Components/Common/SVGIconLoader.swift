@@ -1,6 +1,5 @@
 import AppKit
 
-/// Shared SVG loading for template icons rendered by SwiftUI on the main actor.
 @MainActor
 enum SVGIconLoader {
     private static let cache = NSCache<NSString, NSImage>()

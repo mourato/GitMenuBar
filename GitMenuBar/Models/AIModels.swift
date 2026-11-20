@@ -78,8 +78,6 @@ struct AIProviderCredentialID: Codable, Equatable, Hashable, Sendable, CustomStr
         }
     }
 
-    /// Fixed Keychain credential for quota providers that authenticate with a
-    /// stored API key. Returns nil for providers that use OAuth or local logins.
     init?(quotaProvider providerID: UsageProviderID) {
         switch providerID {
         case .opencodeGo:

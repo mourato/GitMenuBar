@@ -2,7 +2,6 @@ import AppKit
 import Combine
 import SwiftUI
 
-/// Observes the sidebar's host window without changing app-shell behavior.
 struct SidebarPresenceObserver: NSViewRepresentable {
     let onVisibilityChange: (Bool) -> Void
 
@@ -37,7 +36,6 @@ struct SidebarPresenceObserver: NSViewRepresentable {
         }
 
         func reportPresence() {
-            // Defer publication out of SwiftUI's representable update.
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 onVisibilityChange(window?.occlusionState.contains(.visible) == true)

@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Shared history-surface input, built once by the workbench and consumed by
-/// both the history inspector and the commit workspace. Replaces threading
-/// the same dozen values through the inspector dispatcher.
 struct SidePanelHistoryModel {
     let sections: [HistoryTimelineSectionModel]
     let selectedItemID: MainMenuSelectableItem?

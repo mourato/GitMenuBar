@@ -1,9 +1,5 @@
 import Foundation
 
-/// Owns the long-lived service graph for the menu-bar app shell.
-///
-/// `StatusBarController` remains responsible for AppKit window/status-item
-/// lifecycle; it consumes this graph instead of constructing it inline.
 @MainActor
 final class AppDependencies {
     let gitManager = GitManager()

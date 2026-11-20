@@ -327,10 +327,6 @@ struct WorkingTreeDiffTreeNodeView: View {
     }
 }
 
-/// Inserts and removes a working-tree row with the section transition. A path
-/// that exists in only one section shares geometry across sections, so staging
-/// it moves the row instead of fading one out and another in. Reduce Motion
-/// keeps the plain transition.
 struct WorkingTreeRowMotion: ViewModifier {
     let path: String
     let namespace: Namespace.ID?

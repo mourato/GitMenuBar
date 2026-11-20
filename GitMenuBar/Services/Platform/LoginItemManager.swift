@@ -1,8 +1,3 @@
-//
-//  LoginItemManager.swift
-//  GitMenuBar
-//
-
 import Foundation
 import Observation
 import ServiceManagement

@@ -70,7 +70,6 @@ final class ProjectMonitorStoreTests: XCTestCase {
         let path = RecentProjectsStore.normalize(root.path)
         projects.add(path)
 
-        // Real repository branch health the local refresh must not re-read.
         try "stashed\n".write(to: root.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
         try runGit(["stash", "push", "-qm", "seeded work"], in: root)
 
@@ -90,8 +89,6 @@ final class ProjectMonitorStoreTests: XCTestCase {
                 sessionQuerier: MockAgentSessionQuerier()
             )
         )
-        // Seed the previous snapshot (branch health + pull requests) through
-        // the DEBUG hook, then exercise the real local refresh path.
         monitor.refreshOperation = { project, _ in
             ProjectStatusSnapshot(
                 project: project, branchName: "main", isDetachedHead: false,
@@ -113,16 +110,12 @@ final class ProjectMonitorStoreTests: XCTestCase {
         XCTAssertEqual(seeded?.openPullRequestCount, 1)
         XCTAssertEqual(seeded?.openIssueCount, 2)
 
-        // Mutate the working tree and remove the stash, so both a fresh
-        // working-tree value and a fresh branch-health read would differ.
         try "changed\n".write(to: root.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
         try runGit(["stash", "clear"], in: root)
 
         monitor.refresh(path: path, includeRemoteData: false)
         await waitForObservedCondition { monitor.snapshots[path]?.unstagedCount == 1 }
 
-        // Working-tree values are live, but branch health and pull requests
-        // match the previous snapshot rather than the repository.
         XCTAssertEqual(monitor.snapshots[path]?.branchesWithoutUpstreamCount, seeded?.branchesWithoutUpstreamCount)
         XCTAssertEqual(monitor.snapshots[path]?.unpushedBranchCount, seeded?.unpushedBranchCount)
         XCTAssertEqual(monitor.snapshots[path]?.unmergedBranchCount, seeded?.unmergedBranchCount)
@@ -133,7 +126,6 @@ final class ProjectMonitorStoreTests: XCTestCase {
         XCTAssertEqual(monitor.snapshots[path]?.openIssueCount, seeded?.openIssueCount)
         XCTAssertNil(monitor.snapshots[path]?.lastErrorDescription)
 
-        // A full refresh still re-reads branch health and pull requests.
         monitor.refresh(path: path)
         await waitForObservedCondition { monitor.snapshots[path]?.stashCount == 0 }
         XCTAssertEqual(monitor.snapshots[path]?.pullRequests, [])

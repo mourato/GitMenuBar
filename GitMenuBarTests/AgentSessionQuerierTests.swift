@@ -19,8 +19,6 @@ final class AgentSessionQuerierTests: XCTestCase {
         try super.tearDownWithError()
     }
 
-    // MARK: - Filesystem & SQLite Session Tests
-
     func testClaudeAndCursorRecentDetectionFromFilesystem() async throws {
         let projectPath = "/Users/test/workspace/myApp"
         let fixedNow = Date(timeIntervalSince1970: 1_800_000_000)
@@ -284,8 +282,6 @@ final class AgentSessionQuerierTests: XCTestCase {
         let recentActivity = AgentProjectActivity(harness: .codex, status: .recent(Date()))
         XCTAssertEqual(recentActivity.accessibilityDescription, "Codex agent recent")
     }
-
-    // MARK: - SQLite Fixture Helpers
 
     private func createCodexFixtureDatabase(at url: URL, rows: [(cwd: String, updatedAt: Int64)]) throws {
         var db: OpaquePointer?

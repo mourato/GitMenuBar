@@ -57,8 +57,6 @@ final class AppCommandRouterTests: XCTestCase {
 
         let result = await coordinator.performSync()
 
-        // Behind-only fast-forwards without asking between merge, rebase, and a new branch.
-        // The empty test repository cannot pull, so the direct attempt fails cleanly.
         XCTAssertEqual(result, .failed)
         XCTAssertFalse(coordinator.showSyncOptions)
         XCTAssertFalse(coordinator.isExecutingPrimaryAction)
