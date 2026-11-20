@@ -71,7 +71,7 @@ struct GitHubPullRequestSummary: Equatable, Identifiable, Sendable {
         reviewState == .changesRequested || checksState == .failing
     }
 
-    var statusSummary: String {
+    var reviewSummary: String? {
         var parts: [String] = []
         if isDraft {
             parts.append("Draft")
@@ -86,6 +86,11 @@ struct GitHubPullRequestSummary: Equatable, Identifiable, Sendable {
         case .unknown:
             break
         }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    var statusSummary: String {
+        var parts = [reviewSummary].compactMap(\.self)
         switch checksState {
         case .passed:
             parts.append("CI passed")

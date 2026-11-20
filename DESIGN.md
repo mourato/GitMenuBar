@@ -59,21 +59,23 @@ and [ADR 0025](docs/adr/0025-lucide-interface-icon-pack.md) (Lucide icon pack).
 - Diff, warning, error, success, and quota colors are semantic. Color carries
   meaning, never decoration.
 - Sidebar status dots appear only when they carry meaning
-  (`ProjectStatusSnapshot.severity`): red for failing checks, diverged, or
-  behind; orange for local work at risk (uncommitted changes, or commits not
+  (`ProjectStatusSnapshot.severity`): red for failing checks or diverged;
+  orange for local work at risk (uncommitted changes, or commits not
   yet pushed on any branch). Any other project shows no dot,
   never a neutral or green one; the dot slot stays reserved so names align.
-  Unmerged branches and untracked files alone are not a warning, so some
-  rows (untracked-only, a pull request awaiting review) show no dot by
-  design. A row whose refresh failed
+  Behind alone is an update, not a failure: it shows no dot, and the
+  summary states it with a down arrow (`↓ 1 behind`). Unmerged branches and
+  untracked files alone are not a warning, so some rows (untracked-only, a
+  pull request awaiting review) show no dot by design. A row whose refresh failed
   shows no dot. Failing checks come from the listed pull requests only.
   The row summary leads with the dot's cause, so VoiceOver states it first.
 - GitHub open-total markers in the repository overview strip use
   `WorkbenchPalette.issueMarker()` (green) for issues and
   `WorkbenchPalette.pullRequestMarker()` (purple) for pull requests; the
   number beside them stays neutral. Projects sidebar markers and numbers both
-  use `.secondary`. The status dot and the running agent's green presence
-  dot are the row's only colors; harness icons stay `.secondary`.
+  use `.tertiary`, quieter than the summary. The status dot, the running
+  agent's green presence dot, and the summary's checks icon (green check,
+  red cross) are the row's only colors; harness icons stay `.secondary`.
 - The status-item strip uses template or semantic AppKit label color so it
   follows the menu bar's appearance.
 
@@ -163,33 +165,37 @@ corner style.
 - Projects sidebar groups follow the next action, from
   `ProjectStatusSnapshot.sidebarGroup` (`ProjectAttentionPriority`): Working
   (running agent), Needs Action (`requiresAction` and `updateAvailable`), In
-  Review (`review`: open pull requests, unmerged branches, detached HEAD), Up
+  Progress (`review`: open pull requests, unmerged branches, detached HEAD), Up
   to Date (`clean`, collapsible), and Unavailable. Unmerged branches alone
   never put a project in Needs Action. Review wins over behind, so a project
-  that is behind with an open pull request sits in In Review. Working exists
+  that is behind with an open pull request sits in In Progress. Working exists
   only while Show Agent Activity is on, and a running agent outranks every
   other group. Up to Date reuses the `isCleanProjectsGroupCollapsed` key.
-  Empty groups are hidden. Projects sidebar group headers show only their
-  title, in Title Case at `WorkbenchTypography.sectionLabel`, never
-  uppercase; they carry no count, so no number sits outside the row count
-  columns. The list hides its own background so the native sidebar column
+  Empty groups are hidden. Projects sidebar group headers show their title
+  in Title Case at `WorkbenchTypography.sectionLabel` in `.secondary`, never
+  uppercase. Only the collapsible Up to Date header carries a count, in
+  `.tertiary` right after its title, because collapsing hides its rows. The list hides its own background so the native sidebar column
   material shows through; there is no custom plate. Up to Date shows an
   always-visible chevron after its title (not the hover-only native
   disclosure), and VoiceOver reads its project count and state.
-- Projects sidebar row numbers (issue, pull-request, and extra-agent counts)
-  share `WorkbenchTypography.sidebarCount` with monospaced digits, and their
-  icons use `WorkbenchMetrics.sidebarInlineIconSize`. Rows show no change
+- Projects sidebar row numbers (unmerged-branch, issue, pull-request, and
+  extra-agent counts) sit on the name line and share
+  `WorkbenchTypography.sidebarCount` with monospaced digits, smaller than the
+  summary; their icons use `WorkbenchMetrics.sidebarMicroIconSize`. The agent
+  indicator keeps `sectionSpacing` from the count columns, so it never reads
+  as one of them. Rows show no change
   count; the orange dot and the summary state local work. Agents show as one
   indicator: the running (else most recent) agent's icon with its presence
   dot, plus `+N` for the others; the tooltip and VoiceOver list every agent.
-- Projects sidebar rows: a private GitHub repository shows a secondary lock
+- Projects sidebar rows: a private GitHub repository shows a `.tertiary` lock
+  at `WorkbenchMetrics.sidebarMicroIconSize`
   after its name (tooltip "Private repository"; VoiceOver reads "private
   repository" right after the name). Public or unknown visibility shows
   nothing. Visibility comes from the same `gh` totals read, so the lock
   clears when that read fails, together with the totals.
-  Every GitHub project can also show trailing Issue and Pull
-  Request totals in aligned Issues → Pull Requests columns, whether or not it
-  is selected. Each column reserves the widest total it shows; a column with no
+  Every project can show an unmerged-branch count, and every GitHub project
+  Issue and Pull Request totals, in aligned Branches → Issues → Pull Requests
+  columns, whether or not it is selected. Each column reserves the widest total it shows; a column with no
   totals disappears. A pull request alone keeps its own column. Counts come from the
   repository totals in the monitor snapshot, never from the 20-item
   pull-request detail list, and never change a project's health classification
@@ -197,8 +203,9 @@ corner style.
   that total. Large totals use the locale's compact notation (`1.3K`). An
   unread or failed count, or the last totals of a row whose refresh failed,
   shows a neutral `—`; non-GitHub remotes show no totals. Markers and numbers
-  both use `.secondary`. The project name uses the native body text style at
-  semibold; the status stays a secondary caption. When the row is too narrow,
+  both use `.tertiary`. The project name uses the native body text style at
+  medium weight; the summary line uses `WorkbenchTypography.detail` in
+  `.secondary` and takes the full row width below the name. When the row is too narrow,
   the totals hide before the name column drops below
   `WorkbenchMetrics.projectsRowTextMinimumWidth` at supported sidebar widths;
   VoiceOver still reads available totals. The row summary
@@ -208,11 +215,15 @@ corner style.
   failing checks → behind or diverged → uncommitted changes → commits to push
   and other unpushed branches → the current branch's pull request (or a
   foreign one) → unmerged branches → detached or unknown branch → stale.
+  Unmerged branches show in their count column, not in the visible line. A
+  pull request with passing checks shows a green check after its number
+  instead of `CI passed`; failing checks lead with a red cross and keep the
+  words.
   Facts join with `, `; ` · ` stays inside one fact (pull-request details,
   diverged counts). A second fact shows only when both fit. The row tooltip
   and VoiceOver read the full summary: a non-default branch name, then every
-  fact. A Needs Action or In Review row always states at least one fact, so it
-  never reads "Up to date".
+  fact. A row with no visible fact shows its branch and last activity
+  (`main · 19h ago`).
 - Repository overview strip: five cells in sidebar order. Positive counts use
   the strong value hierarchy; a known zero, `Clean`, `None`, and an unknown `—`
   share one quiet secondary weight, and an unknown value never becomes zero.
@@ -306,7 +317,9 @@ corner style.
   alerting window (session thresholds for Session, weekly thresholds for every
   other window) with the least remaining quota, else Session → Weekly →
   Monthly → the tightest model window. The choice ignores the
-  Remaining/Used style. A quiet window draws its meter in `.secondary`
+  Remaining/Used style. Provider icons stay `.secondary` until one of their
+  windows alerts, then take that alert color; providers sit `sectionSpacing`
+  apart. A quiet window draws its meter in `.secondary`
   and its percent at regular weight; only a window past its alert threshold
   gets color (orange or red) and a semibold percent. The `.bars` capsule
   keeps `quotaMeterWidth` and `quotaMeterHeight`, taller than Line's compact

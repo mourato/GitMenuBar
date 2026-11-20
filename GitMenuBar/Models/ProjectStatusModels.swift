@@ -34,7 +34,7 @@ enum ProjectSidebarGroup: CaseIterable, Equatable {
         switch self {
         case .working: "Working"
         case .needsAction: "Needs Action"
-        case .inReview: "In Review"
+        case .inReview: "In Progress"
         case .upToDate: "Up to Date"
         case .unavailable: "Unavailable"
         }
@@ -58,6 +58,45 @@ enum ProjectAttentionReason: Equatable {
     case missing
     case invalidRepository
     case error
+}
+
+enum ProjectSummaryFact: Equatable, Sendable {
+    case unavailable
+    case failingPullRequest(GitHubPullRequestSummary)
+    case diverged(ahead: Int, behind: Int)
+    case behind(Int)
+    case uncommittedChanges
+    case commitsToPush(Int)
+    case unpushedBranches(Int)
+    case pullRequest(GitHubPullRequestSummary)
+    case unmergedBranches(Int)
+    case detached
+    case unknownBranch
+    case staleWork
+
+    var spokenText: String {
+        switch self {
+        case .unavailable: "Unavailable"
+        case let .failingPullRequest(pullRequest), let .pullRequest(pullRequest):
+            "PR #\(pullRequest.number) \(pullRequest.statusSummary)"
+        case let .diverged(ahead, behind): "Diverged (\(ahead) ahead · \(behind) behind)"
+        case let .behind(count): "\(count) commit\(count == 1 ? "" : "s") behind"
+        case .uncommittedChanges: "Uncommitted changes"
+        case let .commitsToPush(count): "\(count) commit\(count == 1 ? "" : "s") to push"
+        case let .unpushedBranches(count): "\(count) branch\(count == 1 ? "" : "es") with unpushed commits"
+        case let .unmergedBranches(count): "\(count) unmerged branch\(count == 1 ? "" : "es")"
+        case .detached: "Detached"
+        case .unknownBranch: "Unknown branch"
+        case .staleWork: "Stale work"
+        }
+    }
+
+    var showsInSummaryLine: Bool {
+        if case .unmergedBranches = self {
+            return false
+        }
+        return true
+    }
 }
 
 enum ProjectAttentionSeverity: Equatable, Hashable, Sendable {
@@ -207,7 +246,7 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
 
     var severity: ProjectAttentionSeverity? {
         guard lastErrorDescription == nil else { return nil }
-        if behindCount > 0 || hasFailingChecks {
+        if hasFailingChecks || (behindCount > 0 && aheadCount > 0) {
             return .critical
         }
         if stagedCount > 0 || unstagedCount > 0 || aheadCount > 0 || unpushedBranchCount > 0 {
@@ -323,58 +362,69 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
     }
 
     var summaryFacts: [String] {
-        guard lastErrorDescription == nil else { return ["Unavailable"] }
-        var facts: [String] = []
+        facts.map(\.spokenText)
+    }
+
+    var visibleFacts: [ProjectSummaryFact] {
+        facts.filter(\.showsInSummaryLine)
+    }
+
+    var facts: [ProjectSummaryFact] {
+        guard lastErrorDescription == nil else { return [.unavailable] }
+        var facts: [ProjectSummaryFact] = []
         let failing = pullRequests.first { $0.headBranch == branchName && $0.checksState == .failing }
             ?? pullRequests.first { $0.checksState == .failing }
         if let failing {
-            facts.append(Self.pullRequestSummary(failing))
+            facts.append(.failingPullRequest(failing))
         }
         if behindCount > 0, aheadCount > 0 {
-            facts.append("Diverged (\(aheadCount) ahead · \(behindCount) behind)")
+            facts.append(.diverged(ahead: aheadCount, behind: behindCount))
         } else if behindCount > 0 {
-            facts.append("\(behindCount) commit\(behindCount == 1 ? "" : "s") behind")
+            facts.append(.behind(behindCount))
         }
         if hasWorkingTreeChanges {
-            facts.append("Uncommitted changes")
+            facts.append(.uncommittedChanges)
         }
         if aheadCount > 0, behindCount == 0 {
-            facts.append("\(aheadCount) commit\(aheadCount == 1 ? "" : "s") to push")
+            facts.append(.commitsToPush(aheadCount))
         }
-        if let unpushedBranchSummary {
-            facts.append(unpushedBranchSummary)
+        let otherUnpushed = unpushedBranchCount - (aheadCount > 0 ? 1 : 0)
+        if otherUnpushed > 0 {
+            facts.append(.unpushedBranches(otherUnpushed))
         }
         if let pullRequest = currentPullRequest ?? otherPullRequest, pullRequest != failing {
-            facts.append(Self.pullRequestSummary(pullRequest))
+            facts.append(.pullRequest(pullRequest))
         }
-        if let unmergedBranchSummary {
-            facts.append(unmergedBranchSummary)
+        if unmergedBranchCount > 0 {
+            facts.append(.unmergedBranches(unmergedBranchCount))
         }
         if isDetachedHead {
-            facts.append("Detached")
+            facts.append(.detached)
         } else if branchName.isEmpty {
-            facts.append("Unknown branch")
+            facts.append(.unknownBranch)
         }
         if isStale {
-            facts.append("Stale work")
+            facts.append(.staleWork)
         }
         return facts
+    }
+
+    func idleSummary(now: Date) -> String {
+        let age = lastActivityAt.map {
+            min($0, now).formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
+        }
+        let parts = [branchName.isEmpty ? nil : branchName, age].compactMap(\.self)
+        return parts.isEmpty ? "Up to date" : parts.joined(separator: " · ")
+    }
+
+    var unmergedBranchBadge: Int? {
+        guard lastErrorDescription == nil, unmergedBranchCount > 0 else { return nil }
+        return unmergedBranchCount
     }
 
     var branchSummary: String? {
         guard !isDetachedHead, !branchName.isEmpty, !isDefaultBranch else { return nil }
         return branchName
-    }
-
-    var unpushedBranchSummary: String? {
-        let otherUnpushed = unpushedBranchCount - (aheadCount > 0 ? 1 : 0)
-        guard otherUnpushed > 0 else { return nil }
-        return "\(otherUnpushed) branch\(otherUnpushed == 1 ? "" : "es") with unpushed commits"
-    }
-
-    var unmergedBranchSummary: String? {
-        guard unmergedBranchCount > 0 else { return nil }
-        return "\(unmergedBranchCount) unmerged branch\(unmergedBranchCount == 1 ? "" : "es")"
     }
 
     private var currentPullRequest: GitHubPullRequestSummary? {
@@ -383,9 +433,5 @@ struct ProjectStatusSnapshot: Equatable, Identifiable, Sendable {
 
     private var otherPullRequest: GitHubPullRequestSummary? {
         pullRequests.first(where: \.needsAction) ?? pullRequests.first
-    }
-
-    private static func pullRequestSummary(_ pullRequest: GitHubPullRequestSummary) -> String {
-        "PR #\(pullRequest.number) \(pullRequest.statusSummary)"
     }
 }

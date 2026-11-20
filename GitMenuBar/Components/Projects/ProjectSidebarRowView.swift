@@ -2,19 +2,21 @@ import AppKit
 import SwiftUI
 
 struct ProjectSidebarCountColumns: Equatable {
+    let branches: String?
     let issues: String?
     let pullRequests: String?
 
     static func guides(for snapshots: [ProjectStatusSnapshot]) -> Self {
         Self(
-            issues: widestText(snapshots.compactMap(\.openIssueBadge)),
-            pullRequests: widestText(snapshots.compactMap(\.openPullRequestBadge))
+            branches: widestText(snapshots.compactMap(\.unmergedBranchBadge).map { "\($0)" }),
+            issues: widestText(snapshots.compactMap(\.openIssueBadge).map(\.text)),
+            pullRequests: widestText(snapshots.compactMap(\.openPullRequestBadge).map(\.text))
         )
     }
 
-    private static func widestText(_ badges: [GitHubOpenCountBadge]) -> String? {
+    private static func widestText(_ texts: [String]) -> String? {
         let font = WorkbenchTypography.sidebarCountMeasurementFont
-        return Set(badges.map(\.text)).max {
+        return Set(texts).max {
             ($0 as NSString).size(withAttributes: [.font: font]).width
                 < ($1 as NSString).size(withAttributes: [.font: font]).width
         }
@@ -27,44 +29,40 @@ struct ProjectSidebarRowView: View {
     let showsAgentActivity: Bool
     let countColumns: ProjectSidebarCountColumns
 
+    private static let dotSize: CGFloat = 7
+
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            rowContent(showsOpenCountBadges: true)
-            rowContent(showsOpenCountBadges: false)
+        VStack(alignment: .leading, spacing: 2) {
+            ViewThatFits(in: .horizontal) {
+                titleLine(showsCounts: true)
+                titleLine(showsCounts: false)
+            }
+            summaryLine
+                .padding(.leading, Self.dotSize + WorkbenchMetrics.compactSpacing)
         }
+        .help(snapshot.statusSummary)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
     }
 
-    private func rowContent(showsOpenCountBadges: Bool) -> some View {
-        let facts = snapshot.summaryFacts
-        return HStack(spacing: WorkbenchMetrics.compactSpacing) {
+    private func titleLine(showsCounts: Bool) -> some View {
+        HStack(spacing: WorkbenchMetrics.compactSpacing) {
             Circle()
                 .fill(dotColor ?? .clear)
-                .frame(width: 7, height: 7)
+                .frame(width: Self.dotSize, height: Self.dotSize)
                 .fixedSize()
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: WorkbenchMetrics.microSpacing) {
-                    Text(snapshot.project.name)
-                        .font(WorkbenchTypography.projectName)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    if snapshot.gitHubStatus.isPrivate == true {
-                        LucideIconView(name: .lock, size: WorkbenchMetrics.sidebarInlineIconSize)
-                            .foregroundStyle(.secondary)
-                            .fixedSize()
-                            .help("Private repository")
-                    }
-                }
-                ViewThatFits(in: .horizontal) {
-                    if facts.count > 1 {
-                        summaryLine(facts.prefix(2).joined(separator: ProjectStatusSnapshot.summaryFactSeparator))
-                            .fixedSize()
-                    }
-                    summaryLine(facts.first ?? snapshot.statusSummary)
-                        .truncationMode(.tail)
+            HStack(spacing: WorkbenchMetrics.microSpacing) {
+                Text(snapshot.project.name)
+                    .font(WorkbenchTypography.projectName)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if snapshot.gitHubStatus.isPrivate == true {
+                    LucideIconView(name: .lock, size: WorkbenchMetrics.sidebarMicroIconSize)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize()
+                        .help("Private repository")
                 }
             }
             .frame(
@@ -74,7 +72,7 @@ struct ProjectSidebarRowView: View {
                 alignment: .leading
             )
 
-            HStack(spacing: WorkbenchMetrics.microSpacing) {
+            HStack(spacing: WorkbenchMetrics.sectionSpacing) {
                 if showsAgentActivity, let lead = leadAgentActivity {
                     HStack(spacing: WorkbenchMetrics.microSpacing) {
                         AgentBadgeIconView(activity: lead, size: WorkbenchMetrics.sidebarInlineIconSize)
@@ -86,21 +84,70 @@ struct ProjectSidebarRowView: View {
                     .fixedSize(horizontal: true, vertical: false)
                 }
 
-                if showsOpenCountBadges {
-                    openCountBadges
+                if showsCounts {
+                    countSlots
                 }
             }
             .layoutPriority(1)
             .fixedSize(horizontal: true, vertical: false)
         }
-        .help(snapshot.statusSummary)
     }
 
-    private func summaryLine(_ text: String) -> some View {
+    private var summaryLine: some View {
+        let facts = snapshot.visibleFacts
+        return ViewThatFits(in: .horizontal) {
+            if facts.count > 1 {
+                HStack(spacing: 0) {
+                    factLabel(facts[0])
+                    summaryText(ProjectStatusSnapshot.summaryFactSeparator)
+                    factLabel(facts[1])
+                }
+                .fixedSize()
+            }
+            if let first = facts.first {
+                factLabel(first)
+            } else {
+                summaryText(snapshot.idleSummary(now: Date()))
+                    .truncationMode(.tail)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func factLabel(_ fact: ProjectSummaryFact) -> some View {
+        switch fact {
+        case let .behind(count):
+            HStack(spacing: WorkbenchMetrics.microSpacing) {
+                summaryIcon(.arrowDown, tint: .secondary)
+                summaryText("\(count) behind")
+            }
+        case .failingPullRequest:
+            HStack(spacing: WorkbenchMetrics.microSpacing) {
+                summaryIcon(.x, tint: .red)
+                summaryText(fact.spokenText)
+            }
+        case let .pullRequest(pullRequest) where pullRequest.checksState == .passed:
+            HStack(spacing: WorkbenchMetrics.microSpacing) {
+                summaryText(["PR #\(pullRequest.number)", pullRequest.reviewSummary].compactMap(\.self).joined(separator: " "))
+                summaryIcon(.check, tint: .green)
+            }
+        default:
+            summaryText(fact.spokenText)
+        }
+    }
+
+    private func summaryText(_ text: String) -> some View {
         Text(text)
-            .font(.caption2)
+            .font(WorkbenchTypography.detail)
             .foregroundStyle(.secondary)
             .lineLimit(1)
+    }
+
+    private func summaryIcon(_ name: LucideIconName, tint: Color) -> some View {
+        LucideIconView(name: name, size: WorkbenchMetrics.sidebarMicroIconSize)
+            .foregroundStyle(tint)
+            .fixedSize()
+            .accessibilityHidden(true)
     }
 
     private var dotColor: Color? {
@@ -118,47 +165,58 @@ struct ProjectSidebarRowView: View {
     private func countText(_ text: String) -> some View {
         Text(text)
             .font(WorkbenchTypography.sidebarCount)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.tertiary)
             .monospacedDigit()
             .lineLimit(1)
     }
 
     @ViewBuilder
-    private var openCountBadges: some View {
-        if countColumns.issues != nil || countColumns.pullRequests != nil {
+    private var countSlots: some View {
+        if countColumns.branches != nil || countColumns.issues != nil || countColumns.pullRequests != nil {
             HStack(spacing: WorkbenchMetrics.microSpacing) {
+                if let guide = countColumns.branches {
+                    countSlot(
+                        text: snapshot.unmergedBranchBadge.map { "\($0)" },
+                        help: snapshot.unmergedBranchBadge.map { ProjectSummaryFact.unmergedBranches($0).spokenText },
+                        role: .branches,
+                        guide: guide
+                    )
+                }
                 if let guide = countColumns.issues {
-                    openCountSlot(snapshot.openIssueBadge, role: .issues, guide: guide)
+                    countSlot(snapshot.openIssueBadge, role: .issues, guide: guide)
                 }
                 if let guide = countColumns.pullRequests {
-                    openCountSlot(snapshot.openPullRequestBadge, role: .pullRequests, guide: guide)
+                    countSlot(snapshot.openPullRequestBadge, role: .pullRequests, guide: guide)
                 }
             }
         }
     }
 
-    private func openCountSlot(
-        _ badge: GitHubOpenCountBadge?,
-        role: GitHubCountRole,
-        guide: String
-    ) -> some View {
+    private func countSlot(_ badge: GitHubOpenCountBadge?, role: SidebarCountRole, guide: String) -> some View {
+        countSlot(
+            text: badge?.text,
+            help: badge?.accessibilityDescription(singularNoun: role.noun),
+            role: role,
+            guide: guide
+        )
+    }
+
+    private func countSlot(text: String?, help: String?, role: SidebarCountRole, guide: String) -> some View {
         ZStack(alignment: .leading) {
-            openCountLabel(role: role, text: guide)
+            countLabel(role: role, text: guide)
                 .hidden()
-                .accessibilityHidden(true)
-            if let badge {
-                openCountLabel(role: role, text: badge.text)
-                    .help(badge.accessibilityDescription(singularNoun: role.noun))
+            if let text {
+                countLabel(role: role, text: text)
+                    .help(help ?? "")
             }
         }
         .accessibilityHidden(true)
     }
 
-    private func openCountLabel(role: GitHubCountRole, text: String) -> some View {
+    private func countLabel(role: SidebarCountRole, text: String) -> some View {
         HStack(spacing: WorkbenchMetrics.microSpacing) {
-            LucideIconView(name: role.symbol, size: WorkbenchMetrics.sidebarInlineIconSize)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
+            LucideIconView(name: role.symbol, size: WorkbenchMetrics.sidebarMicroIconSize)
+                .foregroundStyle(.tertiary)
             countText(text)
         }
     }
@@ -191,12 +249,14 @@ struct ProjectSidebarRowView: View {
     }
 }
 
-private enum GitHubCountRole {
+private enum SidebarCountRole {
+    case branches
     case issues
     case pullRequests
 
     var symbol: LucideIconName {
         switch self {
+        case .branches: .gitBranch
         case .issues: .circleDot
         case .pullRequests: .gitPullRequest
         }
@@ -204,6 +264,7 @@ private enum GitHubCountRole {
 
     var noun: String {
         switch self {
+        case .branches: "unmerged branch"
         case .issues: "issue"
         case .pullRequests: "pull request"
         }

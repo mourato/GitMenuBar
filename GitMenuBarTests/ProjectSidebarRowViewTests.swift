@@ -29,6 +29,17 @@ final class ProjectSidebarRowViewTests: XCTestCase {
         XCTAssertNil(localGuides.pullRequests)
     }
 
+    func testBranchColumnShowsOnlyWhenARowHasUnmergedBranches() {
+        let none = ProjectSidebarCountColumns.guides(for: [makeSnapshot()])
+        XCTAssertNil(none.branches)
+
+        let some = ProjectSidebarCountColumns.guides(for: [
+            makeSnapshot(unmergedBranchCount: 3),
+            makeSnapshot(unmergedBranchCount: 12)
+        ])
+        XCTAssertEqual(some.branches, "12")
+    }
+
     func testZeroHidesAColumnWhileUnavailableKeepsANeutralGuide() {
         let zero = ProjectSidebarCountColumns.guides(for: [makeSnapshot(openIssueCount: 0, openPullRequestCount: 0)])
         XCTAssertNil(zero.issues)
