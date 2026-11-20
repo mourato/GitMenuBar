@@ -30,3 +30,4 @@ Every implementation plan must contain an `## Execution profile` section.
 | Changing animation or motion | [docs/agents/motion.md](docs/agents/motion.md) |
 | Choosing or studying a reference app | [docs/agents/reference-apps.md](docs/agents/reference-apps.md) |
 | Toolchain or concurrency questions | [ADR 0007](docs/adr/0007-swift-6-4-agent-baseline.md) |
+| Why a line of code is the way it is (source has no comments) | [ADR 0026](docs/adr/0026-code-level-decisions.md) |
