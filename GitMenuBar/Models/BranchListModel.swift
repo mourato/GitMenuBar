@@ -1,8 +1,5 @@
 import Foundation
 
-// MARK: - Branch Filter
-
-/// Filter options for branch list filtering chips in the Branches side panel.
 enum BranchFilter: String, CaseIterable, Hashable, Sendable {
     case all
     case mergeable
@@ -19,9 +16,6 @@ enum BranchFilter: String, CaseIterable, Hashable, Sendable {
     }
 }
 
-// MARK: - Cleanup Badge Status
-
-/// Status representation for branch cleanup badges.
 enum BranchCleanupBadgeStatus: Hashable, Sendable {
     case merged
     case dirty
@@ -42,9 +36,6 @@ enum BranchCleanupBadgeStatus: Hashable, Sendable {
     }
 }
 
-// MARK: - Branch List Row
-
-/// Model representing a single local branch row in the side panel.
 struct BranchListRow: Identifiable, Hashable, Sendable {
     let branch: BranchInfo
     let cleanupStatus: BranchCleanupBadgeStatus?
@@ -63,15 +54,6 @@ struct BranchListRow: Identifiable, Hashable, Sendable {
     }
 }
 
-// MARK: - Remote Branch Group
-
-/// Model representing a grouped collection of remote branches sharing a path segment prefix.
-///
-/// **Grouping Rule**:
-/// Remote branches are grouped by common path segment prefix when 2 or more branches share it.
-/// If all candidate branches within a group share additional path segments (e.g. `dependabot/npm_and_yarn/...`),
-/// the group title includes all shared segments up to the last shared `/` directory segment before the branch leaf.
-/// Singletons (only 1 branch with a given prefix) and branches without `/` remain ungrouped.
 struct RemoteBranchGroup: Identifiable, Hashable, Sendable {
     let name: String
     let branches: [BranchInfo]
@@ -81,9 +63,6 @@ struct RemoteBranchGroup: Identifiable, Hashable, Sendable {
     }
 }
 
-// MARK: - Resolved Branch List Model
-
-/// Resolved state produced by `BranchListResolver`.
 struct BranchListModel: Equatable, Sendable {
     let local: [BranchListRow]
     let visible: [BranchListRow]
@@ -103,9 +82,6 @@ struct BranchListModel: Equatable, Sendable {
     }
 }
 
-// MARK: - Branch List Resolver
-
-/// Pure resolver computing the branch list display model from branch data and worktree snapshots.
 enum BranchListResolver {
     private static let staleThresholdSeconds: TimeInterval = 10 * 24 * 60 * 60
 
@@ -381,8 +357,6 @@ enum BranchListResolver {
         return commonSegments.joined(separator: "/")
     }
 }
-
-// MARK: - Snapshot Index Helper
 
 private struct SnapshotIndex {
     private let worktreesByBranch: [String: GitWorktreeCleanupInfo]

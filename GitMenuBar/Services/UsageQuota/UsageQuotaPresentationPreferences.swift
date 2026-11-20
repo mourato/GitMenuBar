@@ -11,9 +11,6 @@ final class UsageQuotaPresentationPreferences {
         case circular
         case text
 
-        /// Line is the default compact style: a stored raw value that is absent
-        /// or no longer known falls back to it, while every valid stored value
-        /// keeps its earlier choice.
         static let fallback = MeterStyle.line
 
         static func resolved(from rawValue: String?) -> MeterStyle {
@@ -156,7 +153,6 @@ final class UsageQuotaPresentationPreferences {
     private var metricsByProvider: [UsageProviderID: [Metric]]
     private let keyStore: any AIAPIKeyStore // justified: shared Keychain reader backing the quota key presence cache
 
-    /// Last-4 suffixes of stored quota API keys, by provider. Absent means no stored key.
     private(set) var quotaKeySuffixes: [UsageProviderID: String] = [:]
 
     init(
@@ -191,8 +187,6 @@ final class UsageQuotaPresentationPreferences {
         refreshQuotaKeyPresence()
     }
 
-    /// Re-reads stored quota API keys into `quotaKeySuffixes`. Call after any
-    /// keychain mutation this object does not perform itself.
     func refreshQuotaKeyPresence() {
         var suffixes: [UsageProviderID: String] = [:]
         for providerID in UsageProviderID.allCases {
@@ -256,8 +250,6 @@ final class UsageQuotaPresentationPreferences {
         providerOrder = order
     }
 
-    /// Drop `providerID` onto `target`'s slot: below it when dragged down,
-    /// above it when dragged up.
     func moveProvider(_ providerID: UsageProviderID, to target: UsageProviderID) {
         let order = orderedProviderIDs
         guard let from = order.firstIndex(of: providerID),
@@ -276,13 +268,11 @@ final class UsageQuotaPresentationPreferences {
         providerOrder = order
     }
 
-    /// Commit freeform "50, 80" input; ignores input with no usable numbers.
     func setSessionWarningThresholds(from text: String) {
         guard let parsed = UsageQuotaPace.parseThresholds(text) else { return }
         setSessionWarningThresholds(parsed)
     }
 
-    /// Commit freeform "50, 80" input; ignores input with no usable numbers.
     func setWeeklyWarningThresholds(from text: String) {
         guard let parsed = UsageQuotaPace.parseThresholds(text) else { return }
         setWeeklyWarningThresholds(parsed)

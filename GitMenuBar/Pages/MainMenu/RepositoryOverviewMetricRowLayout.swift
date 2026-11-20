@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Equal-width metric cells with one divider slot between them. In compact
-/// density the five metrics share one row without dividers.
 struct RepositoryOverviewMetricRowLayout: Layout {
     let density: RepositoryOverviewMetricDensity
 

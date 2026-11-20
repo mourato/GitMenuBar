@@ -13,15 +13,10 @@ private extension Settings.PaneIdentifier {
 final class AppSettingsWindowController {
     private enum Constants {
         static let minimumContentSize = NSSize(width: 560, height: 440)
-        /// Settings `.toolbarItems` items fill a ~32pt box with non-symbol
-        /// images, while SF Symbols draw at ~17-20pt. Keep the canvas at 32
-        /// and the glyph near the symbol optical size; calibrate 17-20.
         static let toolbarIconCanvas: CGFloat = 32
         static let toolbarIconGlyph: CGFloat = 18
     }
 
-    /// Catalog icon for a Settings pane, keeping the VoiceOver description
-    /// the SF Symbol initializer used to take as a parameter.
     private static func toolbarIcon(
         _ name: LucideIconName,
         accessibilityDescription: String

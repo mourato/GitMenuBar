@@ -19,10 +19,6 @@ func writeCodexSessionFixture(to homeDirectory: URL, now: Date) throws {
     )
 }
 
-/// Fetch-counting provider whose fetch blocks until `openGate` is called, so
-/// tests can hold a refresh cycle in flight deterministically. All mutable
-/// state is guarded by one lock; `@unchecked` covers the lock-protected
-/// cross-task state of this test-only fake.
 final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
     enum CancellationMode: Sendable {
         case autoResume
@@ -101,8 +97,6 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
 
         await withTaskCancellationHandler {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                // Register the continuation before notifying the test so opening
-                // the gate cannot race with pending-state installation.
                 let state = lock.withLock { () -> (
                     hook: (@Sendable () -> Void)?,
                     immediate: CheckedContinuation<Void, Never>?
@@ -136,7 +130,6 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
         return snapshotForRequest
     }
 
-    /// Releases a specific fetch's continuation.
     func openGate(forFetch fetchNumber: Int) {
         let continuation = lock.withLock {
             pendingByFetch.removeValue(forKey: fetchNumber)
@@ -144,7 +137,6 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
         continuation?.resume()
     }
 
-    /// Releases all pending fetches; later cycles still block until opened.
     func openGate() {
         let continuations = lock.withLock {
             let all = Array(pendingByFetch.values)
@@ -175,8 +167,6 @@ final class GatedUsageQuotaProvider: UsageQuotaProviding, @unchecked Sendable {
     }
 }
 
-/// Counts pricing loads so tests can observe whether the cost scan ran.
-/// `@unchecked` covers the lock-protected counters of this test-only fake.
 final class CountingPricingLoader: @unchecked Sendable {
     private let lock = NSLock()
     private var storedLoadCount = 0
@@ -201,7 +191,6 @@ final class CountingPricingLoader: @unchecked Sendable {
     }
 }
 
-/// Holds a cost scan at pricing resolution so tests can order it against a quota refresh.
 final class GatedPricingLoader: @unchecked Sendable {
     private let lock = NSLock()
     private var storedLoadCount = 0

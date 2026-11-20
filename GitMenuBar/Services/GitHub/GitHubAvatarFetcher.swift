@@ -1,8 +1,5 @@
 import Foundation
 
-/// Fetches commit author avatars from the public GitHub API without any
-/// authentication. Private repositories return nil; callers fall back to
-/// initials, which is also the result when the network is unavailable.
 enum GitHubAvatarFetcher {
     private static let cache = CommitAvatarCache()
 

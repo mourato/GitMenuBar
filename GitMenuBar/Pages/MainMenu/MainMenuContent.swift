@@ -1,8 +1,3 @@
-//
-//  MainMenuContent.swift
-//  GitMenuBar
-//
-
 import SwiftUI
 
 extension MainMenuView {
@@ -172,8 +167,6 @@ extension MainMenuView {
         )
     }
 
-    /// Presents the trailing side panel while a contextual selection exists on
-    /// the main route. Dismissing clears the selection.
     private var isSidePanelPresented: Binding<Bool> {
         Binding(
             get: {

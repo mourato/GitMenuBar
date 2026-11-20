@@ -1,23 +1,16 @@
 import SwiftUI
 
-// Presentation model for the repository overview strip. The view owns the
-// values; these types keep the order, groups, and emphasis readable.
-
 enum RepositoryOverviewMetricDensity: Equatable {
     case wide
     case medium
     case compact
 }
 
-/// Local Git metrics lead the strip; the GitHub metrics follow after the group
-/// divider, matching the Projects sidebar's Issues → Pull Requests order.
 enum RepositoryOverviewMetricGroup {
     case localGit
     case github
 }
 
-/// The side panel a metric opens. GitHub metrics open on GitHub instead,
-/// so those cells never own the panel's active state.
 enum RepositoryOverviewMetricPanel {
     case changes
     case branches

@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - Primary
-
 extension View {
     func workbenchPrimary(isMuted: Bool = false) -> some View {
         controlSize(.large)
@@ -10,15 +8,11 @@ extension View {
     }
 }
 
-// MARK: - Secondary
-
 extension View {
     func workbenchSecondary() -> some View {
         buttonStyle(.bordered)
     }
 }
-
-// MARK: - Ghost
 
 extension View {
     func workbenchGhost() -> some View {
@@ -27,8 +21,6 @@ extension View {
     }
 }
 
-// MARK: - Icon
-
 extension View {
     func workbenchIcon() -> some View {
         buttonStyle(.borderless)
@@ -36,8 +28,6 @@ extension View {
             .frame(minWidth: WorkbenchMetrics.iconHitTarget, minHeight: WorkbenchMetrics.iconHitTarget)
     }
 }
-
-// MARK: - Row
 
 extension View {
     func workbenchRow(isSelected: Bool = false) -> some View {
@@ -52,8 +42,6 @@ extension View {
     }
 }
 
-// MARK: - Destructive row
-
 extension View {
     func workbenchDestructiveRow() -> some View {
         buttonStyle(.borderless)
@@ -63,8 +51,6 @@ extension View {
             .contentShape(RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
     }
 }
-
-// MARK: - Previews
 
 #Preview("Workbench Button Variants") {
     WorkbenchButtonVariantsPreviewMatrix()

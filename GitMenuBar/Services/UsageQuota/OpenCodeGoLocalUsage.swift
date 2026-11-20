@@ -1,17 +1,6 @@
 import Foundation
 import SQLite3
 
-/// Device-local OpenCode Go cost estimate from `~/.local/share/opencode/opencode.db`.
-///
-/// Ported from CodexBar's `OpenCodeGoLocalUsageReader` (MIT, steipete) with one
-/// deliberate simplification: CodexBar materializes every usage row and keeps a
-/// 4 MiB cache; Fase 1 aggregates inside SQLite (`SUM`/`MIN` per window) so a
-/// large local history never enters Swift memory. SQL filters, the
-/// `opencode-go` provider predicate, legacy `message`/`part` + v2
-/// `session_message` coverage, migrated-message dedup, and the fixed
-/// $12/$30/$60 denominators are unchanged. Like CodexBar, these denominators
-/// are fixed estimates, not detected subscription tiers, and local history
-/// covers only this device.
 enum OpenCodeGoLocalUsage {
     private static let fiveHours: TimeInterval = 5 * 60 * 60
     private static let week: TimeInterval = 7 * 24 * 60 * 60
@@ -31,8 +20,6 @@ enum OpenCodeGoLocalUsage {
         return aggregate(databaseURL: databaseURL, now: now, month: month)
     }
 
-    // MARK: - Paths (mirrors CodexBar's XDG_DATA_HOME / OPENCODE_DB lookup)
-
     private static func databaseURL(homeDirectory: URL, environment: [String: String]) -> URL? {
         let dataHome = environment["XDG_DATA_HOME"].flatMap { path in
             path.hasPrefix("/") ? URL(fileURLWithPath: path, isDirectory: true) : nil
@@ -45,8 +32,6 @@ enum OpenCodeGoLocalUsage {
         }
         return directory.appendingPathComponent(filename)
     }
-
-    // MARK: - SQLite
 
     private static func monthAnchorBounds(databaseURL: URL, now: Date) -> (startMs: Int64, endMs: Int64)? {
         guard let anchorMs = minCreatedMs(databaseURL: databaseURL) else {
@@ -95,7 +80,6 @@ enum OpenCodeGoLocalUsage {
                 hasV2: tables.contains("session_message")
             )
             guard let union else { return nil }
-            // One scan buckets all three windows; params keep Swift memory flat.
             let sql = """
             WITH all_usage AS (\(union))
             SELECT
@@ -192,8 +176,6 @@ enum OpenCodeGoLocalUsage {
         return value > 0 ? value : nil
     }
 
-    // MARK: - Usage union (same predicates as CodexBar)
-
     private static func usageUnionSQL(hasMessages: Bool, hasParts: Bool, hasV2: Bool) -> String? {
         guard hasMessages || hasV2 else { return nil }
         let legacy = hasMessages
@@ -250,8 +232,6 @@ enum OpenCodeGoLocalUsage {
             SELECT 1 FROM legacy_usage m WHERE m.messageID = s.id
               AND m.createdMs > 0 AND m.cost >= 0)
     """
-
-    // MARK: - Windows (same boundaries as CodexBar)
 
     private static func percent(used: Double, limit: Double) -> Double {
         guard used.isFinite, limit > 0 else { return 0 }

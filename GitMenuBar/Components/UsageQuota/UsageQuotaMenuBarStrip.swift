@@ -1,9 +1,5 @@
 import SwiftUI
 
-// Compact quota strip shared by the status item and the Settings preview.
-// The Line style keeps one stacked reading per selected figure; Bars, Circular,
-// and Text keep their earlier compact renderings.
-
 struct UsageQuotaMenuBarStrip: View {
     let groups: [UsageQuotaMenuBarGroup]
     let style: UsageQuotaPresentationPreferences.MeterStyle
@@ -110,8 +106,6 @@ struct UsageQuotaMenuBarStrip: View {
         }
     }
 
-    /// One compact Line reading: a token-sized meter when the figure has a
-    /// proportion, otherwise its text. No hatch or marker ticks at this size.
     @ViewBuilder
     private func readingView(_ reading: UsageQuotaMenuBarReading) -> some View {
         if let fraction = reading.fraction {

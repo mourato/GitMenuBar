@@ -1,8 +1,3 @@
-//
-//  GitBranchService+Queries.swift
-//  GitMenuBar
-//
-
 import Foundation
 
 extension GitBranchService {
@@ -140,8 +135,6 @@ extension GitBranchService {
         return infos.filter { !$0.isRemote || $0.remoteName != "origin" || !localNames.contains($0.name) }
     }
 
-    /// Local branches with changes not yet in the selected local default branch.
-    /// This is Git reachability plus cherry-pick equivalence, not GitHub pull-request merge status.
     func listLocalBranchesNotMergedIntoDefaultAsync(session: GitRefreshSession? = nil) async -> [String] {
         let repositoryPath = session?.repositoryPath ?? storedRepoPath
         guard !repositoryPath.isEmpty else {

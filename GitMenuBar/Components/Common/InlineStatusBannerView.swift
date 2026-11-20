@@ -29,7 +29,6 @@ struct InlineStatusBannerView: View {
                 if let title = banner.title {
                     Text(title)
                         .font(.headline)
-                        // Mirrors legibilityWeight; headline defaults to semibold already.
                         // swiftlint:disable:next swiftui_font_weight
                         .fontWeight(legibilityWeight == .bold ? .bold : .semibold)
                 }

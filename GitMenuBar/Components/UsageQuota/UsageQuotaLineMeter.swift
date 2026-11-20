@@ -1,25 +1,15 @@
 import SwiftUI
 
-/// Continuous quota meter used by the detail card rows: rounded track,
-/// severity fill, deficit hatch, warning ticks, workday boundaries, and the
-/// pace marker. Every number comes from `UsageQuotaPace.Reading`; this view
-/// only draws, and the row that owns it carries the accessibility text.
 struct UsageQuotaLineMeter: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.displayScale) private var displayScale
 
-    /// Consumed fraction of the window as displayed (remaining or used).
     let fillPercent: Double
-    /// Fill color for the row's existing alert severity; `normal` stays neutral.
     let tint: Color
-    /// Expected position from `UsageQuotaPace.Reading.pacePercent`; nil hides the marker.
     let pacePercent: Double?
     let paceDeficit: Bool
-    /// Warning names remain consumed percents even in Remaining display.
     let warningMarkerPercents: [Double]
     let workdayMarkerPercents: [Double]
-    /// Menu-bar scale: smaller bar and marker, no hatch or marker ticks that
-    /// stop being legible at this size.
     var compact = false
 
     private static let regularMarkerOverhang: CGFloat = 2
@@ -133,9 +123,6 @@ struct UsageQuotaLineMeter: View {
         .accessibilityHidden(true)
     }
 
-    /// Hatch only in a real deficit: the gap between the fill end and a valid
-    /// expected-usage marker, clamped to the bar. Reserve and on-track readings
-    /// return nil, and the marker must exist before anything can look behind.
     static func hatchRange(
         fillPercent: Double,
         pacePercent: Double?,
@@ -152,7 +139,6 @@ struct UsageQuotaLineMeter: View {
         min(100, max(0, value))
     }
 
-    /// Markers at the bar edges would double the track border, so they stay hidden.
     static func interiorMarkerPercents(_ values: [Double]) -> [Double] {
         values
             .map(clampedPercent)

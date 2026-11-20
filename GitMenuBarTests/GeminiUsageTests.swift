@@ -34,12 +34,10 @@ final class GeminiUsageTests: XCTestCase {
         let quotas = try GeminiUsageParsing.parseAPIResponse(data)
 
         XCTAssertEqual(quotas.count, 2)
-        // Check gemini-2.5-pro picked lowest remaining fraction (0.70 -> 70%)
         let proQuota = try XCTUnwrap(quotas.first { $0.modelId == "gemini-2.5-pro" })
         XCTAssertEqual(proQuota.percentLeft, 70)
         XCTAssertNotNil(proQuota.resetAt)
 
-        // Check gemini-2.5-flash
         let flashQuota = try XCTUnwrap(quotas.first { $0.modelId == "gemini-2.5-flash" })
         XCTAssertEqual(flashQuota.percentLeft, 95)
         XCTAssertNotNil(flashQuota.resetAt)

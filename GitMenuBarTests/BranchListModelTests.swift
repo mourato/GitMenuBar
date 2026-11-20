@@ -4,8 +4,6 @@ import XCTest
 final class BranchListModelTests: XCTestCase {
     private let fixedNow = Date(timeIntervalSince1970: 1_700_000_000)
 
-    // MARK: - Test Helpers
-
     private func makeLocalBranch(
         name: String,
         isCurrent: Bool = false,
@@ -82,8 +80,6 @@ final class BranchListModelTests: XCTestCase {
         )
     }
 
-    // MARK: - Tests
-
     func testCurrentBranchLeadsLocalRows() {
         let current = makeLocalBranch(name: "main", isCurrent: true)
         let other = makeLocalBranch(name: "feature", isCurrent: false)
@@ -102,31 +98,25 @@ final class BranchListModelTests: XCTestCase {
         let daySeconds: TimeInterval = 86400
         let tenDaysSeconds: TimeInterval = 10 * daySeconds
 
-        // 10d - 1s -> not stale
         let tenDaysMinus1s = fixedNow.addingTimeInterval(-(tenDaysSeconds - 1))
         let branch10dMinus1s = makeLocalBranch(name: "b-10d-minus-1s", lastCommitDate: tenDaysMinus1s)
         XCTAssertFalse(BranchListResolver.isStale(branch: branch10dMinus1s, now: fixedNow))
 
-        // 10d exact boundary -> not stale
         let tenDaysExact = fixedNow.addingTimeInterval(-tenDaysSeconds)
         let branch10d = makeLocalBranch(name: "b-10d", lastCommitDate: tenDaysExact)
         XCTAssertFalse(BranchListResolver.isStale(branch: branch10d, now: fixedNow))
 
-        // 10d + 1s -> stale
         let tenDaysPlus1s = fixedNow.addingTimeInterval(-(tenDaysSeconds + 1))
         let branch10dPlus1s = makeLocalBranch(name: "b-10d-plus-1s", lastCommitDate: tenDaysPlus1s)
         XCTAssertTrue(BranchListResolver.isStale(branch: branch10dPlus1s, now: fixedNow))
 
-        // Current branch with 30 days old commit -> NEVER stale
         let thirtyDaysAgo = fixedNow.addingTimeInterval(-30 * daySeconds)
         let currentOld = makeLocalBranch(name: "main", isCurrent: true, lastCommitDate: thirtyDaysAgo)
         XCTAssertFalse(BranchListResolver.isStale(branch: currentOld, now: fixedNow))
 
-        // Remote branch with 30 days old commit -> NEVER stale
         let remoteOld = makeRemoteBranch(name: "origin/old-feature", lastCommitDate: thirtyDaysAgo)
         XCTAssertFalse(BranchListResolver.isStale(branch: remoteOld, now: fixedNow))
 
-        // Branch with nil date -> not stale
         let noDate = makeLocalBranch(name: "no-date", lastCommitDate: nil)
         XCTAssertFalse(BranchListResolver.isStale(branch: noDate, now: fixedNow))
 
@@ -319,10 +309,8 @@ final class BranchListModelTests: XCTestCase {
     }
 
     func testReadyAndBlockedCountsDifferBetweenManagementUnitsAndCleanupUnits() {
-        // Disparity: cleanupUnits has only 1 unit (ready: 1, blocked: 0)
         let cleanupOnlyUnit = makeCleanupUnit(branchName: "cleanup-only", branchStatus: .mergedIntoDefault)
 
-        // managementUnits has 5 units:
         let readyAlpha = makeCleanupUnit(branchName: "ready-alpha", branchStatus: .mergedIntoDefault)
         let cleanWt = makeWorktreeInfo(branchName: "ready-beta", path: "/tmp/wt-clean", status: .eligible)
         let readyBeta = makeCleanupUnit(branchName: "ready-beta", branchStatus: .mergedIntoDefault, worktreeInfo: cleanWt)
@@ -339,7 +327,6 @@ final class BranchListModelTests: XCTestCase {
         XCTAssertEqual(snapshot.cleanupUnits.count, 1)
         XCTAssertEqual(snapshot.managementUnits.count, 5)
 
-        // 1. Without query: derived from managementUnits (ready: 3, blocked: 2)
         let modelNoQuery = BranchListResolver.resolve(branches: [], snapshot: snapshot, now: fixedNow)
         XCTAssertEqual(modelNoQuery.readyCount, 3)
         XCTAssertEqual(modelNoQuery.blockedCount, 2)
@@ -347,33 +334,28 @@ final class BranchListModelTests: XCTestCase {
         XCTAssertEqual(snapshotCounts.ready, 3)
         XCTAssertEqual(snapshotCounts.blocked, 2)
 
-        // 2. Query with surrounding spaces matching ready units: "   ready   " -> 2 ready, 0 blocked
         let modelReady = BranchListResolver.resolve(branches: [], snapshot: snapshot, query: "   ready   ", now: fixedNow)
         XCTAssertEqual(modelReady.readyCount, 2)
         XCTAssertEqual(modelReady.blockedCount, 0)
         XCTAssertEqual(snapshot.cleanupCounts(matching: "   ready   ").ready, 2)
         XCTAssertEqual(snapshot.cleanupCounts(matching: "   ready   ").blocked, 0)
 
-        // 3. Query with surrounding spaces matching blocked units: "   blocked   " -> 0 ready, 2 blocked
         let modelBlocked = BranchListResolver.resolve(branches: [], snapshot: snapshot, query: "   blocked   ", now: fixedNow)
         XCTAssertEqual(modelBlocked.readyCount, 0)
         XCTAssertEqual(modelBlocked.blockedCount, 2)
         XCTAssertEqual(snapshot.cleanupCounts(matching: "   blocked   ").ready, 0)
         XCTAssertEqual(snapshot.cleanupCounts(matching: "   blocked   ").blocked, 2)
 
-        // 4. Query matching worktree path with spaces: "   special-project-path   " -> 1 ready, 0 blocked
         let modelPath = BranchListResolver.resolve(branches: [], snapshot: snapshot, query: "   special-project-path   ", now: fixedNow)
         XCTAssertEqual(modelPath.readyCount, 1)
         XCTAssertEqual(modelPath.blockedCount, 0)
         XCTAssertEqual(snapshot.cleanupCounts(matching: "   special-project-path   ").ready, 1)
         XCTAssertEqual(snapshot.cleanupCounts(matching: "   special-project-path   ").blocked, 0)
 
-        // 5. Query matching nothing with surrounding spaces
         let modelEmpty = BranchListResolver.resolve(branches: [], snapshot: snapshot, query: "   none   ", now: fixedNow)
         XCTAssertEqual(modelEmpty.readyCount, 0)
         XCTAssertEqual(modelEmpty.blockedCount, 0)
 
-        // 6. Nil snapshot gives zero counts
         let nilModel = BranchListResolver.resolve(branches: [], snapshot: nil, now: fixedNow)
         XCTAssertEqual(nilModel.readyCount, 0)
         XCTAssertEqual(nilModel.blockedCount, 0)

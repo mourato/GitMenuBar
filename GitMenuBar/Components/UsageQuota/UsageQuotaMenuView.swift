@@ -116,7 +116,6 @@ struct UsageQuotaMenuView: View {
         return rows
     }
 
-    /// `creditValueText` stays a secondary line; reset credits fold into the plan pill.
     private func footnoteText(for snapshot: UsageQuotaSnapshot) -> String? {
         guard creditsMetricSelected(for: snapshot), snapshot.resetCreditsAvailable == nil else { return nil }
         return snapshot.creditValueText
@@ -135,8 +134,6 @@ struct UsageQuotaMenuBarGroup: Equatable, Identifiable {
     let providerID: UsageProviderID
     let values: [String]
     let fractions: [Double]
-    /// Same order as `values`, each carrying the displayed fill and pace marker
-    /// so the Line strip draws from the window instead of parsing the text.
     let readings: [UsageQuotaMenuBarReading]
 
     var id: UsageProviderID {
@@ -144,8 +141,6 @@ struct UsageQuotaMenuBarGroup: Equatable, Identifiable {
     }
 }
 
-/// One compact strip reading. `fraction` is nil for figures that have no
-/// proportion to draw, such as a credit balance or a reset count.
 struct UsageQuotaMenuBarReading: Equatable, Sendable {
     let compactValue: String
     let fraction: Double?
@@ -201,8 +196,6 @@ enum UsageQuotaMenuPresentation {
         }
     }
 
-    /// Compact strip reading from a window. Thresholds stay empty because the
-    /// compact meter draws no warning ticks; only fill and pace travel.
     @MainActor
     private static func barReading(
         compactValue: String,
@@ -234,9 +227,6 @@ enum UsageQuotaMenuPresentation {
         )
     }
 
-    /// Strip eligibility shared with the settings status pill: an exhausted
-    /// weekly window hides the provider, otherwise at least one selected
-    /// figure must resolve (model windows alone qualify when metrics exist).
     static func isEligible(
         snapshot: UsageQuotaSnapshot,
         selectedMetrics: [UsageQuotaPresentationPreferences.Metric]
@@ -307,7 +297,6 @@ struct UsageQuotaMenuReading {
     let value: String
     let compactValue: String
     let fraction: Double?
-    /// Window that produced the reading; nil for credits and resets.
     let window: UsageWindow?
 }
 

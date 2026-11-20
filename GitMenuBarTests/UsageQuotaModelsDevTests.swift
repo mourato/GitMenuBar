@@ -73,7 +73,6 @@ final class UsageQuotaModelsDevTests: XCTestCase {
         XCTAssertEqual(model.cost?.input, 2)
         XCTAssertEqual(model.cost?.contextOver200K?.output, 15)
 
-        // Provider-prefixed IDs resolve through the candidate list.
         let prefixed = try XCTUnwrap(catalog.model(providerID: "openai", rawModelID: "openai/gpt-6.1-sol"))
         XCTAssertEqual(prefixed.id, "gpt-6.1-sol")
 
@@ -92,8 +91,6 @@ final class UsageQuotaModelsDevTests: XCTestCase {
     }
 
     func testCodexCostPrefersCatalogOverBundledTable() throws {
-        // Catalog prices gpt-5.6-luna at $99/M in and out; the bundled table
-        // says input 2e-7 / output 1.2e-6. The catalog must win.
         let catalog = try makeCatalog()
         let cost = try XCTUnwrap(UsageQuotaAPIPricing.codexCostUSD(
             model: "gpt-5.6-luna",
@@ -107,7 +104,6 @@ final class UsageQuotaModelsDevTests: XCTestCase {
     }
 
     func testCodexCostAppliesCatalogLongContextRates() throws {
-        // The explicit tier threshold takes precedence over the legacy 200K block.
         let catalog = try makeCatalog()
         let cost = try XCTUnwrap(UsageQuotaAPIPricing.codexCostUSD(
             model: "gpt-6.1-sol",
@@ -149,7 +145,6 @@ final class UsageQuotaModelsDevTests: XCTestCase {
     }
 
     func testClaudeCostUsesCatalogRates() throws {
-        // claude-test-1: input $3/M, output $15/M, read $0.3/M, write $3.75/M.
         let catalog = try makeCatalog()
         let cost = try XCTUnwrap(UsageQuotaAPIPricing.claudeCostUSD(
             model: "claude-test-1",
@@ -175,8 +170,6 @@ final class UsageQuotaModelsDevTests: XCTestCase {
         )
         XCTAssertNotNil(first.catalog)
         XCTAssertNotEqual(first.token, UsageQuotaModelsDevStore.PricingSource.bundled.token)
-
-        // Beyond the TTL a failing fetch must keep serving the cached catalog.
 
         let stale = await UsageQuotaModelsDevStore(cacheRoot: root).loadOrFetch(
             now: fetchedAt.addingTimeInterval(UsageQuotaModelsDevStore.ttl + 60),

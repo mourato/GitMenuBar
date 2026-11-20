@@ -224,10 +224,6 @@ final class AICommitCoordinator {
         }
     }
 
-    /// Quota-section lifecycle for fixed credentials shared with AI providers
-    /// (OpenRouter). Writes the Keychain item and syncs the stored-key flag on
-    /// every AI provider that resolves to the same credential, so generation
-    /// readiness follows the saved key.
     @discardableResult
     func saveQuotaAPIKey(_ apiKey: String, for credentialID: AIProviderCredentialID) -> Result<Void, Error> {
         let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)

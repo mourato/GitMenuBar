@@ -287,11 +287,8 @@ final class ProjectStatusReaderTests: XCTestCase {
     func testLocalModePreservesLastKnownHealthAndSkipsFreshReads() throws {
         let root = try createTemporaryGitRepository(testName: #function)
         defer { try? FileManager.default.removeItem(at: root) }
-        // Stash real work so a fresh branch-health read disagrees with the
-        // values passed through the local mode.
         try "stashed\n".write(to: root.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
         try runGit(["stash", "push", "-qm", "seeded work"], in: root)
-        // A live working-tree change the local read must still report.
         try "changed\n".write(to: root.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
 
         let pullRequest = GitHubPullRequestSummary(
@@ -324,8 +321,6 @@ final class ProjectStatusReaderTests: XCTestCase {
             )
         )
 
-        // Last known branch health is carried through instead of re-read
-        // (the repository itself has 1 stash and 1 branch without upstream).
         XCTAssertEqual(local.branchesWithoutUpstreamCount, 9)
         XCTAssertEqual(local.unpushedBranchCount, 8)
         XCTAssertEqual(local.unmergedBranchCount, 7)
@@ -335,11 +330,9 @@ final class ProjectStatusReaderTests: XCTestCase {
         XCTAssertEqual(local.openPullRequestCount, 1)
         XCTAssertEqual(local.openIssueCount, 2)
         XCTAssertNil(local.lastErrorDescription)
-        // Status-derived working-tree values and the line diff stay live.
         XCTAssertEqual(local.unstagedCount, 1)
         XCTAssertEqual(local.lineDiff, LineDiffStats(added: 1, removed: 1))
 
-        // The same repository read remotely still performs a fresh health read.
         let remote = reader.read(
             project: ProjectReference(path: root.path),
             includeLineDiff: false,

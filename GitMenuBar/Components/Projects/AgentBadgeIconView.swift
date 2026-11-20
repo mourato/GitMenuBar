@@ -1,7 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Compact visual badge representing an active or recent AI coding agent on a project.
 struct AgentBadgeIconView: View {
     let activity: AgentProjectActivity
     var size: CGFloat = 16
@@ -38,7 +37,6 @@ struct AgentBadgeIconView: View {
         }
     }
 
-    /// Neutral like the sidebar counts; the green dot alone marks a running agent.
     private var iconTint: Color {
         .secondary
     }

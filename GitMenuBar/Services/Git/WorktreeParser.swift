@@ -1,8 +1,3 @@
-//
-//  WorktreeParser.swift
-//  GitMenuBar
-//
-
 import Foundation
 
 struct WorktreeParser {

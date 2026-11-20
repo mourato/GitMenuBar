@@ -3,7 +3,6 @@ import XCTest
 
 final class UsageQuotaFormattingTests: XCTestCase {
     func testAlertLevelStaysNormalBelowFirstThreshold() {
-        // 62% left is 38% used: below the 50 threshold.
         XCTAssertEqual(
             UsageQuotaFormatting.alertLevel(remainingPercent: 62, thresholds: [50, 80]),
             .normal
@@ -11,7 +10,6 @@ final class UsageQuotaFormattingTests: XCTestCase {
     }
 
     func testAlertLevelWarnsAtFirstThresholdAndErrorsAtSecond() {
-        // Thresholds compare against used percent: 50% used warns, 80% used errors.
         XCTAssertEqual(UsageQuotaFormatting.alertLevel(remainingPercent: 50, thresholds: [50, 80]), .warning)
         XCTAssertEqual(UsageQuotaFormatting.alertLevel(remainingPercent: 30, thresholds: [50, 80]), .warning)
         XCTAssertEqual(UsageQuotaFormatting.alertLevel(remainingPercent: 20, thresholds: [50, 80]), .error)

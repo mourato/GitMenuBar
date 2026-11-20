@@ -45,8 +45,6 @@ struct OpenRouterUsageProvider: UsageQuotaProviding {
             let (data, response) = try await urlSession.data(for: request)
             let http = response as? HTTPURLResponse
             if http?.statusCode == 401 {
-                // The stored key was rejected; drop the in-memory copy so the next
-                // refresh reads the keychain again.
                 keyStore.invalidateCachedCredentials()
             }
             guard http.map({ 200 ... 299 ~= $0.statusCode }) == true,

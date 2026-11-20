@@ -2,8 +2,6 @@
 import XCTest
 
 final class ProjectOpenCountBadgeTests: XCTestCase {
-    // MARK: - Known zero vs loading vs unavailable
-
     func testKnownZeroHidesBadgesWhileUnknownStatesRemainVisible() {
         let zero = makeSnapshot(
             gitHubStatus: GitHubProjectStatus(
@@ -48,11 +46,7 @@ final class ProjectOpenCountBadgeTests: XCTestCase {
         )
     }
 
-    // MARK: - Real totals beat the limited detail list
-
     func testLargeTotalsIgnoreTheLimitedPullRequestDetailList() {
-        // GitHubPullRequestStatusReader stops the detail list at 20; the badges
-        // must show the repository total instead.
         let details = (1 ... 20).map(Self.pullRequest(number:))
         let snapshot = makeSnapshot(
             gitHubStatus: GitHubProjectStatus(
@@ -69,8 +63,6 @@ final class ProjectOpenCountBadgeTests: XCTestCase {
 
     func testFourDigitTotalsStayCompact() {
         let badge = GitHubOpenCountBadge.known(1284)
-        // Compact notation follows the user's locale (1.3K, 1,3 mil), so
-        // compare with the same formatter instead of a fixed length.
         XCTAssertEqual(badge.text, 1284.formatted(.number.notation(.compactName)))
         XCTAssertNotEqual(badge.text, "1284")
         XCTAssertEqual(badge.accessibilityDescription(singularNoun: "issue"), "1284 open issues")
@@ -89,8 +81,6 @@ final class ProjectOpenCountBadgeTests: XCTestCase {
     }
 
     func testOpenTotalsDoNotChangeGitHealthClassification() {
-        // Counts are GitHub facts; they never move a repository between the
-        // sidebar's Working, Needs Action, In Review, Up to Date, or Unavailable groups.
         let known = makeSnapshot(
             gitHubStatus: GitHubProjectStatus(
                 pullRequests: [], openPullRequestCount: 34, openIssueCount: 128, unavailableReason: nil
@@ -102,8 +92,6 @@ final class ProjectOpenCountBadgeTests: XCTestCase {
         XCTAssertEqual(known.classification, unread.classification)
         XCTAssertEqual(known.attentionPriority, unread.attentionPriority)
     }
-
-    // MARK: - Failures never read as zero
 
     func testUnavailableCountsFallBackToNeitherZeroNorTheDetailListSize() {
         let snapshot = makeSnapshot(
@@ -121,7 +109,6 @@ final class ProjectOpenCountBadgeTests: XCTestCase {
     }
 
     func testPartialFailureKeepsTheCountsThatWereRead() {
-        // Counts read while the PR detail list failed: totals stay real.
         let countsOnly = makeSnapshot(
             gitHubStatus: GitHubProjectStatus(
                 pullRequests: [], openPullRequestCount: 21, openIssueCount: 4, unavailableReason: nil
@@ -130,8 +117,6 @@ final class ProjectOpenCountBadgeTests: XCTestCase {
         XCTAssertEqual(countsOnly.openPullRequestBadge, .known(21))
         XCTAssertEqual(countsOnly.openIssueBadge, .known(4))
     }
-
-    // MARK: - Non-GitHub repositories
 
     func testNonGitHubRemoteShowsNoBadgesAndKeepsLocalHealth() {
         let snapshot = makeSnapshot(
@@ -145,8 +130,6 @@ final class ProjectOpenCountBadgeTests: XCTestCase {
         XCTAssertNil(snapshot.openPullRequestBadge)
         XCTAssertEqual(snapshot.classification, .clean)
     }
-
-    // MARK: - Existing monitor cycle
 
     @MainActor
     func testBadgesFollowTheExistingMonitorRefreshCycle() async throws {
@@ -175,8 +158,6 @@ final class ProjectOpenCountBadgeTests: XCTestCase {
         XCTAssertNil(monitor.snapshots[path]?.openIssueBadge)
         XCTAssertEqual(monitor.snapshots[path]?.openPullRequestBadge, .known(3))
 
-        // A later cycle with a failed GitHub read replaces the totals with
-        // their unavailable state instead of keeping stale zeros.
         monitor.refreshOperation = { project, _ in
             Self.makeSnapshot(
                 project: project,
@@ -193,8 +174,6 @@ final class ProjectOpenCountBadgeTests: XCTestCase {
         XCTAssertEqual(monitor.snapshots[path]?.openIssueBadge, .unavailable)
         XCTAssertEqual(monitor.snapshots[path]?.openPullRequestBadge, .unavailable)
     }
-
-    // MARK: - Helpers
 
     private func makeSnapshot(
         gitHubStatus: GitHubProjectStatus,

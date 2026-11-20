@@ -14,8 +14,6 @@ enum HapticFeedback {
     }
 
     private static func perform(_ pattern: NSHapticFeedbackManager.FeedbackPattern) {
-        // AppKit's default performer selects the current input device and may
-        // suppress feedback when hardware or user settings do not support it.
         NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .default)
     }
 }

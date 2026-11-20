@@ -71,7 +71,6 @@ final class MonitoredProjectFileEventRelay: Sendable {
     }
 }
 
-// FSEventStream's C callback has six parameters by API contract.
 // swiftlint:disable function_parameter_count
 private func monitoredProjectFileWatcherCallback(
     _: FSEventStreamRef,
@@ -102,8 +101,6 @@ private func monitoredProjectFileWatcherCallback(
 
 // swiftlint:enable function_parameter_count
 
-/// Lifecycle methods are called by the Main Actor-owned monitor store.
-/// The FSEvents callback only reads the immutable context retained by the stream.
 final class MonitoredProjectFileWatcher {
     typealias EventHandler = @Sendable ([String], Bool) -> Void
 

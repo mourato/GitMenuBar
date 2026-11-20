@@ -1,8 +1,3 @@
-//
-//  UpdateChecker.swift
-//  GitMenuBar
-//
-
 import AppKit
 import Foundation
 
@@ -33,9 +28,7 @@ final class UpdateChecker {
                 if let update = try await fetchUpdateIfAvailable() {
                     presentUpdateAlert(update: update)
                 }
-            } catch {
-                // Silent failure on launch; don't interrupt user experience.
-            }
+            } catch {}
         }
     }
 

@@ -1,8 +1,6 @@
 import Foundation
 import SQLite3
 
-/// Reads Cursor IDE session tokens from the local VS Code SQLite state database.
-/// Tokens are read fresh on each call and must never be persisted by callers.
 enum CursorAuthTokenReader {
     static let accessTokenKey = "cursorAuth/accessToken"
 

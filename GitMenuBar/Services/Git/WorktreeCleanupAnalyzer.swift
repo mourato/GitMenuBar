@@ -1,8 +1,3 @@
-//
-//  WorktreeCleanupAnalyzer.swift
-//  GitMenuBar
-//
-
 import Foundation
 
 struct GitWorktreeAnalysisInput {
@@ -202,8 +197,6 @@ struct WorktreeCleanupAnalyzer {
         URL(fileURLWithPath: path).standardizedFileURL.path
     }
 }
-
-// MARK: - Cleanup units
 
 extension WorktreeCleanupAnalyzer {
     static func cleanupUnits(

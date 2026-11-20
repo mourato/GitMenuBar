@@ -56,11 +56,7 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
         )
     }
 
-    // MARK: - Mandatory acceptance cases
-
     func testCriticalWeeklyWinsOverQuietSession() throws {
-        // Session 76% left is 24% used (below 50): quiet.
-        // Weekly 22% left is 78% used (past 50): warning.
         let resolved = try XCTUnwrap(resolve(snapshot(session: 76, weekly: 22)))
 
         XCTAssertEqual(resolved.window.remainingPercent, 22)
@@ -71,8 +67,6 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
     }
 
     func testCriticalSessionWinsOverWarningWeekly() throws {
-        // Session 10% left is 90% used: error. Weekly 22% left: warning.
-        // The least remaining quota wins.
         let resolved = try XCTUnwrap(resolve(snapshot(session: 10, weekly: 22)))
 
         XCTAssertEqual(resolved.window.remainingPercent, 10)
@@ -135,14 +129,10 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
         )))
     }
 
-    // MARK: - Ties and order
-
     func testTiesHonorDeclaredOrder() throws {
-        // Both windows error (80% used); Session comes first.
         let sessionFirst = try XCTUnwrap(resolve(snapshot(session: 20, weekly: 20)))
         XCTAssertEqual(sessionFirst.kind, .session)
 
-        // Both models warn (60% used); the provided order wins.
         let modelsFirst = try XCTUnwrap(resolve(snapshot(models: [40, 40])))
         XCTAssertEqual(modelsFirst.title, "Model0")
         XCTAssertEqual(modelsFirst.window.remainingPercent, 40)
@@ -160,23 +150,16 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
         XCTAssertEqual(modelFallback.title, "Model1")
         XCTAssertEqual(modelFallback.window.remainingPercent, 60)
 
-        // Quiet model ties keep the provided order.
         let modelTieFallback = try XCTUnwrap(resolve(snapshot(models: [70, 70])))
         XCTAssertEqual(modelTieFallback.title, "Model0")
 
-        // Monthly keeps its own fallback slot ahead of the tightest model.
         let monthlyOverModel = try XCTUnwrap(resolve(snapshot(monthly: 70, models: [60])))
         XCTAssertEqual(monthlyOverModel.kind, .monthly)
         XCTAssertEqual(monthlyOverModel.title, "30-day")
         XCTAssertEqual(monthlyOverModel.window.remainingPercent, 70)
     }
 
-    // MARK: - Per-window thresholds
-
     func testSessionThresholdsDoNotLeakIntoWeekly() throws {
-        // Session 20% left is 80% used: quiet under session [90], but would
-        // warn under the weekly thresholds. Weekly 40% left is 60% used:
-        // warning under weekly [50]. Weekly must win despite more remaining.
         let resolved = try XCTUnwrap(resolve(
             snapshot(session: 20, weekly: 40),
             sessionThresholds: [90],
@@ -188,9 +171,6 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
     }
 
     func testWeeklyThresholdsDoNotLeakIntoSession() throws {
-        // Weekly 10% left is 90% used: quiet under weekly [95], but would
-        // error under the session thresholds. Session 40% left is 60% used:
-        // warning under session [50]. Session must win despite more remaining.
         let resolved = try XCTUnwrap(resolve(
             snapshot(session: 40, weekly: 10),
             sessionThresholds: [50],
@@ -207,8 +187,6 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
         XCTAssertEqual(resolved.kind, .weekly)
         XCTAssertTrue(resolved.isExhausted)
     }
-
-    // MARK: - Used/Remaining invariance
 
     func testChoiceIgnoresValueStyle() throws {
         let remaining = try XCTUnwrap(resolve(snapshot(session: 76, weekly: 22)))
@@ -232,8 +210,6 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
             "78%"
         )
     }
-
-    // MARK: - Shared tooltip and VoiceOver string
 
     private func reading(
         for resolved: UsageQuotaSummaryResolution,
@@ -259,7 +235,6 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
             isStale: false
         )
 
-        // 22% left with 36% expected used against 78% actual: 42% in deficit.
         XCTAssertEqual(
             description,
             "Claude Code, Weekly, 22% left, 42% in deficit, Runs out in 16m"
@@ -321,8 +296,6 @@ final class UsageQuotaSummaryResolutionTests: XCTestCase {
 
         XCTAssertEqual(description, "Claude Code, Weekly, 22% left")
     }
-
-    // MARK: - Selected metrics
 
     private func resolveSelected(
         _ snapshot: UsageQuotaSnapshot,

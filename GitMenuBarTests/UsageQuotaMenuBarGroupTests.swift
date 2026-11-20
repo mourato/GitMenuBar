@@ -1,9 +1,6 @@
 @testable import GitMenuBar
 import XCTest
 
-/// Compact-strip group and eligibility contract: which providers reach the
-/// menu bar, what each group transports, and how value style and pace reach
-/// the Line readings.
 final class UsageQuotaMenuBarGroupTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_750_000_000)
 

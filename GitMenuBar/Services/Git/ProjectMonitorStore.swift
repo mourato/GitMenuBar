@@ -4,7 +4,6 @@ import Observation
 @MainActor
 @Observable
 final class ProjectMonitorStore {
-    /// Immutable value data is filled once on the worker and only crosses back to the actor.
     private struct SeedResult: Sendable {
         let candidates: [ProjectReference]
         let snapshots: [String: ProjectStatusSnapshot]
@@ -284,7 +283,6 @@ final class ProjectMonitorStore {
         let next = Dictionary(uniqueKeysWithValues: monitoredProjects.map { project in
             (project.path, activitiesByPath[project.path] ?? [])
         })
-        // Skip unchanged polls so the sidebar does not re-render every cycle.
         guard next != agentActivities else { return }
         agentActivities = next
     }
@@ -296,8 +294,6 @@ final class ProjectMonitorStore {
         let generation = refreshGeneration
         isRefreshing = true
         let runner = runner
-        // Local reads carry the previous snapshot's GitHub status and branch
-        // health through the mode so file-driven refreshes skip those reads.
         let lastKnownDataByPath: [String: (gitHubStatus: GitHubProjectStatus, branchHealth: ProjectStatusReader.BranchHealth)] = Dictionary(uniqueKeysWithValues: projects.map { project in
             let previous = snapshots[project.path]
             let branchHealth = ProjectStatusReader.BranchHealth(

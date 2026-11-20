@@ -168,7 +168,6 @@ final class ChatGPTSubscriptionManager: ChatGPTCommitGenerating {
             await loadModels()
             scheduleIdleShutdown()
         } catch is CancellationError {
-            // Cancellation has no verdict; the caller owns the replacement state.
         } catch let error as AIError {
             account = nil
             models = []

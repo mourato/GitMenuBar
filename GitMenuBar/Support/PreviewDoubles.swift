@@ -1,8 +1,6 @@
 #if DEBUG
     import Foundation
 
-    // MARK: - InMemoryAIAPIKeyStore
-
     final class InMemoryAIAPIKeyStore: AIAPIKeyStore, @unchecked Sendable {
         private var storage: [AIProviderCredentialID: String]
 
@@ -48,8 +46,6 @@
             storage.removeValue(forKey: credentialID)
         }
     }
-
-    // MARK: - InMemoryAIProviderStoreDataStore
 
     final class InMemoryAIProviderStoreDataStore: AIProviderStoreDataStore {
         private var values: [String: Data] = [:]

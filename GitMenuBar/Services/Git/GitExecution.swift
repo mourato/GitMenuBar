@@ -1,14 +1,5 @@
-//
-//  GitExecution.swift
-//  GitMenuBar
-//
-
 import Foundation
 
-/// Shared git-execution primitives reused by `GitManager` and the services it
-/// delegates to (e.g. `GitBranchService`). Centralizing them removes the
-/// copy-pasted `runOnBackground` / `publishOnMainActor` / `executeGitCommand`
-/// helpers that previously lived in each type.
 enum GitExecution {
     static func runOnBackground<T: Sendable>(_ operation: @escaping @Sendable () -> T) async -> T {
         await withCheckedContinuation { continuation in

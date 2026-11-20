@@ -63,8 +63,6 @@ final class MainMenuSnapshotModel {
     }
 
     func isCommitInFuture(_ commit: Commit, gitManager: GitManager) -> Bool {
-        // A commit is "future" if it appears before current HEAD in the history list
-        // This happens when we've reset backwards
         guard let currentIndex = gitManager.commitHistory.firstIndex(where: { $0.id == gitManager.currentHash }),
               let commitIndex = gitManager.commitHistory.firstIndex(where: { $0.id == commit.id })
         else {

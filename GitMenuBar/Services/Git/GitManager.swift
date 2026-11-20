@@ -1,8 +1,3 @@
-//
-//  GitManager.swift
-//  GitMenuBar
-//
-
 import AppKit
 import Combine
 import Foundation
@@ -23,8 +18,6 @@ class GitManager {
     var uncommittedFiles: [String] = []
     var stagedFiles: [WorkingTreeFile] = []
     var changedFiles: [WorkingTreeFile] = []
-    /// Files the next commit includes: the staged files, or every change when
-    /// nothing is staged, because committing then stages all changes first.
     var commitFileCount: Int {
         stagedFiles.isEmpty ? changedFiles.count : stagedFiles.count
     }
@@ -484,9 +477,6 @@ class GitManager {
         }
     }
 
-    // MARK: - Atomic Commits
-
-    /// Returns a map of changed file path -> diff string for all changed files.
     func diffForChangedFilesAsync() async -> [String: String] {
         await atomicCommitService.diffForFilesAsync(files: changedFiles, scope: .unstaged)
     }
@@ -505,7 +495,6 @@ class GitManager {
         return result
     }
 
-    /// Execute the full atomic commit sequence for a list of groups.
     func performAtomicCommitsAsync(
         groups: [AtomicCommitGroup],
         progress: ((Int, Int) -> Void)? = nil
@@ -541,8 +530,6 @@ class GitManager {
             context: context
         )
     }
-
-    // MARK: - Repository Initialization
 
     func isGitRepository(at path: String) -> Bool {
         repositoryInitService.isGitRepository(at: path)
@@ -825,8 +812,6 @@ class GitManager {
         guard await branchMatches(context) else { return .failure(staleOperationError()) }
         return await workingTreeService.unstageFileAsync(path: path, in: context.repositoryPath)
     }
-
-    // MARK: - File Operations
 
     func openFile(path: String) {
         let fullPath = (storedRepoPath as NSString).appendingPathComponent(path)
@@ -1174,8 +1159,6 @@ class GitManager {
         )
     }
 
-    // MARK: - Branch Management
-
     func fetchBranchesAsync() async {
         await branchService.fetchBranchesAsync()
     }
@@ -1183,8 +1166,6 @@ class GitManager {
     private func fetchBranchesAsync(session: GitRefreshSession?) async {
         await branchService.fetchBranchesAsync(session: session)
     }
-
-    // MARK: - Branch Management (Local/Remote separation)
 
     func pushBranchToRemoteAsync(branchName: String) async -> Result<Void, Error> {
         await branchService.pushBranchToRemoteAsync(branchName: branchName)

@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Shared side-panel title block: project name, active selection title, close.
 struct SidePanelHeaderView: View {
     let projectName: String
     let title: String

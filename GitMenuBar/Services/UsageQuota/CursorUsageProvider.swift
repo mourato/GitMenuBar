@@ -23,8 +23,6 @@ struct CursorUsageProvider: UsageQuotaProviding {
             return .unavailable(providerID: .cursor, statusNote: "token expired — open Cursor")
         }
 
-        // Unofficial Cursor dashboard endpoint; schema and auth may break without notice.
-        // GET https://cursor.com/api/usage-summary
         var request = URLRequest(
             url: URL(string: "https://cursor.com/api/usage-summary")!,
             timeoutInterval: 10

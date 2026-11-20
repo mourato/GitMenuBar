@@ -67,8 +67,6 @@
         )
     }
 
-    // Compact surfaces share one style preference; this preview renders the
-    // status-item strip for every style so Line sits beside the earlier options.
     #Preview("Usage Quota Menu Bar Strip – Styles") {
         let preferences = PreviewUsageQuotaBarPreferences.make()
         let groups = UsageQuotaMenuPresentation.groups(
@@ -132,8 +130,6 @@
             openrouter(remainingPercent: 42, balanceText: "$12.50 left")
         ]
 
-        /// Issue #19 screen fixture: reserve, deficit, monthly, no-duration,
-        /// exhausted, and Outdated windows in one set for the menu and popover.
         static let issueFixture: [UsageQuotaSnapshot] = [
             UsageQuotaSnapshot(
                 providerID: .claudeCode,

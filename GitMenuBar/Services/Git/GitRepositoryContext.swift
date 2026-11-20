@@ -6,7 +6,6 @@ struct RepositoryOperationContext: Sendable, Equatable {
     let refreshGeneration: Int
 }
 
-// Unchecked: wraps UserDefaults, which is thread-safe but not Sendable.
 final class GitRepositoryContext: @unchecked Sendable {
     private let defaults: UserDefaults
     private let overridePath: String?

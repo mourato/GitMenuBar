@@ -7,7 +7,6 @@ enum KeyCapMetrics {
     static let chipSpacing: CGFloat = 2
 }
 
-/// Renders a single keyboard key as a compact keycap chip.
 struct KeyCapView: View {
     let symbol: String
 
@@ -45,7 +44,6 @@ struct KeyCapView: View {
     }
 }
 
-/// Renders an array of key parts as adjacent keycap chips.
 struct KeyCapGroupView: View {
     let parts: [String]
 
@@ -58,7 +56,6 @@ struct KeyCapGroupView: View {
     }
 }
 
-// ponytail: same fill/border math as gugu's PanelInk, kept local so WorkbenchPalette gains no competing scale.
 private enum KeyCapChrome {
     static func controlFill(
         colorScheme: ColorScheme,

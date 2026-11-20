@@ -1,7 +1,5 @@
 import Foundation
 
-/// Runs the one-shot `agy -p /usage --output-format json` report used as the
-/// Antigravity fallback when no language server or OAuth credentials exist.
 enum AntigravityCLIUsageReport {
     static func resolveBinary(environment: [String: String] = ProcessInfo.processInfo.environment) -> String? {
         if let override = environment["ANTIGRAVITY_CLI_PATH"],
@@ -51,7 +49,6 @@ enum AntigravityCLIUsageReport {
         } catch {
             return nil
         }
-        // Drain stdout while the process runs so a full pipe buffer cannot stall it.
         let outputHandle = outputPipe.fileHandleForReading
         let output = Task.detached { outputHandle.readDataToEndOfFile() }
 

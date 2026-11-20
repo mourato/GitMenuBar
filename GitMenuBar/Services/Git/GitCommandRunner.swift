@@ -64,7 +64,6 @@ enum GitPerformanceTrace {
 }
 
 final class GitCommandRunner: Sendable {
-    // ponytail: one semaphore per touched path; replace with a weak registry only if path churn is measurable.
     private static let pathLockRegistry = GitPathCommandLockRegistry()
 
     func runGitCommand(

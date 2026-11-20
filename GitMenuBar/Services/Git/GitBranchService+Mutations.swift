@@ -1,8 +1,3 @@
-//
-//  GitBranchService+Mutations.swift
-//  GitMenuBar
-//
-
 import Foundation
 
 extension GitBranchService {
@@ -81,7 +76,6 @@ extension GitBranchService {
             return .failure(GitOperationError.noRepository)
         }
 
-        // Check if we have uncommitted changes
         let statusResult = await runOnBackground {
             self.executeGitCommand(in: targetPath, args: ["status", "--porcelain"])
         }
@@ -89,7 +83,6 @@ extension GitBranchService {
 
         var stashCreated = false
 
-        // If we have changes, stash them first
         if hasChanges {
             let stashResult = await runOnBackground {
                 self.executeGitCommand(
@@ -105,13 +98,11 @@ extension GitBranchService {
             print("Stashed changes before switching branches")
         }
 
-        // Try to switch/checkout branch
         let checkoutResult = await runOnBackground {
             self.executeGitCommand(in: targetPath, args: ["checkout", branchName])
         }
 
         if checkoutResult.failure {
-            // If checkout failed and we stashed, try to restore the stash
             if stashCreated {
                 _ = await runOnBackground {
                     self.executeGitCommand(in: targetPath, args: ["stash", "pop"])
@@ -122,14 +113,12 @@ extension GitBranchService {
 
         print("Successfully switched to branch: \(branchName)")
 
-        // If we stashed changes, restore them
         if stashCreated {
             let popResult = await runOnBackground {
                 self.executeGitCommand(in: targetPath, args: ["stash", "pop"])
             }
 
             if popResult.failure {
-                // Stash pop failed - likely due to conflicts
                 return .failure(GitOperationError.conflict("Switched branches, but couldn't reapply your changes due to conflicts. Run 'git stash pop' manually to resolve."))
             }
             print("Restored stashed changes after branch switch")

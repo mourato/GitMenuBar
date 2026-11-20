@@ -183,11 +183,9 @@ final class GitManagerRefreshTests: XCTestCase {
             fastCompletion: {}
         )
 
-        // When session is not current (superseded), availableBranches must not be published
         await manager.branchService.fetchBranchesAsync(session: supersededSession)
         XCTAssertEqual(manager.availableBranches, ["initial"])
 
-        // When session is current, branches must be published deterministically
         isCurrent = true
         let activeSession = GitRefreshSession(
             repositoryPath: repoURL.path,

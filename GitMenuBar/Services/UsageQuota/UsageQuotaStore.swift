@@ -20,9 +20,7 @@ final class UsageQuotaStore {
     }
 
     private(set) var snapshots: [UsageQuotaSnapshot] = []
-    /// Current-month API-equivalent spend estimate; nil until the first refresh scans local sessions.
     private(set) var costEstimates: UsageQuotaCostEstimate?
-    /// Reset credits with a redemption in flight; their menu items stay disabled until the attempt settles.
     private(set) var redeemingResetCreditIDs: Set<String> = []
     private func updatePreference(_ key: String, value: Bool, oldValue: Bool) {
         guard value != oldValue else { return }
@@ -62,8 +60,6 @@ final class UsageQuotaStore {
         didSet { updatePreference(AppPreferences.Keys.showOpenCodeGoUsageQuota, value: showOpenCodeGoUsageQuota, oldValue: oldValue) }
     }
 
-    /// Resolves the pricing source for a cost scan. Injectable so tests never
-    /// touch the network; production fetches and caches the models.dev catalog.
     typealias PricingLoader = @Sendable () async -> UsageQuotaModelsDevStore.PricingSource
 
     private let defaults: UserDefaults
@@ -113,7 +109,6 @@ final class UsageQuotaStore {
         return task
     }
 
-    /// Captures task lifetimes independently of this store so owners can join them after release.
     var pendingWork: [Task<Void, Never>] {
         Array(pendingTasks.values)
     }
@@ -179,7 +174,6 @@ final class UsageQuotaStore {
     func refresh(reason: RefreshReason = .manual) {
         guard showAIUsageQuotas, !shouldThrottleRefresh(reason: reason) else { return }
 
-        // Only manual refreshes reach here with non-nil work in flight.
         refreshTask?.cancel()
         refreshGeneration += 1
         let generation = refreshGeneration
@@ -241,8 +235,6 @@ final class UsageQuotaStore {
         }
     }
 
-    /// Spends one Codex reset credit and refreshes usage so counts match the server.
-    /// Returns nil without a request when that credit is already being redeemed.
     func redeemCodexResetCredit(_ credit: UsageQuotaResetCredit) async -> CodexResetRedeemOutcome? {
         guard !redeemingResetCreditIDs.contains(credit.id) else { return nil }
         redeemingResetCreditIDs.insert(credit.id)
@@ -404,10 +396,6 @@ final class UsageQuotaStore {
         }
     }
 
-    /// Monthly spend estimate rides along without holding provider-refresh timing hostage.
-    /// The scan gate is time-based for every reason: while the last scan is still
-    /// fresh, a manual quota refresh only re-queries providers instead of also
-    /// enumerating the JSONL sessions again.
     private func refreshCostEstimates() {
         guard showAIUsageQuotas else { return }
         if let lastCostScanAt,
@@ -418,9 +406,6 @@ final class UsageQuotaStore {
         lastCostScanAt = now()
         cancelCostScan()
         let scanGeneration = costScanGeneration
-        // Captured before the detached task so the @MainActor store is not
-        // referenced from the scan; resolves fresh, stale-on-failure, or no
-        // catalog so the scan prices against live rates when available.
         let pricingLoader = pricingLoader
         let scanHomeDirectory = homeDirectory
         let trace = GitPerformanceTrace.begin("usage.cost.scan")

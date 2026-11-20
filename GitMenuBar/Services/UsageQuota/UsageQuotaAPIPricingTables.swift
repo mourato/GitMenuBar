@@ -1,6 +1,5 @@
 import Foundation
 
-/// Ported pricing tables for `UsageQuotaAPIPricing` (see that file for provenance).
 extension UsageQuotaAPIPricing {
     static let codex: [String: CodexAPIPrice] = [
         "gpt-5": CodexAPIPrice(
@@ -131,8 +130,6 @@ extension UsageQuotaAPIPricing {
             cacheReadInputCostPerToken: nil,
             displayLabel: nil
         ),
-        // https://developers.openai.com/api/docs/models/gpt-6-astra and /api/docs/pricing.
-        // The full request switches to long-context rates above 272K input tokens, including Fast mode.
         "gpt-6-astra": CodexAPIPrice(
             inputCostPerToken: 1e-5,
             outputCostPerToken: 5e-5,
@@ -145,10 +142,6 @@ extension UsageQuotaAPIPricing {
             cacheReadInputCostPerTokenAboveThreshold: 2e-6,
             cacheWriteAboveThreshold: 2.5e-5
         ),
-        // GPT-5.6 Sol/Terra/Luna (OpenAI pricing page + model cards).
-        // Long context: prompts with >272K input tokens are 2x input / 1.5x output for the full
-        // request. Cache writes: 1.25x uncached input. API Fast support and multipliers are applied
-        // separately after Standard pricing resolves from models.dev or this bundled fallback.
         "gpt-5.6-sol": CodexAPIPrice(
             inputCostPerToken: 5e-6,
             outputCostPerToken: 3e-5,
@@ -185,8 +178,6 @@ extension UsageQuotaAPIPricing {
             cacheReadInputCostPerTokenAboveThreshold: 4e-8,
             cacheWriteAboveThreshold: 5e-7
         ),
-        // GPT-6.1 Sol (models.dev catalog snapshot 2026-10-13). Long context:
-        // >272K input tokens bill 2x input / 1.5x output for the full request.
         "gpt-6.1-sol": CodexAPIPrice(
             inputCostPerToken: 2e-6,
             outputCostPerToken: 1e-5,

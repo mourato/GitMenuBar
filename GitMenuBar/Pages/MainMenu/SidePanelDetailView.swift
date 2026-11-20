@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Side panel detail surface for selections that are neither the commit
-/// workspace nor history. The parent routes `.workingTree` and
-/// `.history`/`.commit` elsewhere, so this view only handles detail cases.
 struct SidePanelDetailView: View {
     let projectName: String
     let selection: MainMenuSidePanelSelection?
@@ -94,7 +91,6 @@ struct SidePanelDetailView: View {
         case .stashes, .stash:
             stashesSection
         case .workingTree, .history, .commit:
-            // Routed to a dedicated surface by the parent; no content here.
             EmptyView()
         }
     }

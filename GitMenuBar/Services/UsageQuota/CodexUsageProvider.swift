@@ -171,8 +171,6 @@ struct CodexUsageProvider: UsageQuotaProviding {
         }
     }
 
-    /// Redeems one reset credit. Each call is one user action: it sends a fresh idempotency key
-    /// and retries only after a 401 (the server did not process that attempt).
     func redeemResetCredit(id creditID: String) async -> CodexResetRedeemOutcome {
         guard let authState = readCodexAuthState(),
               let accessToken = await resolveAccessToken(authState: authState)
@@ -201,8 +199,6 @@ struct CodexUsageProvider: UsageQuotaProviding {
     }
 
     private func fetchResetCreditInventory(accessToken: String, accountID: String?) async -> CodexResetCreditInventory? {
-        // Unofficial ChatGPT endpoint used by CodexBar; may break without notice.
-        // GET https://chatgpt.com/backend-api/wham/rate-limit-reset-credits
         var request = URLRequest(
             url: URL(string: "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits")!,
             timeoutInterval: 4
@@ -231,8 +227,6 @@ struct CodexUsageProvider: UsageQuotaProviding {
         creditID: String,
         redeemRequestID: String
     ) async -> CodexResetRedeemOutcome {
-        // Unofficial ChatGPT endpoint; redeems one banked reset. May break without notice.
-        // POST https://chatgpt.com/backend-api/wham/rate-limit-reset-credits/consume
         var request = URLRequest(
             url: URL(string: "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits/consume")!,
             timeoutInterval: 15

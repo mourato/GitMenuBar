@@ -42,31 +42,25 @@ final class ProjectSeverityTests: XCTestCase {
     }
 
     func testBehindOrDivergedIsCritical() {
-        // Behind only
         let behindSnapshot = makeSnapshot(behindCount: 2)
         XCTAssertEqual(behindSnapshot.severity, .critical)
 
-        // Diverged (ahead and behind)
         let divergedSnapshot = makeSnapshot(aheadCount: 3, behindCount: 1)
         XCTAssertEqual(divergedSnapshot.severity, .critical)
     }
 
     func testUncommittedChangesSeverity() {
-        // Staged changes only
         let stagedSnapshot = makeSnapshot(stagedCount: 1)
         XCTAssertEqual(stagedSnapshot.severity, .localWork)
 
-        // Unstaged changes only
         let unstagedSnapshot = makeSnapshot(unstagedCount: 2)
         XCTAssertEqual(unstagedSnapshot.severity, .localWork)
 
-        // Both staged and unstaged changes
         let bothSnapshot = makeSnapshot(stagedCount: 1, unstagedCount: 1)
         XCTAssertEqual(bothSnapshot.severity, .localWork)
     }
 
     func testUntrackedFilesAloneAreNotAWarning() {
-        // Untracked files alone must not produce localWork severity or a warning dot
         let untrackedSnapshot = makeSnapshot(untrackedCount: 4)
         XCTAssertNil(untrackedSnapshot.severity)
     }
@@ -101,15 +95,12 @@ final class ProjectSeverityTests: XCTestCase {
     }
 
     func testSeverityPrecedence() {
-        // Diverged/behind takes precedence over uncommitted changes
         let behindAndDirtySnapshot = makeSnapshot(stagedCount: 2, behindCount: 1)
         XCTAssertEqual(behindAndDirtySnapshot.severity, .critical)
 
-        // Uncommitted changes take precedence over unmerged branches
         let dirtyAndUnmergedSnapshot = makeSnapshot(stagedCount: 1, unmergedBranchCount: 3)
         XCTAssertEqual(dirtyAndUnmergedSnapshot.severity, .localWork)
 
-        // Diverged/behind takes precedence over unmerged branches
         let behindAndUnmergedSnapshot = makeSnapshot(behindCount: 1, unmergedBranchCount: 3)
         XCTAssertEqual(behindAndUnmergedSnapshot.severity, .critical)
     }

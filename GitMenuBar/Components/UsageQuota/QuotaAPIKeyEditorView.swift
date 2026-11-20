@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// API-key lifecycle for quota providers that authenticate with a stored key:
-/// visible input, show/hide, save, and removal with confirmation.
 struct QuotaAPIKeyEditorView: View {
     @Environment(UsageQuotaStore.self) private var usageQuotaStore
     @Environment(UsageQuotaPresentationPreferences.self) private var preferences

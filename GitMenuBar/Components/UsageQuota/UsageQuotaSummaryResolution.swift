@@ -1,18 +1,9 @@
 import Foundation
 
-/// Window resolution for the sidebar footer summary.
-///
-/// The footer shows the same metrics the user selected for the menu bar
-/// (`resolveSelected`). One resolution drives the meter, the percent, the
-/// tooltip, and VoiceOver, so the footer never names one window while drawing
-/// another.
 struct UsageQuotaSummaryResolution: Equatable, Sendable {
     let window: UsageWindow
     let kind: UsageQuotaWindowKind
-    /// Thresholds belonging to the resolved window: the session thresholds for
-    /// Session, the weekly thresholds for every other window.
     let thresholds: [Int]
-    /// Window name for the tooltip and VoiceOver, matching the detail card row.
     let title: String
 
     var isExhausted: Bool {
@@ -32,11 +23,6 @@ struct UsageQuotaSummaryResolution: Equatable, Sendable {
         )
     }
 
-    /// The user's selected metrics, in their order, for the footer. An
-    /// exhausted weekly window replaces them so its alert stays visible.
-    /// Credits have no window to draw and are skipped; when no selected
-    /// metric resolves, the footer falls back to the critical window so the
-    /// provider stays visible.
     static func resolveSelected(
         snapshot: UsageQuotaSnapshot,
         metrics: [UsageQuotaPresentationPreferences.Metric],
@@ -71,11 +57,6 @@ struct UsageQuotaSummaryResolution: Equatable, Sendable {
         ).map { [$0] } ?? []
     }
 
-    /// Session, Weekly, Monthly, then the provided model order. An exhausted
-    /// weekly window keeps its special state ahead of every alert; otherwise
-    /// the alerting window with the least remaining quota wins, and a quiet
-    /// snapshot falls back to the first declared window. The Remaining/Used
-    /// style never changes the choice.
     static func resolve(
         snapshot: UsageQuotaSnapshot,
         sessionThresholds: [Int],
@@ -150,14 +131,11 @@ struct UsageQuotaSummaryResolution: Equatable, Sendable {
         return candidates
     }
 
-    /// `min(by:)` keeps the first minimum, so ties honor the declared order
-    /// and models keep their provided order.
     private static func alertedMinimum(candidates: [Self]) -> Self? {
         candidates.filter { $0.alertLevel != .normal }
             .min(by: { $0.window.remainingPercent < $1.window.remainingPercent })
     }
 
-    /// Quiet fallback: Session → Weekly → Monthly → the tightest model.
     private static func quietFallback(candidates: [Self]) -> Self? {
         if let first = candidates.first(where: { $0.kind != .model }) {
             return first
@@ -165,8 +143,6 @@ struct UsageQuotaSummaryResolution: Equatable, Sendable {
         return candidates.min(by: { $0.window.remainingPercent < $1.window.remainingPercent })
     }
 
-    /// Provider, window, remaining or used percent, pace state when the reading
-    /// carries one, and the stale marker. The tooltip and VoiceOver share it.
     static func describe(
         displayName: String,
         resolution: Self,

@@ -1,8 +1,6 @@
 @testable import GitMenuBar
 import XCTest
 
-/// Contract for the quota settings status pill: the same snapshot rules that
-/// drive the menu-bar strip must drive the per-provider status text.
 final class QuotaProviderStatusTests: XCTestCase {
     private func window(remainingPercent: Int = 62) -> UsageWindow {
         UsageWindow(remainingPercent: remainingPercent, resetAt: nil, label: "5h")

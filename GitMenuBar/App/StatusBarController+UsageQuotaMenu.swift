@@ -141,7 +141,6 @@ extension StatusBarController {
         }
     }
 
-    /// Redeeming spends a reset that cannot be recovered, so the user confirms first.
     private func confirmResetRedemption() -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .warning
@@ -195,9 +194,6 @@ private extension UsageQuotaMenuBarGroup {
     }
 }
 
-/// A menu-item host that follows its SwiftUI content size. A quota refresh can
-/// change the cards while the menu is open; a frozen frame would clip the new
-/// content or draw it over the menu items below.
 final class UsageQuotaMenuHostingView: NSHostingView<AnyView> {
     override func layout() {
         super.layout()

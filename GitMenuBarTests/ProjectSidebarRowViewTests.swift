@@ -2,8 +2,6 @@
 import XCTest
 
 final class ProjectSidebarRowViewTests: XCTestCase {
-    // MARK: - Column guides
-
     func testGuidesUseTheWidestTextInEachColumn() {
         let compact = 1284.formatted(.number.notation(.compactName))
         let rows = [
@@ -42,8 +40,6 @@ final class ProjectSidebarRowViewTests: XCTestCase {
         XCTAssertEqual(unavailable.issues, "—")
         XCTAssertEqual(unavailable.pullRequests, "—")
     }
-
-    // MARK: - Accessibility label
 
     func testRowLabelKeepsEveryReasonAndBothTotals() {
         let snapshot = makeSnapshot(
@@ -90,8 +86,6 @@ final class ProjectSidebarRowViewTests: XCTestCase {
         XCTAssertTrue(label.contains("PR #31 Changes requested · CI passed"))
         XCTAssertTrue(label.contains("1 open pull request"))
     }
-
-    // MARK: - Fixtures
 
     func testRowLabelStatesDotCauseBeforeSummary() {
         let snapshot = makeSnapshot(behindCount: 2)

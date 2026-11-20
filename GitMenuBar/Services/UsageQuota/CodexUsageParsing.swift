@@ -1,6 +1,5 @@
 import Foundation
 
-/// Parsing helpers adapted from Mimir (MIT, Eray Endes) — Codex usage ladder only.
 enum CodexUsageParsing {
     struct APIWindow {
         let usedPercent: Double?
@@ -56,8 +55,6 @@ enum CodexUsageParsing {
         return nil
     }
 
-    /// Decode CodexBar-compatible reset-credit inventory payloads.
-    /// `available_count` is authoritative; the credit list only supplies per-reset expiry.
     static func resetCreditInventory(from data: Data, now: Date = Date()) -> CodexResetCreditInventory? {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return nil
@@ -77,7 +74,6 @@ enum CodexUsageParsing {
         )
     }
 
-    /// Maps the reset-consume response (or its failure status) to what the user should see.
     static func resetRedeemOutcome(statusCode: Int, data: Data) -> CodexResetRedeemOutcome {
         switch statusCode {
         case 200 ... 299:
@@ -202,7 +198,6 @@ enum CodexUsageParsing {
         return accountID
     }
 
-    /// Subscription plan (`pro`, `team`, …) from the auth file or its ID-token claims.
     static func planType(fromAuth auth: [String: Any]) -> String? {
         if let plan = auth["chatgpt_plan_type"] as? String, !plan.isEmpty {
             return plan
@@ -440,7 +435,6 @@ enum CodexResetRedeemOutcome: Equatable, Sendable {
     case noCredit
     case unauthorized
     case forbidden
-    /// Network, proxy, or unexpected response. ChatGPT may still have applied the reset.
     case failed
 }
 

@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Seeds the harness `GitManager` so previews render real branch rows, cleanup badges, and filter counts.
 private struct SidePanelPreviewSeed: View {
     @Environment(GitManager.self) private var gitManager
     let initialFilter: BranchFilter

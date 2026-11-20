@@ -1,12 +1,8 @@
 import Foundation
 import Synchronization
 
-/// Current-month API-equivalent spend estimate for subscription token usage.
-/// `nil` amounts mean "seen but unpriced"; providers without any monthly
-/// records are omitted so the card only appears when there is usage to show.
 struct UsageQuotaCostEstimate: Equatable, Sendable {
     struct Row: Equatable, Sendable {
-        /// Icon source (`.claudeCode` for Anthropic, `.codex` for OpenAI).
         let providerID: UsageProviderID
         let title: String
         let monthLabel: String
@@ -20,13 +16,10 @@ enum UsageQuotaCostScanner {
     typealias PricingSource = UsageQuotaModelsDevStore.PricingSource
 
     private enum Constants {
-        /// ponytail: per-file totals cached in memory (keyed by path, mtime, size, monthStart); cold start and first scan after relaunch still read every listed file. Persist the cache if cold start shows up in profiles.
         static let maxFilesPerRoot = 600
         static let maxFileBytes = 96 * 1024 * 1024
     }
 
-    /// Per-file scan results reused while the file's mtime, size, month and
-    /// pricing source are unchanged.
     private struct CachedFileTotal: Sendable {
         let modified: Date
         let size: Int
@@ -76,7 +69,6 @@ enum UsageQuotaCostScanner {
         ) { file, month in
             scanClaudeFile(file, monthStart: month, catalog: pricing.catalog)
         }
-        // Replacing the whole cache drops entries for files no longer listed.
         fileCache.withLock { $0 = cache }
 
         var rows: [UsageQuotaCostEstimate.Row] = []
@@ -111,8 +103,6 @@ enum UsageQuotaCostScanner {
         return String(format: "$%.2f", amountUSD)
     }
 
-    // MARK: - Codex
-
     private struct CodexTurnUsage: Sendable {
         var input = 0
         var cached = 0
@@ -130,7 +120,6 @@ enum UsageQuotaCostScanner {
         let records = parseCodexRecords(text)
         let turnModels = codexTurnModels(records)
         let fileModel = codexFileModel(records)
-        // `token_usage_record` and `token_count` describe the same turns; prefer the former.
         let priced = codexPricedUsages(records, monthStart: monthStart, turnModels: turnModels)
         guard !priced.isEmpty else { return total }
         total.hasRecords = true
@@ -238,8 +227,6 @@ enum UsageQuotaCostScanner {
         )
     }
 
-    // MARK: - Claude
-
     private static func scanClaudeFile(
         _ file: URL,
         monthStart: Date,
@@ -279,9 +266,6 @@ enum UsageQuotaCostScanner {
         return total
     }
 
-    // MARK: - Helpers
-
-    /// One file's contribution; files are summed into a provider total.
     private struct CostTotal: Sendable {
         var totalUSD = 0.0
         var hasRecords = false
@@ -294,9 +278,6 @@ enum UsageQuotaCostScanner {
         let size: Int
     }
 
-    /// Sums per-file totals, reusing cached values for files whose mtime, size,
-    /// month and pricing source are unchanged. Fills `cache` with every file
-    /// visited so the caller can replace the stored cache.
     private static func summedTotal(
         of files: [ScannedFile],
         monthStart: Date,
@@ -329,7 +310,6 @@ enum UsageQuotaCostScanner {
         return total
     }
 
-    /// Files modified before `monthStart` cannot hold this month's records, so they are skipped unread.
     private static func jsonlFiles(under root: URL, monthStart: Date) -> [ScannedFile] {
         guard let enumerator = FileManager.default.enumerator(
             at: root,

@@ -202,8 +202,6 @@ final class GitCommitHistoryService {
         }
     }
 
-    // MARK: - Private Helpers
-
     private nonisolated func resolveMergeCommitStatus(for hash: String) -> Result<Bool, Error> {
         let result = executeGitCommand(in: storedRepoPath, args: ["rev-list", "--parents", "-n", "1", hash])
         guard !result.failure else {

@@ -124,14 +124,11 @@ struct GitCleanupRepository {
     private struct BatchItem {
         let title: String
         let detail: String
-        /// Revalidates against the snapshot right before `execute`; nil means safe to run.
         let skipReason: () -> String?
         let execute: () -> GitCleanupItemResultStatus
         let result: (GitCleanupItemResultStatus) -> GitCleanupItemResult
     }
 
-    /// Single validate-execute-report pipeline: identity guard, then serial per-item
-    /// execution gated on snapshot revalidation before each destructive step.
     private func runBatch(
         _ items: [BatchItem],
         snapshot: GitWorktreeSnapshot,
@@ -206,7 +203,6 @@ struct GitCleanupRepository {
             guard !removed.failure else {
                 return .failed(reason: "Failed to remove '\(worktree.worktree.path)': \(removed.output)")
             }
-            // `git branch --delete` is the final detached-worktree guard after a successful removal.
             let branchStatus = cleanupBranchValidation(
                 unit.branch,
                 snapshot: snapshot,

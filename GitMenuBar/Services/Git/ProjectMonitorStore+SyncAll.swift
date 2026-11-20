@@ -1,7 +1,5 @@
 import Foundation
 
-/// Outcome of pulling every monitored project that is only behind its remote.
-/// Only fast-forwardable projects are touched; everything else is reported by name.
 struct SyncAllResult: Sendable {
     var updatedNames: [String]
     var skippedNames: [String]
@@ -13,9 +11,6 @@ struct SyncAllResult: Sendable {
 }
 
 extension ProjectMonitorStore {
-    /// A snapshot is safe to pull without asking when the remote is strictly
-    /// ahead, nothing local needs pushing, and the tree is clean: the pull
-    /// can only fast-forward, so it never creates a merge commit or a conflict.
     static func isSafeToFastForward(_ snapshot: ProjectStatusSnapshot) -> Bool {
         snapshot.lastErrorDescription == nil
             && !snapshot.isDetachedHead
@@ -26,8 +21,6 @@ extension ProjectMonitorStore {
             && !snapshot.hasWorkingTreeChanges
     }
 
-    /// Fetches every monitored project, then pulls only the ones that are safe
-    /// to fast-forward. Returns per-project names so the caller can summarize.
     func syncAllSafe() async -> SyncAllResult {
         let projects = monitoredProjects
         let runner = runner

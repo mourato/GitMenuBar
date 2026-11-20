@@ -163,7 +163,6 @@ final class GitWorkingTreeServiceTests: XCTestCase {
                 XCTAssertEqual(try String(contentsOf: repository.appendingPathComponent("README.md"), encoding: .utf8), "base\n")
             }
         }
-        // A final symlink is safe to remove without touching its destination.
         try await service.discardFileChangesAsync(path: "outside", status: .untracked, in: repository.path).get()
         XCTAssertEqual(try String(contentsOf: victim, encoding: .utf8), "keep\n")
         XCTAssertFalse(FileManager.default.fileExists(atPath: repository.appendingPathComponent("outside").path))

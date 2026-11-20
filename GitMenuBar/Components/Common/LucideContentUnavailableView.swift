@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Centered empty-state layout rendered through the Lucide catalog.
-/// Apple's content-unavailable view only accepts SF Symbol names,
-/// so every empty state in the app uses this view instead.
 struct LucideContentUnavailableView<Content: View>: View {
     private let title: String
     private let icon: LucideIconName

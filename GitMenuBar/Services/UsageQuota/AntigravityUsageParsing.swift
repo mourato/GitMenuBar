@@ -28,8 +28,6 @@ enum AntigravityUsageParsing {
         let remainingFraction: Double
         let resetAt: Date?
         let isDisabled: Bool
-        /// Existing CLI bucket metadata when the provider reports a window kind.
-        /// Model-config endpoints leave this nil because they only report model quota.
         let window: String?
 
         init(
@@ -52,8 +50,6 @@ enum AntigravityUsageParsing {
             max(0, min(100, Int((remainingFraction * 100).rounded())))
         }
     }
-
-    // MARK: - GetUserStatus JSON Structures
 
     private struct UserStatusResponse: Decodable {
         let userStatus: UserStatus?
@@ -86,8 +82,6 @@ enum AntigravityUsageParsing {
         let remainingFraction: Double?
         let resetTime: String?
     }
-
-    // MARK: - RetrieveUserQuotaSummary JSON Structures
 
     private struct QuotaSummaryResponse: Decodable {
         let response: QuotaSummaryPayload?
@@ -146,8 +140,6 @@ enum AntigravityUsageParsing {
         let resetTime: String?
         let window: String?
 
-        // `agy -p /usage` reports use snake_case keys (`id`, `name`,
-        // `remaining_fraction`, `reset_time`) for the same quota buckets.
         let snakeRemainingFraction: Double?
         let snakeResetTime: String?
 
@@ -198,8 +190,6 @@ enum AntigravityUsageParsing {
         }
     }
 
-    // MARK: - `agy -p /usage` Print Report Envelope
-
     private struct AgyPrintReport: Decodable {
         let status: String?
         let command: AgyPrintCommand?
@@ -209,8 +199,6 @@ enum AntigravityUsageParsing {
         let name: String?
         let data: QuotaSummaryPayload?
     }
-
-    // MARK: - Parsing
 
     static func parseUserStatusResponse(_ data: Data) throws -> [ModelQuota] {
         let decoder = JSONDecoder()
@@ -263,9 +251,6 @@ enum AntigravityUsageParsing {
         return quotas(from: groups)
     }
 
-    /// Parses the one-shot `agy -p /usage --output-format json` report. Its
-    /// `command.data` node carries the same quota groups as
-    /// `RetrieveUserQuotaSummary`, so bucket mapping is shared.
     static func parseAgyPrintReportResponse(_ data: Data) throws -> [ModelQuota] {
         let report = try JSONDecoder().decode(AgyPrintReport.self, from: data)
         guard report.status?.uppercased() == "SUCCESS",
@@ -339,8 +324,6 @@ enum AntigravityUsageParsing {
         return nil
     }
 
-    // MARK: - Model Classification
-
     static func isSessionQuota(modelId: String, label: String) -> Bool {
         let combined = "\(modelId) \(label)".lowercased()
         return combined.contains("5h")
@@ -380,9 +363,6 @@ enum AntigravityUsageParsing {
         let sessionQuotas = usableQuotas.filter(isSessionQuota)
         let weeklyQuotas = usableQuotas.filter(isWeeklyQuota)
 
-        // Antigravity's model-config endpoints report per-model remaining quota,
-        // not a weekly window. Keep those readings model-scoped unless the
-        // provider explicitly identifies a five-hour or weekly bucket.
         var modelQuotas: [ModelQuota] = []
         var modelIndexes: [String: Int] = [:]
         for quota in usableQuotas where !isSessionQuota(quota) && !isWeeklyQuota(quota) {

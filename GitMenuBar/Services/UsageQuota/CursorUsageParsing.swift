@@ -1,6 +1,5 @@
 import Foundation
 
-/// Parsing helpers for Cursor's unofficial dashboard usage API.
 enum CursorUsageParsing {
     static func sessionCookieValue(accessToken: String) -> String? {
         guard let userID = userID(fromJWT: accessToken) else {

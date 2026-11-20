@@ -18,7 +18,6 @@ final class GitTestEnvironmentTests: XCTestCase {
         try "content\n".write(to: testFile, atomically: true, encoding: .utf8)
         try runGit(["add", "work.txt"], in: repoURL)
 
-        // Negative control: unisolated execution forced to point to the hostile global config fails
         var unisolatedEnv = makeIsolatedGitEnvironment()
         unisolatedEnv["GIT_CONFIG_GLOBAL"] = hostileConfigURL.path
         XCTAssertThrowsError(
@@ -26,19 +25,16 @@ final class GitTestEnvironmentTests: XCTestCase {
             "Git commit should fail when forced to load hostile global signing configuration with a deliberately failing signing command"
         )
 
-        // Positive control sanitizes the same hostile input before running Git.
         let isolatedEnv = makeIsolatedGitEnvironment(inheriting: unisolatedEnv)
         XCTAssertNoThrow(
             try runGit(["commit", "-m", "isolated success"], in: repoURL, environment: isolatedEnv)
         )
 
-        // Verify local repository configuration remains functional and takes effect
         try runGit(["config", "test.fixture.key", "local-fixture-value"], in: repoURL)
         let configuredValue = try runGit(["config", "test.fixture.key"], in: repoURL)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         XCTAssertEqual(configuredValue, "local-fixture-value")
 
-        // Verify local user configuration stored in the repository
         try runGit(["config", "user.name", "Local Config Name"], in: repoURL)
         let configuredName = try runGit(["config", "user.name"], in: repoURL)
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -83,7 +79,6 @@ final class GitTestEnvironmentTests: XCTestCase {
 
         try runGit(["init", "-b", "main"], in: freshRepoDir, environment: isolatedEnv)
 
-        // Verify hostile template hook was stripped and not installed
         let installedHook = freshRepoDir.appendingPathComponent(".git/hooks/pre-commit")
         XCTAssertFalse(FileManager.default.fileExists(atPath: installedHook.path))
 
@@ -91,7 +86,6 @@ final class GitTestEnvironmentTests: XCTestCase {
         try "sample\n".write(to: testFile, atomically: true, encoding: .utf8)
         try runGit(["add", "test.txt"], in: freshRepoDir, environment: isolatedEnv)
 
-        // Commit succeeds despite synthetic environment having commit.gpgsign and invalid path overrides
         XCTAssertNoThrow(
             try runGit(["commit", "-m", "isolated commit"], in: freshRepoDir, environment: isolatedEnv)
         )

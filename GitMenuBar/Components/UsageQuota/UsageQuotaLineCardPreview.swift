@@ -1,15 +1,11 @@
 import SwiftUI
 
-// MARK: - Previews
-
 private enum UsageQuotaLineCardPreviewFixtures {
     static let sessionDuration = 5 * 3600
     static let weeklyDuration = 7 * 86400
     static let monthlyDuration = 30 * 86400
     static let thresholds = UsageQuotaPace.defaultWarningThresholds
 
-    /// Reset placed so the expected pace lands on the reference numbers:
-    /// elapsed 46% (76/54 reserve), 36% (22/64 deficit), 13% (67/87 monthly).
     static func window(
         remainingPercent: Int,
         durationSeconds: Int,

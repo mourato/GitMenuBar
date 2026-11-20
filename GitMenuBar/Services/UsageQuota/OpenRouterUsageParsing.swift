@@ -36,7 +36,6 @@ struct OpenRouterUsageState: Codable, Equatable, Sendable {
     }
 }
 
-// Unchecked: wraps UserDefaults, which is thread-safe but not Sendable.
 struct OpenRouterUsageStateStore: @unchecked Sendable {
     private let defaults: UserDefaults
     private let key = "openRouterUsageState.v2"
@@ -56,8 +55,6 @@ struct OpenRouterUsageStateStore: @unchecked Sendable {
     }
 }
 
-/// Parsing helpers for OpenRouter's credits API.
-/// Credits parsing adapted from CodexBar (MIT, steipete).
 enum OpenRouterUsageParsing {
     struct ParsedCredits: Sendable {
         let snapshot: UsageQuotaSnapshot
@@ -118,8 +115,6 @@ enum OpenRouterUsageParsing {
         )
     }
 
-    /// Parse `GET https://openrouter.ai/api/v1/credits` into a snapshot.
-    /// Credits have no reset window, so `sessionWindow` carries `resetAt: nil`.
     static func snapshot(fromCreditsData data: Data) -> UsageQuotaSnapshot? {
         parse(fromCreditsData: data)?.snapshot
     }

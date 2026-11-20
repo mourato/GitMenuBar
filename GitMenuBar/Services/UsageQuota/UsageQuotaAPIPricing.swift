@@ -1,18 +1,5 @@
 import Foundation
 
-/// API-equivalent per-token pricing used by the monthly spend-estimate card.
-///
-/// Built-in tables are ported from CodexBar's `CostUsagePricing` (MIT,
-/// Peter Steinberger — see THIRD-PARTY-NOTICES.md); the `claude-*-5` rows
-/// come from a models.dev catalog snapshot (2026-10-07) and need re-checking
-/// when the table is next updated. Token math mirrors CodexBar: Codex
-/// `input_tokens` already includes cached reads as a subset, so cached and
-/// written tokens are split out before billing; Claude bills 1h cache
-/// creation at 2x the input rate.
-///
-/// Resolution is catalog-first (live models.dev data, ported from CodexBar's
-/// `ModelsDevPricing.swift`); the bundled tables below are the offline
-/// fallback, so new model IDs price correctly once the catalog is cached.
 enum UsageQuotaAPIPricing {
     struct CodexAPIPrice {
         let inputCostPerToken: Double
@@ -98,12 +85,8 @@ enum UsageQuotaAPIPricing {
         return trimmed
     }
 
-    // MARK: - Catalog resolution
-
-    /// models.dev publishes USD per 1M tokens; token math uses USD per token.
     private static let catalogUnit = 1_000_000.0
 
-    /// Catalog-first resolution; the bundled table is the offline fallback.
     static func codexPricing(
         for model: String,
         catalog: ModelsDevCatalog?
@@ -131,9 +114,6 @@ enum UsageQuotaAPIPricing {
         return codex[normalizeCodexModel(model)]
     }
 
-    /// Catalog-first resolution; the bundled table is the offline fallback.
-    /// Missing cache rates fall back to the input rate, matching Claude's
-    /// documented cache pricing and CodexBar's models.dev conversion.
     static func claudePricing(
         for model: String,
         catalog: ModelsDevCatalog?

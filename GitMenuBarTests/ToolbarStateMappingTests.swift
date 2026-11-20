@@ -2,8 +2,6 @@
 import XCTest
 
 extension ToolbarStateMappingTests {
-    // MARK: - Working Tree Entry Point
-
     func testToolbarDoesNotExposeCommitActionWhenChangesExist() {
         let state = makeToolbarState(changeCount: 3)
 
@@ -21,8 +19,6 @@ extension ToolbarStateMappingTests {
         XCTAssertNil(state.busyItem)
     }
 
-    // MARK: - Commit Count Belongs to the Working Tree
-
     @MainActor
     func testGitManagerCommitFileCountMatchesWorkingTreeCommitRule() {
         let gitManager = GitManager(repositoryPathOverride: "")
@@ -37,8 +33,6 @@ extension ToolbarStateMappingTests {
         gitManager.stagedFiles = [WorkingTreeFile(path: "A.swift", lineDiff: .zero, status: .modified)]
         XCTAssertEqual(gitManager.commitFileCount, 1)
     }
-
-    // MARK: - Helper
 
     private func makeToolbarState(
         repositoryName: String = "TestRepo",

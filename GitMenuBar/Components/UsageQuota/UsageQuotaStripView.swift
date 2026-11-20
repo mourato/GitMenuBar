@@ -34,8 +34,6 @@ struct UsageQuotaStripView: View {
     }
 
     private func accessibilityValue(for snapshots: [UsageQuotaSnapshot]) -> String {
-        // Same window resolution as the footer summary items, so the
-        // strip value never names a different window than the drawn meter.
         snapshots.flatMap { snapshot in
             UsageQuotaSummaryResolution.resolveSelected(
                 snapshot: snapshot,

@@ -82,8 +82,6 @@ func requestBodyData(from request: URLRequest) -> Data {
     return data
 }
 
-/// Thread-safe box for capturing request payloads from `MockURLProtocol` handlers
-/// that run on background `URLSession` threads.
 final class PromptCapture: @unchecked Sendable {
     private let lock = NSLock()
     private var storedValue = ""
@@ -105,7 +103,6 @@ final class PromptCapture: @unchecked Sendable {
     }
 }
 
-/// Thread-safe list capture for handlers that record multiple request payloads.
 final class PromptListCapture: @unchecked Sendable {
     private let lock = NSLock()
     private var storedValues: [String] = []
@@ -157,7 +154,6 @@ func makeIsolatedGitEnvironment(inheriting environment: [String: String] = Proce
 func runGit(_ args: [String], in directory: URL, environment: [String: String]? = nil) throws -> String {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-    // Align normal and bare fixtures without depending on the host default branch.
     process.arguments = ["-c", "init.defaultBranch=main"] + args
     process.currentDirectoryURL = directory
     process.environment = environment ?? makeIsolatedGitEnvironment()
@@ -179,8 +175,6 @@ func runGit(_ args: [String], in directory: URL, environment: [String: String]? 
     return output
 }
 
-/// Re-evaluates `condition` under observation tracking, so a change made after the
-/// check always re-runs it. Checking outside tracking could miss a background change.
 @MainActor
 private final class ObservedConditionWatcher {
     private let condition: @MainActor () -> Bool
@@ -207,8 +201,6 @@ private final class ObservedConditionWatcher {
 }
 
 extension XCTestCase {
-    /// Waits for `condition` by observing `@Observable` reads instead of polling.
-    /// Fails the test when the condition does not hold within `timeout`.
     @MainActor
     func waitForObservedCondition(
         timeout: TimeInterval = 5,

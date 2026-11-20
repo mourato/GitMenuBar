@@ -1,18 +1,7 @@
-//
-//  GitBranchService.swift
-//  GitMenuBar
-//
-
 import Combine
 import Foundation
 import Observation
 
-/// Owns branch-management state and git operations, extracted from `GitManager`
-/// to keep that facade focused. `GitManager` pipes the published branch state
-/// back to its own public facade so call sites are unchanged.
-///
-/// Threading mirrors `GitManager`: heavy git work runs on a background queue and
-/// published state is written on the main thread via `Task { @MainActor in }`.
 @MainActor
 @Observable
 final class GitBranchService {
@@ -35,8 +24,6 @@ final class GitBranchService {
     private nonisolated(unsafe) let repositoryContext: GitRepositoryContext
     nonisolated(unsafe) let commandRunner: GitCommandRunner
 
-    /// Injected by `GitManager` so branch mutations can trigger a full app
-    /// refresh (commit history, working tree, …) which lives outside this service.
     @ObservationIgnored var refreshHandler: (@escaping () -> Void) -> Void
 
     init(repositoryContext: GitRepositoryContext, commandRunner: GitCommandRunner) {

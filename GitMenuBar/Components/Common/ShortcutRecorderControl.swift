@@ -2,7 +2,6 @@ import AppKit
 import Carbon.HIToolbox
 import SwiftUI
 
-/// Keycap-style shortcut recorder backed by the app-owned shortcut manager.
 struct ShortcutRecorderControl: View {
     let id: GlobalShortcutID
     let manager: GlobalShortcutManager
@@ -151,11 +150,9 @@ struct EmptyShortcutCTAView: View {
     }
 }
 
-/// Transparent button style; keycaps provide the idle affordance, accent chrome marks recording.
 struct ShortcutKeycapButtonStyle: ButtonStyle {
     let isRecording: Bool
     var reduceMotion: Bool = false
-    // ponytail: gugu used fixed 6/4 padding and radius 7; mapped to the matching Workbench tokens.
     var horizontalPadding: CGFloat = WorkbenchMetrics.chipSpacing
     var verticalPadding: CGFloat = WorkbenchMetrics.microSpacing
 

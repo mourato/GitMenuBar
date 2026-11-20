@@ -9,10 +9,6 @@ private struct BranchListMotionState: Equatable {
     let filter: BranchFilter
 }
 
-/// Unified branch management surface hosted in the inspector.
-/// Integrates branch filtering, reachability analysis against the default branch,
-/// inline cleanup actions and review banners, worktree inspection, and branch operations
-/// using `BranchListResolver`.
 struct SidePanelBranchManagementView: View {
     let onRequestDeleteBranch: (String) -> Void
     let onRequestSwitchBranch: (String) -> Void
@@ -65,7 +61,6 @@ struct SidePanelBranchManagementView: View {
         )
     }
 
-    /// First management unit per branch name; built once per body pass for row lookups.
     private var managementUnitsByBranch: [String: GitCleanupUnit] {
         Dictionary(
             (gitManager.worktreeSnapshot?.managementUnits ?? []).map { ($0.branch.reference.name, $0) },
@@ -186,7 +181,6 @@ struct SidePanelBranchManagementView: View {
         }
     }
 
-    /// Pass `count` only when no filter chip already shows the same number.
     private func sectionHeader(_ title: String, count: Int? = nil) -> some View {
         var label = Text(title)
         if let count {
@@ -207,7 +201,6 @@ struct SidePanelBranchManagementView: View {
             .help("Local Git reachability against \(defaultBranchDisplayName), not GitHub pull request status.")
     }
 
-    /// Shows the Review entry only when something is ready; with none ready, states the blocked count.
     private func cleanupBanner(model: BranchListModel) -> some View {
         let hasReady = model.readyCount > 0
         let fill = hasReady
@@ -251,8 +244,6 @@ struct SidePanelBranchManagementView: View {
         .background(fill, in: RoundedRectangle(cornerRadius: WorkbenchMetrics.rowCornerRadius, style: .continuous))
     }
 
-    /// Current branch row, pinned only while it matches the active query and filter.
-    /// Neutral border keeps the accent for the checkmark and the selected filter chip.
     private func pinnedCurrentBranchRow(
         _ current: BranchListRow,
         units: [String: GitCleanupUnit]
@@ -464,8 +455,6 @@ struct SidePanelBranchManagementView: View {
         }
     }
 
-    /// Branches with a management unit delete through the cleanup sheet (risk gate applies).
-    /// Without a unit, the legacy confirmation stays. Hidden while Git requires worktree removal first.
     private func deleteBranchAction(for info: BranchInfo, unit: GitCleanupUnit?) -> (() -> Void)? {
         guard let unit else {
             return { onRequestDeleteBranch(info.name) }

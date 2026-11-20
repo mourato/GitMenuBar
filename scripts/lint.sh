@@ -46,4 +46,9 @@ swiftlint lint --strict --config "${STYLE_CONFIG_DIR}/.swiftlint.yml" "${TARGETS
 echo "Running SwiftLint project rules..."
 swiftlint lint --strict --config .swiftlint.yml --only-rule lucide_no_system_image "${TARGETS[@]}"
 
+echo "Running comment ratchet..."
+COMMENT_ARGS=(lint --strict --config "${AGENT_CONFIG_HOME:-${HOME}/.agents}/skills/delete-comment/config/no-comments.swiftlint.yml")
+[[ -f .comment-baseline.json ]] && COMMENT_ARGS+=(--baseline .comment-baseline.json)
+swiftlint "${COMMENT_ARGS[@]}" "${TARGETS[@]}"
+
 echo "Lint checks passed"

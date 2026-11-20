@@ -3,16 +3,13 @@ import SwiftUI
 @Observable
 @MainActor
 final class MainMenuWorkspaceState {
-    // Commit composer
     var commentText = ""
     var isCommitFieldTemporarilyVisible = false
     var showAtomicCommitSheet = false
 
-    // Selection
     var selectedMainItemID: MainMenuSelectableItem?
     var selectedSidePanelSelection: MainMenuSidePanelSelection?
 
-    // Discard confirmations
     var showDiscardConfirmation = false
     var discardFilePath: String?
     var discardFileStatus: WorkingTreeFileStatus?
@@ -27,15 +24,10 @@ final class MainMenuWorkspaceState {
         selectedSidePanelSelection = MainMenuSidePanelSelection(mainMenuItem: itemID)
     }
 
-    /// Highlights a file inside the working tree panel without replacing the panel.
     func selectWorkspaceFile(_ itemID: MainMenuSelectableItem) {
         selectedMainItemID = itemID
     }
 
-    /// Keeps a selected file attached to its working-tree row when staging
-    /// moves that row between sections. The old semantic ID must disappear
-    /// before its counterpart can replace it, so partial staging cannot mix
-    /// two visible rows for the same path.
     func synchronizeSelectedMainItem(with items: [MainMenuSelectableItem]) {
         guard let previousSelection = selectedMainItemID, !items.contains(previousSelection) else {
             return

@@ -3,7 +3,6 @@ import SwiftUI
 enum WorkingTreeLayoutMetrics {
     static let rowHeight: CGFloat = 32
     static let rowVerticalPadding: CGFloat = WorkbenchMetrics.headerVerticalPadding
-    /// Minimum interactive target for row/header icon actions.
     static let actionHitTarget: CGFloat = WorkbenchMetrics.iconHitTarget
     static let diffColumnWidth: CGFloat = 72
     static let statusColumnWidth: CGFloat = 14

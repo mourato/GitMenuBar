@@ -27,8 +27,6 @@ final class ClaudeCodeUsageTests: XCTestCase {
         XCTAssertEqual(snapshot.fetchedAt, now)
     }
 
-    /// The usage endpoints report `resets_at` with microsecond precision, which
-    /// the plain `.withInternetDateTime` formatter rejects.
     func testParsesResetTimestampsWithFractionalSeconds() throws {
         let data = Data(
             #"{"five_hour":{"utilization":100.0,"resets_at":"2026-10-16T18:10:00.274725+00:00"},"seven_day":{"utilization":30.0,"resets_at":"2026-10-21T06:00:00.274750+00:00"},"seven_day_sonnet":{"utilization":12,"resets_at":"2026-10-21T06:00:00Z"}}"#.utf8

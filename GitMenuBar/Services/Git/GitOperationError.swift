@@ -1,6 +1,5 @@
 import Foundation
 
-/// Failures presented by Git operations, independent of NSError domain and numeric codes.
 enum GitOperationError: LocalizedError {
     case noRepository
     case commandFailed(String)

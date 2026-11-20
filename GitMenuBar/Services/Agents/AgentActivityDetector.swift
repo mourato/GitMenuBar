@@ -1,8 +1,6 @@
 import Darwin
 import Foundation
 
-// MARK: - Process Querying Protocol & Models
-
 struct RunningAgentProcess: Sendable, Equatable {
     let pid: pid_t
     let name: String
@@ -22,8 +20,6 @@ struct RunningAgentProcess: Sendable, Equatable {
 protocol AgentProcessQuerying: Sendable {
     func runningProcesses() async -> [RunningAgentProcess]
 }
-
-// MARK: - Darwin Process Scanner
 
 struct DarwinAgentProcessScanner: AgentProcessQuerying {
     func runningProcesses() async -> [RunningAgentProcess] {
@@ -45,7 +41,6 @@ struct DarwinAgentProcessScanner: AgentProcessQuerying {
         let argc = bytes.withUnsafeBytes { $0.loadUnaligned(as: Int32.self) }
         guard argc > 0 else { return [] }
         var offset = MemoryLayout<Int32>.size
-        // KERN_PROCARGS2 stores executable path, padding, then argc NUL-terminated arguments.
         while offset < size, bytes[offset] != 0 {
             offset += 1
         }
@@ -110,8 +105,6 @@ struct DarwinAgentProcessScanner: AgentProcessQuerying {
     }
 }
 
-// MARK: - Agent Activity Detector Service
-
 actor AgentActivityDetector {
     static let recentWindowSeconds: TimeInterval = 2 * 3600
 
@@ -158,7 +151,6 @@ actor AgentActivityDetector {
         var runningByHarness: [AgentHarnessID: AgentProjectActivity] = [:]
 
         for process in processes {
-            // Multi-project servers' launch cwd does not identify their active projects.
             guard process.name != "codex-app-server",
                   URL(fileURLWithPath: process.binaryPath).lastPathComponent != "codex-app-server",
                   Self.isMatchingPath(processCwd: process.cwd, projectPath: projectPath),
@@ -207,8 +199,6 @@ actor AgentActivityDetector {
             return first.harness.rawValue < second.harness.rawValue
         }
     }
-
-    // MARK: - Static Helpers & Classifiers
 
     static func harness(forProcessName processName: String, binaryPath: String, arguments: [String] = []) -> AgentHarnessID? {
         let name = processName.trimmingCharacters(in: .whitespacesAndNewlines)

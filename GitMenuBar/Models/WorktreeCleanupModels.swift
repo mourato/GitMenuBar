@@ -1,8 +1,3 @@
-//
-//  WorktreeCleanupModels.swift
-//  GitMenuBar
-//
-
 import Foundation
 
 struct GitCleanupProgress: Equatable, Sendable {
@@ -310,7 +305,6 @@ struct GitWorktreeSnapshot: Hashable {
         cleanupUnits.filter(\.isPaired).count
     }
 
-    /// Worktree-only removal unit when cleanup policy allows removing this worktree; nil otherwise.
     func worktreeRemovalUnit(for info: GitWorktreeCleanupInfo) -> GitCleanupUnit? {
         guard let unit = managementUnits.first(where: { $0.worktree?.id == info.id }),
               let removal = unit.removingWorktreeOnly(),
@@ -328,8 +322,6 @@ struct GitWorktreeSnapshot: Hashable {
             && !protectedWorktreePaths.contains(path)
     }
 }
-
-// MARK: - Management Unit Filtering & Counts
 
 extension GitWorktreeSnapshot {
     func managementUnits(matching query: String = "") -> [GitCleanupUnit] {

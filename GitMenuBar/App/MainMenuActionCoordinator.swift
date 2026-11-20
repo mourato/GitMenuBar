@@ -318,9 +318,6 @@ final class MainMenuActionCoordinator {
             publishOperationStatus(.pushing)
 
             if gitManager.isRemoteAhead {
-                // Behind-only with a clean tree fast-forwards either way, so
-                // choosing between merge, rebase, and a new branch only helps
-                // when local commits and remote commits diverged.
                 if !gitManager.isAheadOfRemote {
                     let pullResult = await pullFromRemote(rebase: false)
                     guard case .success = pullResult else {
@@ -524,7 +521,6 @@ final class MainMenuActionCoordinator {
         }
     }
 
-    /// Runs a dialog-owned mutation: failures return to the dialog instead of the global alert.
     private func executeDialogMutation(
         operation: (RepositoryOperationContext) async -> Result<Void, Error>
     ) async -> MainMenuDialogMutationResult {

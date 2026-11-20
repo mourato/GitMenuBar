@@ -1,10 +1,3 @@
-//
-//  StatusBarController.swift
-//  GitMenuBar
-//
-//  Created by Gabriel on 12/28/24.
-//
-
 import AppKit
 import Combine
 import SwiftUI
@@ -281,8 +274,6 @@ final class StatusBarController: NSObject {
         startAutoFetchTimer()
     }
 
-    /// Keeps the selected repository's behind state fresh while automatic
-    /// fetch is on, so hiding the manual Fetch button never leaves Sync stale.
     private func startAutoFetchTimer() {
         autoFetchTimer?.invalidate()
         autoFetchTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
@@ -298,7 +289,6 @@ final class StatusBarController: NSObject {
         }
     }
 
-    /// Fetches every monitored project plus the selected repository, on demand.
     func fetchAllNow() {
         projectMonitor.fetchAll()
         Task { @MainActor [weak self] in
@@ -311,8 +301,6 @@ final class StatusBarController: NSObject {
         }
     }
 
-    /// One immediate fetch when the toggle flips on, so the effect is visible
-    /// without waiting for the next background tick.
     private func fetchImmediatelyIfAutoFetchJustEnabled() {
         let enabled = AppPreferences.isAutoFetchEnabled
         defer { lastAutoFetchEnabled = enabled }
@@ -421,7 +409,6 @@ final class StatusBarController: NSObject {
         }
     }
 
-    /// Returns from a route-specific toolbar surface to the main repository view.
     @objc
     func goBackFromToolbar(_: NSToolbarItem) {
         presentationModel.showMain()
@@ -576,7 +563,6 @@ final class StatusBarController: NSObject {
         openSettingsWindow()
     }
 
-    /// Opens the main window programmatically (used when app is launched with a folder path)
     func openMainWindow() {
         if mainWindowController.isMainWindowVisible {
             NSApp.activate(ignoringOtherApps: true)

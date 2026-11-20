@@ -1,8 +1,6 @@
 @testable import GitMenuBar
 import XCTest
 
-/// Presence cache backing the quota settings status pill: stored keys surface
-/// as suffixes without touching the Keychain from view bodies.
 @MainActor
 final class QuotaKeyPresenceTests: XCTestCase {
     private var suiteName: String!

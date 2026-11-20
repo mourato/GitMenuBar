@@ -1,6 +1,5 @@
 import Foundation
 
-/// Owns working-tree operations for an explicit repository path; GitManager owns refresh publication.
 @MainActor
 final class GitWorkingTreeService {
     private let commandRunner: GitCommandRunner
@@ -151,7 +150,6 @@ final class GitWorkingTreeService {
         return .success(())
     }
 
-    /// Resolve parents, but preserve a final symlink so discard removes the link itself.
     private func discardTarget(path: String, in repositoryPath: String) throws -> String {
         guard !path.isEmpty, !(path as NSString).isAbsolutePath,
               !(path as NSString).pathComponents.contains("..")
@@ -170,7 +168,6 @@ final class GitWorkingTreeService {
 
     func discardAllUnstagedChangesAsync(in repositoryPath: String) async -> Result<Void, Error> {
         guard !repositoryPath.isEmpty else { return .failure(GitOperationError.noRepository) }
-        // Restore tracked files
         var result = await runOnBackground {
             self.executeGitCommand(in: repositoryPath, args: ["restore", "--", "."])
         }
@@ -180,7 +177,6 @@ final class GitWorkingTreeService {
             }
         }
 
-        // Clean untracked files
         let cleanResult = await runOnBackground {
             self.executeGitCommand(in: repositoryPath, args: ["clean", "-fd"])
         }

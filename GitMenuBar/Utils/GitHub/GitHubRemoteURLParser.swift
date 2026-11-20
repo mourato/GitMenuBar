@@ -17,7 +17,6 @@ enum GitHubRemoteURLParser {
         )
     }
 
-    /// Host of a GitHub remote, such as `github.com` or an Enterprise host.
     static func host(_ remoteURL: String) -> String? {
         gitHubURL(from: remoteURL)?.host
     }

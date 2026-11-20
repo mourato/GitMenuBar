@@ -1,8 +1,3 @@
-//
-//  GitBranchService+State.swift
-//  GitMenuBar
-//
-
 import Foundation
 
 extension GitBranchService {
@@ -16,7 +11,6 @@ extension GitBranchService {
 
         Task { @MainActor in
             let repositoryPath = storedRepoPath
-            // Get current branch
             let branchResult = await runOnBackground {
                 self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "--abbrev-ref", "HEAD"])
             }
@@ -27,7 +21,6 @@ extension GitBranchService {
                 self.trackingAheadCount(repositoryPath: repositoryPath)
             }
 
-            // Get current hash
             let hashResult = await runOnBackground {
                 self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "HEAD"])
             }
@@ -36,10 +29,8 @@ extension GitBranchService {
             self.isAheadOfRemote = aheadCount > 0
             self.currentHash = hash
 
-            // Detect detached HEAD state
             if branchName == "HEAD" {
                 self.isDetachedHead = true
-                // Try to get a nicer name like (detached at <short_hash>)
                 let shortHashResult = await runOnBackground {
                     self.executeGitCommand(in: repositoryPath, args: ["rev-parse", "--short", "HEAD"])
                 }
