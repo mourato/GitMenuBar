@@ -5,7 +5,7 @@ struct UsageQuotaSummaryView: View {
     let snapshots: [UsageQuotaSnapshot]
 
     var body: some View {
-        HStack(spacing: WorkbenchMetrics.compactSpacing) {
+        HStack(spacing: WorkbenchMetrics.sectionSpacing) {
             ForEach(eligibleSnapshots) { snapshot in
                 UsageQuotaSummaryItem(snapshot: snapshot)
             }
@@ -35,13 +35,24 @@ private struct UsageQuotaSummaryItem: View {
         )
         if !resolutions.isEmpty {
             HStack(spacing: WorkbenchMetrics.microSpacing) {
-                ProviderIconView(providerID: snapshot.providerID)
+                ProviderIconView(providerID: snapshot.providerID, tint: Self.iconTint(for: resolutions))
                 ForEach(resolutions, id: \.kind) { resolved in
                     reading(resolved)
                 }
             }
             .opacity(snapshot.isStale ? 0.72 : 1)
         }
+    }
+
+    private static func iconTint(for resolutions: [UsageQuotaSummaryResolution]) -> Color {
+        let levels = resolutions.map(\.alertLevel)
+        if levels.contains(.error) {
+            return UsageQuotaAlertLevel.error.color
+        }
+        if levels.contains(.warning) {
+            return UsageQuotaAlertLevel.warning.color
+        }
+        return UsageQuotaAlertLevel.normal.color
     }
 
     @ViewBuilder

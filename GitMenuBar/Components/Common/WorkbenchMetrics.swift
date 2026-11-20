@@ -38,6 +38,7 @@ enum WorkbenchMetrics {
     static let overlayCornerRadius: CGFloat = 16
     static let iconHitTarget: CGFloat = 28
     static let sidebarInlineIconSize: CGFloat = 12
+    static let sidebarMicroIconSize: CGFloat = 10
     static let minimumHitTarget: CGFloat = 32
     static let quotaMeterWidth: CGFloat = 20
     static let quotaMeterHeight: CGFloat = 6
@@ -72,7 +73,7 @@ enum WorkbenchTypography {
     }
 
     static var projectName: Font {
-        .body.weight(.semibold)
+        .body.weight(.medium)
     }
 
     static var detail: Font {
@@ -84,11 +85,11 @@ enum WorkbenchTypography {
     }
 
     static var sidebarCount: Font {
-        .subheadline
+        .caption
     }
 
     static var sidebarCountMeasurementFont: NSFont {
-        .monospacedDigitSystemFont(ofSize: NSFont.preferredFont(forTextStyle: .subheadline).pointSize, weight: .regular)
+        .monospacedDigitSystemFont(ofSize: NSFont.preferredFont(forTextStyle: .caption1).pointSize, weight: .regular)
     }
 
     static var captionStrong: Font {

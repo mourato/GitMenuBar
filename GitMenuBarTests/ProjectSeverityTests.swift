@@ -41,10 +41,11 @@ final class ProjectSeverityTests: XCTestCase {
         )
     }
 
-    func testBehindOrDivergedIsCritical() {
-        let behindSnapshot = makeSnapshot(behindCount: 2)
-        XCTAssertEqual(behindSnapshot.severity, .critical)
+    func testBehindAloneShowsNoDot() {
+        XCTAssertNil(makeSnapshot(behindCount: 2).severity)
+    }
 
+    func testDivergedIsCritical() {
         let divergedSnapshot = makeSnapshot(aheadCount: 3, behindCount: 1)
         XCTAssertEqual(divergedSnapshot.severity, .critical)
     }
@@ -68,7 +69,7 @@ final class ProjectSeverityTests: XCTestCase {
     func testCommitsToPushAreLocalWork() {
         XCTAssertEqual(makeSnapshot(aheadCount: 2).severity, .localWork)
         XCTAssertEqual(makeSnapshot(unpushedBranchCount: 2).severity, .localWork)
-        XCTAssertEqual(makeSnapshot(behindCount: 1, unpushedBranchCount: 2).severity, .critical)
+        XCTAssertEqual(makeSnapshot(behindCount: 1, unpushedBranchCount: 2).severity, .localWork)
     }
 
     func testUnmergedBranchesAloneShowNoDot() {
@@ -96,13 +97,13 @@ final class ProjectSeverityTests: XCTestCase {
 
     func testSeverityPrecedence() {
         let behindAndDirtySnapshot = makeSnapshot(stagedCount: 2, behindCount: 1)
-        XCTAssertEqual(behindAndDirtySnapshot.severity, .critical)
+        XCTAssertEqual(behindAndDirtySnapshot.severity, .localWork)
 
         let dirtyAndUnmergedSnapshot = makeSnapshot(stagedCount: 1, unmergedBranchCount: 3)
         XCTAssertEqual(dirtyAndUnmergedSnapshot.severity, .localWork)
 
         let behindAndUnmergedSnapshot = makeSnapshot(behindCount: 1, unmergedBranchCount: 3)
-        XCTAssertEqual(behindAndUnmergedSnapshot.severity, .critical)
+        XCTAssertNil(behindAndUnmergedSnapshot.severity)
     }
 
     func testCleanSnapshotHasNoSeverity() {

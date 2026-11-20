@@ -144,12 +144,16 @@ struct ProjectsSidebarView: View {
                 } label: {
                     HStack(spacing: WorkbenchMetrics.microSpacing) {
                         Text(group.title)
+                        Text("\(snapshots.count)")
+                            .foregroundStyle(.tertiary)
+                            .monospacedDigit()
                         LucideIconView(
                             name: isCleanGroupCollapsed ? .chevronRight : .chevronDown,
                             size: WorkbenchMetrics.sidebarInlineIconSize
                         )
                     }
                     .font(WorkbenchTypography.sectionLabel)
+                    .foregroundStyle(.secondary)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -162,6 +166,7 @@ struct ProjectsSidebarView: View {
             } header: {
                 Text(group.title)
                     .font(WorkbenchTypography.sectionLabel)
+                    .foregroundStyle(.secondary)
             }
         }
     }

@@ -155,6 +155,31 @@ final class ProjectStatusSummaryTests: XCTestCase {
         XCTAssertEqual(snapshot.statusSummary, "Unavailable")
     }
 
+    func testUnmergedBranchesStaySpokenButLeaveTheVisibleLine() {
+        let snapshot = makeSnapshot(behindCount: 1, unmergedBranchCount: 3)
+        XCTAssertEqual(snapshot.visibleFacts, [.behind(1)])
+        XCTAssertEqual(snapshot.unmergedBranchBadge, 3)
+    }
+
+    func testIdleSummaryNamesBranchAndLastActivity() {
+        let now = Date()
+        let snapshot = makeSnapshot(unmergedBranchCount: 2, lastActivityAt: now.addingTimeInterval(-3600))
+        XCTAssertTrue(snapshot.visibleFacts.isEmpty)
+        let named = Date.RelativeFormatStyle(presentation: .named, unitsStyle: .narrow)
+        XCTAssertEqual(snapshot.idleSummary(now: now), "main · \(named.format(now.addingTimeInterval(-3600)))")
+
+        let justNow = makeSnapshot(lastActivityAt: now)
+        XCTAssertEqual(justNow.idleSummary(now: now), "main · \(named.format(now))")
+        XCTAssertNotEqual(
+            justNow.idleSummary(now: now),
+            "main · \(now.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)))"
+        )
+    }
+
+    func testIdleSummaryWithoutActivityNamesTheBranch() {
+        XCTAssertEqual(makeSnapshot().idleSummary(now: Date()), "main")
+    }
+
     private func makeSnapshot(
         branchName: String = "main",
         isDetachedHead: Bool = false,
