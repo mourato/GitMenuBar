@@ -1,4 +1,4 @@
-.PHONY: help build build-release runtime-smoke test test-focused test-runner lint test-hygiene lint-changed lint-fix check-preview agent-check validate validate-lane validate-lane-command validate-release-touch guidance-check install-app dmg setup-self-signed-cert clean setup
+.PHONY: help build build-release runtime-smoke test test-focused test-runner lint test-hygiene lint-changed lint-swift lint-fix check-preview agent-check validate validate-lane validate-lane-command validate-release-touch guidance-check install-app dmg setup-self-signed-cert clean setup
 
 PROJECT_DIR := $(shell pwd)
 AGENT_CONFIG_HOME ?= $(HOME)/.agents
@@ -57,7 +57,11 @@ TEST_HYGIENE := $(or $(AGENT_CONFIG_HOME),$(HOME)/.agents)/skills/test-hygiene/s
 test-hygiene:
 	@python3 "$(TEST_HYGIENE)" --baseline .test-hygiene-baseline GitMenuBarTests
 
-lint: test-hygiene
+# -k runs both checks to the end so one pass reports all failures.
+lint:
+	@$(MAKE) --no-print-directory -k test-hygiene lint-swift
+
+lint-swift:
 	@./scripts/lint.sh
 
 lint-changed:
