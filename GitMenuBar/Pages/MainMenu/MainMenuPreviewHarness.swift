@@ -10,6 +10,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
     @State private var shortcutActionBridge = MainMenuShortcutActionBridge()
     @State private var presentationModel = MainMenuPresentationModel()
     @State private var usageQuotaStore = UsageQuotaStore()
+    @State private var usageQuotaPreferences = UsageQuotaPresentationPreferences()
     @State private var projectMonitor: ProjectMonitorStore
     @State private var repositorySelectionCoordinator: RepositorySelectionCoordinator
 
@@ -77,6 +78,7 @@ struct MainMenuPreviewHarness<Content: View>: View {
             .environment(shortcutActionBridge)
             .environment(presentationModel)
             .environment(usageQuotaStore)
+            .environment(usageQuotaPreferences)
             .environment(projectMonitor)
             .environment(repositorySelectionCoordinator)
             .frame(width: width)

@@ -259,4 +259,5 @@ struct ProjectsSidebarView: View {
     )
     .environment(ProjectMonitorStore())
     .environment(UsageQuotaStore())
+    .environment(UsageQuotaPresentationPreferences())
 }
