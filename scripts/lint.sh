@@ -1,6 +1,8 @@
 #!/bin/bash
 
 set -euo pipefail
+# Run every check to the end so one pass reports all failures.
+status=0
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${PROJECT_ROOT}"
@@ -38,17 +40,18 @@ else
 fi
 
 echo "Running SwiftFormat (lint mode)..."
-swiftformat --lint --config "${STYLE_CONFIG_DIR}/.swiftformat" "${TARGETS[@]}"
+swiftformat --lint --config "${STYLE_CONFIG_DIR}/.swiftformat" "${TARGETS[@]}" || status=1
 
 echo "Running SwiftLint..."
-swiftlint lint --strict --config "${STYLE_CONFIG_DIR}/.swiftlint.yml" "${TARGETS[@]}"
+swiftlint lint --strict --config "${STYLE_CONFIG_DIR}/.swiftlint.yml" "${TARGETS[@]}" || status=1
 
 echo "Running SwiftLint project rules..."
-swiftlint lint --strict --config .swiftlint.yml --only-rule lucide_no_system_image "${TARGETS[@]}"
+swiftlint lint --strict --config .swiftlint.yml --only-rule lucide_no_system_image "${TARGETS[@]}" || status=1
 
 echo "Running comment ratchet..."
 COMMENT_ARGS=(lint --strict --config "${AGENT_CONFIG_HOME:-${HOME}/.agents}/skills/delete-comment/config/no-comments.swiftlint.yml")
 [[ -f .comment-baseline.json ]] && COMMENT_ARGS+=(--baseline .comment-baseline.json)
-swiftlint "${COMMENT_ARGS[@]}" "${TARGETS[@]}"
+swiftlint "${COMMENT_ARGS[@]}" "${TARGETS[@]}" || status=1
 
+(( status == 0 )) || exit "$status"
 echo "Lint checks passed"
