@@ -151,13 +151,13 @@ final class UsageQuotaPresentationPreferences {
 
     private let defaults: UserDefaults
     private var metricsByProvider: [UsageProviderID: [Metric]]
-    private let keyStore: any AIAPIKeyStore // justified: shared Keychain reader backing the quota key presence cache
+    private let keyStore: any AIAPIKeyStore
 
     private(set) var quotaKeySuffixes: [UsageProviderID: String] = [:]
 
     init(
         defaults: UserDefaults = .standard,
-        keyStore: any AIAPIKeyStore = AIKeychainStore() // justified: shared Keychain reader backing the quota key presence cache
+        keyStore: any AIAPIKeyStore = AIKeychainStore()
     ) {
         self.defaults = defaults
         self.keyStore = keyStore
