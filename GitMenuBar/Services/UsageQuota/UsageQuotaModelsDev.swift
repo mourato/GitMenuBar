@@ -87,7 +87,7 @@ struct ModelsDevProvider: Codable, Equatable, Sendable {
         self.models = models
     }
 
-    init(from decoder: any Decoder) throws { // justified: Swift protocol existential, not a type-check suppression.
+    init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(String.self, forKey: .id)
         name = try container.decodeIfPresent(String.self, forKey: .name)
@@ -112,7 +112,7 @@ struct ModelsDevCatalog: Codable, Equatable, Sendable {
         self.providers = providers
     }
 
-    init(from decoder: any Decoder) throws { // justified: Swift protocol existential, not a type-check suppression.
+    init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: ModelsDevAnyCodingKey.self)
         if let providersKey = ModelsDevAnyCodingKey(stringValue: "providers"),
            let decoded = try? container.decode([String: ModelsDevProvider].self, forKey: providersKey)

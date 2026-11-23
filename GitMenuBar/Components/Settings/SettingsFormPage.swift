@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsFormPage<Content: View>: View {
     private let content: Content
 
+    @State private var availableWidth: CGFloat = 0
+
     init(
         @ViewBuilder content: () -> Content
     ) {
@@ -10,20 +12,22 @@ struct SettingsFormPage<Content: View>: View {
     }
 
     var body: some View {
-        // swiftlint:disable:next swiftui_geometry_reader
-        GeometryReader { geometry in
-            Form {
-                content
-            }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            .frame(
-                minWidth: SettingsFormLayoutPolicy.contentWidth(availableWidth: geometry.size.width),
-                maxWidth: .infinity,
-                maxHeight: .infinity,
-                alignment: .topLeading
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        Form {
+            content
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .frame(
+            minWidth: SettingsFormLayoutPolicy.contentWidth(availableWidth: availableWidth),
+            maxWidth: .infinity,
+            maxHeight: .infinity,
+            alignment: .topLeading
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { newWidth in
+            availableWidth = newWidth
         }
     }
 }

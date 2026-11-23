@@ -28,9 +28,7 @@ struct InlineStatusBannerView: View {
             VStack(alignment: .leading, spacing: 2) {
                 if let title = banner.title {
                     Text(title)
-                        .font(.headline)
-                        // swiftlint:disable:next swiftui_font_weight
-                        .fontWeight(legibilityWeight == .bold ? .bold : .semibold)
+                        .font(.headline.weight(legibilityWeight == .bold ? .bold : .semibold))
                 }
 
                 Text(banner.message)
